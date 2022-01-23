@@ -2,7 +2,7 @@ import dis
 import typing
 
 from bytecodemanipulation.CodeOptimiser import optimise_code
-from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 from bytecodemanipulation.InstructionMatchers import CounterMatcher
 from bytecodemanipulation.Transformers import TransformationHandler
@@ -15,7 +15,7 @@ class TestPostInjectionOptimiser(TestCase):
             a = 0
             del a
 
-        helper = MixinPatchHelper(test)
+        helper = BytecodePatchHelper(test)
         optimise_code(helper)
 
         self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
@@ -68,7 +68,7 @@ class TestPostInjectionOptimiser(TestCase):
         self.assertEqual(invoked, 4)
 
         # Check if it is optimised away
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         self.assertEqual(helper.instruction_listing[0].opname, "LOAD_FAST")
         self.assertEqual(
             helper.instruction_listing[0].arg,
@@ -87,6 +87,6 @@ class TestPostInjectionOptimiser(TestCase):
         )
         handler.applyMixins()
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
         self.assertEqual(helper.instruction_listing[0].argval, 2)

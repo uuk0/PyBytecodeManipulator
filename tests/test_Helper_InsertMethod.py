@@ -7,7 +7,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_1(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
         )
 
         def target():
@@ -17,7 +17,7 @@ class TestInsertMethod(TestCase):
             global INVOKED
             INVOKED = True
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(0, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -31,7 +31,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_5(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
         )
 
@@ -49,7 +49,7 @@ class TestInsertMethod(TestCase):
 
         self.assertEqual(target(), 1)
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(4, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -63,7 +63,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_1(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
         )
 
@@ -76,7 +76,7 @@ class TestInsertMethod(TestCase):
             global INVOKED
             INVOKED = x
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(2, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -90,7 +90,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_2(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
         )
 
@@ -104,7 +104,7 @@ class TestInsertMethod(TestCase):
             INVOKED = x
             x = 2
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(2, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -118,7 +118,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_static_2(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local_static,
         )
 
@@ -132,7 +132,7 @@ class TestInsertMethod(TestCase):
             INVOKED = x
             x = 2
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(2, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -146,7 +146,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_3(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
         )
 
@@ -164,7 +164,7 @@ class TestInsertMethod(TestCase):
 
         self.assertEqual(target(), 1)
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(4, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -180,7 +180,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_static_3(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
             capture_local_static,
         )
@@ -199,7 +199,7 @@ class TestInsertMethod(TestCase):
 
         self.assertEqual(target(), 1)
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(4, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -213,7 +213,7 @@ class TestInsertMethod(TestCase):
     def test_insert_method_local_capture_4(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
         )
 
@@ -225,7 +225,7 @@ class TestInsertMethod(TestCase):
             global INVOKED
             INVOKED = capture_local("a")
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(2, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
@@ -239,7 +239,7 @@ class TestInsertMethod(TestCase):
     def test_mixin_early_exit_1(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             mixin_return,
         )
 
@@ -250,7 +250,7 @@ class TestInsertMethod(TestCase):
             mixin_return(0)
             return -1
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(0, test)
         helper.store()
         helper.patcher.applyPatches()
@@ -260,7 +260,7 @@ class TestInsertMethod(TestCase):
     def test_mixin_early_exit_2(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
             mixin_return,
         )
@@ -275,7 +275,7 @@ class TestInsertMethod(TestCase):
 
         dis.dis(test)
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(0, test)
         helper.store()
         helper.patcher.applyPatches()
@@ -288,7 +288,7 @@ class TestInsertMethod(TestCase):
     def test_mixin_early_exit_3(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
-            MixinPatchHelper,
+            BytecodePatchHelper,
             capture_local,
             mixin_return,
         )
@@ -302,7 +302,7 @@ class TestInsertMethod(TestCase):
                 mixin_return(0)
             a = 2
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
         helper.insertMethodAt(0, test)
         helper.store()
         helper.patcher.applyPatches()

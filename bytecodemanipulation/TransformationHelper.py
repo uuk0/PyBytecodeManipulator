@@ -1,4 +1,5 @@
 import dis
+import sys
 import traceback
 import types
 import typing
@@ -84,7 +85,6 @@ POP_SINGLE_VALUE = {
     Opcodes.STORE_NAME,
     Opcodes.PRINT_EXPR,
     Opcodes.YIELD_VALUE,
-    Opcodes.YIELD_FROM,
 }
 POP_DOUBLE_VALUE = {
     Opcodes.STORE_ATTR,
@@ -136,7 +136,13 @@ POP_SINGLE_AND_PUSH_SINGLE = {
 }
 
 
-class MixinPatchHelper:
+if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+    POP_SINGLE_VALUE |= {
+        Opcodes.YIELD_FROM,
+    }
+
+
+class BytecodePatchHelper:
     """
     See https://docs.python.org/3/library/dis.html#python-bytecode-instructions for a detailed instruction listing
     Contains helper methods for working with bytecode outside the basic wrapper container
@@ -305,7 +311,7 @@ class MixinPatchHelper:
         self,
         previous,
         new,
-        matcher: typing.Callable[["MixinPatchHelper", int, int], bool] = None,
+        matcher: typing.Callable[["BytecodePatchHelper", int, int], bool] = None,
     ):
         """
         Replaces a constant with another one
@@ -373,6 +379,8 @@ class MixinPatchHelper:
 
         WARNING: highly experimental, it may break at any time!
 
+        todo: for python 3.11, we need to update the target exception table!
+
         :param start: where the method head should be inserted
         :param method: the method object ot inject
         :param added_args: how many positional args are added to the method call
@@ -381,18 +389,20 @@ class MixinPatchHelper:
         :return: the instruction index at the TAIL of the code
         """
 
+        # We need to transform this object one level up to make things work
         if not isinstance(method, MutableCodeObject):
             method = MutableCodeObject(method)
 
         target = method.copy()
 
-        # Rebind all inner local variables to something we cannot possibly enter,
+        # Rebind all inner local variables to something we cannot possibly enter as code,
         # so we cannot get conflicts (in the normal case)
+        # todo: what happens if we inline a method with the same name?
         target.variable_names = [
             method.target.__name__ + "::" + e for e in target.variable_names
         ]
 
-        helper = MixinPatchHelper(target)
+        helper = BytecodePatchHelper(target)
 
         # Simple as that, we cannot do this!
         if helper.is_async and not self.is_async:
@@ -412,6 +422,14 @@ class MixinPatchHelper:
                     instr, instr.arg + start
                 )
 
+        # Remove the initial RESUME opcode as it is not needed twice
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+            if helper.instruction_listing[0].opcode == Opcodes.RESUME:
+                helper.deleteRegion(0, 1)
+            if helper.instruction_listing[1].opcode == Opcodes.RESUME:
+                helper.deleteRegion(1, 2)
+
+
         captured = {}
         captured_indices = set()
         captured_names = set()
@@ -424,8 +442,13 @@ class MixinPatchHelper:
         while index != len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                if instr.opname == "CALL_FUNCTION" and index > 1:
+                print(index, instr, self.CALL_FUNCTION_NAME)
+
+                if instr.opname == self.CALL_FUNCTION_NAME and index > 1:
                     possible_load = helper.instruction_listing[index - 2]
+
+                    print(index, instr, self.CALL_FUNCTION_NAME, possible_load)
+
                     if possible_load.opname in (
                         "LOAD_GLOBAL",
                         "LOAD_DEREF",
@@ -438,6 +461,8 @@ class MixinPatchHelper:
                         ), "captured must be local var"
 
                         local = helper.instruction_listing[index - 1].argval
+
+                        print("captured local", local)
 
                         if (
                             helper.instruction_listing[index + 1].opname == "STORE_FAST"
@@ -555,7 +580,7 @@ class MixinPatchHelper:
         while index < len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                if instr.opname == "CALL_FUNCTION" and index > 1:
+                if instr.opname == self.CALL_FUNCTION_NAME and index > 1:
                     if instr.arg == 1:
                         possible_load = helper.instruction_listing[index - 2]
 
@@ -726,6 +751,13 @@ class MixinPatchHelper:
         self.is_async = False
         return self
 
+    CALL_FUNCTION_NAME = None
+
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+        CALL_FUNCTION_NAME = "CALL_NO_KW"
+    else:
+        CALL_FUNCTION_NAME = "CALL_FUNCTION"
+
     def insertGivenMethodCallAt(
         self,
         offset: int,
@@ -760,7 +792,7 @@ class MixinPatchHelper:
             + list(special_args_collectors)
             + [
                 createInstruction(
-                    "CALL_FUNCTION",
+                    self.CALL_FUNCTION_NAME,
                     len(args)
                     + len(collected_locals)
                     + int(include_stack_top_copy)
@@ -812,7 +844,7 @@ class MixinPatchHelper:
         instructions += [self.patcher.createLoadConst(e) for e in args]
 
         instructions += [
-            createInstruction("CALL_FUNCTION", len(args)),
+            createInstruction(self.CALL_FUNCTION_NAME, len(args)),
             createInstruction("POP_TOP"),
         ]
 
@@ -864,7 +896,7 @@ class MixinPatchHelper:
         instructions += [self.patcher.createLoadConst(e) for e in args]
 
         instructions += [
-            createInstruction("CALL_FUNCTION", len(args)),
+            createInstruction(self.CALL_FUNCTION_NAME, len(args)),
             createInstruction("GET_AWAITABLE"),
             self.patcher.createLoadConst(None),
             createInstruction("YIELD_FROM"),
@@ -892,7 +924,7 @@ class MixinPatchHelper:
         method = method.copy()
 
         i = 0
-        helper = MixinPatchHelper(method)
+        helper = BytecodePatchHelper(method)
 
         while i < len(helper.instruction_listing):
             instr = helper.instruction_listing[i]

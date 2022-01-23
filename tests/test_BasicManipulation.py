@@ -1,8 +1,11 @@
 import dis
+import sys
 import typing
 
 from bytecodemanipulation.InstructionMatchers import CounterMatcher
 from unittest import TestCase
+
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 INVOKER_COUNTER = 0
 INVOKED = False
@@ -585,6 +588,8 @@ class TestBytecodeHandler(TestCase):
         def target(a=3):
             return a
 
+        dis.dis(target)
+
         handler = TransformationHandler()
         handler.makeFunctionArrival("test", target)
 
@@ -592,6 +597,10 @@ class TestBytecodeHandler(TestCase):
         def inject():
             global INVOKED
             INVOKED += capture_local("a")
+
+        print("---")
+        dis.dis(inject)
+        print(inject.__code__.co_varnames)
 
         global INVOKED
         INVOKED = 0
@@ -1220,7 +1229,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 4)
 
     def test_mixin_given_method_call_inject_1(self):
-        from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+        from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         INVOKED = 0
 
@@ -1231,7 +1240,7 @@ class TestBytecodeHandler(TestCase):
             nonlocal INVOKED
             INVOKED += c
 
-        helper = MixinPatchHelper(localtest)
+        helper = BytecodePatchHelper(localtest)
         helper.insertGivenMethodCallAt(0, inject, 1)
         helper.store()
         helper.patcher.applyPatches()
@@ -1240,7 +1249,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 1)
 
     def test_mixin_given_method_call_inject_2(self):
-        from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+        from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         INVOKED = 0
 
@@ -1251,7 +1260,7 @@ class TestBytecodeHandler(TestCase):
             nonlocal INVOKED
             INVOKED += c
 
-        helper = MixinPatchHelper(localtest)
+        helper = BytecodePatchHelper(localtest)
         helper.insertGivenMethodCallAt(0, inject, 4)
         helper.store()
         helper.patcher.applyPatches()
@@ -1260,7 +1269,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 4)
 
     def test_mixin_given_method_call_inject_3(self):
-        from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+        from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         INVOKED = 0
 
@@ -1271,7 +1280,7 @@ class TestBytecodeHandler(TestCase):
             nonlocal INVOKED
             INVOKED += c
 
-        helper = MixinPatchHelper(localtest)
+        helper = BytecodePatchHelper(localtest)
         helper.insertGivenMethodCallAt(0, inject, 1)
         helper.insertGivenMethodCallAt(0, inject, 1)
         helper.store()
@@ -1353,7 +1362,7 @@ class TestBytecodeHandler(TestCase):
         handler.makeFunctionArrival("test", func)
 
         @handler.inject_local_variable_modifier_at(
-            "test", CounterMatcher(2), ["c", "d"]
+            "test", CounterMatcher(2 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 3), ["c", "d"]
         )
         def inject(c, d):
             return d, c

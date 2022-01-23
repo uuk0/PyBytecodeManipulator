@@ -4,7 +4,7 @@ import typing
 from mcpython.engine import logger
 from mcpython.mixin import CodeOptimiser
 from bytecodemanipulation.InstructionMatchers import AbstractInstructionMatcher
-from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.BytecodeProcessors import (
     AbstractBytecodeProcessor,
     MethodInlineProcessor,
@@ -22,7 +22,7 @@ class _OptimiserContainer:
 
     def optimise_target(self):
         if isinstance(self.target, typing.Callable):
-            helper = MixinPatchHelper(self.target)
+            helper = BytecodePatchHelper(self.target)
 
             for processor in self.code_walkers:
                 print(f"[INFO] applying optimiser mixin {processor} onto {self.target}")

@@ -3,7 +3,7 @@ from dis import Instruction
 import tests.test_space
 from bytecodemanipulation import MutableCodeObject
 from bytecodemanipulation.Transformers import TransformationHandler
-from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.util import create_instruction
 from unittest import TestCase
 
@@ -20,7 +20,7 @@ class TestJumpAlignment(TestCase):
             test = True
 
         patcher = MutableCodeObject.MutableCodeObject(a)
-        helper = MixinPatchHelper(patcher)
+        helper = BytecodePatchHelper(patcher)
 
         a()
         self.assertTrue(test)
@@ -39,7 +39,7 @@ class TestJumpAlignment(TestCase):
             pass
 
         patcher = MutableCodeObject.MutableCodeObject(a)
-        helper = MixinPatchHelper(patcher)
+        helper = BytecodePatchHelper(patcher)
 
         a()
         self.assertFalse(test)
@@ -79,7 +79,7 @@ class TestJumpAlignment(TestCase):
         test1 = False
 
         patcher = MutableCodeObject.MutableCodeObject(a)
-        helper = MixinPatchHelper(patcher)
+        helper = BytecodePatchHelper(patcher)
 
         # Delete the two instructions storing the True value in test1
         helper.deleteRegion(2, 4)

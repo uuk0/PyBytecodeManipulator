@@ -1,6 +1,6 @@
 import dis
 
-from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.util import Opcodes
 
 SIDE_EFFECT_FREE_VALUE_LOAD = {
@@ -32,7 +32,7 @@ PAIR_STORE_DELETE = {
 }
 
 
-def optimise_code(helper: MixinPatchHelper):
+def optimise_code(helper: BytecodePatchHelper):
     remove_store_delete_pairs(helper)
     remove_load_pop(helper)
     remove_load_store_pairs(helper)
@@ -55,7 +55,7 @@ def optimise_code(helper: MixinPatchHelper):
 #   but we can optimise these instructions away
 
 
-def remove_store_delete_pairs(helper: MixinPatchHelper):
+def remove_store_delete_pairs(helper: BytecodePatchHelper):
     """
     Optimiser method for removing side effect free STORE_XX instructions directly followed by a
     DELETE_XX instruction.
@@ -93,7 +93,7 @@ def remove_store_delete_pairs(helper: MixinPatchHelper):
             break
 
 
-def remove_delete_fast_without_assign(helper: MixinPatchHelper):
+def remove_delete_fast_without_assign(helper: BytecodePatchHelper):
     """
     Removes all DELETE_FAST instructions deleting locals not written to yet
     This is an artifact left by other optimisation functions
@@ -116,7 +116,7 @@ def remove_delete_fast_without_assign(helper: MixinPatchHelper):
             break
 
 
-def remove_load_pop(helper: MixinPatchHelper):
+def remove_load_pop(helper: BytecodePatchHelper):
     """
     Optimiser method for removing side effect free LOAD_XX instructions directly followed by a
     POP_TOP instruction
@@ -136,7 +136,7 @@ def remove_load_pop(helper: MixinPatchHelper):
             break
 
 
-def remove_load_store_pairs(helper: MixinPatchHelper):
+def remove_load_store_pairs(helper: BytecodePatchHelper):
     """
     Optimiser method for removing side effect free LOAD_XX followed by STORE_XX to the same space
 
@@ -164,7 +164,7 @@ def remove_load_store_pairs(helper: MixinPatchHelper):
             break
 
 
-def remove_nop(helper: MixinPatchHelper):
+def remove_nop(helper: BytecodePatchHelper):
     """
     Optimiser method for removing NOP instructions
     todo: can we combine-delete multiple instructions?

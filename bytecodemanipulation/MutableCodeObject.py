@@ -83,8 +83,8 @@ class MutableCodeObject:
         )
 
         if sys.version_info.minor >= 11:
-            self.columntable = self.code.co_columntable
-            self.exceptiontable = self.code.co_exceptiontable
+            self.column_table = self.code.co_columntable
+            self.exception_table = self.code.co_exceptiontable
             self.end_line_table = self.code.co_endlinetable
             self.qual_name = self.code.co_qualname
 
@@ -159,7 +159,7 @@ class MutableCodeObject:
                 self.argument_count,
                 self.positional_only_argument_count,
                 self.keyword_only_argument_count,
-                self.number_of_locals,
+                len(self.variable_names),
                 self.max_stack_size,
                 self.flags,
                 bytes(self.code_string),
@@ -172,8 +172,8 @@ class MutableCodeObject:
                 self.first_line_number,
                 self.line_number_table,
                 self.end_line_table,
-                self.columntable,
-                self.exceptiontable,
+                self.column_table,
+                self.exception_table,
                 tuple(self.free_vars),
                 tuple(self.cell_vars),
             )
@@ -227,20 +227,39 @@ class MutableCodeObject:
     def copy(self):
         """
         Creates a copy of this object WITHOUT method binding
+        Sets can_be_reattached simply to False
         """
         obj = MutableCodeObject(self.target)
         obj.overrideFrom(self)
         obj.can_be_reattached = False
         return obj
 
-    def get_instruction_list(self) -> typing.List[dis.Instruction]:
-        return dis._get_instructions_bytes(
-            self.code_string,
-            self.variable_names,
-            self.names,
-            self.constants,
-            self.cell_vars + self.free_vars,
-        )
+    if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+        def get_instruction_list(self) -> typing.List[dis.Instruction]:
+            """
+            return _get_instructions_bytes(co.co_code,
+                                   co._varname_from_oparg,
+                                   co.co_names, co.co_consts,
+                                   linestarts, line_offset, co_positions=co.co_positions())
+            """
+            print(self.target, self.variable_names)
+            return dis._get_instructions_bytes(
+                self.code_string,
+                lambda i: self.variable_names[i],
+                self.names,
+                self.constants,
+                None,
+                None,
+            )
+    else:
+        def get_instruction_list(self) -> typing.List[dis.Instruction]:
+            return dis._get_instructions_bytes(
+                self.code_string,
+                self.variable_names,
+                self.names,
+                self.constants,
+                self.cell_vars + self.free_vars,
+            )
 
     def instructionList2Code(self, instruction_list: typing.List[dis.Instruction]):
         self.code_string.clear()

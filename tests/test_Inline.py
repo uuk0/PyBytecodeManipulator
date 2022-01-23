@@ -17,7 +17,7 @@ from bytecodemanipulation.InstructionMatchers import CounterMatcher
 from bytecodemanipulation.util import Opcodes
 from unittest import TestCase
 from bytecodemanipulation.BytecodeProcessors import MethodInlineProcessor
-from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 
 TEST_TARGET = 0
@@ -36,7 +36,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += 1
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
@@ -54,7 +54,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += 1
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
@@ -71,7 +71,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += p
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
@@ -89,7 +89,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += p
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
@@ -107,7 +107,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += p
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor(
             "b", target_accessor=lambda: b, matcher=CounterMatcher(1)
         )
@@ -129,7 +129,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += p * q
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
@@ -149,7 +149,7 @@ class TestInline(TestCase):
 
         dis.dis(a)
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
@@ -168,7 +168,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += 1
 
-        helper = MixinPatchHelper(a)
+        helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()

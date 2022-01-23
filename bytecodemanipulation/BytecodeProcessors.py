@@ -6,7 +6,7 @@ import typing
 
 from bytecodemanipulation.InstructionMatchers import AbstractInstructionMatcher
 from bytecodemanipulation.TransformationHelper import (
-    MixinPatchHelper,
+    BytecodePatchHelper,
     reconstruct_instruction,
 )
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject, createInstruction
@@ -18,7 +18,7 @@ POP_JUMPS = {
     Opcodes.POP_JUMP_IF_TRUE,
 }
 
-if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+if sys.version_info.major >= 3 and sys.version_info.minor > 11:
     POP_JUMPS |= {
         Opcodes.POP_JUMP_IF_NONE,
         Opcodes.POP_JUMP_IF_NOT_NONE,
@@ -43,7 +43,7 @@ class AbstractBytecodeProcessor:
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         """
         Applies the bytecode processor to the target
@@ -65,7 +65,7 @@ class ReplacementProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         target.overrideFrom(MutableCodeObject(self.replacement))
 
@@ -90,7 +90,7 @@ class ConstantReplacer(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         if self.before not in target.constants:
             if self.fail_on_not_found:
@@ -119,7 +119,7 @@ class Global2ConstReplace(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         match = -1
         for index, instruction in helper.getLoadGlobalsLoading(self.global_name):
@@ -152,7 +152,7 @@ class Attribute2ConstReplace(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         match = -1
         for index, instr in helper.walk():
@@ -198,7 +198,7 @@ class Local2ConstReplace(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         match = -1
         for index, instruction in enumerate(helper.instruction_listing):
@@ -234,7 +234,7 @@ class GlobalReTargetProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         match = -1
         for index, instruction in helper.getLoadGlobalsLoading(self.previous_global):
@@ -272,9 +272,9 @@ class InjectFunctionCallAtHeadProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
-        index = 0 if helper.instruction_listing[0].opname != "GEN_START" else 1
+        index = 0 if helper.instruction_listing[0].opname not in ("GEN_START", "RESUME") else 1
 
         if not self.inline:
             helper.insertGivenMethodCallAt(
@@ -319,7 +319,7 @@ class InjectFunctionCallAtReturnProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         matches = -1
         for index, instr in enumerate(helper.instruction_listing):
@@ -367,7 +367,7 @@ class InjectFunctionCallAtReturnReplaceValueProcessor(AbstractBytecodeProcessor)
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         matches = -1
         for index, instr in enumerate(helper.instruction_listing):
@@ -421,7 +421,7 @@ class InjectFunctionCallAtYieldProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         matches = -1
         for index, instr in enumerate(helper.instruction_listing):
@@ -471,7 +471,7 @@ class InjectFunctionCallAtYieldReplaceValueProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         matches = -1
         for index, instr in enumerate(helper.instruction_listing):
@@ -537,7 +537,7 @@ class InjectFunctionCallAtTailProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         assert (
             helper.instruction_listing[-1].opname == "RETURN_VALUE"
@@ -579,7 +579,7 @@ class InjectFunctionLocalVariableModifier(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         collected_locals = [
             helper.patcher.createLoadFast(e) for e in reversed(self.local_variables)
@@ -618,7 +618,7 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         matches = 0
         index = -1
@@ -725,7 +725,7 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
         self,
         handler,
         target: MutableCodeObject,
-        helper: MixinPatchHelper,
+        helper: BytecodePatchHelper,
     ):
         match = 0
         index = -1
@@ -751,7 +751,7 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
 
         helper.store()
 
-    def modifyAt(self, helper: MixinPatchHelper, index: int, match: int, pop=True):
+    def modifyAt(self, helper: BytecodePatchHelper, index: int, match: int, pop=True):
         instr = helper.instruction_listing[index]
 
         if not self.matcher or self.matcher.matches(helper, index, match):

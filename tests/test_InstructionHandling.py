@@ -5,10 +5,10 @@ from .test_space import create_big_function
 
 class TestBigFunctions(TestCase):
     def test_extended_indices_1(self):
-        from bytecodemanipulation.TransformationHelper import MixinPatchHelper
+        from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         func = create_big_function()
-        helper = MixinPatchHelper(func)
+        helper = BytecodePatchHelper(func)
         helper.replaceConstant(0, 1)
         helper.store()
         helper.patcher.applyPatches()

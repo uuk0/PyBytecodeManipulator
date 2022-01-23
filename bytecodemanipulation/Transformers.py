@@ -8,7 +8,7 @@ import bytecodemanipulation.MutableCodeObject
 
 from .CodeOptimiser import optimise_code
 from .InstructionMatchers import AbstractInstructionMatcher
-from .TransformationHelper import MixinPatchHelper, capture_local, mixin_return
+from .TransformationHelper import BytecodePatchHelper, capture_local, mixin_return
 from .BytecodeProcessors import (
     AbstractBytecodeProcessor,
     InjectFunctionCallAtHeadProcessor,
@@ -58,7 +58,7 @@ class TransformationHandler:
         self.special_functions = {}
 
         self.affected: typing.Set[
-            typing.Tuple[typing.Callable, MixinPatchHelper]
+            typing.Tuple[typing.Callable, BytecodePatchHelper]
         ] = set()
 
     def makeFunctionArrival(self, name: str, func):
@@ -74,7 +74,7 @@ class TransformationHandler:
             patcher = bytecodemanipulation.MutableCodeObject.MutableCodeObject(
                 method_target
             )
-            helper = MixinPatchHelper(patcher)
+            helper = BytecodePatchHelper(patcher)
 
             self.affected.add((method_target, helper))
 
@@ -817,7 +817,7 @@ class TransformationHandler:
         capture_local_variables_for_branch: typing.Iterable[str] = tuple(),
         priority=0,
         optional=True,
-        continue_at: typing.Callable[[MixinPatchHelper, int, int], int] | int = 0,
+        continue_at: typing.Callable[[BytecodePatchHelper, int, int], int] | int = 0,
         inline=False,
         inline_condition=False,
     ):
