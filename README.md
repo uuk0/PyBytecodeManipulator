@@ -14,8 +14,9 @@ at runtime!
 
 Supported python versions:
 
+- 3.9 and below: unsupported; will produce syntax errors due to using new features
 - 3.10 (main development)
-- 3.11[a4] (broken dis module, mostly working)
+- 3.11[a4] (forward porting; WIP)
 
 Other version may work, but due to possible internal changes, we do not recommend using 
 them together with this library!
