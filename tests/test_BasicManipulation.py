@@ -154,7 +154,7 @@ class TestBytecodeHandler(TestCase):
             return 1
 
         self.assertEqual(test(), 0)
-        handler.applyMixins()
+        handler.applyTransforms()
         self.assertEqual(test(), 1)
         reset_test_methods()
 
@@ -172,7 +172,7 @@ class TestBytecodeHandler(TestCase):
             return 2
 
         self.assertEqual(test(), 0)
-        handler.applyMixins()
+        handler.applyTransforms()
         self.assertEqual(test(), 2)
         reset_test_methods()
 
@@ -190,7 +190,7 @@ class TestBytecodeHandler(TestCase):
             return 2
 
         self.assertEqual(test(), 0)
-        handler.applyMixins()
+        handler.applyTransforms()
         self.assertEqual(test(), 1)
         reset_test_methods()
 
@@ -210,7 +210,7 @@ class TestBytecodeHandler(TestCase):
             return 2
 
         self.assertEqual(test(), 0)
-        handler.applyMixins()
+        handler.applyTransforms()
         self.assertEqual(test(), 1)
         reset_test_methods()
 
@@ -233,7 +233,7 @@ class TestBytecodeHandler(TestCase):
 
         # This should crash as the second mixin must be applied, but the first one should be applied on top
         # todo: can we do some resolving here, and only apply the second one?
-        self.assertRaises(RuntimeError, handler.applyMixins)
+        self.assertRaises(RuntimeError, handler.applyTransforms)
 
         reset_test_methods()
 
@@ -255,7 +255,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overiding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 1)
         reset_test_methods()
@@ -280,7 +280,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
 
         # Conflicts, as two breaking mixins non-optional cannot co-exist
-        self.assertRaises(RuntimeError, handler.applyMixins)
+        self.assertRaises(RuntimeError, handler.applyTransforms)
 
         reset_test_methods()
 
@@ -298,7 +298,7 @@ class TestBytecodeHandler(TestCase):
 
         self.assertEqual(test(), 0)
 
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 1)
         reset_test_methods()
@@ -324,7 +324,7 @@ class TestBytecodeHandler(TestCase):
 
         self.assertEqual(test(), 0)
 
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 2)
         reset_test_methods()
@@ -342,7 +342,7 @@ class TestBytecodeHandler(TestCase):
         )
 
         self.assertEqual(test(), 0)
-        self.assertRaises(RuntimeError, handler.applyMixins)
+        self.assertRaises(RuntimeError, handler.applyTransforms)
 
     def test_constant_replacement_fail_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
@@ -364,7 +364,7 @@ class TestBytecodeHandler(TestCase):
         )
 
         self.assertEqual(test(), 0)
-        self.assertRaises(RuntimeError, handler.applyMixins)
+        self.assertRaises(RuntimeError, handler.applyTransforms)
 
     def test_global_to_global_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
@@ -380,7 +380,7 @@ class TestBytecodeHandler(TestCase):
         global INVOKER_COUNTER
         INVOKER_COUNTER = 0
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global()
 
         self.assertEqual(INVOKER_COUNTER, 1)
@@ -403,7 +403,7 @@ class TestBytecodeHandler(TestCase):
             "tests.test_BasicManipulation:test_global", "test", callback
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global()
 
         self.assertTrue(invoked)
@@ -424,7 +424,7 @@ class TestBytecodeHandler(TestCase):
             "tests.test_BasicManipulation:test_global2", "test", callback
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global2()
 
         self.assertEqual(invoked, 1)
@@ -448,7 +448,7 @@ class TestBytecodeHandler(TestCase):
             matcher=CounterMatcher(1),
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global3()
 
         self.assertEqual(invoked, 1)
@@ -472,7 +472,7 @@ class TestBytecodeHandler(TestCase):
             matcher=CounterMatcher(1) & CounterMatcher(1),
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global3()
 
         self.assertEqual(invoked, 1)
@@ -496,7 +496,7 @@ class TestBytecodeHandler(TestCase):
             matcher=CounterMatcher(1) | CounterMatcher(1),
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global3()
 
         self.assertEqual(invoked, 1)
@@ -520,7 +520,7 @@ class TestBytecodeHandler(TestCase):
             matcher=~CounterMatcher(1),
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
         test_global3()
 
         self.assertEqual(invoked, 1)
@@ -545,7 +545,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 3)
@@ -577,7 +577,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 8)
@@ -607,7 +607,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         dis.dis(target)
 
@@ -635,7 +635,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 3)
@@ -667,7 +667,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 11)
@@ -692,7 +692,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test3(3), 3)
         self.assertEqual(invoked, 6)
@@ -724,7 +724,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(test3(4), 4)
         self.assertEqual(invoked, 8)
@@ -752,7 +752,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(), 4)
         self.assertEqual(invoked, 4)
@@ -778,7 +778,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         INVOKED = 0
         self.assertEqual(test(), 0)
@@ -808,7 +808,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(), 2)
         self.assertEqual(invoked, 3)
@@ -843,7 +843,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(), 12)
         self.assertEqual(invoked, 11)
@@ -874,7 +874,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(3), 1)
         self.assertEqual(invoked, 6)
@@ -913,7 +913,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(4), -1)
         self.assertEqual(invoked, 8)
@@ -939,7 +939,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 3)
@@ -969,7 +969,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 11)
@@ -994,7 +994,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target(4)), 4)
         self.assertEqual(invoked, 33)
@@ -1024,7 +1024,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target(4)), 4)
         self.assertEqual(invoked, 11)
@@ -1048,7 +1048,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         dis.dis(target)
 
@@ -1074,7 +1074,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target(20)), 20)
         self.assertEqual(invoked, 5)
@@ -1097,7 +1097,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(test2()), 0)
         self.assertEqual(INVOKED, 4)
@@ -1124,7 +1124,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target()), 2)
         self.assertEqual(invoked, 3)
@@ -1158,7 +1158,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(next(target()), 2)
         self.assertEqual(invoked, 11)
@@ -1188,7 +1188,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(True), 0)
         self.assertEqual(invoked, 0)
@@ -1220,7 +1220,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(True), 0)
         self.assertEqual(INVOKED, 0)
@@ -1302,7 +1302,7 @@ class TestBytecodeHandler(TestCase):
         handler.replace_local_var_with_const("test", "c", 0)
 
         self.assertEqual(func(2), 2)
-        handler.applyMixins()
+        handler.applyTransforms()
         self.assertEqual(func(2), 0)
 
     def test_local_var_modifier_1(self):
@@ -1322,7 +1322,7 @@ class TestBytecodeHandler(TestCase):
             return (c + 2,)
 
         self.assertEqual(func(2), 2)
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(func(2), 4)
 
@@ -1343,7 +1343,7 @@ class TestBytecodeHandler(TestCase):
             return ("test",)
 
         self.assertEqual(func(2), 2)
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(func(2), "test")
 
@@ -1367,7 +1367,7 @@ class TestBytecodeHandler(TestCase):
             return d, c
 
         self.assertEqual(func(4), 4)
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(func(2), 10)
 
@@ -1386,7 +1386,7 @@ class TestBytecodeHandler(TestCase):
             "test", "%.test_replace_attribute_with_constant", None
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertIsNotNone(self.test_replace_attribute_with_constant_1)
         self.assertIsNone(target(self))
@@ -1406,7 +1406,7 @@ class TestBytecodeHandler(TestCase):
             "test", "%.test_replace_attribute_with_constant", None
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertIsNotNone(self.test_replace_attribute_with_constant_1)
         self.assertIsNone(target(self))
@@ -1429,7 +1429,7 @@ class TestBytecodeHandler(TestCase):
             load_from_local_hint="s",
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
 
         dis.dis(target)
 
@@ -1454,7 +1454,7 @@ class TestBytecodeHandler(TestCase):
             load_from_local_hint="c",
         )
 
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertIsNotNone(self.test_replace_attribute_with_constant_1)
         self.assertIsNotNone(target(self))
@@ -1474,7 +1474,7 @@ class TestBytecodeHandler(TestCase):
 
         handler.makeFunctionArrival("test", target)
         handler.remove_flow_branch("test")
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(True), 1)
 
@@ -1493,7 +1493,7 @@ class TestBytecodeHandler(TestCase):
 
         handler.makeFunctionArrival("test", target)
         handler.remove_flow_branch("test", target_jumped_branch=False)
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(False), 0)
 
@@ -1515,7 +1515,7 @@ class TestBytecodeHandler(TestCase):
 
         handler.makeFunctionArrival("test", target)
         handler.remove_flow_branch("test", target_jumped_branch=False)
-        handler.applyMixins()
+        handler.applyTransforms()
 
         dis.dis(target)
 
@@ -1541,6 +1541,6 @@ class TestBytecodeHandler(TestCase):
         handler.remove_flow_branch(
             "test", target_jumped_branch=False, matcher=CounterMatcher(1)
         )
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(False), 2)

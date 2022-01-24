@@ -65,7 +65,7 @@ class TransformationHandler:
         self.special_functions[name] = func
         return self
 
-    def applyMixins(self):
+    def applyTransforms(self):
         for target, mixins in self.bound_mixin_processors.items():
             print(f"[MIXIN][WARN] applying mixins onto '{target}'")
 

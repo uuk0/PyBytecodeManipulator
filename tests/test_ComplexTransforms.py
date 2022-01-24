@@ -64,7 +64,7 @@ class TestPostInjectionOptimiser(TestCase):
         self.assertEqual(invoked, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
-        handler.applyMixins()
+        handler.applyTransforms()
 
         self.assertEqual(target(True), 0)
         self.assertEqual(invoked, 0)
@@ -89,7 +89,7 @@ class TestPostInjectionOptimiser(TestCase):
         handler.replace_attribute_with_constant(
             "test", "%.test_attribute2constant_cleanup", 2
         )
-        handler.applyMixins()
+        handler.applyTransforms()
 
         helper = BytecodePatchHelper(target)
 
