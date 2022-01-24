@@ -36,10 +36,7 @@ class MutableCodeObject:
     and writing the modified code back into the source function
 
     See https://docs.python.org/3.10/library/inspect.html
-
-    and http://unpyc.sourceforge.net/Opcodes.html
-
-    todo: add different wrapper types for different versions
+    and https://docs.python.org/3.10/library/dis.html
     """
 
     def __init__(self, target: FunctionType):
@@ -82,7 +79,7 @@ class MutableCodeObject:
             )
         )
 
-        if sys.version_info.minor >= 11:
+        if sys.version_info.minor >= 11 or typing.TYPE_CHECKING:
             self.column_table = self.code.co_columntable
             self.exception_table = self.code.co_exceptiontable
             self.end_line_table = self.code.co_endlinetable
@@ -111,7 +108,7 @@ class MutableCodeObject:
             tuple(),
         )
 
-    if sys.version_info.minor == 10:
+    if sys.version_info.minor <= 10:
 
         def applyPatches(self):
             """
@@ -181,28 +178,60 @@ class MutableCodeObject:
     else:
         raise RuntimeError()
 
-    def create_method_from(self):
-        return FunctionType(
-            CodeType(
-                self.argument_count,
-                self.positional_only_argument_count,
-                self.keyword_only_argument_count,
-                self.number_of_locals,
-                self.max_stack_size,
-                self.flags,
-                bytes(self.code_string),
-                tuple(self.constants),
-                tuple(self.names),
-                tuple(self.variable_names),
-                self.filename,
-                self.name,
-                self.first_line_number,
-                self.line_number_table,
-                tuple(self.free_vars),
-                tuple(self.cell_vars),
-            ),
-            globals(),
-        )
+    if sys.version_info.minor <= 10:
+        def create_method_from(self):
+            return FunctionType(
+                CodeType(
+                    self.argument_count,
+                    self.positional_only_argument_count,
+                    self.keyword_only_argument_count,
+                    self.number_of_locals,
+                    self.max_stack_size,
+                    self.flags,
+                    bytes(self.code_string),
+                    tuple(self.constants),
+                    tuple(self.names),
+                    tuple(self.variable_names),
+                    self.filename,
+                    self.name,
+                    self.first_line_number,
+                    self.line_number_table,
+                    tuple(self.free_vars),
+                    tuple(self.cell_vars),
+                ),
+                globals(),
+            )
+
+    elif sys.version_info.minor == 11:
+        def create_method_from(self):
+            return FunctionType(
+                CodeType(
+                    self.argument_count,
+                    self.positional_only_argument_count,
+                    self.keyword_only_argument_count,
+                    len(self.variable_names),
+                    self.max_stack_size,
+                    self.flags,
+                    bytes(self.code_string),
+                    tuple(self.constants),
+                    tuple(self.names),
+                    tuple(self.variable_names),
+                    self.filename,
+                    self.name,
+                    self.qual_name,
+                    self.first_line_number,
+                    self.line_number_table,
+                    self.end_line_table,
+                    self.column_table,
+                    self.exception_table,
+                    tuple(self.free_vars),
+                    tuple(self.cell_vars),
+                ),
+                globals(),
+            )
+
+    else:
+        raise RuntimeError()
 
     def overrideFrom(self, patcher: "MutableCodeObject"):
         """
@@ -222,6 +251,13 @@ class MutableCodeObject:
         self.line_number_table = patcher.line_number_table
         self.free_vars = patcher.free_vars
         self.cell_vars = patcher.cell_vars
+
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+            self.column_table = patcher.column_table
+            self.exception_table = patcher.exception_table
+            self.end_line_table = patcher.end_line_table
+            self.qual_name = patcher.qual_name
+
         return self
 
     def copy(self):
@@ -250,13 +286,6 @@ class MutableCodeObject:
 
     if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
-            """
-            return _get_instructions_bytes(co.co_code,
-                                   co._varname_from_oparg,
-                                   co.co_names, co.co_consts,
-                                   linestarts, line_offset, co_positions=co.co_positions())
-            """
-            # print(self.target, self.variable_names, self.names, self.constants, self.cell_vars, self.free_vars)
             data = list(dis._get_instructions_bytes(
                 self.code_string,
                 self.get_name_by_index,
@@ -266,6 +295,7 @@ class MutableCodeObject:
                 None,
             ))
             return data
+
     else:
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
             return dis._get_instructions_bytes(

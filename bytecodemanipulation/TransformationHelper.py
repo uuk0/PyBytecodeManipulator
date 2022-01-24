@@ -1,4 +1,5 @@
 import dis
+import inspect
 import sys
 import traceback
 import types
@@ -174,7 +175,7 @@ class BytecodePatchHelper:
         self.instruction_listing = list(self.patcher.get_instruction_list())
 
         # todo: this is the wrong lookup; lookup the inspect flag
-        self.is_async = self.instruction_listing[0].opname == "GEN_START"
+        self.is_async = self.patcher.flags & inspect.CO_COROUTINE
 
     def walk(self) -> typing.Iterable[typing.Tuple[int, dis.Instruction]]:
         yield from zip(range(len(self.instruction_listing)), self.instruction_listing)
@@ -762,6 +763,7 @@ class BytecodePatchHelper:
 
         self.insertRegion(0, [createInstruction("GEN_START", 2)])
         self.is_async = True
+        self.patcher.flags |= inspect.CO_COROUTINE
         return self
 
     def makeMethodSync(self):
@@ -778,6 +780,7 @@ class BytecodePatchHelper:
 
         self.deleteRegion(0, 1)
         self.is_async = False
+        self.patcher.flags ^= inspect.CO_COROUTINE
         return self
 
     CALL_FUNCTION_NAME = None

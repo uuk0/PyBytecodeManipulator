@@ -31,7 +31,7 @@ If you want them removed, create your own Fork of this and remove them, on your 
 
 ## Compatibility with other libraries 
 
-- Nuitka (https://github.com/Nuitka/Nuitka): Incompatible; will break as nuitka removes the __code__ attribute 
+- Nuitka (https://github.com/Nuitka/Nuitka): Incompatible; will break as nuitka removes the \_\_code__ attribute 
   we modify
 
 
