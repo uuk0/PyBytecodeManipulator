@@ -1,3 +1,5 @@
+import dis
+import sys
 from dis import Instruction
 
 import tests.test_space
@@ -26,9 +28,14 @@ class TestJumpAlignment(TestCase):
         self.assertTrue(test)
         test = False
 
-        helper.deleteRegion(0, 2)
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.deleteRegion(0, 2)
+        else:
+            helper.deleteRegion(2, 4)
+
         helper.store()
         patcher.applyPatches()
+
         a()
         self.assertFalse(test)
 
@@ -82,7 +89,11 @@ class TestJumpAlignment(TestCase):
         helper = BytecodePatchHelper(patcher)
 
         # Delete the two instructions storing the True value in test1
-        helper.deleteRegion(2, 4)
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.deleteRegion(2, 4)
+        else:
+            helper.deleteRegion(4, 6)
+
         helper.store()
         patcher.applyPatches()
 

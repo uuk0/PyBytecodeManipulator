@@ -148,10 +148,15 @@ class Opcodes:
     IS_OP = 117
     CONTAINS_OP = 118
 
+    if PY_VERSION >= (3, 11):
+        COPY = 120
+
     JUMP_IF_NOT_EXC_MATCH = 121
 
     if PY_VERSION < (3, 11):
         SETUP_FINALLY = 122  # Distance to target address
+    else:
+        BINARY_OP = 122
 
     if PY_VERSION > (3, 11):
         SEND = 123
@@ -181,10 +186,16 @@ class Opcodes:
 
     if PY_VERSION >= (3, 11):
         MAKE_CELL = 135
+        LOAD_CLOSURE = 136
+        LOAD_DEREF = 137
+        STORE_DEREF = 138
+        DELETE_DEREF = 139
 
-    LOAD_DEREF = 136
-    STORE_DEREF = 137
-    DELETE_DEREF = 138
+    else:
+        LOAD_CLOSURE = 135
+        LOAD_DEREF = 136
+        STORE_DEREF = 137
+        DELETE_DEREF = 138
 
     if PY_VERSION >= (3, 11):
         STORE_FAST__LOAD_FAST = 140

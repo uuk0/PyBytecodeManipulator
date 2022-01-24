@@ -234,6 +234,20 @@ class MutableCodeObject:
         obj.can_be_reattached = False
         return obj
 
+    def get_name_by_index(self, index: int):
+        if index < len(self.variable_names):
+            return self.variable_names[index]
+
+        index -= len(self.variable_names)
+        if index < len(self.cell_vars):
+            return self.cell_vars[index]
+
+        index -= len(self.cell_vars)
+        if index < len(self.free_vars):
+            return self.free_vars[index]
+
+        raise IndexError(index)
+
     if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
             """
@@ -242,15 +256,16 @@ class MutableCodeObject:
                                    co.co_names, co.co_consts,
                                    linestarts, line_offset, co_positions=co.co_positions())
             """
-            print(self.target, self.variable_names)
-            return dis._get_instructions_bytes(
+            # print(self.target, self.variable_names, self.names, self.constants, self.cell_vars, self.free_vars)
+            data = list(dis._get_instructions_bytes(
                 self.code_string,
-                lambda i: self.variable_names[i],
+                self.get_name_by_index,
                 self.names,
                 self.constants,
                 None,
                 None,
-            )
+            ))
+            return data
     else:
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
             return dis._get_instructions_bytes(

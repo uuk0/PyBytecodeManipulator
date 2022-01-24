@@ -1,5 +1,7 @@
 import dis
+import sys
 import typing
+import unittest
 
 from bytecodemanipulation.CodeOptimiser import optimise_code
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
@@ -10,6 +12,7 @@ from unittest import TestCase
 
 
 class TestPostInjectionOptimiser(TestCase):
+    @unittest.skipUnless(sys.version_info.major <= 3 and sys.version_info.minor < 11, "until python 3.11")
     def test_optimiser_1(self):
         def test():
             a = 0
@@ -25,6 +28,7 @@ class TestPostInjectionOptimiser(TestCase):
         # Integrity check of the bytecode
         self.assertEqual(test(), None)
 
+    @unittest.skipUnless(sys.version_info.major <= 3 and sys.version_info.minor < 11, "until python 3.11")
     def test_basic(self):
         invoked = 0
 
@@ -88,5 +92,10 @@ class TestPostInjectionOptimiser(TestCase):
         handler.applyMixins()
 
         helper = BytecodePatchHelper(target)
-        self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
-        self.assertEqual(helper.instruction_listing[0].argval, 2)
+
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
+            self.assertEqual(helper.instruction_listing[0].argval, 2)
+        else:
+            self.assertEqual(helper.instruction_listing[1].opname, "LOAD_CONST")
+            self.assertEqual(helper.instruction_listing[1].argval, 2)

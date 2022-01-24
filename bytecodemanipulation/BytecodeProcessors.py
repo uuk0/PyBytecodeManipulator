@@ -155,6 +155,7 @@ class Attribute2ConstReplace(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         match = -1
+        helper.print_stats()
         for index, instr in helper.walk():
             if instr.opcode != Opcodes.LOAD_ATTR:
                 continue
@@ -162,6 +163,8 @@ class Attribute2ConstReplace(AbstractBytecodeProcessor):
             if self.load_from_local_hint is not None:
                 source = next(helper.findSourceOfStackIndex(index, 0))
                 if source.opcode == Opcodes.LOAD_FAST:
+                    assert isinstance(source.argval, str), source.argval
+
                     if source.argval != self.load_from_local_hint:
                         continue
 
@@ -625,11 +628,14 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
         while index < len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                if instr.opname == "CALL_METHOD" and self.func_name.startswith("%."):
+                print("looking at ", instr, helper.CALL_FUNCTION_NAME)
+                print(instr.opname == helper.CALL_FUNCTION_NAME, self.func_name)
+
+                if instr.opname == helper.CALL_FUNCTION_NAME and self.func_name.startswith("%."):
                     try:
                         source = next(helper.findSourceOfStackIndex(index, instr.arg))
 
-                        # print(source, self.func_name)
+                        print(source, self.func_name)
 
                         if source.opcode == Opcodes.LOAD_METHOD:
                             if source.argval == self.func_name.split(".")[-1]:
@@ -661,21 +667,22 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
                                     break
 
                     except ValueError:
-                        pass
+                        print(f"during tracing source of {instr}")
+                        traceback.print_exc()
                     except:
                         print(f"during tracing source of {instr}")
                         traceback.print_exc()
 
-                elif instr.opcode == Opcodes.CALL_FUNCTION:
-                    # print("lookup", index, instr)
-                    # helper.print_stats()
+                elif instr.opname == helper.CALL_FUNCTION_NAME:
+                    print("lookup", index, instr)
+                    helper.print_stats()
 
                     source = next(helper.findSourceOfStackIndex(index, instr.arg))
 
-                    # print(source, self.func_name, source.opcode == PyOpcodes.LOAD_DEREF, source.argval == self.func_name)
+                    print(source, self.func_name, source.opcode == Opcodes.LOAD_DEREF, source.argval == self.func_name)
 
                     if (
-                        source.opcode == Opcodes.LOAD_DEREF
+                        source.opcode in (Opcodes.LOAD_DEREF, Opcodes.LOAD_GLOBAL)
                         and source.argval == self.func_name
                     ):
                         matches += 1

@@ -12,6 +12,7 @@ Mod loader inspired by "Minecraft Forge" (https://github.com/MinecraftForge/Mine
 This project is not official by mojang and does not relate to it.
 """
 import dis
+import sys
 
 from bytecodemanipulation.InstructionMatchers import CounterMatcher
 from bytecodemanipulation.util import Opcodes
@@ -19,8 +20,11 @@ from unittest import TestCase
 from bytecodemanipulation.BytecodeProcessors import MethodInlineProcessor
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
-
 TEST_TARGET = 0
+
+
+def test_func():
+    pass
 
 
 class TestInline(TestCase):
@@ -65,9 +69,12 @@ class TestInline(TestCase):
 
     def test_parameter_redirect(self):
         def a(p: int):
-            b(p)
+            global test_func
+            test_func(p)
 
-        def b(p: int):
+        global test_func
+
+        def test_func(p: int):
             global TEST_TARGET
             TEST_TARGET += p
 
@@ -77,20 +84,24 @@ class TestInline(TestCase):
         helper.store()
         helper.patcher.applyPatches()
 
+        helper.print_stats()
+
         a(2)
         self.assertEqual(TEST_TARGET, 2)
 
     def test_parameter_redirect_twice(self):
         def a(p: int):
-            b(p)
-            b(p - 1)
+            test_func(p)
+            test_func(p - 1)
 
-        def b(p: int):
+        global test_func
+
+        def test_func(p: int):
             global TEST_TARGET
             TEST_TARGET += p
 
         helper = BytecodePatchHelper(a)
-        processor = MethodInlineProcessor("b", target_accessor=lambda: b)
+        processor = MethodInlineProcessor("test_func", target_accessor=lambda: test_func)
         processor.apply(None, helper.patcher, helper)
         helper.store()
         helper.patcher.applyPatches()
@@ -100,37 +111,48 @@ class TestInline(TestCase):
 
     def test_parameter_redirect_twice_inline_one(self):
         def a(p: int):
-            b(p)
-            b(p - 1)
+            test_func(p)
+            test_func(p - 1)
 
-        def b(p: int):
+        global test_func
+
+        def test_func(p: int):
             global TEST_TARGET
             TEST_TARGET += p
 
         helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor(
-            "b", target_accessor=lambda: b, matcher=CounterMatcher(1)
+            "test_func", target_accessor=lambda: test_func, matcher=CounterMatcher(1)
         )
         processor.apply(None, helper.patcher, helper)
         helper.store()
         helper.patcher.applyPatches()
 
+        helper.print_stats()
+
         # If we inline correctly, this should remain in the old state
-        self.assertEqual(helper.instruction_listing[14].opcode, Opcodes.CALL_FUNCTION)
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            self.assertEqual(helper.instruction_listing[14].opname, helper.CALL_FUNCTION_NAME)
+        else:
+            # Starting with python 3.11, there is an RESUME at function head we need here...
+            self.assertEqual(helper.instruction_listing[15].opname, helper.CALL_FUNCTION_NAME)
 
         a(2)
         self.assertEqual(TEST_TARGET, 3)
 
     def test_parameter_redirect_keyword_args(self):
         def a(p: int):
-            b(p - 1, 2)
+            global test_func
+            test_func(p - 1, 2)
 
-        def b(p: int, q: int = 0):
+        global test_func
+
+        def test_func(p: int, q: int = 0):
             global TEST_TARGET
             TEST_TARGET += p * q
 
         helper = BytecodePatchHelper(a)
-        processor = MethodInlineProcessor("b", target_accessor=lambda: b)
+        processor = MethodInlineProcessor("test_func", target_accessor=lambda: b)
         processor.apply(None, helper.patcher, helper)
         helper.store()
         helper.patcher.applyPatches()

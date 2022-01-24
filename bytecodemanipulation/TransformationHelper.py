@@ -20,12 +20,12 @@ def reconstruct_instruction(
     return dis.Instruction(
         instr.opname,
         instr.opcode,
-        arg or instr.arg,
-        arg_value or instr.argval,
-        arg_repr or instr.argrepr,
-        offset or instr.offset,
+        arg if arg is not None else instr.arg,
+        arg_value if arg_value is not None else instr.argval,
+        arg_repr if arg_repr is not None else instr.argrepr,
+        offset if offset is not None else instr.offset,
         instr.starts_line,
-        jump_target or instr.is_jump_target,
+        jump_target if jump_target is not None else instr.is_jump_target,
     )
 
 
@@ -68,6 +68,10 @@ def capture_local_static(name: str):
 
 OFFSET_JUMPS = dis.hasjrel
 REAL_JUMPS = dis.hasjabs
+
+DO_NOTHING = {
+    Opcodes.NOP,
+}
 LOAD_SINGLE_VALUE = {
     Opcodes.LOAD_FAST,
     Opcodes.LOAD_CONST,
@@ -140,6 +144,13 @@ if sys.version_info.major <= 3 and sys.version_info.minor < 11:
     POP_SINGLE_VALUE |= {
         Opcodes.YIELD_FROM,
     }
+    METHOD_CALL = Opcodes.CALL_METHOD
+else:
+    DO_NOTHING |= {
+        Opcodes.RESUME,
+        Opcodes.COPY_FREE_VARS,
+    }
+    METHOD_CALL = Opcodes.CALL_NO_KW
 
 
 class BytecodePatchHelper:
@@ -429,6 +440,16 @@ class BytecodePatchHelper:
             if helper.instruction_listing[1].opcode == Opcodes.RESUME:
                 helper.deleteRegion(1, 2)
 
+            if helper.instruction_listing[0].opcode == Opcodes.COPY_FREE_VARS:
+                instr = helper.instruction_listing[0]
+                helper.deleteRegion(0, 1)
+
+                if self.instruction_listing[0].opcode != Opcodes.COPY_FREE_VARS:
+                    self.insertRegion(
+                        0,
+                        [instr],
+                    )
+
 
         captured = {}
         captured_indices = set()
@@ -462,7 +483,7 @@ class BytecodePatchHelper:
 
                         local = helper.instruction_listing[index - 1].argval
 
-                        print("captured local", local)
+                        print(f"captured local '{local}'")
 
                         if (
                             helper.instruction_listing[index + 1].opname == "STORE_FAST"
@@ -623,12 +644,16 @@ class BytecodePatchHelper:
             else:
                 break
 
+        instructions = list(helper.walk())
+        # print(instructions)
+
         # Now rebind all
-        for index, instr in list(helper.walk()):
+        for index, instr in instructions:
             if index in protect:
                 continue
 
             if instr.opcode in dis.hasconst:
+                print("constant", instr)
                 helper.instruction_listing[index] = reconstruct_instruction(
                     instr,
                     self.patcher.ensureConstant(instr.argval),
@@ -636,7 +661,7 @@ class BytecodePatchHelper:
 
             elif instr.opcode in dis.haslocal and instr.argval not in captured_names:
                 name = instr.argval
-                print(f"rebinding real local '{instr.argval}' to '{name}'")
+                print(f"rebinding real local '{instr.argval}' to '{name}'", instr, index)
                 helper.instruction_listing[index] = reconstruct_instruction(
                     instr,
                     self.patcher.ensureVarName(name),
@@ -644,13 +669,14 @@ class BytecodePatchHelper:
                 )
 
             elif instr.opcode in dis.hasname:
-                helper.instruction_listing[index] = reconstruct_instruction(
-                    instr,
-                    self.patcher.ensureName(instr.argval),
+                i = self.patcher.ensureName(instr.argval)
+                helper.instruction_listing[index] = createInstruction(
+                    instr.opname,
+                    i,
                 )
 
         # And now insert the code into our code
-        # todo: check for HEAD generator instruction
+        # todo: check for HEAD generator instruction -> remove if there
 
         bind_locals = [
             self.patcher.createStoreFast(e)
@@ -673,6 +699,7 @@ class BytecodePatchHelper:
                 createInstruction("POP_TOP"),
             ],
         )
+
         self.patcher.max_stack_size += target.max_stack_size
         self.patcher.number_of_locals += target.number_of_locals
 
@@ -681,6 +708,8 @@ class BytecodePatchHelper:
         except:
             self.print_stats()
             raise
+
+        # self.print_stats()
 
         # Find out where the old instruction ended
         for index, instr in self.walk():
@@ -963,7 +992,12 @@ class BytecodePatchHelper:
             element of the stack
         """
 
-        for instr in reversed(self.instruction_listing[:index]):
+        self.re_eval_instructions()
+        instructions = list(self.walk())
+        print(instructions)
+        print(index, offset)
+
+        for index, instr in reversed(instructions[:index]):
             if offset < 0:
                 raise RuntimeError
 
@@ -981,7 +1015,7 @@ class BytecodePatchHelper:
                     yield instr
                     return
 
-            if instr.opcode in POP_SINGLE_AND_PUSH_SINGLE:
+            if instr.opcode in POP_SINGLE_AND_PUSH_SINGLE or instr.opcode in DO_NOTHING:
                 continue
 
             if instr.opcode in LOAD_SINGLE_VALUE:
@@ -996,7 +1030,7 @@ class BytecodePatchHelper:
             elif instr.opcode in POP_DOUBLE_VALUE:
                 offset += 2
 
-            elif instr.opcode == Opcodes.CALL_METHOD:
+            elif instr.opcode == METHOD_CALL:
                 offset += 1
                 offset -= instr.arg
 
@@ -1037,6 +1071,9 @@ class BytecodePatchHelper:
             elif instr.opcode == Opcodes.DUP_TOP_TWO:
                 if offset > 1:
                     offset -= 2
+
+            elif sys.version_info.major >= 3 and sys.version_info.minor >= 11 and instr.opcode == Opcodes.BINARY_OP:
+                pass
 
             else:
                 raise NotImplementedError(instr)

@@ -4,6 +4,10 @@ import typing
 
 from bytecodemanipulation.InstructionMatchers import CounterMatcher
 from unittest import TestCase
+from bytecodemanipulation.Transformers import (
+    TransformationHandler,
+    capture_local,
+)
 
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
@@ -580,11 +584,6 @@ class TestBytecodeHandler(TestCase):
         reset_test_methods()
 
     def test_mixin_inject_at_head_inline_1(self):
-        from bytecodemanipulation.Transformers import (
-            TransformationHandler,
-            capture_local,
-        )
-
         def target(a=3):
             return a
 
@@ -1199,10 +1198,7 @@ class TestBytecodeHandler(TestCase):
     def test_mixin_inject_at_tail_inline_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
-        invoked = 0
-
         def target(flag):
-            invoked  # only here to make cell var integrity happy
             if flag:
                 return 0
             return 1
@@ -1212,21 +1208,24 @@ class TestBytecodeHandler(TestCase):
 
         @handler.inject_at_tail("test", inline=True)
         def inject():
-            nonlocal invoked
-            invoked = 4
+            global INVOKED
+            INVOKED = 4
+
+        global INVOKED
+        INVOKED = 0
 
         self.assertEqual(target(False), 1)
-        self.assertEqual(invoked, 0)
+        self.assertEqual(INVOKED, 0)
         self.assertEqual(target(True), 0)
-        self.assertEqual(invoked, 0)
+        self.assertEqual(INVOKED, 0)
 
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
         handler.applyMixins()
 
         self.assertEqual(target(True), 0)
-        self.assertEqual(invoked, 0)
+        self.assertEqual(INVOKED, 0)
         self.assertEqual(target(False), 1)
-        self.assertEqual(invoked, 4)
+        self.assertEqual(INVOKED, 4)
 
     def test_mixin_given_method_call_inject_1(self):
         from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
@@ -1377,8 +1376,8 @@ class TestBytecodeHandler(TestCase):
 
         handler = TransformationHandler()
 
-        def target():
-            a = self.test_replace_attribute_with_constant_1
+        def target(s):
+            a = s.test_replace_attribute_with_constant_1
             return a
 
         handler.makeFunctionArrival("test", target)
@@ -1390,7 +1389,7 @@ class TestBytecodeHandler(TestCase):
         handler.applyMixins()
 
         self.assertIsNotNone(self.test_replace_attribute_with_constant_1)
-        self.assertIsNone(target())
+        self.assertIsNone(target(self))
 
     def test_replace_attribute_with_constant_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
@@ -1431,6 +1430,8 @@ class TestBytecodeHandler(TestCase):
         )
 
         handler.applyMixins()
+
+        dis.dis(target)
 
         self.assertIsNotNone(self.test_replace_attribute_with_constant_1)
         self.assertIsNone(target(self))

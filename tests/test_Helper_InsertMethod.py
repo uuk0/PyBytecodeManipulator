@@ -1,6 +1,18 @@
 import dis
+import sys
 
 from unittest import TestCase
+
+from bytecodemanipulation.TransformationHelper import (
+    MutableCodeObject,
+    BytecodePatchHelper,
+    capture_local,
+    capture_local_static,
+    mixin_return,
+)
+
+
+INVOKED = 0
 
 
 class TestInsertMethod(TestCase):
@@ -32,7 +44,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
         )
 
         def target():
@@ -50,7 +61,10 @@ class TestInsertMethod(TestCase):
         self.assertEqual(target(), 1)
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(4, MutableCodeObject(test))
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(4, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(5, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
 
@@ -61,12 +75,6 @@ class TestInsertMethod(TestCase):
         INVOKED = False
 
     def test_insert_method_local_capture_1(self):
-        from bytecodemanipulation.TransformationHelper import (
-            MutableCodeObject,
-            BytecodePatchHelper,
-            capture_local,
-        )
-
         def target():
             a = 1
             return 0
@@ -77,7 +85,12 @@ class TestInsertMethod(TestCase):
             INVOKED = x
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(2, MutableCodeObject(test))
+
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(2, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(3, MutableCodeObject(test))
+
         helper.store()
         helper.patcher.applyPatches()
 
@@ -91,7 +104,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
         )
 
         def target():
@@ -105,7 +117,14 @@ class TestInsertMethod(TestCase):
             x = 2
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(2, MutableCodeObject(test))
+
+        helper.print_stats()
+
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(2, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(3, MutableCodeObject(test))
+
         helper.store()
         helper.patcher.applyPatches()
 
@@ -119,7 +138,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local_static,
         )
 
         def target():
@@ -133,7 +151,12 @@ class TestInsertMethod(TestCase):
             x = 2
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(2, MutableCodeObject(test))
+
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(2, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(3, MutableCodeObject(test))
+
         helper.store()
         helper.patcher.applyPatches()
 
@@ -147,7 +170,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
         )
 
         def target():
@@ -165,7 +187,12 @@ class TestInsertMethod(TestCase):
         self.assertEqual(target(), 1)
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(4, MutableCodeObject(test))
+
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(4, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(5, MutableCodeObject(test))
+
         helper.store()
         helper.patcher.applyPatches()
 
@@ -181,8 +208,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
-            capture_local_static,
         )
 
         def target():
@@ -200,7 +225,10 @@ class TestInsertMethod(TestCase):
         self.assertEqual(target(), 1)
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(4, MutableCodeObject(test))
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(4, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(5, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
 
@@ -214,7 +242,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
         )
 
         def target():
@@ -226,7 +253,10 @@ class TestInsertMethod(TestCase):
             INVOKED = capture_local("a")
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(2, MutableCodeObject(test))
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            helper.insertMethodAt(2, MutableCodeObject(test))
+        else:
+            helper.insertMethodAt(3, MutableCodeObject(test))
         helper.store()
         helper.patcher.applyPatches()
 
@@ -240,7 +270,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            mixin_return,
         )
 
         def target():
@@ -261,8 +290,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
-            mixin_return,
         )
 
         def target(c: bool):
@@ -289,8 +316,6 @@ class TestInsertMethod(TestCase):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
-            capture_local,
-            mixin_return,
         )
 
         def target(c: bool):
