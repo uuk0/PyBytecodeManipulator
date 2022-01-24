@@ -587,7 +587,7 @@ class TestBytecodeHandler(TestCase):
         def target(a=3):
             return a
 
-        dis.dis(target)
+        # dis.dis(target)
 
         handler = TransformationHandler()
         handler.makeFunctionArrival("test", target)
@@ -597,9 +597,9 @@ class TestBytecodeHandler(TestCase):
             global INVOKED
             INVOKED += capture_local("a")
 
-        print("---")
-        dis.dis(inject)
-        print(inject.__code__.co_varnames)
+        # print("---")
+        # dis.dis(inject)
+        # print(inject.__code__.co_varnames)
 
         global INVOKED
         INVOKED = 0
@@ -609,7 +609,7 @@ class TestBytecodeHandler(TestCase):
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         INVOKED = 0
         self.assertEqual(target(), 3)
@@ -1050,7 +1050,7 @@ class TestBytecodeHandler(TestCase):
         # Will apply the later mixin first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(next(target()), 3)
         self.assertEqual(invoked, 3)
@@ -1431,7 +1431,7 @@ class TestBytecodeHandler(TestCase):
 
         handler.applyTransforms()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertIsNotNone(self.test_replace_attribute_with_constant_1)
         self.assertIsNone(target(self))
@@ -1517,7 +1517,7 @@ class TestBytecodeHandler(TestCase):
         handler.remove_flow_branch("test", target_jumped_branch=False)
         handler.applyTransforms()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(False), 0)
 

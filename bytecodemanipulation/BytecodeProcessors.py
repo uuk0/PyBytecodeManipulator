@@ -155,7 +155,7 @@ class Attribute2ConstReplace(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         match = -1
-        helper.print_stats()
+        # helper.print_stats()
         for index, instr in helper.walk():
             if instr.opcode != Opcodes.LOAD_ATTR:
                 continue
@@ -628,14 +628,14 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
         while index < len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                print("looking at ", instr, helper.CALL_FUNCTION_NAME)
-                print(instr.opname == helper.CALL_FUNCTION_NAME, self.func_name)
+                # print("looking at ", instr, helper.CALL_FUNCTION_NAME)
+                # print(instr.opname == helper.CALL_FUNCTION_NAME, self.func_name)
 
                 if instr.opname == helper.CALL_FUNCTION_NAME and self.func_name.startswith("%."):
                     try:
                         source = next(helper.findSourceOfStackIndex(index, instr.arg))
 
-                        print(source, self.func_name)
+                        # print(source, self.func_name)
 
                         if source.opcode == Opcodes.LOAD_METHOD:
                             if source.argval == self.func_name.split(".")[-1]:
@@ -674,12 +674,12 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
                         traceback.print_exc()
 
                 elif instr.opname == helper.CALL_FUNCTION_NAME:
-                    print("lookup", index, instr)
-                    helper.print_stats()
+                    # print("lookup", index, instr)
+                    # helper.print_stats()
 
                     source = next(helper.findSourceOfStackIndex(index, instr.arg))
 
-                    print(source, self.func_name, source.opcode == Opcodes.LOAD_DEREF, source.argval == self.func_name)
+                    # print(source, self.func_name, source.opcode == Opcodes.LOAD_DEREF, source.argval == self.func_name)
 
                     if (
                         source.opcode in (Opcodes.LOAD_DEREF, Opcodes.LOAD_GLOBAL)

@@ -463,12 +463,12 @@ class BytecodePatchHelper:
         while index != len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                print(index, instr, self.CALL_FUNCTION_NAME)
+                # print(index, instr, self.CALL_FUNCTION_NAME)
 
                 if instr.opname == self.CALL_FUNCTION_NAME and index > 1:
                     possible_load = helper.instruction_listing[index - 2]
 
-                    print(index, instr, self.CALL_FUNCTION_NAME, possible_load)
+                    # print(index, instr, self.CALL_FUNCTION_NAME, possible_load)
 
                     if possible_load.opname in (
                         "LOAD_GLOBAL",
@@ -994,14 +994,14 @@ class BytecodePatchHelper:
 
         self.re_eval_instructions()
         instructions = list(self.walk())
-        print(instructions)
-        print(index, offset)
+        # print(instructions)
+        # print(index, offset)
 
         for index, instr in reversed(instructions[:index]):
             if offset < 0:
                 raise RuntimeError
 
-            print(instr, offset)
+            # print(instr, offset)
 
             if offset == 0:  # Currently, at top
                 if instr.opcode in LOAD_SINGLE_VALUE:

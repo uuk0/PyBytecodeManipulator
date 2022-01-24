@@ -118,8 +118,6 @@ class TestInsertMethod(TestCase):
 
         helper = BytecodePatchHelper(target)
 
-        helper.print_stats()
-
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
             helper.insertMethodAt(2, MutableCodeObject(test))
         else:
@@ -300,14 +298,14 @@ class TestInsertMethod(TestCase):
             if a:
                 mixin_return(0)
 
-        dis.dis(test)
+        # dis.dis(test)
 
         helper = BytecodePatchHelper(target)
         helper.insertMethodAt(0, test)
         helper.store()
         helper.patcher.applyPatches()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(True), 0)
         self.assertEqual(target(False), 1)
