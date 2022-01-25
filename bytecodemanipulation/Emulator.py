@@ -40,8 +40,9 @@ class ExecutionManager:
             if start <= self.py_version and (end is None or self.py_version <= end):
                 self.opcode2executor[opcode] = executor
 
-    def execute(self, target, *args, **kwargs):
-        env = ExecutionEnvironment()
+    def execute(self, target, *args, invoke_subcalls_via_emulator=False, **kwargs):
+        env = ExecutionEnvironment(self)
+        env.invoke_subcalls_via_emulator = invoke_subcalls_via_emulator
         patcher = MutableCodeObject(target)
         env.max_stack_size = patcher.max_stack_size
         env.local_variables = [None] * len(patcher.variable_names)
@@ -73,12 +74,15 @@ class ExecutionManager:
 
 
 class ExecutionEnvironment:
-    def __init__(self):
+    def __init__(self, manager: ExecutionManager):
+        self.manager = manager
+
         self.max_stack_size = -1
         self.stack = []
         self.local_variables = []
 
         self.patcher: typing.Optional[MutableCodeObject] = None
+        self.invoke_subcalls_via_emulator = False
 
         self.cp = 0
         self.running = True
@@ -334,9 +338,10 @@ class OpcodeCallNoKw(AbstractInstructionExecutor):
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
         args = env.pop(instr.arg, force_list=True)
 
-        print("args", args)
-
         method = env.pop()
+
+        if env.invoke_subcalls_via_emulator and hasattr(method, "__code__"):
+            return env.manager.execute(method, *reversed(args))
 
         # todo: add option to also call using the emulator if possible
         env.push(method(*reversed(args)))
