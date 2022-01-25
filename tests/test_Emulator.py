@@ -81,6 +81,22 @@ class TestEmulatorInjection(TestCase):
 
         self.assertRaises(InstructionExecutionException, target)
 
+    def test_simple_crash_twice_layer(self):
+        def target():
+            return 0
+
+        helper = BytecodePatchHelper(target)
+
+        # This must create an StackUnderflowException, as the stack is empty at that time!
+        helper.insertRegion(0, [createInstruction("POP_TOP")])
+
+        helper.enable_verbose_exceptions()
+        helper.enable_verbose_exceptions(True)
+        helper.store()
+        helper.patcher.applyPatches()
+
+        self.assertRaises(InstructionExecutionException, target)
+
     def test_control_flow(self):
         def target(flag: bool):
             if flag:

@@ -1,4 +1,5 @@
 import dis
+import importlib
 import opcode
 import typing
 
@@ -56,7 +57,7 @@ class ExecutionManager:
             instr = wrapper.instruction_listing[cp]
 
             if instr.opcode not in self.opcode2executor:
-                raise InvalidOpcodeException(f"Opcode {instr.opcode} ({instr.opname}) with arg {instr.arg} is not valid in py version {self.py_version}")
+                raise InvalidOpcodeException(f"Opcode {instr.opcode} ({instr.opname}) with arg {instr.arg} ({instr.argval}) is not valid in py version {self.py_version}")
 
             executor = self.opcode2executor[instr.opcode]
 
@@ -313,6 +314,13 @@ class OpcodeJumpAbsolute(AbstractInstructionExecutor):
         env.cp = instr.arg
 
 
+@register_opcode("JUMP_FORWARD")
+class OpcodeJumpForward(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.cp += instr.arg
+
+
 @register_opcode("BINARY_OP", (3, 11))
 class OpcodeBinaryOp(AbstractInstructionExecutor):
     @classmethod
@@ -362,6 +370,64 @@ class OpcodeCallNoKw(AbstractInstructionExecutor):
 
         # todo: add option to also call using the emulator if possible
         env.push(method(*reversed(args)))
+
+
+@register_opcode("IMPORT_NAME")
+class OpcodeImportName(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(importlib.import_module(instr.argval))
+
+
+@register_opcode("IMPORT_FROM")
+@register_opcode("LOAD_ATTR")
+class OpcodeImportFrom(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(getattr(env.pop(), instr.argval))
+
+
+@register_opcode("BUILD_LIST")
+class OpcodeBuildList(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(list(reversed(env.pop() for _ in range(instr.arg))))
+
+
+@register_opcode("BUILD_TUPLE")
+class OpcodeBuildTuple(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(tuple(reversed(env.pop() for _ in range(instr.arg))))
+
+
+@register_opcode("BUILD_SET")
+class OpcodeBuildSet(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push({env.pop() for _ in range(instr.arg)})
+
+
+@register_opcode("BUILD_DICT")
+class OpcodeBuildSet(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        items = reversed(env.pop() for _ in range(2*instr.arg))
+        env.push({next(items): next(items) for _ in range(instr.arg)})
+
+
+@register_opcode("BUILD_STRING")
+class OpcodeBuildString(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push("".join(*reversed(env.pop() for _ in range(instr.arg))))
+
+
+@register_opcode("LIST_TO_TUPLE")
+class OpcodeListToTuple(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(tuple(env.pop()))
 
 
 for manager in ExecutionManager.MANAGERS:
