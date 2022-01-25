@@ -11,6 +11,7 @@ we rely on
 - https://bugs.python.org/issue46409: Added JUMP_NO_INTERRUPT bytecode that acts like JUMP_ABSOLUTE, but does not check for interrupts.
 - https://bugs.python.org/issue46161: Fix the class building error when the arguments are constants and CALL_FUNCTION_EX is used.
 - https://bugs.python.org/issue43118: Fix a bug in inspect.signature() that was causing it to fail on some subclasses of classes with a __text_signature__ referencing module globals.
+- https://bugs.python.org/issue43683: Add ASYNC_GEN_WRAP opcode to wrap the value to be yielded in async generators. Removes the need to special case async generators in the YIELD_VALUE instruction.
 
 ## Python 3.11a4
 

@@ -111,6 +111,8 @@ class Opcodes:
 
     if PY_VERSION < (3, 11):
         POP_BLOCK = 87
+    else:
+        ASYNC_GEN_WRAP = 87
 
     POP_EXCEPT = 89
 
