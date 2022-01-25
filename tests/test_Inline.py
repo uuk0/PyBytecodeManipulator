@@ -178,21 +178,3 @@ class TestInline(TestCase):
         a(2)
         self.assertEqual(TEST_TARGET, 2)
 
-    async def test_async_inline_simple(self):
-        async def a():
-            await b()
-
-        async def b():
-            global TEST_TARGET
-            TEST_TARGET += 1
-
-        helper = BytecodePatchHelper(a)
-        processor = MethodInlineProcessor("b", target_accessor=lambda: b)
-        processor.apply(None, helper.patcher, helper)
-        helper.store()
-        helper.patcher.applyPatches()
-
-        # dis.dis(a)
-
-        await a()
-        self.assertEqual(TEST_TARGET, 1)
