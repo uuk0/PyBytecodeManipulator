@@ -45,8 +45,6 @@ class TestEmulator(TestCase):
                 x -= i
             return x
 
-        dis.dis(target)
-
         self.assertEqual(target(), -45)
         self.assertEqual(Emulator.CURRENT.execute(target), -45)
 

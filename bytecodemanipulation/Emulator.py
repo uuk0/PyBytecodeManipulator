@@ -332,7 +332,24 @@ class OpcodeBinaryOp(AbstractInstructionExecutor):
         raise NotImplementedError(instr, op)
 
 
+@register_opcode("INPLACE_SUBTRACT", (0, 0), (3, 10))
+class OpcodeInplaceSubtract(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        a, b = env.pop(2)
+        env.push(b-a)
+
+
+@register_opcode("INPLACE_ADD", (0, 0), (3, 10))
+class OpcodeInplaceAdd(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        a, b = env.pop(2)
+        env.push(b+a)
+
+
 @register_opcode("CALL_NO_KW", (3, 11))
+@register_opcode("CALL_FUNCTION", (0, 0), (3, 10))
 class OpcodeCallNoKw(AbstractInstructionExecutor):
     @classmethod
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
