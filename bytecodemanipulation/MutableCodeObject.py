@@ -15,7 +15,7 @@ def null():
     pass
 
 
-def createInstruction(instruction: str | int, arg=0, argval=None):
+def createInstruction(instruction: typing.Union[str, int], arg=0, argval=None):
     return dis.Instruction(
         instruction if isinstance(instruction, str) else dis.opname[instruction],
         dis.opmap[instruction] if isinstance(instruction, str) else instruction,

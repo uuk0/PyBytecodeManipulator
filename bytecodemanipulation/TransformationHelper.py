@@ -166,7 +166,7 @@ class BytecodePatchHelper:
     See also https://docs.python.org/3.11/library/inspect.html#code-objects-bit-flags
     """
 
-    def __init__(self, patcher: MutableCodeObject | types.FunctionType):
+    def __init__(self, patcher: typing.Union[MutableCodeObject, types.FunctionType]):
         self.patcher = (
             patcher
             if isinstance(patcher, MutableCodeObject)
@@ -408,7 +408,7 @@ class BytecodePatchHelper:
     def insertMethodAt(
         self,
         start: int,
-        method: MutableCodeObject | types.MethodType,
+        method: typing.Union[MutableCodeObject, types.MethodType],
         added_args=0,
         discard_return_result=True,
         inter_code=tuple(),

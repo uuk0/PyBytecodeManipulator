@@ -1,8 +1,9 @@
 # PyBytecodeManipulator
-A high level python bytecode manipulation library
+A high level cross-version python bytecode manipulation library build ontop 
+of 'dis' and 'inspect' 
 
-Supports code inlining, branch removing, arbitrary code injection into 
-existing functions, and a lot more.
+Supports code inlining, branch removing and arbitrary code injection into 
+existing functions.
 
 WARNING: using bytecode manipulation on a so low level as we do can break 
 the python runtime at any point without a warning. We circumvent a lot of 
@@ -14,7 +15,8 @@ at runtime!
 
 Supported python versions:
 
-- 3.9 and below: unsupported; will produce syntax errors due to using new features
+- 3.8 and below: unsupported; will produce syntax errors due to using new features
+- 3.9 (WIP)
 - 3.10 (main development)
 - 3.11[a4] (forward porting; WIP)
 

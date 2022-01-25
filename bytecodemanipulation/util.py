@@ -4,7 +4,7 @@ import typing
 
 
 def create_instruction(
-    opname_or_code: str | int,
+    opname_or_code: typing.Union[str, int],
     arg_pt: int = 0,
     arg_val: typing.Any = None,
     offset=-1,
