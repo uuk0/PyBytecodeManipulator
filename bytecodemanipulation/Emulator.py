@@ -1,0 +1,219 @@
+import dis
+import typing
+
+from bytecodemanipulation.MutableCodeObject import MutableCodeObject
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
+from bytecodemanipulation.util import Opcodes, PY_VERSION
+
+
+class StackOverflowException(Exception): pass
+class StackUnderflowException(Exception): pass
+class LocalVariableOutOfBoundsException(Exception): pass
+class LocalVariableNameNotBoundException(Exception): pass
+class GlobalNameIndexOutOfBoundsException(Exception): pass
+class InvalidOpcodeException(Exception): pass
+
+
+class ExecutionManager:
+    INSTRUCTIONS: typing.List[typing.Tuple[typing.Tuple[int, int], typing.Optional[typing.Tuple[int, int]], int, "AbstractInstructionExecutor"]] = []
+    MANAGERS: typing.List["ExecutionManager"] = []
+
+    @classmethod
+    def get_for_version(cls, version: typing.Tuple[int, int]) -> typing.Optional["ExecutionManager"]:
+        for manager in cls.MANAGERS:
+            if manager.py_version == version:
+                return manager
+
+    def __init__(self, py_version: typing.Tuple[int, int]):
+        self.py_version = py_version
+        self.opcode2executor: typing.Dict[int, "AbstractInstructionExecutor"] = {}
+        ExecutionManager.MANAGERS.append(self)
+
+    def init(self):
+        self.opcode2executor.clear()
+        assert self.py_version is not None
+
+        for start, end, opcode, executor in self.INSTRUCTIONS:
+            assert start is not None
+            if start <= self.py_version and (end is None or self.py_version <= end):
+                self.opcode2executor[opcode] = executor
+
+    def execute(self, target, *args, **kwargs):
+        env = ExecutionEnvironment()
+        patcher = MutableCodeObject(target)
+        env.max_stack_size = patcher.max_stack_size
+        env.local_variables = [None] * len(patcher.variable_names)
+        env.local_variables[:len(args)] = args
+        wrapper = BytecodePatchHelper(patcher)
+
+        env.patcher = patcher
+
+        while env.running:
+            cp = env.cp
+            instr = wrapper.instruction_listing[cp]
+
+            if instr.opcode not in self.opcode2executor:
+                raise InvalidOpcodeException(f"Opcode {instr.opcode} ({instr.opname}) with arg {instr.arg} is not valid in py version {self.py_version}")
+
+            executor = self.opcode2executor[instr.opcode]
+            executor.invoke(instr, env)
+
+            if env.cp == cp:
+                env.cp += 1
+
+        return env.return_value
+
+
+class ExecutionEnvironment:
+    def __init__(self):
+        self.max_stack_size = -1
+        self.stack = []
+        self.local_variables = []
+
+        self.patcher: typing.Optional[MutableCodeObject] = None
+
+        self.cp = 0
+        self.running = True
+        self.return_value = None
+
+    def pop(self, count: int = 1, position: int = -1):
+        if len(self.stack) - count - (abs(position) - 1) < 0:
+            raise StackUnderflowException(f"Could not pop {count} from position {position} elements from stack of size {len(self.stack)}")
+
+        if count == 1:
+            return self.stack.pop(position)
+
+        data = []
+        for _ in range(count):
+            data.append(self.stack.pop(position))
+
+        return data
+
+    def seek(self, offset: int = 0):
+        if offset > 0: offset = -offset - 1
+
+        if abs(offset) > len(self.stack):
+            raise StackUnderflowException(f"Could not seek from position {-offset + 1}, as the stack size is only {len(self.stack)}")
+
+        return self.stack[offset]
+
+    def push(self, value):
+        if self.max_stack_size != -1 and len(self.stack) + 1 > self.max_stack_size:
+            raise StackOverflowException(f"Could not push {value} into stack; max stack size of {self.max_stack_size} reached!")
+
+        self.stack.append(value)
+        return self
+
+    def push_to(self, value, index: int):
+        if index > 0: index = -index - 1
+        if self.max_stack_size != -1 and len(self.stack) + 1 == self.max_stack_size:
+            raise StackOverflowException(f"Could not push {value} into stack; max stack size of {self.max_stack_size} reached!")
+        if abs(index) > len(self.stack):
+            raise StackUnderflowException(f"Could not push into position {-index + 1}, as the current stack size is only {len(self.stack)}")
+        self.stack.insert(index, value)
+        return self
+
+
+PYTHON_3_6 = ExecutionManager((3, 6))
+PYTHON_3_7 = ExecutionManager((3, 7))
+PYTHON_3_8 = ExecutionManager((3, 8))
+PYTHON_3_9 = ExecutionManager((3, 9))
+PYTHON_3_10 = ExecutionManager((3, 10))
+PYTHON_3_11 = ExecutionManager((3, 11))
+
+CURRENT = ExecutionManager.get_for_version(PY_VERSION)
+
+
+def register_opcode(opname: typing.Union[str, int], since: typing.Tuple[int, int] = (0, 0), until: typing.Tuple[int, int] = None):
+    def annotate(cls):
+        if isinstance(opname, str):
+            # Only if the opcode is valid, register it
+            if opname in dis.opmap:
+                opcode = dis.opmap[opname]
+                ExecutionManager.INSTRUCTIONS.append((since, until, opcode, cls()))
+            else:
+                print("skipping opcode", opname)
+        else:
+            ExecutionManager.INSTRUCTIONS.append((since, until, opname, cls()))
+
+        return cls
+
+    return annotate
+
+
+class AbstractInstructionExecutor:
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        raise NotImplementedError
+
+
+@register_opcode("NOP")
+@register_opcode("RESUME", (3, 11))
+@register_opcode("COPY_FREE_VARS", (3, 11))
+class NOPExecutor(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        pass
+
+
+@register_opcode("POP_TOP")
+class OpcodePopTop(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.pop()
+
+
+@register_opcode("ROT_TWO")
+class OpcodeRotTwo(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push_to(env.pop(), 1)
+
+
+@register_opcode("ROT_THREE")
+class OpcodeRotThree(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push_to(env.pop(), 2)
+
+
+@register_opcode("ROT_FOUR", (3, 8))
+class OpcodeRotThree(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push_to(env.pop(), 3)
+
+
+@register_opcode("DUP_TOP", (3, 2))
+class OpcodeDupTop(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(env.seek())
+
+
+@register_opcode("DUP_TOP_TWO", (3, 2))
+class OpcodeDupTopTwo(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(env.seek())
+        env.push_to(env.seek(2), 1)
+
+
+@register_opcode("RETURN_VALUE")
+class OpcodeReturnValue(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.return_value = env.pop()
+        env.running = False
+
+
+@register_opcode("LOAD_CONST")
+class OpcodeLoadConst(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(env.patcher.constants[instr.arg])
+
+
+for manager in ExecutionManager.MANAGERS:
+    manager.init()
+

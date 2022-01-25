@@ -177,6 +177,38 @@ class BytecodePatchHelper:
         # todo: this is the wrong lookup; lookup the inspect flag
         self.is_async = self.patcher.flags & inspect.CO_COROUTINE
 
+    def enable_verbose_exceptions(self):
+        """
+        Helper method for enabling a bytecode emulator on the object;
+        Helps when debugging issues, as error messages get more verbose
+        (Including times when a normal interpreter would CRASH)
+
+        Will rebind this transformation helper to a new MutableCodeObject instance
+        representing the internal method, the one which is going to be debugged, not the
+        wrapper code for debugging.
+        """
+
+        self.store()
+        internal = self.patcher.create_method_from()
+
+        def invoke(*args, **kwargs):
+            from bytecodemanipulation.Emulator import CURRENT
+            return CURRENT.execute("test", *args, **kwargs)
+
+        patcher = MutableCodeObject(invoke)
+
+        # bind the code object as a constant
+        patcher.constants[patcher.constants.index("test")] = internal
+
+        patcher.free_vars = self.patcher.free_vars
+        patcher.cell_vars = self.patcher.cell_vars
+        self.patcher.overrideFrom(patcher)
+        self.patcher.applyPatches()
+
+        self.patcher = MutableCodeObject(internal)
+        self.instruction_listing = list(self.patcher.get_instruction_list())
+        return self
+
     def walk(self) -> typing.Iterable[typing.Tuple[int, dis.Instruction]]:
         yield from zip(range(len(self.instruction_listing)), self.instruction_listing)
 
