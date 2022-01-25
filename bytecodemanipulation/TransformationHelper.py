@@ -177,7 +177,9 @@ class BytecodePatchHelper:
         # todo: this is the wrong lookup; lookup the inspect flag
         self.is_async = self.patcher.flags & inspect.CO_COROUTINE
 
-    def enable_verbose_exceptions(self):
+        self.is_verbose = False
+
+    def enable_verbose_exceptions(self, force=False):
         """
         Helper method for enabling a bytecode emulator on the object;
         Helps when debugging issues, as error messages get more verbose
@@ -187,6 +189,9 @@ class BytecodePatchHelper:
         representing the internal method, the one which is going to be debugged, not the
         wrapper code for debugging.
         """
+
+        if self.is_verbose and not force: return
+        self.is_verbose = True
 
         self.store()
         internal = self.patcher.create_method_from()

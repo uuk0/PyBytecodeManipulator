@@ -1,4 +1,5 @@
 import dis
+import opcode
 import typing
 
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject
@@ -12,6 +13,7 @@ class LocalVariableOutOfBoundsException(Exception): pass
 class LocalVariableNameNotBoundException(Exception): pass
 class GlobalNameIndexOutOfBoundsException(Exception): pass
 class InvalidOpcodeException(Exception): pass
+class InstructionExecutionException(Exception): pass
 
 
 class ExecutionManager:
@@ -56,7 +58,13 @@ class ExecutionManager:
                 raise InvalidOpcodeException(f"Opcode {instr.opcode} ({instr.opname}) with arg {instr.arg} is not valid in py version {self.py_version}")
 
             executor = self.opcode2executor[instr.opcode]
-            executor.invoke(instr, env)
+
+            try:
+                executor.invoke(instr, env)
+            except:
+                raise InstructionExecutionException(instr, executor)
+
+            # print(instr, env.stack, env.local_variables)
 
             if env.cp == cp:
                 env.cp += 1
@@ -76,11 +84,11 @@ class ExecutionEnvironment:
         self.running = True
         self.return_value = None
 
-    def pop(self, count: int = 1, position: int = -1):
+    def pop(self, count: int = 1, position: int = -1, force_list=False):
         if len(self.stack) - count - (abs(position) - 1) < 0:
-            raise StackUnderflowException(f"Could not pop {count} from position {position} elements from stack of size {len(self.stack)}")
+            raise StackUnderflowException(f"Could not pop {count} elements from position {position} from stack of size {len(self.stack)}")
 
-        if count == 1:
+        if count == 1 and not force_list:
             return self.stack.pop(position)
 
         data = []
@@ -92,7 +100,7 @@ class ExecutionEnvironment:
     def seek(self, offset: int = 0):
         if offset > 0: offset = -offset - 1
 
-        if abs(offset) > len(self.stack):
+        if abs(offset) + 1 > len(self.stack):
             raise StackUnderflowException(f"Could not seek from position {-offset + 1}, as the stack size is only {len(self.stack)}")
 
         return self.stack[offset]
@@ -212,6 +220,126 @@ class OpcodeLoadConst(AbstractInstructionExecutor):
     @classmethod
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
         env.push(env.patcher.constants[instr.arg])
+
+
+@register_opcode("LOAD_FAST")
+class OpcodeLoadFast(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(env.local_variables[instr.arg])
+
+
+@register_opcode("STORE_FAST")
+class OpcodeStoreFast(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.local_variables[instr.arg] = env.pop()
+
+
+@register_opcode("LOAD_GLOBAL")
+class OpcodeLoadGlobal(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        try:
+            env.push(env.patcher.target.__globals__[instr.argval])
+        except KeyError:
+            try:
+                env.push(globals()[instr.argval])
+            except KeyError:
+                env.push(eval(instr.argval))
+
+
+@register_opcode("STORE_GLOBAL")
+class OpcodeStoreGlobal(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.patcher.target.__globals__[instr.argval] = env.pop()
+
+
+@register_opcode("POP_JUMP_IF_TRUE", (3, 1))
+class OpcodePopJumpIfTrue(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        value = env.pop()
+        if value is True:
+            env.cp = instr.arg
+
+
+@register_opcode("POP_JUMP_IF_FALSE", (3, 1))
+class OpcodePopJumpIfFalse(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        value = env.pop()
+        if value is False:
+            env.cp = instr.arg
+
+
+@register_opcode("COMPARE_OP")
+class OpcodeCompareOp(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        right, left = env.pop(2)
+        operation = opcode.cmp_op[instr.arg]
+        env.push(eval(f"a {operation} b", {"a": left, "b": right}))
+
+
+@register_opcode("GET_ITER")
+class OpcodeGetIter(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.push(iter(env.pop()))
+
+
+@register_opcode("FOR_ITER")
+class OpcodeForIter(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        iterator = env.seek()
+        try:
+            env.push(next(iterator))
+        except StopIteration:
+            env.pop()
+            env.cp += instr.arg + 1
+
+
+@register_opcode("JUMP_ABSOLUTE")
+class OpcodeJumpAbsolute(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.cp = instr.arg
+
+
+@register_opcode("BINARY_OP", (3, 11))
+class OpcodeBinaryOp(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        name, op = dis._nb_ops[instr.arg]
+
+        if op == "+=":
+            a, b = env.pop(2)
+            env.push(a+b)
+            return
+
+        if op == "-=":
+            a, b = env.pop(2)
+            env.push(b-a)
+            return
+
+        raise NotImplementedError(instr, op)
+
+
+@register_opcode("CALL_NO_KW", (3, 11))
+class OpcodeCallNoKw(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        args = env.pop(instr.arg, force_list=True)
+
+        print("args", args)
+
+        method = env.pop()
+
+        # todo: add option to also call using the emulator if possible
+        env.push(method(*reversed(args)))
 
 
 for manager in ExecutionManager.MANAGERS:

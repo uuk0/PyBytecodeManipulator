@@ -1,6 +1,7 @@
 import dis
 from unittest import TestCase
 from bytecodemanipulation import Emulator
+from bytecodemanipulation.Emulator import InstructionExecutionException
 from bytecodemanipulation.Emulator import StackUnderflowException
 from bytecodemanipulation.MutableCodeObject import createInstruction
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject
@@ -12,7 +13,42 @@ class TestEmulator(TestCase):
         def target():
             return 0
 
+        self.assertEqual(target(), 0)
         self.assertEqual(Emulator.CURRENT.execute(target), 0)
+
+    def test_control_flow(self):
+        def target(flag: bool):
+            if flag:
+                return 243
+            return 120
+
+        self.assertEqual(target(False), 120)
+        self.assertEqual(target(True), 243)
+
+        self.assertEqual(Emulator.CURRENT.execute(target, False), 120)
+        self.assertEqual(Emulator.CURRENT.execute(target, True), 243)
+
+    def test_while_loop(self):
+        def target():
+            i = 0
+            while i < 100:
+                i += 1
+            return i
+
+        self.assertEqual(target(), 100)
+        self.assertEqual(Emulator.CURRENT.execute(target), 100)
+
+    def test_simple_for_loop(self):
+        def target():
+            x = 0
+            for i in range(10):
+                x -= i
+            return x
+
+        dis.dis(target)
+
+        self.assertEqual(target(), -45)
+        self.assertEqual(Emulator.CURRENT.execute(target), -45)
 
 
 class TestEmulatorInjection(TestCase):
@@ -45,4 +81,21 @@ class TestEmulatorInjection(TestCase):
         helper.store()
         helper.patcher.applyPatches()
 
-        self.assertRaises(StackUnderflowException, target)
+        self.assertRaises(InstructionExecutionException, target)
+
+    def test_control_flow(self):
+        def target(flag: bool):
+            if flag:
+                return 243
+            return 120
+
+        self.assertEqual(target(False), 120)
+        self.assertEqual(target(True), 243)
+
+        helper = BytecodePatchHelper(target)
+        helper.enable_verbose_exceptions()
+        helper.store()
+        helper.patcher.applyPatches()
+
+        self.assertEqual(target(False), 120)
+        self.assertEqual(target(True), 243)
