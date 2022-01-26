@@ -1048,7 +1048,7 @@ class BytecodePatchHelper:
 
         for index, instr in reversed(instructions[:index]):
             if offset < 0:
-                raise RuntimeError
+                raise RuntimeError(offset, instructions[index+1])
 
             # print(instr, offset)
 
@@ -1081,7 +1081,7 @@ class BytecodePatchHelper:
 
             elif instr.opcode == METHOD_CALL:
                 offset += 1
-                offset -= instr.arg
+                offset -= instr.arg - 1
 
             elif instr.opcode == Opcodes.UNPACK_SEQUENCE:
                 offset += instr.arg - 1
@@ -1129,3 +1129,18 @@ class BytecodePatchHelper:
 
         if offset < 0:
             raise RuntimeError
+
+    def evalStaticFrom(self, instruction: dis.Instruction):
+        if instruction.opcode == Opcodes.LOAD_CONST:
+            return instruction.argval
+
+        if instruction.opcode == Opcodes.LOAD_GLOBAL:
+            try:
+                return self.patcher.target.__globals__[instruction.argval]
+            except KeyError:
+                try:
+                    return globals()[instruction.argval]
+                except KeyError:
+                    return eval(instruction.argval)
+
+        raise ValueError

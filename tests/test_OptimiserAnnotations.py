@@ -17,5 +17,6 @@ class TestOptimiserAnnotations(TestCase):
         global min
         min = max
 
+        self.assertEqual(min(1, 2), 2)
         self.assertEqual(target(1, 2), 1)
 

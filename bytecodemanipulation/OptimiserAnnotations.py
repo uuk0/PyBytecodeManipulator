@@ -1,5 +1,6 @@
 import builtins
 import importlib
+import types
 import typing
 
 from . import CodeOptimiser
@@ -11,36 +12,98 @@ from bytecodemanipulation.BytecodeProcessors import (
 )
 from .BytecodeProcessors import GlobalStaticLookupProcessor
 from .InstructionMatchers import MetaArgMatcher
+from .util import Opcodes
 
 
 def _is_builtin_name(_, name: str):
     return hasattr(builtins, name)
 
 
+def next_cycle():
+    """
+    Cycles the internal system to the next cycle
+    affects only the optimised methods with a cycle cache
+    """
+
+
+def invalidate_cache(function, obj=None):
+    """
+    Clears the internal function cache
+
+    :param function: the function object
+    :param obj: when the target is object bound, this is the object
+    """
+
+
 class _OptimiserContainer:
     CONTAINERS: typing.List["_OptimiserContainer"] = []
 
-    def __init__(self, target):
+    def __init__(self, target: typing.Union[typing.Callable, typing.Type]):
         self.target = target
         self.is_constant = False
+        self.is_self_constant = False
         self.constant_args: typing.Set[str] = set()
         self.code_walkers: typing.List[AbstractBytecodeProcessor] = []
         self.specified_locals: typing.Dict[str, typing.Type] = {}
         self.return_type: typing.Optional[typing.Type] = None
 
-    def optimise_target(self):
-        if isinstance(self.target, typing.Callable):
+        # Optional: a list of attributes accessed by this method on the bound object
+        self.touches: typing.Optional[typing.Set[str]] = None
+
+        # self.evaluate_touches()
+
+    def evaluate_touches(self):
+        if isinstance(self.target, types.FunctionType):
             helper = BytecodePatchHelper(self.target)
 
-            for processor in self.code_walkers:
-                print(f"[INFO] applying optimiser mixin {processor} onto {self.target}")
-                processor.apply(None, helper.patcher, helper)
-                helper.re_eval_instructions()
+            self.touches = set()
 
-            helper.store()
-            helper.patcher.applyPatches()
+            for index, instr in helper.walk():
+                if instr.opcode == Opcodes.STORE_ATTR:
+                    source_instruction = next(helper.findSourceOfStackIndex(index, 0))
 
-            CodeOptimiser.optimise_code(helper)
+                    if source_instruction.opcode == Opcodes.LOAD_FAST and source_instruction.argval == "self":
+                        self.touches.add(instr.argval)
+
+                elif instr.opname == helper.CALL_FUNCTION_NAME:
+                    method_source = next(helper.findSourceOfStackIndex(index, -instr.arg))
+
+                    try:
+                        source = helper.evalStaticFrom(method_source)
+                    except ValueError:
+                        pass
+                    else:
+                        if hasattr(source, "optimiser_container"):
+                            container = source.optimiser_container
+
+                            if container.is_constant:
+                                continue
+
+                    self.touches = None
+                    return
+
+            if len(self.touches) == 0:
+                self.is_self_constant = True
+
+    def optimise_target(self):
+        if isinstance(self.target, types.FunctionType):
+            self.optimise_method(self.target)
+        else:
+            for value in self.target.__dict__.values():
+                if isinstance(value, types.FunctionType):
+                    self.optimise_method(value)
+
+    def optimise_method(self, target):
+        helper = BytecodePatchHelper(target)
+
+        for processor in self.code_walkers:
+            print(f"[INFO] applying optimiser mixin {processor} onto {target}")
+            processor.apply(None, helper.patcher, helper)
+            helper.re_eval_instructions()
+
+        helper.store()
+        helper.patcher.applyPatches()
+        CodeOptimiser.optimise_code(helper)
 
     async def optimize_target_async(self):
         try:
@@ -51,7 +114,7 @@ class _OptimiserContainer:
 
 
 def _schedule_optimisation(
-    target: typing.Callable | typing.Type,
+    target: typing.Union[typing.Callable, typing.Type],
 ) -> _OptimiserContainer:
     if not hasattr(target, "optimiser_container"):
         target.optimiser_container = _OptimiserContainer(target)
@@ -75,6 +138,20 @@ def builtins_are_static():
     def annotation(target: typing.Callable):
         optimiser = _schedule_optimisation(target)
         optimiser.code_walkers.append(GlobalStaticLookupProcessor(matcher=MetaArgMatcher(_is_builtin_name)))
+        return target
+
+    return annotation
+
+
+def constant_global():
+    """
+    Marks the method as mutating only the internal state of the class / object, no global
+    variables
+    This can lead to optimisations into caching globals around the code
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
         return target
 
     return annotation
@@ -108,22 +185,9 @@ def constant_operation():
     return annotation
 
 
-def constant_global_operation():
-    """
-    Promises the function modifies only the internal state of the object, not anything else,
-    including the class body
-    """
-
-    def annotation(target: typing.Callable):
-        _schedule_optimisation(target)
-        return target
-
-    return annotation
-
-
 def cycle_stable_result():
     """
-    Similar to constant_global_operation(), but is only constant in one cycle (a tick),
+    Similar to constant_global_operation(), but is only constant in one cycle,
     meaning most likely it can only be cached in a single method and its sub-parts
     """
 
@@ -171,20 +235,6 @@ def all_immutable_attributes():
     return annotation
 
 
-def constant_global():
-    """
-    Marks the method as mutating only the internal state of the class / object, no global
-    variables
-    This can lead to optimisations into caching globals around the code
-    """
-
-    def annotation(target: typing.Callable):
-        _schedule_optimisation(target)
-        return target
-
-    return annotation
-
-
 def inline_call(
     call_target: str,
     static_target: typing.Callable[[], typing.Callable] = None,
@@ -216,6 +266,9 @@ def eval_static(call_target: str):
     optimisation time, e.g. using only constants
 
     WARNING: the value will be replaced by a static value, which is copy.deepcopy()-ed (when needed)
+
+    The optimiser is allowed to decide to add tis by its own when it encounters a method marked
+    as constant
     """
 
     def annotation(target: typing.Callable):
@@ -234,6 +287,8 @@ def eval_instance_static(call_target: str, allow_ahead_of_time=True):
 
     The optimiser may choose to calculate the value of the expression ahead of time for each instance, meaning
     an injection into the constructor. This behaviour can be disabled via allow_ahead_of_time=False
+    The injection would happen below most code, if there is no access to the static eval-ed method
+    in the constructor itself
 
     WARNING: the value will be replaced by a static value, which is copy.deepcopy()-ed (when needed)
     """
@@ -243,10 +298,6 @@ def eval_instance_static(call_target: str, allow_ahead_of_time=True):
         return target
 
     return annotation
-
-
-def invalidate_cache(function, call_target: str, obj=None):
-    pass
 
 
 def access_static(name: str):
