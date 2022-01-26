@@ -49,8 +49,10 @@ class TransformationHandler:
     name collision should happen!
     """
 
-    def __init__(self, do_code_optimisation=True):
+    def __init__(self, do_code_optimisation=True, debug_code=False, debug_further_calls=False):
         self.do_code_optimisation = do_code_optimisation
+        self.debug_code = debug_code
+        self.debug_further_calls = debug_further_calls
 
         self.bound_mixin_processors: typing.Dict[
             str, typing.List[typing.Tuple[AbstractBytecodeProcessor, float, bool]]
@@ -138,6 +140,11 @@ class TransformationHandler:
                 except:
                     print(f"during optimising method {method} after mixin applied")
                     traceback.print_exc()
+
+        if self.debug_code:
+            for method, helper in self.affected:
+                helper.enable_verbose_exceptions(verbose_internal_calls=self.debug_further_calls)
+                helper.store()
 
     def lookup_method(self, method: str):
         if method in self.special_functions:

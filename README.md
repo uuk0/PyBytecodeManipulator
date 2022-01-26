@@ -37,6 +37,19 @@ If you want them removed, create your own Fork of this and remove them, on your 
   we modify
 
 
+## Debugging your injections 
+
+There is the possibility to "debug" functions using the execution emulator.
+It will be able to give you more information about a crash than the python core interpreter,
+but will be a lot slower than it. 
+
+TransformationHandler() takes as an arg debug_code and debug_further_calls
+for activating it for all accessed methods. 
+
+BytecodePatchHelper() contains a method enable_verbose_exceptions() for activating it on 
+that exact method.
+
+
 # Examples
 
 Replacing a code constant (globally):
