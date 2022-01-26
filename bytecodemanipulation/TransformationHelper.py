@@ -469,7 +469,7 @@ class BytecodePatchHelper:
             )
 
         if helper.is_async:
-            print("encountered ASYNC method")
+            # print("encountered ASYNC method")
             if helper.instruction_listing[0].opname == "GEN_START":
                 helper.deleteRegion(0, 1)
 
@@ -530,7 +530,7 @@ class BytecodePatchHelper:
 
                         local = helper.instruction_listing[index - 1].argval
 
-                        print(f"captured local '{local}'")
+                        # print(f"captured local '{local}'")
 
                         if (
                             helper.instruction_listing[index + 1].opname == "STORE_FAST"
@@ -552,9 +552,8 @@ class BytecodePatchHelper:
                             # STORE_FAST <new local name>    {index+1}
                             helper.deleteRegion(index - 2, index + 2)
 
-                            print(
-                                f"found local variable access onto '{local}' from '{capture_target}' (var index: {self.patcher.ensureVarName(local)}) at {index} ({instr})"
-                            )
+                            # print(f"found local variable access onto '{local}' from '{capture_target}' "
+                            #       f"(var index: {self.patcher.ensureVarName(local)}) at {index} ({instr})")
                             index -= 1
 
                         # We don't really know what is done to the local,
@@ -573,18 +572,14 @@ class BytecodePatchHelper:
                                 [self.patcher.createLoadFast(local)],
                             )
 
-                            print(
-                                f"found local variable read-only access onto '{local}'; replacing with link to real local at index {self.patcher.ensureVarName(local)}"
-                            )
+                            # print(f"found local variable read-only access onto '{local}';"
+                            #       f" replacing with link to real local at index {self.patcher.ensureVarName(local)}")
 
                         break
             else:
                 break
 
-        print(
-            "protected",
-            ("'" + "', '".join(captured_names) + "'") if captured_names else "null",
-        )
+        # print("protected", ("'" + "', '".join(captured_names) + "'") if captured_names else "null")
 
         # Rebind the captured locals
         for index, instr in list(helper.walk()):
@@ -602,9 +597,8 @@ class BytecodePatchHelper:
                         False,
                     )
                     protect.add(index)
-                    print(
-                        f"transforming local access at {index}: '{instr.argval}' to '{name}' (old index: {instr.arg}, new: {i}) ({instr})"
-                    )
+                    # print(f"transforming local access at {index}: '{instr.argval}' to "
+                    #       f"'{name}' (old index: {instr.arg}, new: {i}) ({instr})")
 
         # Return becomes jump instruction, the function TAIL is currently not known,
         # so we need to trick it a little by setting its value to 0, and later waling over it and rebinding that
@@ -700,7 +694,7 @@ class BytecodePatchHelper:
                 continue
 
             if instr.opcode in dis.hasconst:
-                print("constant", instr)
+                # print("constant", instr)
                 helper.instruction_listing[index] = reconstruct_instruction(
                     instr,
                     self.patcher.ensureConstant(instr.argval),
@@ -708,7 +702,7 @@ class BytecodePatchHelper:
 
             elif instr.opcode in dis.haslocal and instr.argval not in captured_names:
                 name = instr.argval
-                print(f"rebinding real local '{instr.argval}' to '{name}'", instr, index)
+                # print(f"rebinding real local '{instr.argval}' to '{name}'", instr, index)
                 helper.instruction_listing[index] = reconstruct_instruction(
                     instr,
                     self.patcher.ensureVarName(name),
@@ -784,6 +778,9 @@ class BytecodePatchHelper:
         start: typing.List[int],
         method: MutableCodeObject,
         force_multiple_inlines=False,
+        added_args=0,
+        discard_return_result=True,
+        inter_code=tuple(),
     ):
         """
         Similar to insertMethodAt(), but is able to do some more optimisations in how to inject the method.
@@ -793,10 +790,14 @@ class BytecodePatchHelper:
         :param method: the method to inject
         :param force_multiple_inlines: if we should force multiple inlines for each method call, or if we can
             optimise stuff
-
-        todo: how can we remember the old instruction offset?
+        :param added_args: how many positional args are added to the method call
+        :param discard_return_result: if the return result should be deleted or not
+        :param inter_code: what code to insert between arg getting and function invoke
         """
-        raise RuntimeError
+        offset = 0
+        for index in sorted(start):
+            offset += self.insertMethodAt(index+offset, method, added_args=added_args, discard_return_result=discard_return_result, inter_code=inter_code) - index
+        return self
 
     def makeMethodAsync(self):
         """

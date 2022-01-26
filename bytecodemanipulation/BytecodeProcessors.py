@@ -106,6 +106,9 @@ class ConstantReplacer(AbstractBytecodeProcessor):
         )
         helper.store()
 
+    def __repr__(self):
+        return f"ConstantReplacer(before={self.before}, after={self.after}, matcher={self.matcher})"
+
 
 class Global2ConstReplace(AbstractBytecodeProcessor):
     def __init__(
@@ -134,6 +137,9 @@ class Global2ConstReplace(AbstractBytecodeProcessor):
 
         helper.store()
 
+    def __repr__(self):
+        return f"Global2ConstReplace(global_name='{self.global_name}', after={self.after}, matcher={self.matcher})"
+
 
 class Attribute2ConstReplace(AbstractBytecodeProcessor):
     def __init__(
@@ -147,6 +153,9 @@ class Attribute2ConstReplace(AbstractBytecodeProcessor):
         self.after = after
         self.matcher = matcher
         self.load_from_local_hint = load_from_local_hint
+
+    def __repr__(self):
+        return f"Attribute2ConstReplace(attr_name='{self.attr_name}', after={self.after}, matcher={self.matcher})"
 
     def apply(
         self,
@@ -197,6 +206,9 @@ class Local2ConstReplace(AbstractBytecodeProcessor):
         self.after = after
         self.matcher = matcher
 
+    def __repr__(self):
+        return f"Local2ConstReplace(local_name='{self.local_name}', after={self.after}, matcher={self.matcher})"
+
     def apply(
         self,
         handler,
@@ -232,6 +244,9 @@ class GlobalReTargetProcessor(AbstractBytecodeProcessor):
         self.previous_global = previous_global
         self.new_global = new_global
         self.matcher = matcher
+
+    def __repr__(self):
+        return f"GlobalReTargetProcessor(previous_global='{self.previous_global}', new_global='{self.new_global}', matcher={self.matcher})"
 
     def apply(
         self,
@@ -270,6 +285,9 @@ class InjectFunctionCallAtHeadProcessor(AbstractBytecodeProcessor):
             assert (
                 len(collected_locals) == 0
             ), "cannot inline when collecting local variables"
+
+    def __repr__(self):
+        return f"InjectFunctionCallAtHeadProcessor(target={self.target_func}, args={self.args}, locals={self.collected_locals}, inline={self.inline})"
 
     def apply(
         self,
@@ -318,6 +336,9 @@ class InjectFunctionCallAtReturnProcessor(AbstractBytecodeProcessor):
                 len(collected_locals) == 0
             ), "cannot inline when collecting local variables"
 
+    def __repr__(self):
+        return f"InjectFunctionCallAtReturnProcessor(target_func={self.target_func}, args={self.args}, matcher={self.matcher}, locals={self.collected_locals}, add_return_value={self.add_return_value}, inline={self.inline})"
+
     def apply(
         self,
         handler,
@@ -365,6 +386,9 @@ class InjectFunctionCallAtReturnReplaceValueProcessor(AbstractBytecodeProcessor)
         self.matcher = matcher
         self.collected_locals = collected_locals
         self.add_return_value = add_return_value
+
+    def __repr__(self):
+        return f"InjectFunctionCallAtReturnReplaceValueProcessor(target_func={self.target_func}, args={self.args}, matcher={self.matcher}, locals={self.collected_locals}, add_return_value={self.add_return_value})"
 
     def apply(
         self,
@@ -420,6 +444,9 @@ class InjectFunctionCallAtYieldProcessor(AbstractBytecodeProcessor):
                 len(collected_locals) == 0
             ), "cannot inline when collecting local variables"
 
+    def __repr__(self):
+        return f"InjectFunctionCallAtYieldProcessor(target_func={self.target_func}, args={self.args}, matcher={self.matcher}, locals={self.collected_locals}, add_return_value={self.add_yield_value}, inline={self.inline})"
+
     def apply(
         self,
         handler,
@@ -469,6 +496,9 @@ class InjectFunctionCallAtYieldReplaceValueProcessor(AbstractBytecodeProcessor):
         self.collected_locals = collected_locals
         self.add_yield_value = add_yield_value
         self.is_yield_from = is_yield_from
+
+    def __repr__(self):
+        return f"InjectFunctionCallAtYieldReplaceValueProcessor(target_func={self.target_func}, args={self.args}, matcher={self.matcher}, locals={self.collected_locals}, add_return_value={self.add_yield_value})"
 
     def apply(
         self,
@@ -536,6 +566,9 @@ class InjectFunctionCallAtTailProcessor(AbstractBytecodeProcessor):
                 len(collected_locals) == 0
             ), "cannot inline when collecting local variables"
 
+    def __repr__(self):
+        return f"InjectFunctionCallAtTailProcessor(target_func={self.target_func}, args={self.args}, locals={self.collected_locals}, add_return_value={self.add_return_value}, inline={self.inline})"
+
     def apply(
         self,
         handler,
@@ -578,6 +611,9 @@ class InjectFunctionLocalVariableModifier(AbstractBytecodeProcessor):
         self.matcher = matcher
         self.collected_locals = collected_locals
 
+    def __repr__(self):
+        return f"InjectFunctionLocalVariableModifier(target_func={self.function}, locals={self.collected_locals}, args={self.args}, matcher={self.matcher}, modified_locals={self.local_variables})"
+
     def apply(
         self,
         handler,
@@ -616,6 +652,9 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
         self.func_name = func_name
         self.target_accessor = target_accessor
         self.matcher = matcher
+
+    def __repr__(self):
+        return f"MethodInlineProcessor(func_name={self.func_name}, accessor={self.target_accessor}, matcher={self.matcher})"
 
     def apply(
         self,
@@ -728,6 +767,9 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
         self.matcher = matcher
         self.target_jumped_branch = target_jumped_branch
 
+    def __repr__(self):
+        return f"RemoveFlowBranchProcessor(matcher={self.matcher}, target_jumped_branch={self.target_jumped_branch})"
+
     def apply(
         self,
         handler,
@@ -792,6 +834,9 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
     def __init__(self, global_name: str = None, matcher: AbstractInstructionMatcher = None):
         self.global_name = global_name
         self.matcher = matcher
+
+    def __repr__(self):
+        return f"GlobalStaticLookupProcessor(global_name={self.global_name}, matcher={self.matcher})"
 
     def apply(
         self,

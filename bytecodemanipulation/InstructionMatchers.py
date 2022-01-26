@@ -39,6 +39,9 @@ class AndMatcher(AbstractInstructionMatcher):
             return AndMatcher(*self.matchers, *other.matchers)
         return AndMatcher(*self.matchers, other)
 
+    def __repr__(self):
+        return "And("+", ".join(map(repr, self.matchers))+")"
+
 
 class OrMatcher(AbstractInstructionMatcher):
     def __init__(self, *matchers: AbstractInstructionMatcher):
@@ -54,6 +57,9 @@ class OrMatcher(AbstractInstructionMatcher):
             return OrMatcher(*self.matchers, *other.matchers)
         return OrMatcher(*self.matchers, other)
 
+    def __repr__(self):
+        return "Or("+", ".join(map(repr, self.matchers))+")"
+
 
 class NotMatcher(AbstractInstructionMatcher):
     def __init__(self, matcher: AbstractInstructionMatcher):
@@ -65,6 +71,9 @@ class NotMatcher(AbstractInstructionMatcher):
     def __invert__(self):
         return self.matcher
 
+    def __repr__(self):
+        return f"Not({self.matcher})"
+
 
 class AnyByInstructionNameMatcher(AbstractInstructionMatcher):
     def __init__(self, opname: str):
@@ -72,6 +81,9 @@ class AnyByInstructionNameMatcher(AbstractInstructionMatcher):
 
     def matches(self, function: BytecodePatchHelper, index: int, match_count: int) -> bool:
         return function.instruction_listing[index].opname == self.opname
+
+    def __repr__(self):
+        return f"ExactInstructionName({self.opname})"
 
 
 class IndexBasedMatcher(AbstractInstructionMatcher):
@@ -94,6 +106,9 @@ class IndexBasedMatcher(AbstractInstructionMatcher):
             return self.sub_matcher.matches(function, index, match_count)
 
         return True
+
+    def __repr__(self):
+        return f"IndexOfInstruction(minimum={self.start}, maximum={self.end}, further={self.sub_matcher})"
 
 
 class SurroundingBasedMatcher(AbstractInstructionMatcher):
@@ -138,6 +153,9 @@ class SurroundingBasedMatcher(AbstractInstructionMatcher):
 
         return True
 
+    def __repr__(self):
+        return f"SurroundingBasedMatcher(...)"
+
 
 class LoadConstantValueMatcher(AbstractInstructionMatcher):
     def __init__(self, value):
@@ -146,6 +164,9 @@ class LoadConstantValueMatcher(AbstractInstructionMatcher):
     def matches(self, function: BytecodePatchHelper, index: int, match_count: int) -> bool:
         instr = function.instruction_listing[index]
         return instr.opname == "LOAD_CONST" and instr.argval == self.value
+
+    def __repr__(self):
+        return f"LoadConstant({self.value})"
 
 
 class LoadGlobalMatcher(AbstractInstructionMatcher):
@@ -156,6 +177,9 @@ class LoadGlobalMatcher(AbstractInstructionMatcher):
         instr = function.instruction_listing[index]
         return instr.opname == "LOAD_GLOBAL" and instr.argval == self.global_name
 
+    def __repr__(self):
+        return f"LoadGlobal({self.global_name})"
+
 
 class CounterMatcher(AbstractInstructionMatcher):
     def __init__(self, count_start: int, count_end: int = None):
@@ -163,7 +187,13 @@ class CounterMatcher(AbstractInstructionMatcher):
         self.count_end = count_end or count_start
 
     def matches(self, function: BytecodePatchHelper, index: int, match_count: int) -> bool:
-        return self.count_start <= match_count <= self.count_end
+        if self.count_end != -1:
+            return self.count_start <= match_count <= self.count_end
+        else:
+            return self.count_start <= match_count
+
+    def __repr__(self):
+        return f"MatchCounter({self.count_start}, {self.count_end})"
 
 
 class MetaArgMatcher(AbstractInstructionMatcher):
@@ -173,3 +203,6 @@ class MetaArgMatcher(AbstractInstructionMatcher):
     def matches(self, function: BytecodePatchHelper, index: int, match_count: int) -> bool:
         value = function.instruction_listing[index].argval
         return self.inner_matcher(function, value)
+
+    def __repr__(self):
+        return f"ArgMatcher({self.inner_matcher})"
