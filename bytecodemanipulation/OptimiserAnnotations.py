@@ -1,8 +1,7 @@
 import importlib
 import typing
 
-from mcpython.engine import logger
-from mcpython.mixin import CodeOptimiser
+from . import CodeOptimiser
 from bytecodemanipulation.InstructionMatchers import AbstractInstructionMatcher
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.BytecodeProcessors import (
@@ -12,13 +11,15 @@ from bytecodemanipulation.BytecodeProcessors import (
 
 
 class _OptimiserContainer:
+    CONTAINERS: typing.List["_OptimiserContainer"] = []
+
     def __init__(self, target):
         self.target = target
         self.is_constant = False
         self.constant_args: typing.Set[str] = set()
         self.code_walkers: typing.List[AbstractBytecodeProcessor] = []
         self.specified_locals: typing.Dict[str, typing.Type] = {}
-        self.return_type: typing.Type | None = None
+        self.return_type: typing.Optional[typing.Type] = None
 
     def optimise_target(self):
         if isinstance(self.target, typing.Callable):
@@ -46,15 +47,28 @@ def _schedule_optimisation(
 ) -> _OptimiserContainer:
     if not hasattr(target, "optimiser_container"):
         target.optimiser_container = _OptimiserContainer(target)
-
-        from mcpython import shared
-
-        if not shared.IS_TEST_ENV:
-            shared.mod_loader("minecraft", "stage:mixin:optimise_code")(
-                target.optimiser_container.optimize_target_async()
-            )
+        _OptimiserContainer.CONTAINERS.append(target.optimiser_container)
 
     return target.optimiser_container
+
+
+def run_optimisations():
+    for instance in _OptimiserContainer.CONTAINERS:
+        instance.optimise_target()
+
+
+def builtins_are_static():
+    """
+    Promises that the given method does not runtime-override builtins, so we can safely
+    eval() them at optimisation time
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
+        # optimiser.code_walkers.append()
+        return target
+
+    return annotation
 
 
 def constant_arg(name: str):

@@ -25,6 +25,7 @@ from .BytecodeProcessors import (
     Local2ConstReplace,
     ReplacementProcessor,
     RemoveFlowBranchProcessor,
+    GlobalStaticLookupProcessor,
 )
 
 
@@ -245,6 +246,33 @@ class TransformationHandler:
         self.bound_mixin_processors.setdefault(access_str, []).append(
             (
                 Global2ConstReplace(global_name, new_value, matcher=matcher),
+                priority,
+                optional,
+            )
+        )
+        return self
+
+    def lookup_global_statically(
+        self,
+        access_str: str,
+        global_name: str,
+        matcher: AbstractInstructionMatcher = None,
+        priority=0,
+        optional=True,
+    ):
+        """
+        Looks up LOAD_GLOBAL instructions matched by the matcher at transformation time
+        Can be used for constant values, config values, ...
+
+        :param access_str: the access str of the method
+        :param global_name: the global name
+        :param priority: the mixin priority
+        :param optional: optional mixin?
+        :param matcher: the instruction matcher object
+        """
+        self.bound_mixin_processors.setdefault(access_str, []).append(
+            (
+                GlobalStaticLookupProcessor(global_name, matcher=matcher),
                 priority,
                 optional,
             )

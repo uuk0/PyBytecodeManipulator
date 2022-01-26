@@ -779,3 +779,33 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
             return True
 
         return False
+
+
+class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
+    def __init__(self, global_name: str, matcher: AbstractInstructionMatcher = None):
+        self.global_name = global_name
+        self.matcher = matcher
+
+    def apply(
+        self,
+        handler,
+        target: MutableCodeObject,
+        helper: BytecodePatchHelper,
+    ):
+        matches = 0
+        for index, instr in helper.walk():
+            if instr.opcode == Opcodes.LOAD_GLOBAL and instr.argval == self.global_name:
+                matches += 1
+                if self.matcher is not None and not self.matcher.matches(helper, index, matches):
+                    continue
+
+                try:
+                    value = helper.patcher.target.__globals__[instr.argval]
+                except KeyError:
+                    try:
+                        value = globals()[instr.argval]
+                    except KeyError:
+                        value = eval(instr.argval)
+
+                helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+

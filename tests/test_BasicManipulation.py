@@ -1544,3 +1544,19 @@ class TestBytecodeHandler(TestCase):
         handler.applyTransforms()
 
         self.assertEqual(target(False), 2)
+
+    def test_replace_global_with_static(self):
+        def target():
+            global INVOKED
+            return INVOKED
+
+        global INVOKED
+        INVOKED = 0
+
+        handler = TransformationHandler()
+        handler.makeFunctionArrival("test", target)
+        handler.lookup_global_statically("test", "INVOKED")
+        handler.applyTransforms()
+
+        INVOKED = 1
+        self.assertEqual(target(), 0)
