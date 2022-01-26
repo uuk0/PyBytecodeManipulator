@@ -63,7 +63,7 @@ class TestPostInjectionOptimiser(TestCase):
         self.assertEqual(target(True), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(True), 0)

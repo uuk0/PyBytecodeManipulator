@@ -97,7 +97,7 @@ class _OptimiserContainer:
         helper = BytecodePatchHelper(target)
 
         for processor in self.code_walkers:
-            print(f"[INFO] applying optimiser mixin {processor} onto {target}")
+            print(f"[INFO] applying optimiser transformer {processor} onto {target}")
             processor.apply(None, helper.patcher, helper)
             helper.re_eval_instructions()
 

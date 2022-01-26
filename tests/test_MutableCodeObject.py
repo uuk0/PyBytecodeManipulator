@@ -36,7 +36,7 @@ class TestMutableCodeObject(TestCase):
         test_obj.wadd(3, 1)
         self.assertEqual(value, 1)
 
-    def test_library_mixin_with_constant(self):
+    def test_library_processor_with_constant(self):
         import PIL.Image
 
         def test():

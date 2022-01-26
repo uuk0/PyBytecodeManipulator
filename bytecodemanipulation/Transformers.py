@@ -8,7 +8,7 @@ import bytecodemanipulation.MutableCodeObject
 
 from .CodeOptimiser import optimise_code
 from .InstructionMatchers import AbstractInstructionMatcher
-from .TransformationHelper import BytecodePatchHelper, capture_local, mixin_return
+from .TransformationHelper import BytecodePatchHelper, capture_local, injected_return
 from .BytecodeProcessors import (
     AbstractBytecodeProcessor,
     InjectFunctionCallAtHeadProcessor,
@@ -40,8 +40,8 @@ class TransformationHandler:
         ...
 
     Using 'return' in the annotated function will only exit your injected  code.
-    For exiting the whole function, use inlining and the mixin_return() before the return statement
-    (and add the return value as an argument to the mixin_return())
+    For exiting the whole function, use inlining and the injected_return() before the return statement
+    (and add the return value as an argument to the injected_return())
 
     You can capture outer locals easily when inlining, simply call capture_local() with the correct local name
     from the outer scope.
@@ -55,7 +55,7 @@ class TransformationHandler:
         self.debug_code = debug_code
         self.debug_further_calls = debug_further_calls
 
-        self.bound_mixin_processors: typing.Dict[
+        self.bound_injected_processors: typing.Dict[
             str, typing.List[typing.Tuple[AbstractBytecodeProcessor, float, bool]]
         ] = {}
         self.special_functions = {}
@@ -69,8 +69,8 @@ class TransformationHandler:
         return self
 
     def applyTransforms(self):
-        for target, mixins in self.bound_mixin_processors.items():
-            print(f"[MIXIN][WARN] applying mixins onto '{target}'")
+        for target, injecteds in self.bound_injected_processors.items():
+            print(f"[TRANSFORMER][WARN] applying processors onto '{target}'")
 
             method_target = self.lookup_method(target)
 
@@ -82,53 +82,53 @@ class TransformationHandler:
             self.affected.add((method_target, helper))
 
             order = sorted(
-                sorted(mixins, key=lambda e: 0 if e[2] else 1), key=lambda e: e[1]
+                sorted(injecteds, key=lambda e: 0 if e[2] else 1), key=lambda e: e[1]
             )
 
             non_optionals = set()
             optionals = set()
             to_delete = []
-            for i, (mixin, priority, optional) in enumerate(order):
-                if non_optionals and mixin.is_breaking():
+            for i, (processor, priority, optional) in enumerate(order):
+                if non_optionals and processor.is_breaking():
                     print(
-                        "[MIXIN][FATAL] conflicting mixin: found an non-optional mixin before, breaking with this mixin!"
+                        "[TRANSFORMER][FATAL] conflicting processor: found an non-optional processor before, breaking with this processor!"
                     )
                     raise RuntimeError
 
-                elif optionals and mixin.is_breaking():
+                elif optionals and processor.is_breaking():
                     to_delete += [e[1] for e in optionals]
                     optionals.clear()
 
                 previous = [e[0] for x, e in enumerate(order[:i]) if x not in to_delete]
-                if previous and not mixin.canBeAppliedOnModified(
+                if previous and not processor.canBeAppliedOnModified(
                     self, patcher, previous
                 ):
                     if optional:
                         to_delete.append(i)
                     else:
-                        if non_optionals and mixin.is_breaking():
+                        if non_optionals and processor.is_breaking():
                             print(
-                                "[MIXIN][FATAL] conflicting mixin: found an non-optional mixin before, breaking with this mixin!"
+                                "[TRANSFORMER][FATAL] conflicting processor: found an non-optional processor before, breaking with this processor!"
                             )
                             raise RuntimeError
 
                 if not optional:
-                    non_optionals.add(mixin)
+                    non_optionals.add(processor)
                 else:
-                    optionals.add((mixin, i))
+                    optionals.add((processor, i))
 
             for i in sorted(to_delete, reverse=True):
-                mixin, priority, optional = order[i]
+                processor, priority, optional = order[i]
                 print(
-                    f"[MIXIN][WARN] skipping mixin {mixin} with priority {priority} (optional: {optional})"
+                    f"[TRANSFORMER][WARN] skipping processor {processor} with priority {priority} (optional: {optional})"
                 )
                 del order[i]
 
-            for mixin, priority, optional in order:
+            for processor, priority, optional in order:
                 print(
-                    f"[MIXIN][WARN] applying mixin {mixin} with priority {priority} (optional: {optional})"
+                    f"[TRANSFORMER][WARN] applying processor {processor} with priority {priority} (optional: {optional})"
                 )
-                mixin.apply(self, patcher, helper)
+                processor.apply(self, patcher, helper)
 
             patcher.applyPatches()
 
@@ -139,7 +139,7 @@ class TransformationHandler:
                     helper.store()
                     helper.patcher.applyPatches()
                 except:
-                    print(f"during optimising method {method} after mixin applied")
+                    print(f"during optimising method {method} after processor applied")
                     traceback.print_exc()
 
         if self.debug_code:
@@ -175,12 +175,12 @@ class TransformationHandler:
         :param access_str: the access_str for the target
         :param constant_value: the original value
         :param new_value: the new value
-        :param priority: the mixin priority
-        :param optional: optional mixin?
-        :param fail_on_not_found: if mixin applying failed if the constant was not found in the constant table
+        :param priority: the processor priority
+        :param optional: optional processor?
+        :param fail_on_not_found: if processor applying failed if the constant was not found in the constant table
         :param matcher: a custom instruction matcher, optional, when None, matches all instructions using that constant
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 ConstantReplacer(
                     constant_value,
@@ -210,11 +210,11 @@ class TransformationHandler:
         :param access_str: the access str of the method
         :param previous_name: the global name
         :param new_name: the new global name
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 GlobalReTargetProcessor(previous_name, new_name, matcher=matcher),
                 priority,
@@ -239,11 +239,11 @@ class TransformationHandler:
         :param access_str: the access str of the method
         :param global_name: the global name
         :param new_value: the new value
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 Global2ConstReplace(global_name, new_value, matcher=matcher),
                 priority,
@@ -266,11 +266,11 @@ class TransformationHandler:
 
         :param access_str: the access str of the method
         :param global_name: the global name
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 GlobalStaticLookupProcessor(global_name, matcher=matcher),
                 priority,
@@ -297,11 +297,11 @@ class TransformationHandler:
         :param attr_name: the attr name
         :param new_value: the constant value to replace with
         :param load_from_local_hint: optional, a local name which is accessed before it
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 Attribute2ConstReplace(
                     attr_name,
@@ -335,8 +335,8 @@ class TransformationHandler:
         :param access_str: the access string for the method to mix into
         :param attr_name: the attribute name access to look for
         :param load_from_local_hint: optional, a local name which is accessed before it
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         :param args: args to add to the function
         :param collected_locals: what locals to add as args
@@ -361,11 +361,11 @@ class TransformationHandler:
         :param access_str: the method access string
         :param local_name: the local variable name
         :param constant_value: the constant value to replace with
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 Local2ConstReplace(local_name, constant_value, matcher=matcher),
                 priority,
@@ -396,8 +396,8 @@ class TransformationHandler:
             or a global function (look for LOAD_GLOBAL or similar)
         :param object_source_hint: when object bound, a local variable name where the object is stored,
             or None for any source
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: the instruction matcher object
         """
         raise NotImplementedError
@@ -411,7 +411,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     ReplacementProcessor(function),
                     priority,
@@ -436,8 +436,8 @@ class TransformationHandler:
         Can be used for e.g. parameter manipulation
 
         :param access_str: the access str for the method
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param args: args to add to the function
         :param collected_locals: what locals to add as args
         :param inline: if to inline the target method; requires collected_locals to be empty
@@ -445,7 +445,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionCallAtHeadProcessor(
                         function,
@@ -477,9 +477,9 @@ class TransformationHandler:
         Injects code at specific return statements
 
         :param access_str: the method
-        :param include_previous_mixed_ins: if return statements from other mixins should be included in the search (not implemented)
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param include_previous_mixed_ins: if return statements from other processors should be included in the search (not implemented)
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param args: the args to give to the method
         :param matcher: optional a return statement matcher
         :param collected_locals: what locals to add to the method call
@@ -491,7 +491,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionCallAtReturnProcessor(
                         function,
@@ -530,7 +530,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionCallAtReturnReplaceValueProcessor(
                         function,
@@ -565,9 +565,9 @@ class TransformationHandler:
         instruction, followed by 'args'.
 
         :param access_str: the method
-        :param include_previous_mixed_ins: if yield statements from other mixins should be included in the search (not implemented)
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param include_previous_mixed_ins: if yield statements from other processors should be included in the search (not implemented)
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param args: the args to give to the method
         :param matcher: optional a yield statement matcher
         :param collected_locals: which locals to add as args
@@ -577,7 +577,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionCallAtYieldProcessor(
                         function,
@@ -619,7 +619,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionCallAtYieldReplaceValueProcessor(
                         function,
@@ -651,8 +651,8 @@ class TransformationHandler:
         Injects code before the final return statement
 
         :param access_str: the method
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param args: the args to give to the method
         :param collected_locals: which locals to add as args
         :param add_return_value: if to add the return value at the tail as an argument or not
@@ -663,7 +663,7 @@ class TransformationHandler:
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionCallAtTailProcessor(
                         function,
@@ -707,14 +707,14 @@ class TransformationHandler:
         :param access_str: the method to inject into
         :param matcher: the instruction matcher where to inject your change function
         :param local_variables: which locals to modify
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param args: args to give the function
         :param collected_locals: what locals to also add, but not write back
         """
 
         def annotate(function):
-            self.bound_mixin_processors.setdefault(access_str, []).append(
+            self.bound_injected_processors.setdefault(access_str, []).append(
                 (
                     InjectFunctionLocalVariableModifier(
                         function,
@@ -743,11 +743,11 @@ class TransformationHandler:
         """
         Redirects a module import in an function to another module
 
-        :param access_str: the method to mixin into
+        :param access_str: the method to processor into
         :param target_module: the module to target
         :param new_module: the new module
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param matcher: optional, an import instruction matcher (only useful when multiple imports
             to the same module exist)
         """
@@ -773,8 +773,8 @@ class TransformationHandler:
         :param exception_type: the exception type
         :param start: where to start it
         :param end: where to end it
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param include_handler: when False, this is not an annotation, and the exception will be simply ignored
         :param inline_handler: when True, will inline the target method
         """
@@ -798,8 +798,8 @@ class TransformationHandler:
 
         :param access_str: the method access str
         :param exception_matcher: the raise instruction matcher, or None
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param remaining_mode: what to do with the raise instruction, can be
             "return" for returning None in any case, "return_result" for returning the result of the function,
             "yield_result" for yielding the result of the function, "yield_from_result" for yielding from
@@ -827,11 +827,11 @@ class TransformationHandler:
 
         :param access_str: the method access str
         :param matcher: the matcher object, for the conditional branch instructions
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the processor priority
+        :param optional: optional processor?
         :param target_jumped_branch: if True, the jump will be ignored, if False, the jump will always be done
         """
-        self.bound_mixin_processors.setdefault(access_str, []).append(
+        self.bound_injected_processors.setdefault(access_str, []).append(
             (
                 RemoveFlowBranchProcessor(
                     matcher,
@@ -869,8 +869,8 @@ class TransformationHandler:
             for a non-conditional branch
         :param capture_local_variables_for_condition: local variable names to send to the condition handler
         :param capture_local_variables_for_branch: local variable names to send to the branch handler
-        :param priority: the mixin priority
-        :param optional: optional mixin?
+        :param priority: the procesor priority
+        :param optional: optional processor?
         :param continue_at: where to continue execution at, either int (offset) or callable with the helper, the branch index,
             and the instruction index
         :param inline: when True, will inline the target method

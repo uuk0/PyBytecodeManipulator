@@ -30,12 +30,12 @@ def reconstruct_instruction(
     )
 
 
-def mixin_return(value=None):
+def injected_return(value=None):
     """
-    Invoke before a normal return in a mixin injected to return the method injected into
+    Invoke before a normal return in a injected code object to return the method injected into
     This method call and the return will be combined into a regular return statement
 
-    Use from <...>.MixinMethodWrapper import mixin_return outside the method in a global scope when possible,
+    Use from <...>.TransformationHelper import injected_return outside the method in a global scope when possible,
     it makes it easier to detect inside the bytecode
 
     todo: use this for real!
@@ -45,7 +45,7 @@ def mixin_return(value=None):
 def capture_local(name: str):
     """
     Captures the value from an outer local variable into this function body.
-    Use only in mixin injected (real injection) code!
+    Use only in injected (real injection) code!
 
     WARNING: when storing the result in a local variable, the name of the variable is captured
     in the whole function, meaning any read/write to this name will be redirected to the real local
@@ -425,13 +425,13 @@ class BytecodePatchHelper:
         """
         Inserts a method body at the given position
         Does some magic for linking the code
-        Use mixin_return() or capture_local() for advance control flow
+        Use injected_return() or capture_local() for advance control flow
 
         Will not modify the passed method. Will copy that object
 
         All locals not capture()-ed get a new prefix of the method name
 
-        WARNING: mixin_return() with arg the arg must be from local variable storage, as it is otherwise
+        WARNING: injected_return() with arg the arg must be from local variable storage, as it is otherwise
             hard to detect where the method came from (LOAD_GLOBAL somewhere in instruction list...)
         todo: add a better way to trace function calls
 
@@ -648,7 +648,7 @@ class BytecodePatchHelper:
 
                         if (
                             possible_load.opname in ("LOAD_GLOBAL", "LOAD_DEREF")
-                            and possible_load.argval == "mixin_return"
+                            and possible_load.argval == "injected_return"
                         ):
                             # Delete the LOAD_GLOBAL instruction
                             helper.instruction_listing[index] = createInstruction(
@@ -667,7 +667,7 @@ class BytecodePatchHelper:
 
                         if (
                             possible_load.opname == "LOAD_GLOBAL"
-                            and possible_load.argval == "mixin_return"
+                            and possible_load.argval == "injected_return"
                         ):
                             helper.instruction_listing[
                                 index - 1
@@ -736,7 +736,7 @@ class BytecodePatchHelper:
             + list(inter_code)
             + helper.instruction_listing
             + [
-                self.patcher.createLoadConst("mixin:internal"),
+                self.patcher.createLoadConst("injected:internal"),
                 createInstruction("POP_TOP"),
             ],
         )
@@ -754,7 +754,7 @@ class BytecodePatchHelper:
 
         # Find out where the old instruction ended
         for index, instr in self.walk():
-            if instr.opname == "LOAD_CONST" and instr.argval == "mixin:internal":
+            if instr.opname == "LOAD_CONST" and instr.argval == "injected:internal":
                 following = self.instruction_listing[index + 1]
                 assert following.opname == "POP_TOP"
                 self.deleteRegion(index, index + 2)
@@ -1019,7 +1019,7 @@ class BytecodePatchHelper:
                 print(i * 2, instr)
             return
 
-        print(f"MixinMethodWrapper stats around {self.patcher.target}")
+        print(f"{self.__class__.__name__} stats around {self.patcher.target}")
 
         for i, instr in self.walk():
             print(i * 2, instr)

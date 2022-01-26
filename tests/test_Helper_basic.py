@@ -21,7 +21,7 @@ class TestBasicBytecodeHelpers(TestCase):
 
         helper = BytecodePatchHelper(inject)
 
-    def test_mixin_static_method_call(self):
+    def test_processor_static_method_call(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
@@ -43,7 +43,7 @@ class TestBasicBytecodeHelpers(TestCase):
         self.assertEqual(test_space.INVOKED, count + 1)
         test_space.INVOKED = 0
 
-    def test_mixin_static_method_call_twice(self):
+    def test_processor_static_method_call_twice(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
@@ -68,7 +68,7 @@ class TestBasicBytecodeHelpers(TestCase):
         self.assertEqual(test_space.INVOKED, count + 2)
         test_space.INVOKED = 0
 
-    async def test_mixin_static_method_call_to_async(self):
+    async def test_processor_static_method_call_to_async(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
@@ -90,7 +90,7 @@ class TestBasicBytecodeHelpers(TestCase):
         self.assertEqual(test_space.INVOKED, count + 1)
         test_space.INVOKED = 0
 
-    async def test_mixin_static_method_call_to_async_twice(self):
+    async def test_processor_static_method_call_to_async_twice(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
@@ -115,7 +115,7 @@ class TestBasicBytecodeHelpers(TestCase):
         self.assertEqual(test_space.INVOKED, count + 2)
         test_space.INVOKED = 0
 
-    async def test_mixin_static_method_call_async_context(self):
+    async def test_processor_static_method_call_async_context(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
@@ -137,7 +137,7 @@ class TestBasicBytecodeHelpers(TestCase):
         self.assertEqual(test_space.INVOKED, count + 1)
         test_space.INVOKED = 0
 
-    async def test_mixin_static_method_call_async_context_twice(self):
+    async def test_processor_static_method_call_async_context_twice(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,

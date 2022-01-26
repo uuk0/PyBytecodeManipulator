@@ -99,7 +99,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
 
         patcher = MutableCodeObject(test)
-        handler.bound_mixin_processors["test"][0][0].apply(handler, patcher, None)
+        handler.bound_injected_processors["test"][0][0].apply(handler, patcher, None)
         patcher.applyPatches()
 
         self.assertEqual(test(), 1)
@@ -126,7 +126,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(await coro, 0)
 
         patcher = MutableCodeObject(test)
-        handler.bound_mixin_processors["test"][0][0].apply(handler, patcher, None)
+        handler.bound_injected_processors["test"][0][0].apply(handler, patcher, None)
         patcher.applyPatches()
 
         coro = test()
@@ -144,7 +144,7 @@ class TestBytecodeHandler(TestCase):
         )
         self.assertEqual(method, TestBytecodeHandler.test_function_lookup)
 
-    def test_mixin_override(self):
+    def test_processor_override(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -158,7 +158,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 1)
         reset_test_methods()
 
-    def test_mixin_override_twice(self):
+    def test_processor_override_twice(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -176,7 +176,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 2)
         reset_test_methods()
 
-    def test_mixin_by_name_twice_with_priority(self):
+    def test_processor_by_name_twice_with_priority(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -194,7 +194,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 1)
         reset_test_methods()
 
-    def test_mixin_by_name_twice_with_negative_priority(self):
+    def test_processor_by_name_twice_with_negative_priority(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -214,7 +214,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 1)
         reset_test_methods()
 
-    def test_mixin_by_name_twice_conflicting(self):
+    def test_processor_by_name_twice_conflicting(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -231,13 +231,13 @@ class TestBytecodeHandler(TestCase):
 
         self.assertEqual(test(), 0)
 
-        # This should crash as the second mixin must be applied, but the first one should be applied on top
+        # This should crash as the second processor must be applied, but the first one should be applied on top
         # todo: can we do some resolving here, and only apply the second one?
         self.assertRaises(RuntimeError, handler.applyTransforms)
 
         reset_test_methods()
 
-    def test_mixin_by_name_twice_non_conflicting_order(self):
+    def test_processor_by_name_twice_non_conflicting_order(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -254,13 +254,13 @@ class TestBytecodeHandler(TestCase):
 
         self.assertEqual(test(), 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overiding it
+        # Will apply the later processor first, as it is optional, and as such can break when overiding it
         handler.applyTransforms()
 
         self.assertEqual(test(), 1)
         reset_test_methods()
 
-    def test_mixin_by_name_twice_conflicting_order(self):
+    def test_processor_by_name_twice_conflicting_order(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -279,7 +279,7 @@ class TestBytecodeHandler(TestCase):
 
         self.assertEqual(test(), 0)
 
-        # Conflicts, as two breaking mixins non-optional cannot co-exist
+        # Conflicts, as two breaking processors non-optional cannot co-exist
         self.assertRaises(RuntimeError, handler.applyTransforms)
 
         reset_test_methods()
@@ -526,7 +526,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 1)
         reset_test_methods()
 
-    def test_mixin_inject_at_head_1(self):
+    def test_processor_inject_at_head_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -544,14 +544,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 3)
         reset_test_methods()
 
-    def test_mixin_inject_at_head_2(self):
+    def test_processor_inject_at_head_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -576,14 +576,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 8)
         reset_test_methods()
 
-    def test_mixin_inject_at_head_inline_1(self):
+    def test_processor_inject_at_head_inline_1(self):
         def target(a=3):
             return a
 
@@ -606,7 +606,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(), 3)
         self.assertEqual(INVOKED, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         # dis.dis(target)
@@ -616,7 +616,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 3)
         INVOKED = 0
 
-    def test_mixin_inject_at_return_1(self):
+    def test_processor_inject_at_return_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -634,14 +634,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 3)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_2(self):
+    def test_processor_inject_at_return_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -666,14 +666,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(test(), 0)
         self.assertEqual(invoked, 11)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_3(self):
+    def test_processor_inject_at_return_3(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -691,14 +691,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test3(2), 2)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(test3(3), 3)
         self.assertEqual(invoked, 6)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_4(self):
+    def test_processor_inject_at_return_4(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -723,14 +723,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test3(4), 4)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(test3(4), 4)
         self.assertEqual(invoked, 8)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_5(self):
+    def test_processor_inject_at_return_5(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         def target():
@@ -751,14 +751,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(), 4)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(), 4)
         self.assertEqual(invoked, 4)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_inline_1(self):
+    def test_processor_inject_at_return_inline_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -777,7 +777,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(test(), 0)
         self.assertEqual(INVOKED, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         INVOKED = 0
@@ -785,7 +785,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(INVOKED, 3)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_value_1(self):
+    def test_processor_inject_at_return_value_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -807,14 +807,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(), 2)
         self.assertEqual(invoked, 3)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_value_2(self):
+    def test_processor_inject_at_return_value_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -842,14 +842,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(), 12)
         self.assertEqual(invoked, 11)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_value_3(self):
+    def test_processor_inject_at_return_value_3(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -873,14 +873,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(2), 2)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(3), 1)
         self.assertEqual(invoked, 6)
         reset_test_methods()
 
-    def test_mixin_inject_at_return_value_4(self):
+    def test_processor_inject_at_return_value_4(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -912,14 +912,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(4), 4)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(4), -1)
         self.assertEqual(invoked, 8)
         reset_test_methods()
 
-    def test_mixin_inject_at_yield_1(self):
+    def test_processor_inject_at_yield_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -938,13 +938,13 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 3)
 
-    def test_mixin_inject_at_yield_2(self):
+    def test_processor_inject_at_yield_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -968,13 +968,13 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 11)
 
-    def test_mixin_inject_at_yield_3(self):
+    def test_processor_inject_at_yield_3(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -993,13 +993,13 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target(2)), 2)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target(4)), 4)
         self.assertEqual(invoked, 33)
 
-    def test_mixin_inject_at_yield_4(self):
+    def test_processor_inject_at_yield_4(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -1023,13 +1023,13 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target(4)), 4)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target(4)), 4)
         self.assertEqual(invoked, 11)
 
-    def test_mixin_inject_at_yield_5(self):
+    def test_processor_inject_at_yield_5(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         def target():
@@ -1047,7 +1047,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target()), 3)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         # dis.dis(target)
@@ -1055,7 +1055,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target()), 3)
         self.assertEqual(invoked, 3)
 
-    def test_mixin_inject_at_yield_6(self):
+    def test_processor_inject_at_yield_6(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         def target(c):
@@ -1073,13 +1073,13 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target(100)), 100)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target(20)), 20)
         self.assertEqual(invoked, 5)
 
-    def test_mixin_inject_at_yield_inline_1(self):
+    def test_processor_inject_at_yield_inline_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -1096,14 +1096,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(test2()), 0)
         self.assertEqual(INVOKED, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(test2()), 0)
         self.assertEqual(INVOKED, 4)
         reset_test_methods()
 
-    def test_mixin_inject_at_yield_value_1(self):
+    def test_processor_inject_at_yield_value_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         handler = TransformationHandler()
@@ -1123,13 +1123,13 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target()), 2)
         self.assertEqual(invoked, 3)
 
-    def test_mixin_inject_at_yield_value_2(self):
+    def test_processor_inject_at_yield_value_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -1157,14 +1157,14 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(next(target()), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(next(target()), 2)
         self.assertEqual(invoked, 11)
         reset_test_methods()
 
-    def test_mixin_inject_at_tail_1(self):
+    def test_processor_inject_at_tail_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         def target(flag):
@@ -1187,7 +1187,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(True), 0)
         self.assertEqual(invoked, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(True), 0)
@@ -1195,7 +1195,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(False), 1)
         self.assertEqual(invoked, 1)
 
-    def test_mixin_inject_at_tail_inline_1(self):
+    def test_processor_inject_at_tail_inline_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         def target(flag):
@@ -1219,7 +1219,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(True), 0)
         self.assertEqual(INVOKED, 0)
 
-        # Will apply the later mixin first, as it is optional, and as such can break when overriding it
+        # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
         self.assertEqual(target(True), 0)
@@ -1227,7 +1227,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(target(False), 1)
         self.assertEqual(INVOKED, 4)
 
-    def test_mixin_given_method_call_inject_1(self):
+    def test_processor_given_method_call_inject_1(self):
         from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         INVOKED = 0
@@ -1247,7 +1247,7 @@ class TestBytecodeHandler(TestCase):
         localtest()
         self.assertEqual(INVOKED, 1)
 
-    def test_mixin_given_method_call_inject_2(self):
+    def test_processor_given_method_call_inject_2(self):
         from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         INVOKED = 0
@@ -1267,7 +1267,7 @@ class TestBytecodeHandler(TestCase):
         localtest()
         self.assertEqual(INVOKED, 4)
 
-    def test_mixin_given_method_call_inject_3(self):
+    def test_processor_given_method_call_inject_3(self):
         from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         INVOKED = 0
