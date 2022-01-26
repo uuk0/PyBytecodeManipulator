@@ -179,7 +179,7 @@ class BytecodePatchHelper:
 
         self.is_verbose = False
 
-    def enable_verbose_exceptions(self, force=False):
+    def enable_verbose_exceptions(self, force=False, verbose_internal_calls=False):
         """
         Helper method for enabling a bytecode emulator on the object;
         Helps when debugging issues, as error messages get more verbose
@@ -188,6 +188,11 @@ class BytecodePatchHelper:
         Will rebind this transformation helper to a new MutableCodeObject instance
         representing the internal method, the one which is going to be debugged, not the
         wrapper code for debugging.
+
+        WARNING: the underlying emulator does currently not support all instructions
+
+        :param force: if to force such a wrapping, even if there is currently one
+        :param verbose_internal_calls: if calls in the code to other methods should also be verbose-ed
         """
 
         if self.is_verbose and not force: return
@@ -196,14 +201,18 @@ class BytecodePatchHelper:
         self.store()
         internal = self.patcher.create_method_from()
 
+        # test and test2 are only placeholder constants later replaced by the real values via
+        # bytecode manipulation; this removes the need of cellvars/freevars
+
         def invoke(*args, **kwargs):
             from bytecodemanipulation.Emulator import CURRENT
-            return CURRENT.execute("test", *args, **kwargs)
+            return CURRENT.execute("test", *args, invoke_subcalls_via_emulator="test2", **kwargs)
 
         patcher = MutableCodeObject(invoke)
 
         # bind the code object as a constant
         patcher.constants[patcher.constants.index("test")] = internal
+        patcher.constants[patcher.constants.index("test2")] = verbose_internal_calls
 
         patcher.free_vars = self.patcher.free_vars
         patcher.cell_vars = self.patcher.cell_vars

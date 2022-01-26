@@ -308,6 +308,7 @@ class OpcodeForIter(AbstractInstructionExecutor):
 
 
 @register_opcode("JUMP_ABSOLUTE")
+@register_opcode("JUMP_NO_INTERRUPT", (3, 11))
 class OpcodeJumpAbsolute(AbstractInstructionExecutor):
     @classmethod
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
@@ -335,6 +336,46 @@ class OpcodeBinaryOp(AbstractInstructionExecutor):
         if op == "-=":
             a, b = env.pop(2)
             env.push(b-a)
+            return
+
+        if op == "*=":
+            a, b = env.pop(2)
+            env.push(b*a)
+            return
+
+        if op == "/=":
+            a, b = env.pop(2)
+            env.push(b/a)
+            return
+
+        if op == "//=":
+            a, b = env.pop(2)
+            env.push(b//a)
+            return
+
+        if op == "%=":
+            a, b = env.pop(2)
+            env.push(b%a)
+            return
+
+        if op == "&=":
+            a, b = env.pop(2)
+            env.push(b&a)
+            return
+
+        if op == "|=":
+            a, b = env.pop(2)
+            env.push(b|a)
+            return
+
+        if op == "^=":
+            a, b = env.pop(2)
+            env.push(b^a)
+            return
+
+        if op == "@=":
+            a, b = env.pop(2)
+            env.push(b@a)
             return
 
         raise NotImplementedError(instr, op)
