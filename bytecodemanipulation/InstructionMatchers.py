@@ -1,4 +1,5 @@
 # todo: implement more matchers
+import dis
 import typing
 
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
@@ -163,3 +164,12 @@ class CounterMatcher(AbstractInstructionMatcher):
 
     def matches(self, function: BytecodePatchHelper, index: int, match_count: int) -> bool:
         return self.count_start <= match_count <= self.count_end
+
+
+class MetaArgMatcher(AbstractInstructionMatcher):
+    def __init__(self, inner_matcher: typing.Callable[[BytecodePatchHelper, typing.Any], bool]):
+        self.inner_matcher = inner_matcher
+
+    def matches(self, function: BytecodePatchHelper, index: int, match_count: int) -> bool:
+        value = function.instruction_listing[index].argval
+        return self.inner_matcher(function, value)

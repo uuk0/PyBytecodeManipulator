@@ -782,7 +782,14 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
 
 
 class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
-    def __init__(self, global_name: str, matcher: AbstractInstructionMatcher = None):
+    """
+    Processor for transforming LOAD_GLOBAL instructions
+    into LOAD_CONST instructions
+
+    todo: add a way to do custom data lookups
+    """
+
+    def __init__(self, global_name: str = None, matcher: AbstractInstructionMatcher = None):
         self.global_name = global_name
         self.matcher = matcher
 
@@ -794,7 +801,7 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
     ):
         matches = 0
         for index, instr in helper.walk():
-            if instr.opcode == Opcodes.LOAD_GLOBAL and instr.argval == self.global_name:
+            if instr.opcode == Opcodes.LOAD_GLOBAL and (self.global_name is None or instr.argval == self.global_name):
                 matches += 1
                 if self.matcher is not None and not self.matcher.matches(helper, index, matches):
                     continue
@@ -808,4 +815,6 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
                         value = eval(instr.argval)
 
                 helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+
+        helper.store()
 

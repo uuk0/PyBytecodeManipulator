@@ -1,3 +1,4 @@
+import builtins
 import importlib
 import typing
 
@@ -8,6 +9,12 @@ from bytecodemanipulation.BytecodeProcessors import (
     AbstractBytecodeProcessor,
     MethodInlineProcessor,
 )
+from .BytecodeProcessors import GlobalStaticLookupProcessor
+from .InstructionMatchers import MetaArgMatcher
+
+
+def _is_builtin_name(_, name: str):
+    return hasattr(builtins, name)
 
 
 class _OptimiserContainer:
@@ -31,6 +38,7 @@ class _OptimiserContainer:
                 helper.re_eval_instructions()
 
             helper.store()
+            helper.patcher.applyPatches()
 
             CodeOptimiser.optimise_code(helper)
 
@@ -55,6 +63,7 @@ def _schedule_optimisation(
 def run_optimisations():
     for instance in _OptimiserContainer.CONTAINERS:
         instance.optimise_target()
+    _OptimiserContainer.CONTAINERS.clear()
 
 
 def builtins_are_static():
@@ -65,7 +74,7 @@ def builtins_are_static():
 
     def annotation(target: typing.Callable):
         optimiser = _schedule_optimisation(target)
-        # optimiser.code_walkers.append()
+        optimiser.code_walkers.append(GlobalStaticLookupProcessor(matcher=MetaArgMatcher(_is_builtin_name)))
         return target
 
     return annotation
