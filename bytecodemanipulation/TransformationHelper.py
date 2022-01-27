@@ -946,7 +946,6 @@ class BytecodePatchHelper:
 
         WARNING: due to the need of a dynamic import instruction, the method to inject into cannot lie in the same
             package as the method call to inject
-        todo: add option to load the method beforehand and inject as constant
         """
 
         if not self.is_async:
