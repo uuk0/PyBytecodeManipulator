@@ -890,35 +890,39 @@ class BytecodePatchHelper:
         )
         return self
 
-    def insertStaticMethodCallAt(self, offset: int, method: str, *args):
+    def insertStaticMethodCallAt(self, offset: int, method: typing.Union[str, typing.Callable], *args):
         """
         Injects a static method call into another method
         :param offset: the offset to inject at, from function head
-        :param method: the method address to inject, by module:path
+        :param method: the method address to inject, by module:path, or the method itself
         :param args: the args to invoke with
 
         WARNING: due to the need of a dynamic import instruction, the method to inject into cannot lie in the same
             package as the method call to inject
-        todo: add option to load the method beforehand and inject as constant
         """
 
-        module, path = method.split(":")
-        real_name = path.split(".")[-1]
+        if isinstance(method, str):
+            module, path = method.split(":")
+            real_name = path.split(".")[-1]
 
-        if path.count(".") > 0:
-            real_module = module + "." + ".".join(path.split(".")[:-1])
+            if path.count(".") > 0:
+                real_module = module + "." + ".".join(path.split(".")[:-1])
+            else:
+                real_module = module
+
+            instructions = [
+                self.patcher.createLoadConst(0),
+                self.patcher.createLoadConst((real_name,)),
+                createInstruction("IMPORT_NAME", self.patcher.ensureName(real_module)),
+                createInstruction("IMPORT_FROM", self.patcher.ensureName(real_name)),
+                self.patcher.createStoreFast(real_module),
+                createInstruction("POP_TOP"),
+                self.patcher.createLoadFast(real_module),
+            ]
         else:
-            real_module = module
-
-        instructions = [
-            self.patcher.createLoadConst(0),
-            self.patcher.createLoadConst((real_name,)),
-            createInstruction("IMPORT_NAME", self.patcher.ensureName(real_module)),
-            createInstruction("IMPORT_FROM", self.patcher.ensureName(real_name)),
-            self.patcher.createStoreFast(real_module),
-            createInstruction("POP_TOP"),
-            self.patcher.createLoadFast(real_module),
-        ]
+            instructions = [
+                self.patcher.createLoadConst(method)
+            ]
 
         instructions += [self.patcher.createLoadConst(e) for e in args]
 
@@ -941,7 +945,7 @@ class BytecodePatchHelper:
         """
         Injects a static method call to an async method into another method
         :param offset: the offset to inject at, from function head
-        :param method: the method address to inject, by module:path
+        :param method: the method address to inject, by module:path, or the method instance itself
         :param args: the args to invoke with
 
         WARNING: due to the need of a dynamic import instruction, the method to inject into cannot lie in the same
