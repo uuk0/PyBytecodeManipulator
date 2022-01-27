@@ -43,6 +43,11 @@ There is the possibility to "debug" functions using the execution emulator.
 It will be able to give you more information about a crash than the python core interpreter,
 but will be a lot slower than it. 
 
+It comes also with the possibility to run your bytecode in another interpreter version, so 
+you can experiment with some stuff.
+In theory, it is also possible to run in python versions not supported by the 
+bytecode manipulation system, but it is not recommended.
+
 TransformationHandler() takes as an arg debug_code and debug_further_calls
 for activating it for all accessed methods. 
 
