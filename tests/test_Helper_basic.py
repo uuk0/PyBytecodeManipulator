@@ -1,5 +1,7 @@
+import asyncio
 import dis
 import typing
+import warnings
 
 from bytecodemanipulation.TransformationHelper import capture_local
 from bytecodemanipulation.util import Opcodes
@@ -10,6 +12,16 @@ INVOKED = 0
 
 
 class TestBasicBytecodeHelpers(TestCase):
+    def _callTestMethod(self, method):
+        result = method()
+
+        if isinstance(result, typing.Awaitable):
+            result = asyncio.get_event_loop().run_until_complete(result)
+
+        if result is not None:
+            warnings.warn(f'It is deprecated to return a value!=None from a '
+                          f'test case ({method})', DeprecationWarning, stacklevel=3)
+
     def test_special_method_1(self):
         from bytecodemanipulation.TransformationHelper import (
             BytecodePatchHelper,
@@ -74,21 +86,23 @@ class TestBasicBytecodeHelpers(TestCase):
             BytecodePatchHelper,
         )
 
+        invoked = 0
+
         async def localtest():
             return 0
 
+        async def inject():
+            nonlocal invoked
+            invoked += 1
+
         patcher = MutableCodeObject(localtest)
         helper = BytecodePatchHelper(patcher)
-        helper.insertAsyncStaticMethodCallAt(
-            0, "tests.test_space:test_for_invoke_async"
-        )
+        helper.insertAsyncStaticMethodCallAt(0, inject)
         helper.store()
         patcher.applyPatches()
 
-        count = test_space.INVOKED
         self.assertEqual(await localtest(), 0)
-        self.assertEqual(test_space.INVOKED, count + 1)
-        test_space.INVOKED = 0
+        self.assertEqual(invoked, 1)
 
     async def test_processor_static_method_call_to_async_twice(self):
         from bytecodemanipulation.TransformationHelper import (
@@ -96,24 +110,24 @@ class TestBasicBytecodeHelpers(TestCase):
             BytecodePatchHelper,
         )
 
+        invoked = 0
+
         async def localtest():
             return 0
 
+        async def inject():
+            nonlocal invoked
+            invoked += 1
+
         patcher = MutableCodeObject(localtest)
         helper = BytecodePatchHelper(patcher)
-        helper.insertAsyncStaticMethodCallAt(
-            0, "tests.test_space:test_for_invoke_async"
-        )
-        helper.insertAsyncStaticMethodCallAt(
-            0, "tests.test_space:test_for_invoke_async"
-        )
+        helper.insertAsyncStaticMethodCallAt(0, inject)
+        helper.insertAsyncStaticMethodCallAt(0, inject)
         helper.store()
         patcher.applyPatches()
 
-        count = test_space.INVOKED
         self.assertEqual(await localtest(), 0)
-        self.assertEqual(test_space.INVOKED, count + 2)
-        test_space.INVOKED = 0
+        self.assertEqual(invoked, 2)
 
     async def test_processor_static_method_call_async_context(self):
         from bytecodemanipulation.TransformationHelper import (

@@ -1,6 +1,8 @@
+import asyncio
 import dis
 import sys
 import typing
+import warnings
 
 from bytecodemanipulation.InstructionMatchers import CounterMatcher
 from unittest import TestCase
@@ -81,6 +83,16 @@ def reset_test_methods():
 
 
 class TestBytecodeHandler(TestCase):
+    def _callTestMethod(self, method):
+        result = method()
+
+        if isinstance(result, typing.Awaitable):
+            result = asyncio.get_event_loop().run_until_complete(result)
+
+        if result is not None:
+            warnings.warn(f'It is deprecated to return a value!=None from a '
+                          f'test case ({method})', DeprecationWarning, stacklevel=3)
+
     def test_replace_function_body(self):
         from bytecodemanipulation.Transformers import TransformationHandler
         from bytecodemanipulation.MutableCodeObject import MutableCodeObject

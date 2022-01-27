@@ -937,7 +937,7 @@ class BytecodePatchHelper:
         )
         return self
 
-    def insertAsyncStaticMethodCallAt(self, offset: int, method: str, *args):
+    def insertAsyncStaticMethodCallAt(self, offset: int, method: typing.Union[str, typing.Callable], *args):
         """
         Injects a static method call to an async method into another method
         :param offset: the offset to inject at, from function head
@@ -954,37 +954,51 @@ class BytecodePatchHelper:
                 "cannot insert async method call when surrounding method is not async"
             )
 
-        module, path = method.split(":")
-        real_name = path.split(".")[-1]
+        if isinstance(method, str):
+            module, path = method.split(":")
+            real_name = path.split(".")[-1]
 
-        if path.count(".") > 0:
-            real_module = module + "." + ".".join(path.split(".")[:-1])
+            if path.count(".") > 0:
+                real_module = module + "." + ".".join(path.split(".")[:-1])
+            else:
+                real_module = module
+
+            instructions = [
+                self.patcher.createLoadConst(0),
+                self.patcher.createLoadConst((real_name,)),
+                createInstruction("IMPORT_NAME", self.patcher.ensureName(real_module)),
+                createInstruction("IMPORT_FROM", self.patcher.ensureName(real_name)),
+                self.patcher.createStoreFast(real_module),
+                createInstruction("POP_TOP"),
+                self.patcher.createLoadFast(real_module),
+            ]
         else:
-            real_module = module
-
-        instructions = [
-            self.patcher.createLoadConst(0),
-            self.patcher.createLoadConst((real_name,)),
-            createInstruction("IMPORT_NAME", self.patcher.ensureName(real_module)),
-            createInstruction("IMPORT_FROM", self.patcher.ensureName(real_name)),
-            self.patcher.createStoreFast(real_module),
-            createInstruction("POP_TOP"),
-            self.patcher.createLoadFast(real_module),
-        ]
+            instructions = [
+                self.patcher.createLoadConst(method),
+            ]
 
         instructions += [self.patcher.createLoadConst(e) for e in args]
+        instructions += [createInstruction(self.CALL_FUNCTION_NAME, len(args))]
 
-        instructions += [
-            createInstruction(self.CALL_FUNCTION_NAME, len(args)),
-            createInstruction("GET_AWAITABLE"),
-            self.patcher.createLoadConst(None),
-            createInstruction("YIELD_FROM"),
-            createInstruction("POP_TOP"),
-        ]
+        # Ok, at this point on the stack top is the awaitable object
+        if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+            instructions += [
+                createInstruction("GET_AWAITABLE"),
+                self.patcher.createLoadConst(None),
+                createInstruction("YIELD_FROM"),
+                createInstruction("POP_TOP"),
+            ]
+        else:
+            instructions += [
+                createInstruction("GET_AWAITABLE"),
+                self.patcher.createLoadConst(None),
+                createInstruction("SEND", 2),
+                createInstruction("RESUME", 3),
+                createInstruction("JUMP_ABSOLUTE", offset + len(instructions) + 3),  # JUMP to SEND
+                createInstruction("POP_TOP"),
+            ]
 
         self.patcher.max_stack_size += max(2, len(args))
-        self.patcher.number_of_locals += 1
-        self.patcher.variable_names.append(real_name)
 
         self.insertRegion(
             offset,
