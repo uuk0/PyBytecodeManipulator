@@ -1031,6 +1031,7 @@ class BytecodePatchHelper:
         :param method_instance: optional, the method instance; takes priority over the method name
 
         todo: add possibility for kwargs
+        todo: add async variant
         """
         if name is None and method_instance is None:
             raise ValueError("either the method name or the method instance must be set")
@@ -1086,24 +1087,6 @@ class BytecodePatchHelper:
                 ]
 
         self.insertRegion(index, instructions)
-
-    @staticmethod
-    def prepare_method_for_insert(method: MutableCodeObject) -> MutableCodeObject:
-        """
-        Prepares a FunctionPatcher for being inserted into another method
-        Does the stuff around the control flow control methods
-        Will work on a copy of the method, not the method itself
-        """
-        breakpoint()
-        method = method.copy()
-
-        i = 0
-        helper = BytecodePatchHelper(method)
-
-        while i < len(helper.instruction_listing):
-            instr = helper.instruction_listing[i]
-
-        return method
 
     def print_stats(self):
         try:

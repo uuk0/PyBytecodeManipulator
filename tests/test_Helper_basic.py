@@ -207,14 +207,11 @@ class TestBasicBytecodeHelpers(TestCase):
 
             def hit(self):
                 self.HIT = True
-                print("Hello World")
 
         helper = BytecodePatchHelper(Test.target)
         helper.insertObjectBoundMethodCall(0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1, "hit")
         helper.store()
         helper.patcher.applyPatches()
-
-        dis.dis(Test.target)
 
         obj = Test()
         obj.target()
@@ -235,8 +232,6 @@ class TestBasicBytecodeHelpers(TestCase):
         helper.insertObjectBoundMethodCall(0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1, "hit", method_instance=Test.hit)
         helper.store()
         helper.patcher.applyPatches()
-
-        dis.dis(Test.target)
 
         obj = Test()
         obj.target()

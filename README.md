@@ -25,11 +25,15 @@ them together with this library!
 
 ## Why are there so many print()-s?
 
-Due to the breaking nature of anything this touches, and the absents of traces 
-at the function itself, we decided to add a lot of "debug" statements indicating 
+Due to the breaking nature of anything this code touches, and the absents of any traces 
+in the function itself, we decided to add a lot of "debug" statements indicating 
 mostly the who-has-done-what-to-which-method for the runtime. 
+This makes debugging broken code easier, as it is more clear what happened to each transformed function.
 
-If you want them removed, create your own Fork of this and remove them, on your own risk
+If you want them removed, create your own Fork of this and remove them, on your own risk.
+
+We may use in the future the logging library, so you can disable our logger instance, but we 
+are currently in an inter-stage of the code, so other stuff has priority.
 
 ## Compatibility with other libraries 
 
@@ -57,7 +61,7 @@ that exact method.
 
 # Examples
 
-Replacing a code constant (globally):
+Replacing a code constant (in the whole function body):
 ```python
 from bytecodemanipulation.Transformers import TransformationHandler
 
