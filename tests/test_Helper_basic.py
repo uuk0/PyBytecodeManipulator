@@ -1,8 +1,10 @@
 import asyncio
 import dis
+import sys
 import typing
 import warnings
 
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.TransformationHelper import capture_local
 from bytecodemanipulation.util import Opcodes
 from unittest import TestCase
@@ -195,3 +197,47 @@ class TestBasicBytecodeHelpers(TestCase):
         )
 
         self.assertEqual(helper.instruction_listing[1].opname, "YIELD_VALUE")
+
+    def test_objectbound_call_1(self):
+        class Test:
+            HIT = False
+
+            def target(self):
+                self.HIT = self.HIT
+
+            def hit(self):
+                self.HIT = True
+                print("Hello World")
+
+        helper = BytecodePatchHelper(Test.target)
+        helper.insertObjectBoundMethodCall(0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1, "hit")
+        helper.store()
+        helper.patcher.applyPatches()
+
+        dis.dis(Test.target)
+
+        obj = Test()
+        obj.target()
+        self.assertTrue(obj.HIT)
+
+    def test_objectbound_call_static_1(self):
+        class Test:
+            HIT = False
+
+            def target(self):
+                self.HIT = self.HIT
+
+            def hit(self):
+                self.HIT = True
+                print("Hello World")
+
+        helper = BytecodePatchHelper(Test.target)
+        helper.insertObjectBoundMethodCall(0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1, "hit", method_instance=Test.hit)
+        helper.store()
+        helper.patcher.applyPatches()
+
+        dis.dis(Test.target)
+
+        obj = Test()
+        obj.target()
+        self.assertTrue(obj.HIT)

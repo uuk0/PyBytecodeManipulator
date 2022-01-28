@@ -1009,6 +1009,84 @@ class BytecodePatchHelper:
         )
         return self
 
+    def insertObjectBoundMethodCall(
+        self,
+        index: int,
+        name: str,
+        object_local_index: typing.Union[str, int] = "self",
+        take_from_stack_top=False,
+        args=tuple(),
+        add_args_from_locals: typing.Tuple[str] = tuple(),
+        method_instance=None,
+    ):
+        """
+        Inserts an object bound method call
+
+        :param index: where to insert the method call
+        :param name: the method name; can be None when method_accessor is not None
+        :param object_local_index: where the object is from
+        :param take_from_stack_top: if the object is the stack top
+        :param args: the args to give the function
+        :param add_args_from_locals: what locals to add as args
+        :param method_instance: optional, the method instance; takes priority over the method name
+
+        todo: add possibility for kwargs
+        """
+        if name is None and method_instance is None:
+            raise ValueError("either the method name or the method instance must be set")
+
+        if isinstance(object_local_index, str) and method_instance is None:
+            object_local_index = self.patcher.ensureVarName(object_local_index)
+
+        arg_count = len(args) + len(add_args_from_locals)
+
+        if method_instance is None:
+            instructions = [
+                createInstruction("LOAD_FAST", object_local_index),
+                createInstruction("LOAD_METHOD", self.patcher.ensureName(name)),
+            ]
+        else:
+            instructions = [
+                self.patcher.createLoadConst(method_instance),
+                self.patcher.createLoadFast(object_local_index) if not take_from_stack_top else createInstruction("DUP_TOP"),
+            ]
+            arg_count += 1
+
+        instructions += [
+            self.patcher.createLoadFast(e)
+            for e in reversed(add_args_from_locals)
+        ]
+
+        instructions += [
+            self.patcher.createLoadConst(e)
+            for e in reversed(args)
+        ]
+
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+            if method_instance is None:
+                instructions += [
+                    createInstruction("PRECALL_METHOD", arg_count),
+                ]
+
+            instructions += [
+                createInstruction("CALL_NO_KW", arg_count),
+                createInstruction("POP_TOP"),
+            ]
+        else:
+            if method_instance is None:
+                instructions += [
+                    createInstruction("CALL_METHOD", arg_count),
+                    createInstruction("POP_TOP"),
+                ]
+
+            else:
+                instructions += [
+                    createInstruction("CALL_FUNCTION", arg_count),
+                    createInstruction("POP_TOP"),
+                ]
+
+        self.insertRegion(index, instructions)
+
     @staticmethod
     def prepare_method_for_insert(method: MutableCodeObject) -> MutableCodeObject:
         """

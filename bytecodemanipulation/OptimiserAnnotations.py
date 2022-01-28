@@ -143,6 +143,24 @@ def builtins_are_static():
     return annotation
 
 
+def object_method_is_protected(name: str, accessor: typing.Callable[[], typing.Callable], matcher: AbstractInstructionMatcher = None):
+    """
+    Marks that a certain function on an object is known at optimiser time
+    Useful when using protected classes / objects, or builtins like lists, dicts, ...
+
+    The optimiser is allowed to add this to calls not marked as they are here
+
+    todo: implement
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
+        # optimiser.code_walkers.append(StaticMethodLookup(name, accessor(), matcher=matcher))
+        return target
+
+    return annotation
+
+
 def constant_global():
     """
     Marks the method as mutating only the internal state of the class / object, no global
