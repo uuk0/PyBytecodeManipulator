@@ -12,7 +12,9 @@ from unittest import TestCase
 
 
 class TestPostInjectionOptimiser(TestCase):
-    @unittest.skipUnless(sys.version_info.major <= 3 and sys.version_info.minor < 11, "until python 3.11")
+    @unittest.skipUnless(
+        sys.version_info.major <= 3 and sys.version_info.minor < 11, "until python 3.11"
+    )
     def test_optimiser_1(self):
         def test():
             a = 0
@@ -28,7 +30,9 @@ class TestPostInjectionOptimiser(TestCase):
         # Integrity check of the bytecode
         self.assertEqual(test(), None)
 
-    @unittest.skipUnless(sys.version_info.major <= 3 and sys.version_info.minor < 11, "until python 3.11")
+    @unittest.skipUnless(
+        sys.version_info.major <= 3 and sys.version_info.minor < 11, "until python 3.11"
+    )
     def test_basic(self):
         invoked = 0
 

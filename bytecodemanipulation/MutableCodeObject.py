@@ -179,6 +179,7 @@ class MutableCodeObject:
         raise RuntimeError()
 
     if sys.version_info.minor <= 10:
+
         def create_method_from(self):
             return FunctionType(
                 CodeType(
@@ -203,6 +204,7 @@ class MutableCodeObject:
             )
 
     elif sys.version_info.minor == 11:
+
         def create_method_from(self):
             return FunctionType(
                 CodeType(
@@ -285,18 +287,22 @@ class MutableCodeObject:
         raise IndexError(index)
 
     if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
+
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
-            data = list(dis._get_instructions_bytes(
-                self.code_string,
-                self.get_name_by_index,
-                self.names,
-                self.constants,
-                None,
-                None,
-            ))
+            data = list(
+                dis._get_instructions_bytes(
+                    self.code_string,
+                    self.get_name_by_index,
+                    self.names,
+                    self.constants,
+                    None,
+                    None,
+                )
+            )
             return data
 
     else:
+
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
             return dis._get_instructions_bytes(
                 self.code_string,

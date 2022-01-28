@@ -195,7 +195,8 @@ class BytecodePatchHelper:
         :param verbose_internal_calls: if calls in the code to other methods should also be verbose-ed
         """
 
-        if self.is_verbose and not force: return
+        if self.is_verbose and not force:
+            return
         self.is_verbose = True
 
         self.store()
@@ -206,7 +207,10 @@ class BytecodePatchHelper:
 
         def invoke(*args, **kwargs):
             from bytecodemanipulation.Emulator import CURRENT
-            return CURRENT.execute("test", *args, invoke_subcalls_via_emulator="test2", **kwargs)
+
+            return CURRENT.execute(
+                "test", *args, invoke_subcalls_via_emulator="test2", **kwargs
+            )
 
         patcher = MutableCodeObject(invoke)
 
@@ -496,7 +500,6 @@ class BytecodePatchHelper:
                         0,
                         [instr],
                     )
-
 
         captured = {}
         captured_indices = set()
@@ -796,7 +799,16 @@ class BytecodePatchHelper:
         """
         offset = 0
         for index in sorted(start):
-            offset += self.insertMethodAt(index+offset, method, added_args=added_args, discard_return_result=discard_return_result, inter_code=inter_code) - index
+            offset += (
+                self.insertMethodAt(
+                    index + offset,
+                    method,
+                    added_args=added_args,
+                    discard_return_result=discard_return_result,
+                    inter_code=inter_code,
+                )
+                - index
+            )
         return self
 
     def makeMethodAsync(self):
@@ -890,7 +902,9 @@ class BytecodePatchHelper:
         )
         return self
 
-    def insertStaticMethodCallAt(self, offset: int, method: typing.Union[str, typing.Callable], *args):
+    def insertStaticMethodCallAt(
+        self, offset: int, method: typing.Union[str, typing.Callable], *args
+    ):
         """
         Injects a static method call into another method
         :param offset: the offset to inject at, from function head
@@ -920,9 +934,7 @@ class BytecodePatchHelper:
                 self.patcher.createLoadFast(real_module),
             ]
         else:
-            instructions = [
-                self.patcher.createLoadConst(method)
-            ]
+            instructions = [self.patcher.createLoadConst(method)]
 
         instructions += [self.patcher.createLoadConst(e) for e in args]
 
@@ -941,7 +953,9 @@ class BytecodePatchHelper:
         )
         return self
 
-    def insertAsyncStaticMethodCallAt(self, offset: int, method: typing.Union[str, typing.Callable], *args):
+    def insertAsyncStaticMethodCallAt(
+        self, offset: int, method: typing.Union[str, typing.Callable], *args
+    ):
         """
         Injects a static method call to an async method into another method
         :param offset: the offset to inject at, from function head
@@ -997,7 +1011,9 @@ class BytecodePatchHelper:
                 self.patcher.createLoadConst(None),
                 createInstruction("SEND", 2),
                 createInstruction("RESUME", 3),
-                createInstruction("JUMP_ABSOLUTE", offset + len(instructions) + 3),  # JUMP to SEND
+                createInstruction(
+                    "JUMP_ABSOLUTE", offset + len(instructions) + 3
+                ),  # JUMP to SEND
                 createInstruction("POP_TOP"),
             ]
 
@@ -1034,7 +1050,9 @@ class BytecodePatchHelper:
         todo: add async variant
         """
         if name is None and method_instance is None:
-            raise ValueError("either the method name or the method instance must be set")
+            raise ValueError(
+                "either the method name or the method instance must be set"
+            )
 
         if isinstance(object_local_index, str) and method_instance is None:
             object_local_index = self.patcher.ensureVarName(object_local_index)
@@ -1049,19 +1067,17 @@ class BytecodePatchHelper:
         else:
             instructions = [
                 self.patcher.createLoadConst(method_instance),
-                self.patcher.createLoadFast(object_local_index) if not take_from_stack_top else createInstruction("DUP_TOP"),
+                self.patcher.createLoadFast(object_local_index)
+                if not take_from_stack_top
+                else createInstruction("DUP_TOP"),
             ]
             arg_count += 1
 
         instructions += [
-            self.patcher.createLoadFast(e)
-            for e in reversed(add_args_from_locals)
+            self.patcher.createLoadFast(e) for e in reversed(add_args_from_locals)
         ]
 
-        instructions += [
-            self.patcher.createLoadConst(e)
-            for e in reversed(args)
-        ]
+        instructions += [self.patcher.createLoadConst(e) for e in reversed(args)]
 
         if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
             if method_instance is None:
@@ -1127,7 +1143,7 @@ class BytecodePatchHelper:
 
         for index, instr in reversed(instructions[:index]):
             if offset < 0:
-                raise RuntimeError(offset, instructions[index+1])
+                raise RuntimeError(offset, instructions[index + 1])
 
             # print(instr, offset)
 
@@ -1200,7 +1216,11 @@ class BytecodePatchHelper:
                 if offset > 1:
                     offset -= 2
 
-            elif sys.version_info.major >= 3 and sys.version_info.minor >= 11 and instr.opcode == Opcodes.BINARY_OP:
+            elif (
+                sys.version_info.major >= 3
+                and sys.version_info.minor >= 11
+                and instr.opcode == Opcodes.BINARY_OP
+            ):
                 pass
 
             else:

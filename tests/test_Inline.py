@@ -99,7 +99,9 @@ class TestInline(TestCase):
             TEST_TARGET += p
 
         helper = BytecodePatchHelper(a)
-        processor = MethodInlineProcessor("test_func", target_accessor=lambda: test_func)
+        processor = MethodInlineProcessor(
+            "test_func", target_accessor=lambda: test_func
+        )
         processor.apply(None, helper.patcher, helper)
         helper.store()
         helper.patcher.applyPatches()
@@ -128,10 +130,14 @@ class TestInline(TestCase):
 
         # If we inline correctly, this should remain in the old state
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            self.assertEqual(helper.instruction_listing[14].opname, helper.CALL_FUNCTION_NAME)
+            self.assertEqual(
+                helper.instruction_listing[14].opname, helper.CALL_FUNCTION_NAME
+            )
         else:
             # Starting with python 3.11, there is an RESUME at function head we need here...
-            self.assertEqual(helper.instruction_listing[15].opname, helper.CALL_FUNCTION_NAME)
+            self.assertEqual(
+                helper.instruction_listing[15].opname, helper.CALL_FUNCTION_NAME
+            )
 
         a(2)
         self.assertEqual(TEST_TARGET, 3)
@@ -148,7 +154,9 @@ class TestInline(TestCase):
             TEST_TARGET += p * q
 
         helper = BytecodePatchHelper(a)
-        processor = MethodInlineProcessor("test_func", target_accessor=lambda: test_func)
+        processor = MethodInlineProcessor(
+            "test_func", target_accessor=lambda: test_func
+        )
         processor.apply(None, helper.patcher, helper)
         helper.store()
         helper.patcher.applyPatches()
@@ -177,4 +185,3 @@ class TestInline(TestCase):
 
         a(2)
         self.assertEqual(TEST_TARGET, 2)
-

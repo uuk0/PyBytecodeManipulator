@@ -7,7 +7,10 @@ from unittest import TestCase
 
 
 class TestMutableCodeObject(TestCase):
-    @unittest.skipUnless(sys.version_info.major == 3 and sys.version_info.minor < 11, "used opcode is invalid since 3.11")
+    @unittest.skipUnless(
+        sys.version_info.major == 3 and sys.version_info.minor < 11,
+        "used opcode is invalid since 3.11",
+    )
     def test_apply_patches_simple(self):
 
         value = 0

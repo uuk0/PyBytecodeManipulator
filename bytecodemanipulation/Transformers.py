@@ -50,7 +50,9 @@ class TransformationHandler:
     name collision should happen!
     """
 
-    def __init__(self, do_code_optimisation=True, debug_code=False, debug_further_calls=False):
+    def __init__(
+        self, do_code_optimisation=True, debug_code=False, debug_further_calls=False
+    ):
         self.do_code_optimisation = do_code_optimisation
         self.debug_code = debug_code
         self.debug_further_calls = debug_further_calls
@@ -144,7 +146,9 @@ class TransformationHandler:
 
         if self.debug_code:
             for method, helper in self.affected:
-                helper.enable_verbose_exceptions(verbose_internal_calls=self.debug_further_calls)
+                helper.enable_verbose_exceptions(
+                    verbose_internal_calls=self.debug_further_calls
+                )
                 helper.store()
 
     def lookup_method(self, method: str):
@@ -852,7 +856,9 @@ class TransformationHandler:
         capture_local_variables_for_branch: typing.Iterable[str] = tuple(),
         priority=0,
         optional=True,
-        continue_at: typing.Union[typing.Callable[[BytecodePatchHelper, int, int], int], int] = 0,
+        continue_at: typing.Union[
+            typing.Callable[[BytecodePatchHelper, int, int], int], int
+        ] = 0,
         inline=False,
         inline_condition=False,
     ):
@@ -877,4 +883,3 @@ class TransformationHandler:
         :param inline_condition: when True, will inline the condition method
         """
         raise NotImplementedError
-

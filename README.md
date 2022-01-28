@@ -81,3 +81,9 @@ handler.applyTransforms()
 
 assert test() == 1
 ```
+
+
+## Code Formatting
+
+We use the python formatting library "black" on our code
+

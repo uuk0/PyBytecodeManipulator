@@ -15,7 +15,13 @@ class TestSelfModifyingCode(TestCase):
         from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
         def target():
-            helper.insertRegion(len(helper.instruction_listing)-2, [helper.patcher.createLoadConst("False"), createInstruction("RETURN_VALUE")])
+            helper.insertRegion(
+                len(helper.instruction_listing) - 2,
+                [
+                    helper.patcher.createLoadConst("False"),
+                    createInstruction("RETURN_VALUE"),
+                ],
+            )
             helper.store()
             helper.patcher.applyPatches()
             # time.sleep(2)
@@ -26,4 +32,3 @@ class TestSelfModifyingCode(TestCase):
         helper.re_eval_instructions()
 
         self.assertEqual(helper.instruction_listing[-4].opname, "LOAD_CONST")
-

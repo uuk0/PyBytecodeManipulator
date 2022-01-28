@@ -19,4 +19,3 @@ class TestOptimiserAnnotations(TestCase):
 
         self.assertEqual(min(1, 2), 2)
         self.assertEqual(target(1, 2), 1)
-

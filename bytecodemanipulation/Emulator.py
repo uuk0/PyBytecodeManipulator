@@ -8,21 +8,49 @@ from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.util import Opcodes, PY_VERSION
 
 
-class StackOverflowException(Exception): pass
-class StackUnderflowException(Exception): pass
-class LocalVariableOutOfBoundsException(Exception): pass
-class LocalVariableNameNotBoundException(Exception): pass
-class GlobalNameIndexOutOfBoundsException(Exception): pass
-class InvalidOpcodeException(Exception): pass
-class InstructionExecutionException(Exception): pass
+class StackOverflowException(Exception):
+    pass
+
+
+class StackUnderflowException(Exception):
+    pass
+
+
+class LocalVariableOutOfBoundsException(Exception):
+    pass
+
+
+class LocalVariableNameNotBoundException(Exception):
+    pass
+
+
+class GlobalNameIndexOutOfBoundsException(Exception):
+    pass
+
+
+class InvalidOpcodeException(Exception):
+    pass
+
+
+class InstructionExecutionException(Exception):
+    pass
 
 
 class ExecutionManager:
-    INSTRUCTIONS: typing.List[typing.Tuple[typing.Tuple[int, int], typing.Optional[typing.Tuple[int, int]], int, "AbstractInstructionExecutor"]] = []
+    INSTRUCTIONS: typing.List[
+        typing.Tuple[
+            typing.Tuple[int, int],
+            typing.Optional[typing.Tuple[int, int]],
+            int,
+            "AbstractInstructionExecutor",
+        ]
+    ] = []
     MANAGERS: typing.List["ExecutionManager"] = []
 
     @classmethod
-    def get_for_version(cls, version: typing.Tuple[int, int]) -> typing.Optional["ExecutionManager"]:
+    def get_for_version(
+        cls, version: typing.Tuple[int, int]
+    ) -> typing.Optional["ExecutionManager"]:
         for manager in cls.MANAGERS:
             if manager.py_version == version:
                 return manager
@@ -47,7 +75,7 @@ class ExecutionManager:
         patcher = MutableCodeObject(target)
         env.max_stack_size = patcher.max_stack_size
         env.local_variables = [None] * len(patcher.variable_names)
-        env.local_variables[:len(args)] = args
+        env.local_variables[: len(args)] = args
         wrapper = BytecodePatchHelper(patcher)
 
         env.patcher = patcher
@@ -57,7 +85,9 @@ class ExecutionManager:
             instr = wrapper.instruction_listing[cp]
 
             if instr.opcode not in self.opcode2executor:
-                raise InvalidOpcodeException(f"Opcode {instr.opcode} ({instr.opname}) with arg {instr.arg} ({instr.argval}) is not valid in py version {self.py_version}")
+                raise InvalidOpcodeException(
+                    f"Opcode {instr.opcode} ({instr.opname}) with arg {instr.arg} ({instr.argval}) is not valid in py version {self.py_version}"
+                )
 
             executor = self.opcode2executor[instr.opcode]
 
@@ -91,7 +121,9 @@ class ExecutionEnvironment:
 
     def pop(self, count: int = 1, position: int = -1, force_list=False):
         if len(self.stack) - count - (abs(position) - 1) < 0:
-            raise StackUnderflowException(f"Could not pop {count} elements from position {position} from stack of size {len(self.stack)}")
+            raise StackUnderflowException(
+                f"Could not pop {count} elements from position {position} from stack of size {len(self.stack)}"
+            )
 
         if count == 1 and not force_list:
             return self.stack.pop(position)
@@ -103,26 +135,36 @@ class ExecutionEnvironment:
         return data
 
     def seek(self, offset: int = 0):
-        if offset > 0: offset = -offset - 1
+        if offset > 0:
+            offset = -offset - 1
 
         if abs(offset) + 1 > len(self.stack):
-            raise StackUnderflowException(f"Could not seek from position {-offset + 1}, as the stack size is only {len(self.stack)}")
+            raise StackUnderflowException(
+                f"Could not seek from position {-offset + 1}, as the stack size is only {len(self.stack)}"
+            )
 
         return self.stack[offset]
 
     def push(self, value):
         if self.max_stack_size != -1 and len(self.stack) + 1 > self.max_stack_size:
-            raise StackOverflowException(f"Could not push {value} into stack; max stack size of {self.max_stack_size} reached!")
+            raise StackOverflowException(
+                f"Could not push {value} into stack; max stack size of {self.max_stack_size} reached!"
+            )
 
         self.stack.append(value)
         return self
 
     def push_to(self, value, index: int):
-        if index > 0: index = -index - 1
+        if index > 0:
+            index = -index - 1
         if self.max_stack_size != -1 and len(self.stack) + 1 == self.max_stack_size:
-            raise StackOverflowException(f"Could not push {value} into stack; max stack size of {self.max_stack_size} reached!")
+            raise StackOverflowException(
+                f"Could not push {value} into stack; max stack size of {self.max_stack_size} reached!"
+            )
         if abs(index) > len(self.stack):
-            raise StackUnderflowException(f"Could not push into position {-index + 1}, as the current stack size is only {len(self.stack)}")
+            raise StackUnderflowException(
+                f"Could not push into position {-index + 1}, as the current stack size is only {len(self.stack)}"
+            )
         self.stack.insert(index, value)
         return self
 
@@ -137,7 +179,11 @@ PYTHON_3_11 = ExecutionManager((3, 11))
 CURRENT = ExecutionManager.get_for_version(PY_VERSION)
 
 
-def register_opcode(opname: typing.Union[str, int], since: typing.Tuple[int, int] = (0, 0), until: typing.Tuple[int, int] = None):
+def register_opcode(
+    opname: typing.Union[str, int],
+    since: typing.Tuple[int, int] = (0, 0),
+    until: typing.Tuple[int, int] = None,
+):
     def annotate(cls):
         if isinstance(opname, str):
             # Only if the opcode is valid, register it
@@ -330,52 +376,52 @@ class OpcodeBinaryOp(AbstractInstructionExecutor):
 
         if op == "+=":
             a, b = env.pop(2)
-            env.push(a+b)
+            env.push(a + b)
             return
 
         if op == "-=":
             a, b = env.pop(2)
-            env.push(b-a)
+            env.push(b - a)
             return
 
         if op == "*=":
             a, b = env.pop(2)
-            env.push(b*a)
+            env.push(b * a)
             return
 
         if op == "/=":
             a, b = env.pop(2)
-            env.push(b/a)
+            env.push(b / a)
             return
 
         if op == "//=":
             a, b = env.pop(2)
-            env.push(b//a)
+            env.push(b // a)
             return
 
         if op == "%=":
             a, b = env.pop(2)
-            env.push(b%a)
+            env.push(b % a)
             return
 
         if op == "&=":
             a, b = env.pop(2)
-            env.push(b&a)
+            env.push(b & a)
             return
 
         if op == "|=":
             a, b = env.pop(2)
-            env.push(b|a)
+            env.push(b | a)
             return
 
         if op == "^=":
             a, b = env.pop(2)
-            env.push(b^a)
+            env.push(b ^ a)
             return
 
         if op == "@=":
             a, b = env.pop(2)
-            env.push(b@a)
+            env.push(b @ a)
             return
 
         raise NotImplementedError(instr, op)
@@ -386,7 +432,7 @@ class OpcodeInplaceSubtract(AbstractInstructionExecutor):
     @classmethod
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
         a, b = env.pop(2)
-        env.push(b-a)
+        env.push(b - a)
 
 
 @register_opcode("INPLACE_ADD", (0, 0), (3, 10))
@@ -394,7 +440,7 @@ class OpcodeInplaceAdd(AbstractInstructionExecutor):
     @classmethod
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
         a, b = env.pop(2)
-        env.push(b+a)
+        env.push(b + a)
 
 
 @register_opcode("CALL_NO_KW", (3, 11))
@@ -453,7 +499,7 @@ class OpcodeBuildSet(AbstractInstructionExecutor):
 class OpcodeBuildSet(AbstractInstructionExecutor):
     @classmethod
     def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
-        items = reversed(env.pop() for _ in range(2*instr.arg))
+        items = reversed(env.pop() for _ in range(2 * instr.arg))
         env.push({next(items): next(items) for _ in range(instr.arg)})
 
 
@@ -473,4 +519,3 @@ class OpcodeListToTuple(AbstractInstructionExecutor):
 
 for manager in ExecutionManager.MANAGERS:
     manager.init()
-

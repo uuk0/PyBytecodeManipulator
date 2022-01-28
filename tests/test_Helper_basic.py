@@ -21,8 +21,12 @@ class TestBasicBytecodeHelpers(TestCase):
             result = asyncio.get_event_loop().run_until_complete(result)
 
         if result is not None:
-            warnings.warn(f'It is deprecated to return a value!=None from a '
-                          f'test case ({method})', DeprecationWarning, stacklevel=3)
+            warnings.warn(
+                f"It is deprecated to return a value!=None from a "
+                f"test case ({method})",
+                DeprecationWarning,
+                stacklevel=3,
+            )
 
     def test_special_method_1(self):
         from bytecodemanipulation.TransformationHelper import (
@@ -46,9 +50,7 @@ class TestBasicBytecodeHelpers(TestCase):
 
         patcher = MutableCodeObject(localtest)
         helper = BytecodePatchHelper(patcher)
-        helper.insertStaticMethodCallAt(
-            0, "tests.test_space:test_for_invoke"
-        )
+        helper.insertStaticMethodCallAt(0, "tests.test_space:test_for_invoke")
         helper.store()
         patcher.applyPatches()
 
@@ -68,12 +70,8 @@ class TestBasicBytecodeHelpers(TestCase):
 
         patcher = MutableCodeObject(localtest)
         helper = BytecodePatchHelper(patcher)
-        helper.insertStaticMethodCallAt(
-            0, "tests.test_space:test_for_invoke"
-        )
-        helper.insertStaticMethodCallAt(
-            0, "tests.test_space:test_for_invoke"
-        )
+        helper.insertStaticMethodCallAt(0, "tests.test_space:test_for_invoke")
+        helper.insertStaticMethodCallAt(0, "tests.test_space:test_for_invoke")
         helper.store()
         patcher.applyPatches()
 
@@ -142,9 +140,7 @@ class TestBasicBytecodeHelpers(TestCase):
 
         patcher = MutableCodeObject(localtest)
         helper = BytecodePatchHelper(patcher)
-        helper.insertStaticMethodCallAt(
-            1, "tests.test_space:test_for_invoke"
-        )
+        helper.insertStaticMethodCallAt(1, "tests.test_space:test_for_invoke")
         helper.store()
         patcher.applyPatches()
 
@@ -164,12 +160,8 @@ class TestBasicBytecodeHelpers(TestCase):
 
         patcher = MutableCodeObject(localtest)
         helper = BytecodePatchHelper(patcher)
-        helper.insertStaticMethodCallAt(
-            1, "tests.test_space:test_for_invoke"
-        )
-        helper.insertStaticMethodCallAt(
-            1, "tests.test_space:test_for_invoke"
-        )
+        helper.insertStaticMethodCallAt(1, "tests.test_space:test_for_invoke")
+        helper.insertStaticMethodCallAt(1, "tests.test_space:test_for_invoke")
         helper.store()
         patcher.applyPatches()
 
@@ -209,7 +201,10 @@ class TestBasicBytecodeHelpers(TestCase):
                 self.HIT = True
 
         helper = BytecodePatchHelper(Test.target)
-        helper.insertObjectBoundMethodCall(0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1, "hit")
+        helper.insertObjectBoundMethodCall(
+            0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1,
+            "hit",
+        )
         helper.store()
         helper.patcher.applyPatches()
 
@@ -229,7 +224,11 @@ class TestBasicBytecodeHelpers(TestCase):
                 print("Hello World")
 
         helper = BytecodePatchHelper(Test.target)
-        helper.insertObjectBoundMethodCall(0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1, "hit", method_instance=Test.hit)
+        helper.insertObjectBoundMethodCall(
+            0 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 1,
+            "hit",
+            method_instance=Test.hit,
+        )
         helper.store()
         helper.patcher.applyPatches()
 

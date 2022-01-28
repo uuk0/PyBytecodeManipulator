@@ -62,11 +62,16 @@ class _OptimiserContainer:
                 if instr.opcode == Opcodes.STORE_ATTR:
                     source_instruction = next(helper.findSourceOfStackIndex(index, 0))
 
-                    if source_instruction.opcode == Opcodes.LOAD_FAST and source_instruction.argval == "self":
+                    if (
+                        source_instruction.opcode == Opcodes.LOAD_FAST
+                        and source_instruction.argval == "self"
+                    ):
                         self.touches.add(instr.argval)
 
                 elif instr.opname == helper.CALL_FUNCTION_NAME:
-                    method_source = next(helper.findSourceOfStackIndex(index, -instr.arg))
+                    method_source = next(
+                        helper.findSourceOfStackIndex(index, -instr.arg)
+                    )
 
                     try:
                         source = helper.evalStaticFrom(method_source)
@@ -137,13 +142,19 @@ def builtins_are_static():
 
     def annotation(target: typing.Callable):
         optimiser = _schedule_optimisation(target)
-        optimiser.code_walkers.append(GlobalStaticLookupProcessor(matcher=MetaArgMatcher(_is_builtin_name)))
+        optimiser.code_walkers.append(
+            GlobalStaticLookupProcessor(matcher=MetaArgMatcher(_is_builtin_name))
+        )
         return target
 
     return annotation
 
 
-def object_method_is_protected(name: str, accessor: typing.Callable[[], typing.Callable], matcher: AbstractInstructionMatcher = None):
+def object_method_is_protected(
+    name: str,
+    accessor: typing.Callable[[], typing.Callable],
+    matcher: AbstractInstructionMatcher = None,
+):
     """
     Marks that a certain function on an object is known at optimiser time
     Useful when using protected classes / objects, or builtins like lists, dicts, ...

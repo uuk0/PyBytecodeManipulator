@@ -90,8 +90,12 @@ class TestBytecodeHandler(TestCase):
             result = asyncio.get_event_loop().run_until_complete(result)
 
         if result is not None:
-            warnings.warn(f'It is deprecated to return a value!=None from a '
-                          f'test case ({method})', DeprecationWarning, stacklevel=3)
+            warnings.warn(
+                f"It is deprecated to return a value!=None from a "
+                f"test case ({method})",
+                DeprecationWarning,
+                stacklevel=3,
+            )
 
     def test_replace_function_body(self):
         from bytecodemanipulation.Transformers import TransformationHandler
@@ -215,9 +219,7 @@ class TestBytecodeHandler(TestCase):
         def override():
             return 1
 
-        @handler.override(
-            "tests.test_BasicManipulation:test", priority=-1
-        )
+        @handler.override("tests.test_BasicManipulation:test", priority=-1)
         def override2():
             return 2
 
@@ -235,9 +237,7 @@ class TestBytecodeHandler(TestCase):
         def override():
             return 1
 
-        @handler.override(
-            "tests.test_BasicManipulation:test", optional=False
-        )
+        @handler.override("tests.test_BasicManipulation:test", optional=False)
         def override2():
             return 2
 
@@ -254,9 +254,7 @@ class TestBytecodeHandler(TestCase):
 
         handler = TransformationHandler()
 
-        @handler.override(
-            "tests.test_BasicManipulation:test", optional=False
-        )
+        @handler.override("tests.test_BasicManipulation:test", optional=False)
         def override():
             return 1
 
@@ -277,15 +275,11 @@ class TestBytecodeHandler(TestCase):
 
         handler = TransformationHandler()
 
-        @handler.override(
-            "tests.test_BasicManipulation:test", optional=False
-        )
+        @handler.override("tests.test_BasicManipulation:test", optional=False)
         def override():
             return 1
 
-        @handler.override(
-            "tests.test_BasicManipulation:test", optional=False
-        )
+        @handler.override("tests.test_BasicManipulation:test", optional=False)
         def override2():
             return 2
 
@@ -546,9 +540,7 @@ class TestBytecodeHandler(TestCase):
         handler = TransformationHandler()
         invoked = 0
 
-        @handler.inject_at_head(
-            "tests.test_BasicManipulation:test", args=(3,)
-        )
+        @handler.inject_at_head("tests.test_BasicManipulation:test", args=(3,))
         def inject(c):
             nonlocal invoked
             invoked += c
@@ -571,16 +563,12 @@ class TestBytecodeHandler(TestCase):
         handler = TransformationHandler()
         invoked = 0
 
-        @handler.inject_at_head(
-            "tests.test_BasicManipulation:test", args=(3,)
-        )
+        @handler.inject_at_head("tests.test_BasicManipulation:test", args=(3,))
         def inject(c):
             nonlocal invoked
             invoked += c
 
-        @handler.inject_at_head(
-            "tests.test_BasicManipulation:test", args=(5,)
-        )
+        @handler.inject_at_head("tests.test_BasicManipulation:test", args=(5,))
         def inject2(c):
             nonlocal invoked
             invoked += c
@@ -636,9 +624,7 @@ class TestBytecodeHandler(TestCase):
         handler = TransformationHandler()
         invoked = 0
 
-        @handler.inject_at_return(
-            "tests.test_BasicManipulation:test", args=(3,)
-        )
+        @handler.inject_at_return("tests.test_BasicManipulation:test", args=(3,))
         def inject(c):
             nonlocal invoked
             invoked += c
@@ -661,16 +647,12 @@ class TestBytecodeHandler(TestCase):
         handler = TransformationHandler()
         invoked = 0
 
-        @handler.inject_at_return(
-            "tests.test_BasicManipulation:test", args=(3,)
-        )
+        @handler.inject_at_return("tests.test_BasicManipulation:test", args=(3,))
         def inject(c):
             nonlocal invoked
             invoked += c
 
-        @handler.inject_at_return(
-            "tests.test_BasicManipulation:test", args=(8,)
-        )
+        @handler.inject_at_return("tests.test_BasicManipulation:test", args=(8,))
         def inject2(c):
             nonlocal invoked
             invoked += c
@@ -777,9 +759,7 @@ class TestBytecodeHandler(TestCase):
 
         handler = TransformationHandler()
 
-        @handler.inject_at_return(
-            "tests.test_BasicManipulation:test", inline=True
-        )
+        @handler.inject_at_return("tests.test_BasicManipulation:test", inline=True)
         def inject(c):
             global INVOKED
             INVOKED = 3
@@ -1098,9 +1078,7 @@ class TestBytecodeHandler(TestCase):
 
         handler = TransformationHandler()
 
-        @handler.inject_at_yield(
-            "tests.test_BasicManipulation:test2", inline=True
-        )
+        @handler.inject_at_yield("tests.test_BasicManipulation:test2", inline=True)
         def inject(_):
             global INVOKED
             INVOKED = 4
@@ -1373,7 +1351,11 @@ class TestBytecodeHandler(TestCase):
         handler.makeFunctionArrival("test", func)
 
         @handler.inject_local_variable_modifier_at(
-            "test", CounterMatcher(2 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 3), ["c", "d"]
+            "test",
+            CounterMatcher(
+                2 if sys.version_info.major <= 3 and sys.version_info.minor < 11 else 3
+            ),
+            ["c", "d"],
         )
         def inject(c, d):
             return d, c

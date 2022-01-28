@@ -295,7 +295,11 @@ class InjectFunctionCallAtHeadProcessor(AbstractBytecodeProcessor):
         target: MutableCodeObject,
         helper: BytecodePatchHelper,
     ):
-        index = 0 if helper.instruction_listing[0].opname not in ("GEN_START", "RESUME") else 1
+        index = (
+            0
+            if helper.instruction_listing[0].opname not in ("GEN_START", "RESUME")
+            else 1
+        )
 
         if not self.inline:
             helper.insertGivenMethodCallAt(
@@ -670,7 +674,10 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
                 # print("looking at ", instr, helper.CALL_FUNCTION_NAME)
                 # print(instr.opname == helper.CALL_FUNCTION_NAME, self.func_name)
 
-                if instr.opname == helper.CALL_FUNCTION_NAME and self.func_name.startswith("%."):
+                if (
+                    instr.opname == helper.CALL_FUNCTION_NAME
+                    and self.func_name.startswith("%.")
+                ):
                     try:
                         source = next(helper.findSourceOfStackIndex(index, instr.arg))
 
@@ -831,7 +838,9 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
     todo: add a way to do custom data lookups
     """
 
-    def __init__(self, global_name: str = None, matcher: AbstractInstructionMatcher = None):
+    def __init__(
+        self, global_name: str = None, matcher: AbstractInstructionMatcher = None
+    ):
         self.global_name = global_name
         self.matcher = matcher
 
@@ -846,9 +855,13 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
     ):
         matches = 0
         for index, instr in helper.walk():
-            if instr.opcode == Opcodes.LOAD_GLOBAL and (self.global_name is None or instr.argval == self.global_name):
+            if instr.opcode == Opcodes.LOAD_GLOBAL and (
+                self.global_name is None or instr.argval == self.global_name
+            ):
                 matches += 1
-                if self.matcher is not None and not self.matcher.matches(helper, index, matches):
+                if self.matcher is not None and not self.matcher.matches(
+                    helper, index, matches
+                ):
                     continue
 
                 try:
@@ -859,7 +872,8 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
                     except KeyError:
                         value = eval(instr.argval)
 
-                helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+                helper.instruction_listing[index] = helper.patcher.createLoadConst(
+                    value
+                )
 
         helper.store()
-
