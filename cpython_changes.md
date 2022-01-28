@@ -12,8 +12,39 @@ we rely on
 - https://bugs.python.org/issue46161: Fix the class building error when the arguments are constants and CALL_FUNCTION_EX is used.
 - https://bugs.python.org/issue43118: Fix a bug in inspect.signature() that was causing it to fail on some subclasses of classes with a __text_signature__ referencing module globals.
 - https://bugs.python.org/issue43683: Add ASYNC_GEN_WRAP opcode to wrap the value to be yielded in async generators. Removes the need to special case async generators in the YIELD_VALUE instruction.
+- https://bugs.python.org/issue46458: Reorder code emitted by the compiler for a try-except block so that the else block’s code immediately follows the try body (without a jump). This is more optimal for the happy path.
 
-## Python 3.11a4
+Major
+
+Bytecode change -> implement helper code for simulating that instructions
+
+    https://bugs.python.org/issue46528
+    Replace several stack manipulation instructions 
+    DUP_TOP, DUP_TOP_TWO, ROT_TWO, ROT_THREE, ROT_FOUR, and ROT_N
+    with new COPY and SWAP instructions.
+
+
+Change how function calls are done (again)
+
+    https://bugs.python.org/issue46329
+
+    Use two or three bytecodes to implement most calls.
+  
+    Calls without named arguments are implemented as a sequence of two instructions: 
+    PRECALL; CALL.
+
+    Calls with named arguments are implemented as a sequence of three instructions: 
+    PRECALL; KW_NAMES; CALL. 
+
+    There are two different PRECALL instructions: 
+    PRECALL_FUNTION and PRECALL_METHOD. The latter pairs with LOAD_METHOD.
+    
+    This partition into pre-call and call allows better specialization, 
+    and thus better performance ultimately.
+    
+    There is no change in semantics.
+
+## Python 3.11a4 [currently build against]
 
 Bytecode related 
 
