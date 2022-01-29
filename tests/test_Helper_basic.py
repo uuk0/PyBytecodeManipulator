@@ -188,7 +188,7 @@ class TestBasicBytecodeHelpers(TestCase):
             ],
         )
 
-        self.assertEqual(helper.instruction_listing[1].opname, "YIELD_VALUE")
+        self.assertEqual(helper.instructions[1].opname, "YIELD_VALUE")
 
     def test_objectbound_call_1(self):
         class Test:

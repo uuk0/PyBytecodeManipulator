@@ -82,7 +82,7 @@ class ExecutionManager:
 
         while env.running:
             cp = env.cp
-            instr = wrapper.instruction_listing[cp]
+            instr = wrapper.instructions[cp]
 
             if instr.opcode not in self.opcode2executor:
                 raise InvalidOpcodeException(

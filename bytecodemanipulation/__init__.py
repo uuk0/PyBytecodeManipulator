@@ -1,3 +1,4 @@
+from bytecodemanipulation.util import Opcodes
 from bytecodemanipulation import (
     CodeOptimiser,
     Emulator,
@@ -7,4 +8,3 @@ from bytecodemanipulation import (
 )
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.Transformers import TransformationHandler
-from bytecodemanipulation.util import Opcodes

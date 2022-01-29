@@ -131,12 +131,12 @@ class TestInline(TestCase):
         # If we inline correctly, this should remain in the old state
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
             self.assertEqual(
-                helper.instruction_listing[14].opname, helper.CALL_FUNCTION_NAME
+                helper.instructions[14].opname, helper.CALL_FUNCTION_NAME
             )
         else:
             # Starting with python 3.11, there is an RESUME at function head we need here...
             self.assertEqual(
-                helper.instruction_listing[15].opname, helper.CALL_FUNCTION_NAME
+                helper.instructions[15].opname, helper.CALL_FUNCTION_NAME
             )
 
         a(2)

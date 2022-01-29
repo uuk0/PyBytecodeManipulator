@@ -90,7 +90,7 @@ class AnyByInstructionNameMatcher(AbstractInstructionMatcher):
     def matches(
         self, function: BytecodePatchHelper, index: int, match_count: int
     ) -> bool:
-        return function.instruction_listing[index].opname == self.opname
+        return function.instructions[index].opname == self.opname
 
     def __repr__(self):
         return f"ExactInstructionName({self.opname})"
@@ -178,7 +178,7 @@ class LoadConstantValueMatcher(AbstractInstructionMatcher):
     def matches(
         self, function: BytecodePatchHelper, index: int, match_count: int
     ) -> bool:
-        instr = function.instruction_listing[index]
+        instr = function.instructions[index]
         return instr.opname == "LOAD_CONST" and instr.argval == self.value
 
     def __repr__(self):
@@ -192,7 +192,7 @@ class LoadGlobalMatcher(AbstractInstructionMatcher):
     def matches(
         self, function: BytecodePatchHelper, index: int, match_count: int
     ) -> bool:
-        instr = function.instruction_listing[index]
+        instr = function.instructions[index]
         return instr.opname == "LOAD_GLOBAL" and instr.argval == self.global_name
 
     def __repr__(self):
@@ -225,7 +225,7 @@ class MetaArgMatcher(AbstractInstructionMatcher):
     def matches(
         self, function: BytecodePatchHelper, index: int, match_count: int
     ) -> bool:
-        value = function.instruction_listing[index].argval
+        value = function.instructions[index].argval
         return self.inner_matcher(function, value)
 
     def __repr__(self):

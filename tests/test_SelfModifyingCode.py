@@ -16,7 +16,7 @@ class TestSelfModifyingCode(TestCase):
 
         def target():
             helper.insertRegion(
-                len(helper.instruction_listing) - 2,
+                len(helper.instructions) - 2,
                 [
                     helper.patcher.createLoadConst("False"),
                     createInstruction("RETURN_VALUE"),
@@ -31,4 +31,4 @@ class TestSelfModifyingCode(TestCase):
 
         helper.re_eval_instructions()
 
-        self.assertEqual(helper.instruction_listing[-4].opname, "LOAD_CONST")
+        self.assertEqual(helper.instructions[-4].opname, "LOAD_CONST")

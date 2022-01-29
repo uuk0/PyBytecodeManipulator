@@ -399,8 +399,9 @@ class MutableCodeObject:
                         for i, instr2 in enumerate(new_instructions):
                             new_instructions[i] = rebind_instruction_from_insert(instr2, index, len(data) - skipped - 1)
 
-                        for i, instr2 in itertools.dropwhile(lambda a, b: a <= index, enumerate(instruction_list)):
+                        for i, instr2 in itertools.dropwhile(lambda a: a[0] <= index, enumerate(instruction_list)):
                             instruction_list[i] = rebind_instruction_from_insert(instr2, index, len(data) - skipped - 1)
+
                     else:
                         # todo: implement instruction offset remap
                         raise NotImplementedError(data, skipped)

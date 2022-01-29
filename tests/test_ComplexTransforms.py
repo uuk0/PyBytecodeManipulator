@@ -23,9 +23,9 @@ class TestPostInjectionOptimiser(TestCase):
         helper = BytecodePatchHelper(test)
         optimise_code(helper)
 
-        self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
-        self.assertEqual(helper.instruction_listing[0].argval, None)
-        self.assertEqual(helper.instruction_listing[1].opname, "RETURN_VALUE")
+        self.assertEqual(helper.instructions[0].opname, "LOAD_CONST")
+        self.assertEqual(helper.instructions[0].argval, None)
+        self.assertEqual(helper.instructions[1].opname, "RETURN_VALUE")
 
         # Integrity check of the bytecode
         self.assertEqual(test(), None)
@@ -77,11 +77,11 @@ class TestPostInjectionOptimiser(TestCase):
 
         # Check if it is optimised away
         helper = BytecodePatchHelper(target)
-        self.assertEqual(helper.instruction_listing[0].opname, "LOAD_FAST")
+        self.assertEqual(helper.instructions[0].opname, "LOAD_FAST")
         self.assertEqual(
-            helper.instruction_listing[0].arg,
+            helper.instructions[0].arg,
             helper.patcher.ensureVarName("flag"),
-            helper.instruction_listing[0],
+            helper.instructions[0],
         )
 
     def test_attribute2constant_cleanup(self):
@@ -98,8 +98,8 @@ class TestPostInjectionOptimiser(TestCase):
         helper = BytecodePatchHelper(target)
 
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
-            self.assertEqual(helper.instruction_listing[0].argval, 2)
+            self.assertEqual(helper.instructions[0].opname, "LOAD_CONST")
+            self.assertEqual(helper.instructions[0].argval, 2)
         else:
-            self.assertEqual(helper.instruction_listing[1].opname, "LOAD_CONST")
-            self.assertEqual(helper.instruction_listing[1].argval, 2)
+            self.assertEqual(helper.instructions[1].opname, "LOAD_CONST")
+            self.assertEqual(helper.instructions[1].argval, 2)

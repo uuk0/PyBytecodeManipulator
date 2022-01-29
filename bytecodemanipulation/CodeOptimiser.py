@@ -65,20 +65,20 @@ def remove_store_delete_pairs(helper: BytecodePatchHelper):
     The DELETE_XX instruction can be optimised away by the remove_delete_fast_without_assign() optimiser if possible.
     """
     index = -1
-    while index < len(helper.instruction_listing) - 1:
+    while index < len(helper.instructions) - 1:
         index += 1
         for index, instr in list(helper.walk())[index:]:
             if (
                 instr.opcode in PAIR_STORE_DELETE
-                and index < len(helper.instruction_listing) - 2
+                and index < len(helper.instructions) - 2
             ):
-                next_instr = helper.instruction_listing[index + 1]
+                next_instr = helper.instructions[index + 1]
                 if (
                     next_instr.opcode == PAIR_STORE_DELETE[instr.opcode]
                     and instr.arg == next_instr.arg
                 ):
                     # Delete the load instruction and the store instruction
-                    helper.instruction_listing[index] = dis.Instruction(
+                    helper.instructions[index] = dis.Instruction(
                         "POP_TOP",
                         Opcodes.POP_TOP,
                         0,
@@ -102,7 +102,7 @@ def remove_delete_fast_without_assign(helper: BytecodePatchHelper):
     written_to = set(range(helper.patcher.argument_count))
 
     index = -1
-    while index < len(helper.instruction_listing) - 1:
+    while index < len(helper.instructions) - 1:
         index += 1
         for index, instr in list(helper.walk())[index:]:
             if instr.opcode == Opcodes.STORE_FAST:
@@ -122,11 +122,11 @@ def remove_load_pop(helper: BytecodePatchHelper):
     POP_TOP instruction
     """
     index = -1
-    while index < len(helper.instruction_listing) - 1:
+    while index < len(helper.instructions) - 1:
         index += 1
         for index, instr in list(helper.walk())[index:]:
             if instr.opcode == Opcodes.POP_TOP and index > 0:
-                previous = helper.instruction_listing[index - 1]
+                previous = helper.instructions[index - 1]
                 if previous.opcode in SIDE_EFFECT_FREE_VALUE_LOAD:
                     # Delete the side effect free result and the POP_TOP instruction
                     helper.deleteRegion(index - 1, index + 1)
@@ -144,14 +144,14 @@ def remove_load_store_pairs(helper: BytecodePatchHelper):
     """
 
     index = -1
-    while index < len(helper.instruction_listing) - 1:
+    while index < len(helper.instructions) - 1:
         index += 1
         for index, instr in list(helper.walk())[index:]:
             if (
                 instr.opcode in PAIR_LOAD_STORE
-                and index < len(helper.instruction_listing) - 2
+                and index < len(helper.instructions) - 2
             ):
-                next_instr = helper.instruction_listing[index + 1]
+                next_instr = helper.instructions[index + 1]
                 if (
                     next_instr.opcode == PAIR_LOAD_STORE[instr.opcode]
                     and instr.arg == next_instr.arg
@@ -171,7 +171,7 @@ def remove_nop(helper: BytecodePatchHelper):
     """
 
     index = -1
-    while index < len(helper.instruction_listing) - 1:
+    while index < len(helper.instructions) - 1:
         index += 1
         for index, instr in list(helper.walk())[index:]:
             if instr.opcode == Opcodes.NOP:

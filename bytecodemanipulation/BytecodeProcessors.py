@@ -133,7 +133,7 @@ class Global2ConstReplace(AbstractBytecodeProcessor):
             ):
                 continue
 
-            helper.instruction_listing[index] = target.createLoadConst(self.after)
+            helper.instructions[index] = target.createLoadConst(self.after)
 
         helper.store()
 
@@ -189,7 +189,7 @@ class Attribute2ConstReplace(AbstractBytecodeProcessor):
 
             # We have a <TOS>.<arg> instruction, and want a POP_TOP followed by a LOAD_CONST
 
-            helper.instruction_listing[index] = createInstruction("POP_TOP")
+            helper.instructions[index] = createInstruction("POP_TOP")
             helper.insertRegion(
                 index + 1,
                 [helper.patcher.createLoadConst(self.after)],
@@ -216,7 +216,7 @@ class Local2ConstReplace(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         match = -1
-        for index, instruction in enumerate(helper.instruction_listing):
+        for index, instruction in enumerate(helper.instructions):
             if instruction.opname != "LOAD_FAST":
                 continue
             if helper.patcher.variable_names[instruction.arg] != self.local_name:
@@ -229,7 +229,7 @@ class Local2ConstReplace(AbstractBytecodeProcessor):
             ):
                 continue
 
-            helper.instruction_listing[index] = target.createLoadConst(self.after)
+            helper.instructions[index] = target.createLoadConst(self.after)
 
         helper.store()
 
@@ -263,7 +263,7 @@ class GlobalReTargetProcessor(AbstractBytecodeProcessor):
             ):
                 continue
 
-            helper.instruction_listing[index] = target.createLoadGlobal(self.new_global)
+            helper.instructions[index] = target.createLoadGlobal(self.new_global)
 
         helper.store()
 
@@ -297,7 +297,7 @@ class InjectFunctionCallAtHeadProcessor(AbstractBytecodeProcessor):
     ):
         index = (
             0
-            if helper.instruction_listing[0].opname not in ("GEN_START", "RESUME")
+            if helper.instructions[0].opname not in ("GEN_START", "RESUME")
             else 1
         )
 
@@ -350,7 +350,7 @@ class InjectFunctionCallAtReturnProcessor(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         matches = -1
-        for index, instr in enumerate(helper.instruction_listing):
+        for index, instr in enumerate(helper.instructions):
             if instr.opname == "RETURN_VALUE":
                 matches += 1
 
@@ -401,7 +401,7 @@ class InjectFunctionCallAtReturnReplaceValueProcessor(AbstractBytecodeProcessor)
         helper: BytecodePatchHelper,
     ):
         matches = -1
-        for index, instr in enumerate(helper.instruction_listing):
+        for index, instr in enumerate(helper.instructions):
             if instr.opname == "RETURN_VALUE":
                 matches += 1
 
@@ -458,7 +458,7 @@ class InjectFunctionCallAtYieldProcessor(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         matches = -1
-        for index, instr in enumerate(helper.instruction_listing):
+        for index, instr in enumerate(helper.instructions):
             if instr.opname == "YIELD_VALUE" or instr.opname == "YIELD_FROM":
                 matches += 1
 
@@ -511,7 +511,7 @@ class InjectFunctionCallAtYieldReplaceValueProcessor(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         matches = -1
-        for index, instr in enumerate(helper.instruction_listing):
+        for index, instr in enumerate(helper.instructions):
             if instr.opname == "YIELD_VALUE" or instr.opname == "YIELD_FROM":
                 matches += 1
 
@@ -520,11 +520,11 @@ class InjectFunctionCallAtYieldReplaceValueProcessor(AbstractBytecodeProcessor):
                     self.is_yield_from != instr.opname == "YIELD_FROM"
                 ):
                     if self.is_yield_from:
-                        helper.instruction_listing[index] = createInstruction(
+                        helper.instructions[index] = createInstruction(
                             "YIELD_FROM"
                         )
                     else:
-                        helper.instruction_listing[index] = createInstruction(
+                        helper.instructions[index] = createInstruction(
                             "YIELD_VALUE"
                         )
 
@@ -580,12 +580,12 @@ class InjectFunctionCallAtTailProcessor(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         assert (
-            helper.instruction_listing[-1].opname == "RETURN_VALUE"
+            helper.instructions[-1].opname == "RETURN_VALUE"
         ), "integrity of function failed!"
 
         if not self.inline:
             helper.insertGivenMethodCallAt(
-                len(helper.instruction_listing) - 1,
+                len(helper.instructions) - 1,
                 self.target_func,
                 *self.args,
                 collected_locals=self.collected_locals,
@@ -593,7 +593,7 @@ class InjectFunctionCallAtTailProcessor(AbstractBytecodeProcessor):
             )
         else:
             helper.insertMethodAt(
-                len(helper.instruction_listing) - 1,
+                len(helper.instructions) - 1,
                 self.target_func,
             )
 
@@ -631,7 +631,7 @@ class InjectFunctionLocalVariableModifier(AbstractBytecodeProcessor):
             createInstruction("UNPACK_SEQUENCE", len(self.local_variables))
         ] + [helper.patcher.createStoreFast(e) for e in reversed(self.local_variables)]
 
-        for index, instruction in enumerate(helper.instruction_listing):
+        for index, instruction in enumerate(helper.instructions):
             if self.matcher.matches(helper, index, index):
                 helper.insertGivenMethodCallAt(
                     index,
@@ -668,7 +668,7 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
     ):
         matches = 0
         index = -1
-        while index < len(helper.instruction_listing) - 1:
+        while index < len(helper.instructions) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
                 # print("looking at ", instr, helper.CALL_FUNCTION_NAME)
@@ -692,10 +692,10 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
                                     continue
 
                                 if (
-                                    helper.instruction_listing[index + 1].opcode
+                                    helper.instructions[index + 1].opcode
                                     == Opcodes.GET_AWAITABLE
                                 ):
-                                    helper.instruction_listing[
+                                    helper.instructions[
                                         index + 1
                                     ] = createInstruction("POP_TOP")
 
@@ -742,10 +742,10 @@ class MethodInlineProcessor(AbstractBytecodeProcessor):
                             arg_count = instr.arg
 
                             if (
-                                helper.instruction_listing[index + 1].opcode
+                                helper.instructions[index + 1].opcode
                                 == Opcodes.GET_AWAITABLE
                             ):
-                                helper.instruction_listing[
+                                helper.instructions[
                                     index + 1
                                 ] = createInstruction("POP_TOP")
 
@@ -785,7 +785,7 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
     ):
         match = 0
         index = -1
-        while index < len(helper.instruction_listing) - 1:
+        while index < len(helper.instructions) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
                 if instr.opcode in {
@@ -808,10 +808,10 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
         helper.store()
 
     def modifyAt(self, helper: BytecodePatchHelper, index: int, match: int, pop=True):
-        instr = helper.instruction_listing[index]
+        instr = helper.instructions[index]
 
         if not self.matcher or self.matcher.matches(helper, index, match):
-            helper.instruction_listing[index] = createInstruction(
+            helper.instructions[index] = createInstruction(
                 "POP_TOP" if pop else "NOP"
             )
 
@@ -872,7 +872,7 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
                     except KeyError:
                         value = eval(instr.argval)
 
-                helper.instruction_listing[index] = helper.patcher.createLoadConst(
+                helper.instructions[index] = helper.patcher.createLoadConst(
                     value
                 )
 
