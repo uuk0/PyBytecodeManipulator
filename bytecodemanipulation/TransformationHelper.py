@@ -154,6 +154,30 @@ else:
     METHOD_CALL = Opcodes.CALL_NO_KW
 
 
+def rebind_instruction_from_insert(instr: dis.Instruction, new_index: int, new_size: int):
+    if instr.opcode in OFFSET_JUMPS:
+        offset = instr.arg
+
+        if offset + instr.offset >= new_index >= instr.offset:
+            offset += new_size
+        elif offset + instr.offset < new_index <= instr.offset:
+            offset -= new_size
+
+        return reconstruct_instruction(
+            instr, arg=offset
+        )
+
+    elif instr.opcode in REAL_JUMPS:
+        offset = instr.arg
+
+        if offset >= new_index:
+            offset -= new_size
+
+        return reconstruct_instruction(
+            instr, arg=offset,
+        )
+
+
 class BytecodePatchHelper:
     """
     See https://docs.python.org/3/library/dis.html#python-bytecode-instructions for a detailed instruction listing
@@ -231,7 +255,7 @@ class BytecodePatchHelper:
         yield from zip(range(len(self.instruction_listing)), self.instruction_listing)
 
     def store(self):
-        self.patcher.instructionList2Code(self.instruction_listing)
+        self.patcher.instructionList2Code(self.instruction_listing, helper=self)
 
         try:
             self.instruction_listing[:] = list(self.patcher.get_instruction_list())

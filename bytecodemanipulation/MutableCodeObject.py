@@ -1,5 +1,6 @@
 import dis
 import inspect
+import itertools
 import sys
 import types
 from types import CodeType, FunctionType
@@ -312,10 +313,16 @@ class MutableCodeObject:
                 self.cell_vars + self.free_vars,
             )
 
-    def instructionList2Code(self, instruction_list: typing.List[dis.Instruction]):
+    def instructionList2Code(self, instruction_list: typing.List[dis.Instruction], helper=None):
         self.code_string.clear()
 
+        from bytecodemanipulation.TransformationHelper import rebind_instruction_from_insert
+
         new_instructions = []
+
+        if helper is None:
+            from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
+            helper = BytecodePatchHelper(self)
 
         skipped = 0
 
@@ -333,7 +340,7 @@ class MutableCodeObject:
                 else:
                     data = instr.arg.to_bytes(2, "big", signed=False)
 
-                for e in data[:-1]:
+                for delta, e in enumerate(data[:-1]):
                     new_instructions.append(
                         (
                             dis.Instruction(
@@ -342,7 +349,7 @@ class MutableCodeObject:
                                 e,
                                 e,
                                 "",
-                                0,
+                                index - (len(data) - delta),
                                 None,
                                 False,
                             )
@@ -350,8 +357,16 @@ class MutableCodeObject:
                     )
 
                 if len(data) != skipped + 1:
-                    # todo: implement instruction offset remap
-                    raise NotImplementedError(data, skipped)
+                    if len(data) > skipped + 1:
+                        helper.insertRegion(index, [createInstruction("EXTENDED_ARG") for _ in range(len(data) - skipped - 1)])
+                        for i, instr2 in enumerate(new_instructions):
+                            new_instructions[i] = rebind_instruction_from_insert(instr2, index, len(data) - skipped - 1)
+
+                        for i, instr2 in itertools.dropwhile(lambda a, b: a <= index, enumerate(instruction_list)):
+                            instruction_list[i] = rebind_instruction_from_insert(instr2, index, len(data) - skipped - 1)
+                    else:
+                        # todo: implement instruction offset remap
+                        raise NotImplementedError(data, skipped)
 
             if skipped:
                 skipped = 0

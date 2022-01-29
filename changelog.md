@@ -1,4 +1,7 @@
 
+# Version 0.1.2
+- added some infrastructure for working with EXTENDED_ARG opcodes 
+
 # Version 0.1.0 / 0.1.1
     
 - Started implementation of the library using python 3.10 as the base
