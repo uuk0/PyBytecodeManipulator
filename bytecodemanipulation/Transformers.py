@@ -72,9 +72,12 @@ class TransformationHandler:
 
     def applyTransforms(self):
         for target, injecteds in self.bound_injected_processors.items():
-            print(f"[TRANSFORMER][WARN] applying processors onto '{target}'")
+            # First, print what we search for, in case of exceptions
+            print(f"[TRANSFORMER][WARN] applying processors onto '{target}'", end="")
 
             method_target = self.lookup_method(target)
+
+            print(f" ({method_target})")
 
             patcher = bytecodemanipulation.MutableCodeObject.MutableCodeObject(
                 method_target

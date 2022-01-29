@@ -1165,25 +1165,29 @@ class TestBytecodeHandler(TestCase):
         handler = TransformationHandler()
         handler.makeFunctionArrival("test", target)
 
-        invoked = 0
+        global INVOKED
+        INVOKED = 0
 
         @handler.inject_at_tail("test", add_return_value=True)
         def inject(c):
-            nonlocal invoked
-            invoked = c
+            print("injected", c)
+            global INVOKED
+            INVOKED = c
 
         self.assertEqual(target(False), 1)
-        self.assertEqual(invoked, 0)
+        self.assertEqual(INVOKED, 0)
         self.assertEqual(target(True), 0)
-        self.assertEqual(invoked, 0)
+        self.assertEqual(INVOKED, 0)
 
         # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
 
+        dis.dis(target)
+
         self.assertEqual(target(True), 0)
-        self.assertEqual(invoked, 0)
+        self.assertEqual(INVOKED, 0)
         self.assertEqual(target(False), 1)
-        self.assertEqual(invoked, 1)
+        self.assertEqual(INVOKED, 1)
 
     def test_processor_inject_at_tail_inline_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
