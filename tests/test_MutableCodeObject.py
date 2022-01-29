@@ -40,6 +40,8 @@ class TestMutableCodeObject(TestCase):
         self.assertEqual(value, 1)
 
     def test_library_processor_with_constant(self):
+        # Yup, this takes long to import
+        # todo: replace this test with something better
         import PIL.Image
 
         def test():

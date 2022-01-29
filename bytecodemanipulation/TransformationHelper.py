@@ -387,6 +387,7 @@ class BytecodePatchHelper:
         if matcher is None:
             const_index = self.patcher.constants.index(previous)
             self.patcher.constants[const_index] = new
+            return
         else:
             const_index = self.patcher.ensureConstant(new)
 
@@ -394,6 +395,7 @@ class BytecodePatchHelper:
         for index, instruction in enumerate(self.instruction_listing):
             if instruction.opcode in dis.hasconst:
                 match += 1
+
                 if instruction.arg == const_index and (
                     matcher is None or matcher(self, index, match)
                 ):
