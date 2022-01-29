@@ -29,6 +29,6 @@ class TestSelfModifyingCode(TestCase):
         helper = BytecodePatchHelper(target)
         self.assertEqual(target(), None)
 
-        helper.re_eval_instructions()
+        helper.store()
 
         self.assertEqual(helper.instructions[-4].opname, "LOAD_CONST")

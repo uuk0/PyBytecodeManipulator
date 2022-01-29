@@ -198,6 +198,7 @@ class BytecodePatchHelper(BytecodeBuilder):
             patcher = MutableCodeObject.from_function(patcher)
 
         super().__init__(list(filter(lambda e: e.opcode != Opcodes.EXTENDED_ARG, patcher.get_instruction_list())), patcher)
+        self.stabilize_jumps()
 
         # todo: this is the wrong lookup; lookup the inspect flag
         self.is_async = self.patcher.flags & inspect.CO_COROUTINE
@@ -256,20 +257,16 @@ class BytecodePatchHelper(BytecodeBuilder):
         yield from zip(range(len(self.instructions)), self.instructions)
 
     def store(self):
-        self.patcher.instructionList2Code(self.instructions, helper=self)
+        self.patcher.code_string = self.assemble()
 
         try:
-            self.instructions[:] = list(self.patcher.get_instruction_list())
+            self.instructions[:] = list(filter(lambda e: e.opcode != Opcodes.EXTENDED_ARG,  self.patcher.get_instruction_list()))
         except IndexError:
             print(self.patcher.target)
             print(self.patcher.names)
             print(self.patcher.variable_names)
             print(self.patcher.constants)
             raise
-
-    def re_eval_instructions(self):
-        self.store()
-        self.instructions[:] = list(self.patcher.get_instruction_list())
 
     def deleteRegion(
         self, start: int, end: int, safety=True, maps_invalid_to: int = -1
@@ -1163,7 +1160,7 @@ class BytecodePatchHelper(BytecodeBuilder):
             element of the stack
         """
 
-        self.re_eval_instructions()
+        self.store()
         instructions = list(self.walk())
         # print(instructions)
         # print(index, offset)

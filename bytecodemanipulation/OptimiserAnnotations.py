@@ -104,7 +104,7 @@ class _OptimiserContainer:
         for processor in self.code_walkers:
             print(f"[INFO] applying optimiser transformer {processor} onto {target}")
             processor.apply(None, helper.patcher, helper)
-            helper.re_eval_instructions()
+            helper.store()
 
         helper.store()
         helper.patcher.applyPatches()
