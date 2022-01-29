@@ -21,7 +21,7 @@ class TestJumpAlignment(TestCase):
             nonlocal test
             test = True
 
-        patcher = MutableCodeObject.MutableCodeObject(a)
+        patcher = MutableCodeObject.MutableCodeObject.from_function(a)
         helper = BytecodePatchHelper(patcher)
 
         a()
@@ -45,7 +45,7 @@ class TestJumpAlignment(TestCase):
         def a():
             pass
 
-        patcher = MutableCodeObject.MutableCodeObject(a)
+        patcher = MutableCodeObject.MutableCodeObject.from_function(a)
         helper = BytecodePatchHelper(patcher)
 
         a()
@@ -85,7 +85,7 @@ class TestJumpAlignment(TestCase):
         self.assertFalse(test2)
         test1 = False
 
-        patcher = MutableCodeObject.MutableCodeObject(a)
+        patcher = MutableCodeObject.MutableCodeObject.from_function(a)
         helper = BytecodePatchHelper(patcher)
 
         # Delete the two instructions storing the True value in test1

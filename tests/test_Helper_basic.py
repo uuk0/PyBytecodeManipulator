@@ -48,7 +48,7 @@ class TestBasicBytecodeHelpers(TestCase):
         def localtest():
             return 0
 
-        patcher = MutableCodeObject(localtest)
+        patcher = MutableCodeObject.from_function(localtest)
         helper = BytecodePatchHelper(patcher)
         helper.insertStaticMethodCallAt(0, "tests.test_space:test_for_invoke")
         helper.store()
@@ -68,7 +68,7 @@ class TestBasicBytecodeHelpers(TestCase):
         def localtest():
             return 0
 
-        patcher = MutableCodeObject(localtest)
+        patcher = MutableCodeObject.from_function(localtest)
         helper = BytecodePatchHelper(patcher)
         helper.insertStaticMethodCallAt(0, "tests.test_space:test_for_invoke")
         helper.insertStaticMethodCallAt(0, "tests.test_space:test_for_invoke")
@@ -95,7 +95,7 @@ class TestBasicBytecodeHelpers(TestCase):
             nonlocal invoked
             invoked += 1
 
-        patcher = MutableCodeObject(localtest)
+        patcher = MutableCodeObject.from_function(localtest)
         helper = BytecodePatchHelper(patcher)
         helper.insertAsyncStaticMethodCallAt(0, inject)
         helper.store()
@@ -119,7 +119,7 @@ class TestBasicBytecodeHelpers(TestCase):
             nonlocal invoked
             invoked += 1
 
-        patcher = MutableCodeObject(localtest)
+        patcher = MutableCodeObject.from_function(localtest)
         helper = BytecodePatchHelper(patcher)
         helper.insertAsyncStaticMethodCallAt(0, inject)
         helper.insertAsyncStaticMethodCallAt(0, inject)
@@ -138,7 +138,7 @@ class TestBasicBytecodeHelpers(TestCase):
         async def localtest():
             return 0
 
-        patcher = MutableCodeObject(localtest)
+        patcher = MutableCodeObject.from_function(localtest)
         helper = BytecodePatchHelper(patcher)
         helper.insertStaticMethodCallAt(1, "tests.test_space:test_for_invoke")
         helper.store()
@@ -158,7 +158,7 @@ class TestBasicBytecodeHelpers(TestCase):
         async def localtest():
             return 0
 
-        patcher = MutableCodeObject(localtest)
+        patcher = MutableCodeObject.from_function(localtest)
         helper = BytecodePatchHelper(patcher)
         helper.insertStaticMethodCallAt(1, "tests.test_space:test_for_invoke")
         helper.insertStaticMethodCallAt(1, "tests.test_space:test_for_invoke")

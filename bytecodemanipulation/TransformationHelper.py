@@ -194,7 +194,7 @@ class BytecodePatchHelper:
         self.patcher = (
             patcher
             if isinstance(patcher, MutableCodeObject)
-            else MutableCodeObject(patcher)
+            else MutableCodeObject.from_function(patcher)
         )
         self.instruction_listing = list(self.patcher.get_instruction_list())
 
@@ -236,7 +236,7 @@ class BytecodePatchHelper:
                 "test", *args, invoke_subcalls_via_emulator="test2", **kwargs
             )
 
-        patcher = MutableCodeObject(invoke)
+        patcher = MutableCodeObject.from_function(invoke)
 
         # bind the code object as a constant
         patcher.constants[patcher.constants.index("test")] = internal
@@ -247,7 +247,7 @@ class BytecodePatchHelper:
         self.patcher.overrideFrom(patcher)
         self.patcher.applyPatches()
 
-        self.patcher = MutableCodeObject(internal)
+        self.patcher = MutableCodeObject.from_function(internal)
         self.instruction_listing = list(self.patcher.get_instruction_list())
         return self
 
@@ -479,7 +479,7 @@ class BytecodePatchHelper:
 
         # We need to transform this object one level up to make things work
         if not isinstance(method, MutableCodeObject):
-            method = MutableCodeObject(method)
+            method = MutableCodeObject.from_function(method)
 
         target = method.copy()
 

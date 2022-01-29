@@ -114,7 +114,7 @@ class TestBytecodeHandler(TestCase):
 
         self.assertEqual(test(), 0)
 
-        patcher = MutableCodeObject(test)
+        patcher = MutableCodeObject.from_function(test)
         handler.bound_injected_processors["test"][0][0].apply(handler, patcher, None)
         patcher.applyPatches()
 
@@ -141,7 +141,7 @@ class TestBytecodeHandler(TestCase):
         self.assertIsInstance(coro, typing.Coroutine)
         self.assertEqual(await coro, 0)
 
-        patcher = MutableCodeObject(test)
+        patcher = MutableCodeObject.from_function(test)
         handler.bound_injected_processors["test"][0][0].apply(handler, patcher, None)
         patcher.applyPatches()
 

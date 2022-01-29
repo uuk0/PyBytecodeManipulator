@@ -30,7 +30,7 @@ class TestInsertMethod(TestCase):
             INVOKED = True
 
         helper = BytecodePatchHelper(target)
-        helper.insertMethodAt(0, MutableCodeObject(test))
+        helper.insertMethodAt(0, MutableCodeObject.from_function(test))
         helper.store()
         helper.patcher.applyPatches()
 
@@ -62,9 +62,9 @@ class TestInsertMethod(TestCase):
 
         helper = BytecodePatchHelper(target)
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(4, MutableCodeObject(test))
+            helper.insertMethodAt(4, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(5, MutableCodeObject(test))
+            helper.insertMethodAt(5, MutableCodeObject.from_function(test))
         helper.store()
         helper.patcher.applyPatches()
 
@@ -87,9 +87,9 @@ class TestInsertMethod(TestCase):
         helper = BytecodePatchHelper(target)
 
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(2, MutableCodeObject(test))
+            helper.insertMethodAt(2, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(3, MutableCodeObject(test))
+            helper.insertMethodAt(3, MutableCodeObject.from_function(test))
 
         helper.store()
         helper.patcher.applyPatches()
@@ -119,9 +119,9 @@ class TestInsertMethod(TestCase):
         helper = BytecodePatchHelper(target)
 
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(2, MutableCodeObject(test))
+            helper.insertMethodAt(2, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(3, MutableCodeObject(test))
+            helper.insertMethodAt(3, MutableCodeObject.from_function(test))
 
         helper.store()
         helper.patcher.applyPatches()
@@ -151,9 +151,9 @@ class TestInsertMethod(TestCase):
         helper = BytecodePatchHelper(target)
 
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(2, MutableCodeObject(test))
+            helper.insertMethodAt(2, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(3, MutableCodeObject(test))
+            helper.insertMethodAt(3, MutableCodeObject.from_function(test))
 
         helper.store()
         helper.patcher.applyPatches()
@@ -187,9 +187,9 @@ class TestInsertMethod(TestCase):
         helper = BytecodePatchHelper(target)
 
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(4, MutableCodeObject(test))
+            helper.insertMethodAt(4, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(5, MutableCodeObject(test))
+            helper.insertMethodAt(5, MutableCodeObject.from_function(test))
 
         helper.store()
         helper.patcher.applyPatches()
@@ -224,9 +224,9 @@ class TestInsertMethod(TestCase):
 
         helper = BytecodePatchHelper(target)
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(4, MutableCodeObject(test))
+            helper.insertMethodAt(4, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(5, MutableCodeObject(test))
+            helper.insertMethodAt(5, MutableCodeObject.from_function(test))
         helper.store()
         helper.patcher.applyPatches()
 
@@ -252,9 +252,9 @@ class TestInsertMethod(TestCase):
 
         helper = BytecodePatchHelper(target)
         if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-            helper.insertMethodAt(2, MutableCodeObject(test))
+            helper.insertMethodAt(2, MutableCodeObject.from_function(test))
         else:
-            helper.insertMethodAt(3, MutableCodeObject(test))
+            helper.insertMethodAt(3, MutableCodeObject.from_function(test))
         helper.store()
         helper.patcher.applyPatches()
 

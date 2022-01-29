@@ -79,7 +79,7 @@ class TransformationHandler:
 
             print(f" ({method_target})")
 
-            patcher = bytecodemanipulation.MutableCodeObject.MutableCodeObject(
+            patcher = bytecodemanipulation.MutableCodeObject.MutableCodeObject.from_function(
                 method_target
             )
             helper = BytecodePatchHelper(patcher)

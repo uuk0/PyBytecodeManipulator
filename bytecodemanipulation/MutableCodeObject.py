@@ -40,51 +40,88 @@ class MutableCodeObject:
     and https://docs.python.org/3.10/library/dis.html
     """
 
-    def __init__(self, target: FunctionType):
-        self.target = target
-        self.code = self.target.__code__
+    @classmethod
+    def from_function(cls, target: FunctionType) -> "MutableCodeObject":
+        obj = cls()
+        obj.target = target
+        obj.code = code = target.__code__
 
-        # Number of real arguments, neither positional only nor keyword arguments
-        self.argument_count = self.code.co_argcount
+        code: types.CodeType
 
-        self.positional_only_argument_count = self.code.co_posonlyargcount
-        self.keyword_only_argument_count = self.code.co_kwonlyargcount
-        self.number_of_locals = self.code.co_nlocals
-        self.max_stack_size = self.code.co_stacksize
+        obj.argument_count = code.co_argcount
+        obj.positional_only_argument_count = code.co_posonlyargcount
+        obj.keyword_only_argument_count = code.co_kwonlyargcount
+        obj.number_of_locals = code.co_nlocals
+        obj.max_stack_size = code.co_stacksize
+        obj.flags = code.co_flags
+        obj.code_string = bytearray(code.co_code)
+        obj.constants = list(code.co_consts)
+        obj.names = list(code.co_names)
+        obj.variable_names = list(code.co_varnames)
+        obj.filename = code.co_filename
+        obj.name = code.co_name
+        obj.first_line_number = code.co_firstlineno
+        obj.line_number_table = code.co_lnotab
+        obj.free_vars = list(code.co_freevars)
+        obj.cell_vars = list(code.co_cellvars)
 
-        # Code flags, see https://docs.python.org/3.10/library/inspect.html#inspect-module-co-flags
-        self.flags = self.code.co_flags
+        if sys.version_info.minor >= 11 or typing.TYPE_CHECKING:
+            obj.column_table = code.co_columntable
+            obj.exception_table = code.co_exceptiontable
+            obj.end_line_table = code.co_endlinetable
+            obj.qual_name = code.co_qualname
 
-        # The code string, transformed to a bytearray for manipulation
-        self.code_string = bytearray(self.code.co_code)
-
-        # The constants in the code, use ensureConstant when wanting new ones
-        self.constants = list(self.code.co_consts)
-
-        # The local variable name table
-        self.names = list(self.code.co_names)
-        self.variable_names = list(self.code.co_varnames)
-        self.filename = self.code.co_filename
-        self.name = self.code.co_name
-        self.first_line_number = self.code.co_firstlineno
-        self.line_number_table = self.code.co_lnotab
-        self.free_vars = list(self.code.co_freevars)
-        self.cell_vars = list(self.code.co_cellvars)
-
-        self.can_be_reattached = True
-
-        self.parameters = inspect.signature(target).parameters.values()
-        self.func_defaults = list(
+        obj.parameters = inspect.signature(target).parameters.values()
+        obj.func_defaults = list(
             filter(
-                lambda e: e != inspect._empty, map(lambda e: e.default, self.parameters)
+                lambda e: e != inspect._empty, map(lambda e: e.default, obj.parameters)
             )
         )
 
+        obj.can_be_reattached = True
+        return obj
+
+    def __init__(self):
+        self.target: FunctionType = None
+        self.code: types.CodeType = None
+
+        # Number of real arguments, neither positional only nor keyword arguments
+        self.argument_count = 0
+
+        self.positional_only_argument_count = 0
+        self.keyword_only_argument_count = 0
+        self.number_of_locals = 0
+        self.max_stack_size = 0
+
+        # Code flags, see https://docs.python.org/3.10/library/inspect.html#inspect-module-co-flags
+        self.flags = 0
+
+        # The code string, transformed to a bytearray for manipulation
+        self.code_string = bytearray()
+
+        # The constants in the code, use ensureConstant when wanting new ones
+        self.constants = []
+
+        # The local variable name table
+        self.names = []
+        self.variable_names = []
+        self.filename = __file__
+        self.name = "unknown"
+        self.first_line_number = 0
+        self.line_number_table = b""
+        self.free_vars = []
+        self.cell_vars = []
+
+        self.can_be_reattached = False
+
+        self.parameters = []
+        self.func_defaults = []
+
         if sys.version_info.minor >= 11 or typing.TYPE_CHECKING:
-            self.column_table = self.code.co_columntable
-            self.exception_table = self.code.co_exceptiontable
-            self.end_line_table = self.code.co_endlinetable
-            self.qual_name = self.code.co_qualname
+            self.column_table = None
+            self.exception_table = None
+            self.end_line_table = None
+            self.qual_name = None
 
     def create_default_write_opcodes(
         self, total_previous_args: int, ensure_target: "MutableCodeObject" = None
@@ -268,7 +305,7 @@ class MutableCodeObject:
         Creates a copy of this object WITHOUT method binding
         Sets can_be_reattached simply to False
         """
-        obj = MutableCodeObject(self.target)
+        obj = MutableCodeObject.from_function(self.target)
         obj.overrideFrom(self)
         obj.can_be_reattached = False
         return obj

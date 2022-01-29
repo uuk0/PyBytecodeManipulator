@@ -67,7 +67,7 @@ class ReplacementProcessor(AbstractBytecodeProcessor):
         target: MutableCodeObject,
         helper: BytecodePatchHelper,
     ):
-        target.overrideFrom(MutableCodeObject(self.replacement))
+        target.overrideFrom(MutableCodeObject.from_function(self.replacement))
 
     def is_breaking(self) -> bool:
         return True

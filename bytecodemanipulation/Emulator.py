@@ -72,7 +72,7 @@ class ExecutionManager:
     def execute(self, target, *args, invoke_subcalls_via_emulator=False, **kwargs):
         env = ExecutionEnvironment(self)
         env.invoke_subcalls_via_emulator = invoke_subcalls_via_emulator
-        patcher = MutableCodeObject(target)
+        patcher = MutableCodeObject.from_function(target)
         env.max_stack_size = patcher.max_stack_size
         env.local_variables = [None] * len(patcher.variable_names)
         env.local_variables[: len(args)] = args

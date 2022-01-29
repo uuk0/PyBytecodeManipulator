@@ -54,7 +54,7 @@ class TestEmulatorInjection(TestCase):
         def target():
             return 0
 
-        previous = MutableCodeObject(target)
+        previous = MutableCodeObject.from_function(target)
         helper = BytecodePatchHelper(target)
         helper.enable_verbose_exceptions()
         helper.store()
@@ -63,7 +63,7 @@ class TestEmulatorInjection(TestCase):
         self.assertEqual(target(), 0)
 
         # And make sure that everything goes right
-        new = MutableCodeObject(target)
+        new = MutableCodeObject.from_function(target)
         self.assertNotEqual(previous.code_string, new.code_string)
 
     def test_simple_crash(self):

@@ -29,7 +29,7 @@ class TestMutableCodeObject(TestCase):
         self.assertEqual(value, 64)
 
         # Apply a small patch to the function, replacing the + with a - in the code
-        obj = MutableCodeObject(Test.wadd)
+        obj = MutableCodeObject.from_function(Test.wadd)
         obj.code_string[12:13] = dis.opmap["BINARY_SUBTRACT"].to_bytes(
             1, byteorder="little"
         )
@@ -51,7 +51,7 @@ class TestMutableCodeObject(TestCase):
 
         image = PIL.Image.new("RGBA", (10, 10))
 
-        obj = MutableCodeObject(PIL.Image.Image.copy)
+        obj = MutableCodeObject.from_function(PIL.Image.Image.copy)
         replacement_code[1] = obj.ensureConstant(0)
         obj.code_string = replacement_code
         obj.applyPatches()
@@ -67,8 +67,8 @@ class TestMutableCodeObject(TestCase):
 
         self.assertEqual(a(), 0)
 
-        obj = MutableCodeObject(a)
-        obj.overrideFrom(MutableCodeObject(b))
+        obj = MutableCodeObject.from_function(a)
+        obj.overrideFrom(MutableCodeObject.from_function(b))
         obj.applyPatches()
 
         self.assertEqual(a(), 1)
