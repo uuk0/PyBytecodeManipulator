@@ -13,6 +13,7 @@ from bytecodemanipulation.BytecodeProcessors import (
 from .BytecodeProcessors import GlobalStaticLookupProcessor
 from .InstructionMatchers import MetaArgMatcher
 from .util import Opcodes
+from .CodeOptimiser import optimise_code
 
 
 def _is_builtin_name(_, name: str):
@@ -105,6 +106,8 @@ class _OptimiserContainer:
             print(f"[INFO] applying optimiser transformer {processor} onto {target}")
             processor.apply(None, helper.patcher, helper)
             helper.re_eval_instructions()
+
+        optimise_code(helper)
 
         helper.store()
         helper.patcher.applyPatches()
