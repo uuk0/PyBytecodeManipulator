@@ -9,11 +9,19 @@ from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.BytecodeProcessors import (
     AbstractBytecodeProcessor,
     MethodInlineProcessor,
+    Global2ConstReplace,
 )
 from .BytecodeProcessors import GlobalStaticLookupProcessor
 from .InstructionMatchers import MetaArgMatcher
 from .util import Opcodes
 from .CodeOptimiser import optimise_code
+
+"""
+The following annotations should be also added:
+- variable type forces (-> look methods statically up)
+- annotations for protected methods (-> no override)
+- hinting that ...[...] looks up in a dict (-> static method resolving)
+"""
 
 
 def _is_builtin_name(_, name: str):
@@ -153,6 +161,26 @@ def builtins_are_static():
     return annotation
 
 
+def name_is_static(name: str, accessor: typing.Callable, matcher: AbstractInstructionMatcher = None):
+    """
+    Marks a certain global name as static
+    WARNING: when to the global is written, this will fail to detect that!
+
+    :param name: the global name
+    :param accessor: accessor to the static value
+    :param matcher: optional, an instruction matcher
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
+        optimiser.code_walkers.append(
+            Global2ConstReplace(name, accessor(), matcher=MetaArgMatcher(_is_builtin_name))
+        )
+        return target
+
+    return annotation
+
+
 def object_method_is_protected(
     name: str,
     accessor: typing.Callable[[], typing.Callable],
@@ -199,6 +227,23 @@ def constant_arg(name: str):
     def annotation(target: typing.Callable):
         optimiser = _schedule_optimisation(target)
         optimiser.constant_args.add(name)
+        return target
+
+    return annotation
+
+
+def forced_arg_type(name: str, type_accessor: typing.Callable, may_subclass=True):
+    """
+    Marks a certain arg to have that exact type, or a subclass of it when specified
+    WARNING: when passing another type, will crash as we do optimisations around that type
+
+    :param name: the parameter name
+    :param type_accessor: the accessor method for the type of the parameter
+    :param may_subclass: if subclasses of that type are allowed or not
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
         return target
 
     return annotation
