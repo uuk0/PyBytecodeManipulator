@@ -2,6 +2,8 @@ import dis
 import timeit
 from unittest import TestCase
 
+from bytecodemanipulation.OptimiserAnnotations import try_optimise
+
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 from bytecodemanipulation.OptimiserAnnotations import run_optimisations, builtins_are_static, forced_attribute_type
@@ -64,3 +66,31 @@ class TestOptimiserAnnotations(TestCase):
         #
         # obj = TestCls()
         # print("compare:", timeit.timeit(obj.test_func, globals=locals()))
+
+    def test_class_attribute_type_helper_subclass(self):
+        """
+        Checks the parent class lookup for type annotations
+        """
+
+        @forced_attribute_type("test", lambda: str)
+        class TestBase:
+            def __init__(self):
+                self.test = "hello world"
+
+        @try_optimise()
+        class TestCls(TestBase):
+            def test_func(self):
+                return self.test.upper()
+
+        self.assertEqual(TestCls().test_func(), "HELLO WORLD")
+
+        run_optimisations()
+
+        helper = BytecodePatchHelper(TestCls.test_func)
+        helper.print_stats()
+        helper.enable_verbose_exceptions()
+        helper.store()
+
+        # If we optimised it away, this becomes a LOAD_CONST instruction
+        self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
+        self.assertEqual(TestCls().test_func(), "HELLO WORLD")

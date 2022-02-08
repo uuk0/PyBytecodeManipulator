@@ -58,8 +58,16 @@ class _OptimiserContainer:
         self.specified_locals: typing.Dict[str, typing.Type] = {}
         self.return_type: typing.Optional[typing.Type] = None
 
-        # todo: check for parent attribute marks
         self.attribute_type_marks: typing.Dict[str, typing.Type] = {}
+
+        if hasattr(target, "__bases__"):
+            parents = set(target.__bases__) - {object, type}
+            while parents:
+                parent = parents.pop()
+                if hasattr(parent, "optimiser_container"):
+                    container: _OptimiserContainer = parent.optimiser_container
+                    self.attribute_type_marks.update(container.attribute_type_marks)
+                parents |= set(parent.__bases__) - {object, type}
 
         # Optional: a list of attributes accessed by this method on the bound object
         self.touches: typing.Optional[typing.Set[str]] = None
@@ -195,7 +203,7 @@ class _OptimiserContainer:
 def _schedule_optimisation(
     target: typing.Union[typing.Callable, typing.Type],
 ) -> _OptimiserContainer:
-    if not hasattr(target, "optimiser_container"):
+    if not "optimiser_container" in target.__dict__:
         target.optimiser_container = _OptimiserContainer(target)
         _OptimiserContainer.CONTAINERS.append(target.optimiser_container)
 
@@ -336,7 +344,9 @@ def forced_attribute_type(name: str, type_accessor: typing.Callable[[], typing.T
     def annotation(target: typing.Union[typing.Callable, typing.Type]):
         optimiser = _schedule_optimisation(target)
 
-        if isinstance(target, typing.Type):
+        if may_subclass:
+            pass  # todo: what can we do here?
+        elif isinstance(target, typing.Type):
             optimiser.attribute_type_marks[name] = type_accessor()
         else:
             pass  # todo: the function body should also be optimised
