@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="bytecodemanipulation",
-    version="0.1.2",
+    version="0.1.4",
     author="uuk",
     author_email="uuk1301@gmail.com",
     description="High level python bytecode manipulation",
@@ -24,7 +24,6 @@ setuptools.setup(
         "Development Status :: 2 - Pre-Alpha",
         "Programming Language :: Python :: Implementation :: CPython",
     ],
-    package_dir={"": "src"},
-    packages=setuptools.find_packages(where="bytecodemanipulation"),
+    packages=["bytecodemanipulation"] + ["bytecodemanipulation."+e for e in setuptools.find_packages(where="bytecodemanipulation")],
     python_requires=">=3.10",
 )

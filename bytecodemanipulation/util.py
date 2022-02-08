@@ -26,6 +26,19 @@ def create_instruction(
 PY_VERSION = sys.version_info.major, sys.version_info.minor
 
 
+if PY_VERSION >= (3, 11):
+    def createCall(arg_count: int, func_type="function"):
+        return [
+            create_instruction("PRECALL_"+func_type.upper(), arg_count),
+            create_instruction("CALL"),
+        ]
+else:
+    def createCall(arg_count: int, func_type="function"):
+        return [
+            create_instruction("CALL_"+func_type.upper(), arg_count)
+        ]
+
+
 class Opcodes:
     POP_TOP = 1
     ROT_TWO = 2

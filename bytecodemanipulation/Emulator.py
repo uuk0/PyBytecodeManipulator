@@ -459,6 +459,24 @@ class OpcodeCallNoKw(AbstractInstructionExecutor):
         env.push(method(*reversed(args)))
 
 
+@register_opcode("CALL_METHOD", (0, 0), (3, 10))
+class OpcodeCallMethod(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        args = env.pop(instr.arg, force_list=True)
+
+        method = env.pop()
+
+        if env.invoke_subcalls_via_emulator and hasattr(method, "__code__"):
+            return env.manager.execute(method, *reversed(args))
+
+        if not callable(method):
+            raise ValueError(f"method on stack was not callable; tried to invoke {method} with args {args}")
+
+        # todo: add option to also call using the emulator if possible
+        env.push(method(*reversed(args)))
+
+
 @register_opcode("IMPORT_NAME")
 class OpcodeImportName(AbstractInstructionExecutor):
     @classmethod

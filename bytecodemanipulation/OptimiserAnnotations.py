@@ -3,6 +3,8 @@ import importlib
 import types
 import typing
 
+from bytecodemanipulation.MutableCodeObject import createInstruction
+
 from . import CodeOptimiser
 from bytecodemanipulation.InstructionMatchers import AbstractInstructionMatcher
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
@@ -56,6 +58,9 @@ class _OptimiserContainer:
         self.specified_locals: typing.Dict[str, typing.Type] = {}
         self.return_type: typing.Optional[typing.Type] = None
 
+        # todo: check for parent attribute marks
+        self.attribute_type_marks: typing.Dict[str, typing.Type] = {}
+
         # Optional: a list of attributes accessed by this method on the bound object
         self.touches: typing.Optional[typing.Set[str]] = None
 
@@ -104,10 +109,12 @@ class _OptimiserContainer:
             self.optimise_method(self.target)
         else:
             for value in self.target.__dict__.values():
-                if isinstance(value, types.FunctionType):
+                # Second condition checks if the function is a member of that class
+                if isinstance(value, types.FunctionType) and value.__qualname__.split(".")[-2] == self.target.__name__:
+                    self.optimise_attribute_access_for_self_method(value)
                     self.optimise_method(value)
 
-    def optimise_method(self, target):
+    def optimise_method(self, target: types.FunctionType):
         helper = BytecodePatchHelper(target)
 
         for processor in self.code_walkers:
@@ -120,6 +127,62 @@ class _OptimiserContainer:
         helper.store()
         helper.patcher.applyPatches()
         CodeOptimiser.optimise_code(helper)
+
+    def optimise_attribute_access_for_self_method(self, target: types.FunctionType):
+        # todo: move to optimise module
+        # Only if that map is populated, we can work
+        if not self.attribute_type_marks: return
+
+        helper = BytecodePatchHelper(target)
+
+        index = -1
+
+        while index < len(helper.instruction_listing):
+            index += 1
+
+            for index, instr in list(helper.walk())[index:]:
+                if instr.opcode == Opcodes.LOAD_METHOD:
+                    previous = helper.instruction_listing[index - 1]
+
+                    if previous.opcode == Opcodes.LOAD_ATTR:
+                        source = next(helper.findSourceOfStackIndex(index - 1, 0))
+                        # print(source)
+                        # print(instr)
+                        # print(previous)
+
+                        if source.opcode == Opcodes.LOAD_FAST and source.argval == "self":
+                            if previous.argval in self.attribute_type_marks:
+                                value_type = self.attribute_type_marks[previous.argval]
+                                static_method_descriptor = getattr(value_type, instr.argval)
+
+                                invoke_target = next(helper.findTargetOfStackIndex(index, 0))
+                                helper.instruction_listing[invoke_target.offset // 2] = createInstruction(
+                                    Opcodes.CALL_FUNCTION,
+                                    invoke_target.arg + 1,
+                                )
+                                helper.instruction_listing[source.offset // 2] = helper.patcher.createLoadConst(static_method_descriptor)
+                                helper.instruction_listing[index - 1] = source
+                                helper.instruction_listing[index] = previous
+                                helper.re_eval_instructions()
+
+                                # LOAD_FAST <self>   index - 2
+                                # LOAD_ATTR <attr>   index - 1
+                                # LOAD_METHOD <name> index
+                                # ...
+                                # CALL_METHOD <args>
+                                # ->
+                                # LOAD_CONST <method> index - 2
+                                # LOAD_FAST <self>    index - 1
+                                # LOAD_ATTR <attr>    index
+                                # ...
+                                # CALL_METHOD <args + 1>
+                                index -= 1
+                                break
+            else:
+                break
+
+        helper.store()
+        helper.patcher.applyPatches()
 
     async def optimize_target_async(self):
         try:
@@ -176,6 +239,19 @@ def name_is_static(name: str, accessor: typing.Callable, matcher: AbstractInstru
         optimiser.code_walkers.append(
             Global2ConstReplace(name, accessor(), matcher=MetaArgMatcher(_is_builtin_name))
         )
+        return target
+
+    return annotation
+
+
+def returns_argument(index: int = 0):
+    """
+    Marks a function to return a certain argument
+    Can be used in some cases for optimisation
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
         return target
 
     return annotation
@@ -244,6 +320,27 @@ def forced_arg_type(name: str, type_accessor: typing.Callable, may_subclass=True
 
     def annotation(target: typing.Callable):
         optimiser = _schedule_optimisation(target)
+        return target
+
+    return annotation
+
+
+def forced_attribute_type(name: str, type_accessor: typing.Callable[[], typing.Type], may_subclass=False, source_source=None):
+    """
+    Forced a certain data type on an object attribute
+    Not validated, but allows optimisations to happen!
+
+    Can speed up calls by a lot
+    """
+
+    def annotation(target: typing.Union[typing.Callable, typing.Type]):
+        optimiser = _schedule_optimisation(target)
+
+        if isinstance(target, typing.Type):
+            optimiser.attribute_type_marks[name] = type_accessor()
+        else:
+            pass  # todo: the function body should also be optimised
+
         return target
 
     return annotation

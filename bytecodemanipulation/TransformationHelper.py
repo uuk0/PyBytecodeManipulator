@@ -1156,6 +1156,8 @@ class BytecodePatchHelper:
         """
         Finds the source instruction of the given stack element.
         Uses advanced back-tracking in code
+        todo: check the IS_JUMP_TARGET flag on our way and collect them
+        todo: when encountering an non-conditional JUMP instruction, we are at our end of our journey
 
         :param index: current instruction index, before which we want to know the layout
         :param offset: the offset, where 0 is top, and all following numbers (1, 2, 3, ...) give the i+1-th
@@ -1241,6 +1243,108 @@ class BytecodePatchHelper:
             elif instr.opcode == Opcodes.DUP_TOP_TWO:
                 if offset > 1:
                     offset -= 2
+
+            elif (
+                sys.version_info.major >= 3
+                and sys.version_info.minor >= 11
+                and instr.opcode == Opcodes.BINARY_OP
+            ):
+                pass
+
+            else:
+                raise NotImplementedError(instr)
+
+        if offset < 0:
+            raise RuntimeError
+
+    def findTargetOfStackIndex(self, index, offset: int):
+        self.re_eval_instructions()
+        instructions = list(self.walk())
+        # print(instructions)
+        # print(index, offset)
+
+        # todo: follow unconditional jumps
+        # todo: possible branch at conditional jumps
+
+        for index, instr in instructions[index+1:]:
+            if offset >= len(instructions):
+                raise RuntimeError(offset, instructions[index + 1])
+
+            print(instr, offset)
+
+            if offset == 0:  # Currently, at top
+                if instr.opcode in POP_SINGLE_VALUE or instr.opcode in POP_DOUBLE_VALUE:
+                    yield instr
+                    return
+
+            if offset <= 1:
+                if (
+                    instr.opcode in POP_DOUBLE_AND_PUSH_SINGLE
+                    or instr.opcode in POP_SINGLE_AND_PUSH_SINGLE
+                ):
+                    yield instr
+                    return
+
+            if instr.opcode == Opcodes.CALL_METHOD and offset <= instr.arg:
+                yield instr
+                return
+
+            if instr.opcode in POP_SINGLE_AND_PUSH_SINGLE or instr.opcode in DO_NOTHING:
+                continue
+
+            if instr.opcode in LOAD_SINGLE_VALUE:
+                offset += 1
+
+            elif instr.opcode in POP_SINGLE_VALUE:
+                offset -= 1
+
+            elif instr.opcode in POP_DOUBLE_AND_PUSH_SINGLE:
+                offset -= 1
+
+            elif instr.opcode in POP_DOUBLE_VALUE:
+                offset -= 2
+
+            elif instr.opcode == METHOD_CALL:
+                offset -= 1
+                offset += instr.arg - 1
+
+            elif instr.opcode == Opcodes.UNPACK_SEQUENCE:
+                offset -= instr.arg - 1
+
+            elif instr.opcode == Opcodes.FOR_ITER:
+                raise ValueError
+
+            elif instr.opcode == Opcodes.ROT_TWO:
+                if offset == 0:
+                    offset = 1
+                elif offset == 1:
+                    offset = 0
+
+            elif instr.opcode == Opcodes.ROT_THREE:
+                if offset == 0:
+                    offset = 2
+                elif offset == 1:
+                    offset = 0
+                elif offset == 2:
+                    offset = 1
+
+            elif instr.opcode == Opcodes.ROT_FOUR:
+                if offset == 0:
+                    offset = 3
+                elif offset == 1:
+                    offset = 0
+                elif offset == 2:
+                    offset = 1
+                elif offset == 3:
+                    offset = 2
+
+            elif instr.opcode == Opcodes.DUP_TOP:
+                if offset > 0:
+                    offset += 1
+
+            elif instr.opcode == Opcodes.DUP_TOP_TWO:
+                if offset > 1:
+                    offset += 2
 
             elif (
                 sys.version_info.major >= 3
