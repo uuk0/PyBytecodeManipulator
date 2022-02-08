@@ -39,7 +39,7 @@ class TestOptimiserAnnotations(TestCase):
         self.assertEqual(TestCls().test_func(), "HELLO WORLD")
 
         # obj = TestCls()
-        # print("before:", timeit.timeit("obj.test_func()", globals=locals()))
+        # print("before:", timeit.timeit(obj.test_func, globals=locals()))
 
         run_optimisations()
 
@@ -53,7 +53,7 @@ class TestOptimiserAnnotations(TestCase):
         self.assertEqual(TestCls().test_func(), "HELLO WORLD")
 
         # obj = TestCls()
-        # print("after:", timeit.timeit("obj.test_func()", globals=locals()))
+        # print("after:", timeit.timeit(obj.test_func, globals=locals()))
         #
         # class TestCls:
         #     def __init__(self):
@@ -63,4 +63,4 @@ class TestOptimiserAnnotations(TestCase):
         #         return self.test.upper()
         #
         # obj = TestCls()
-        # print("compare:", timeit.timeit("obj.test_func()", globals=locals()))
+        # print("compare:", timeit.timeit(obj.test_func, globals=locals()))
