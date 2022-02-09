@@ -1,5 +1,6 @@
 import builtins
 import importlib
+import traceback
 import types
 import typing
 
@@ -163,7 +164,13 @@ class _OptimiserContainer:
                                 value_type = self.attribute_type_marks[previous.argval]
                                 static_method_descriptor = getattr(value_type, instr.argval)
 
-                                invoke_target = next(helper.findTargetOfStackIndex(index, 0))
+                                try:
+                                    invoke_target = next(helper.findTargetOfStackIndex(index, 0))
+                                except NotImplementedError as e:
+                                    traceback.print_exc()
+                                    print(e.args)
+                                    continue
+
                                 helper.instruction_listing[invoke_target.offset // 2] = createInstruction(
                                     Opcodes.CALL_FUNCTION,
                                     invoke_target.arg + 1,

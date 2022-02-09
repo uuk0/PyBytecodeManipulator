@@ -138,6 +138,7 @@ POP_SINGLE_AND_PUSH_SINGLE = {
     Opcodes.GET_AWAITABLE,
     Opcodes.GET_AITER,
     Opcodes.GET_ANEXT,
+    Opcodes.LOAD_ATTR,
 }
 
 
@@ -1288,6 +1289,13 @@ class BytecodePatchHelper:
             if instr.opcode == Opcodes.CALL_METHOD and offset <= instr.arg:
                 yield instr
                 return
+
+            if instr.opcode == Opcodes.BUILD_TUPLE:
+                if offset < instr.arg:
+                    yield instr
+                    return
+                offset -= instr.arg - 1
+                continue
 
             if instr.opcode in POP_SINGLE_AND_PUSH_SINGLE or instr.opcode in DO_NOTHING:
                 continue
