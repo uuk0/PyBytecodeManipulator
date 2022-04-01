@@ -1,5 +1,6 @@
 import builtins
 import importlib
+import sys
 import traceback
 import types
 import typing
@@ -114,6 +115,9 @@ class _OptimiserContainer:
                 self.is_self_constant = True
 
     def optimise_target(self):
+        if "--disable-bytecode-optimisation" in sys.argv:
+            return
+
         if isinstance(self.target, types.FunctionType):
             self.optimise_method(self.target)
         else:
