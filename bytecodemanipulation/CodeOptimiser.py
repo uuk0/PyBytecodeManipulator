@@ -1,7 +1,7 @@
 import dis
 
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
-from bytecodemanipulation.util import Opcodes
+from bytecodemanipulation.util import Opcodes, create_instruction
 
 SIDE_EFFECT_FREE_VALUE_LOAD = {
     Opcodes.LOAD_FAST,
@@ -16,6 +16,12 @@ SIDE_EFFECT_FREE_VALUE_LOAD = {
     Opcodes.LOAD_METHOD,
 }
 
+BUILD_PRIMITIVE = {
+    Opcodes.BUILD_TUPLE,
+    Opcodes.BUILD_SET,
+    Opcodes.BUILD_LIST,
+}
+
 
 PAIR_LOAD_STORE = {
     Opcodes.LOAD_FAST: Opcodes.STORE_FAST,
@@ -23,6 +29,13 @@ PAIR_LOAD_STORE = {
     Opcodes.LOAD_NAME: Opcodes.STORE_NAME,
     Opcodes.LOAD_DEREF: Opcodes.STORE_DEREF,
 }
+PAIR_STORE_LOAD = {value: key for key, value in PAIR_LOAD_STORE.items()}
+
+PAIR_LOAD_STORE_SIDE_FREE = {
+    Opcodes.LOAD_FAST: Opcodes.STORE_FAST,
+    Opcodes.LOAD_GLOBAL: Opcodes.STORE_GLOBAL,
+}
+PAIR_STORE_LOAD_SIDE_FREE = {value: key for key, value in PAIR_LOAD_STORE_SIDE_FREE.items()}
 
 PAIR_STORE_DELETE = {
     Opcodes.STORE_FAST: Opcodes.DELETE_FAST,
@@ -34,10 +47,17 @@ PAIR_STORE_DELETE = {
 
 def optimise_code(helper: BytecodePatchHelper):
     remove_store_delete_pairs(helper)
-    remove_load_pop(helper)
+    remove_load_dup_pop(helper)
     remove_load_store_pairs(helper)
+    optimise_store_load_pairs(helper)
     remove_delete_fast_without_assign(helper)
+    remove_store_fast_without_usage(helper)
     remove_nop(helper)
+    prepare_inline_expressions(helper)
+    remove_create_primitive_pop(helper)
+    remove_load_dup_pop(helper)
+    remove_delete_fast_without_assign(helper)
+    remove_load_dup_pop(helper)
 
 
 # Optimise-able:
@@ -61,7 +81,7 @@ def remove_store_delete_pairs(helper: BytecodePatchHelper):
     DELETE_XX instruction.
     Refactors it into a POP_TOP followed by a DELETE_XX
 
-    The POP_TOP instruction than can be optimised away by the remove_load_pop() optimiser if possible.
+    The POP_TOP instruction than can be optimised away by the remove_load_dup_pop() optimiser if possible.
     The DELETE_XX instruction can be optimised away by the remove_delete_fast_without_assign() optimiser if possible.
     """
     index = -1
@@ -116,9 +136,9 @@ def remove_delete_fast_without_assign(helper: BytecodePatchHelper):
             break
 
 
-def remove_load_pop(helper: BytecodePatchHelper):
+def remove_load_dup_pop(helper: BytecodePatchHelper):
     """
-    Optimiser method for removing side effect free LOAD_XX instructions directly followed by a
+    Optimiser method for removing side effect free LOAD_XX and DUP_TOP instructions directly followed by a
     POP_TOP instruction
     """
     index = -1
@@ -127,7 +147,7 @@ def remove_load_pop(helper: BytecodePatchHelper):
         for index, instr in list(helper.walk())[index:]:
             if instr.opcode == Opcodes.POP_TOP and index > 0:
                 previous = helper.instruction_listing[index - 1]
-                if previous.opcode in SIDE_EFFECT_FREE_VALUE_LOAD:
+                if previous.opcode in SIDE_EFFECT_FREE_VALUE_LOAD or previous.opcode == Opcodes.DUP_TOP:
                     # Delete the side effect free result and the POP_TOP instruction
                     helper.deleteRegion(index - 1, index + 1)
                     index -= 2
@@ -164,6 +184,64 @@ def remove_load_store_pairs(helper: BytecodePatchHelper):
             break
 
 
+def optimise_store_load_pairs(helper: BytecodePatchHelper):
+    """
+    Optimiser method for removing a side effect free STORE_XX followed by a LOAD_XX
+    to a DUP followed by the STORE_XX instruction
+    """
+
+    for index, instr in list(helper.walk()):
+        if (
+            instr.opcode in PAIR_STORE_LOAD_SIDE_FREE
+            and index < len(helper.instruction_listing) - 2
+        ):
+            next_instr = helper.instruction_listing[index + 1]
+            if (
+                next_instr.opcode == PAIR_STORE_LOAD_SIDE_FREE[instr.opcode]
+                and instr.arg == next_instr.arg
+            ):
+                helper.instruction_listing[index + 1] = instr
+                helper.instruction_listing[index] = create_instruction("DUP_TOP")
+
+
+def remove_store_fast_without_usage(helper: BytecodePatchHelper):
+    """
+    Optimisation for removing STORE_FAST instructions writing to locals not used later on
+    """
+
+    last_reads = [-1] * len(helper.patcher.variable_names)
+
+    for index, instr in list(helper.walk()):
+        if (
+            instr.opcode == Opcodes.LOAD_FAST
+        ):
+            last_reads[instr.arg] = index
+
+    index = -1
+    while index < len(helper.instruction_listing) - 1:
+        index += 1
+        for index, instr in list(helper.walk())[index:]:
+            # Ok, the STORE_FAST is after the last LOAD_FAST instruction, so we can replace eit by a POP_TOP
+            if instr.opcode == Opcodes.STORE_FAST and index > last_reads[instr.arg]:
+                helper.instruction_listing[index] = create_instruction("POP_TOP")
+
+
+def remove_create_primitive_pop(helper: BytecodePatchHelper):
+    index = 0
+    while index < len(helper.instruction_listing) - 1:
+        index += 1
+        for index, instr in list(helper.walk())[index:]:
+            if instr.opcode == Opcodes.POP_TOP and index > 0:
+                previous = helper.instruction_listing[index - 1]
+                if previous.opcode in BUILD_PRIMITIVE:
+                    helper.deleteRegion(index - 1, index + 1)
+                    helper.insertRegion(index - 1, [create_instruction("POP_TOP")] * previous.arg)
+                elif previous.opcode == Opcodes.BUILD_MAP:
+                    # BUILD_MAP requires twice the values
+                    helper.deleteRegion(index - 1, index + 1)
+                    helper.insertRegion(index - 1, [create_instruction("POP_TOP")] * (previous.arg * 2))
+
+
 def remove_nop(helper: BytecodePatchHelper):
     """
     Optimiser method for removing NOP instructions
@@ -180,3 +258,35 @@ def remove_nop(helper: BytecodePatchHelper):
                 break
         else:
             break
+
+
+def prepare_inline_expressions(helper: BytecodePatchHelper):
+    """
+    Optimiser for optimising constant expressions in bytecode
+
+    Currently, only optimises tuple building of constants, which is already optimised by the compiler;
+    So this is only useful when cleaning up other optimised sections
+    """
+
+    index = -1
+    while index < len(helper.instruction_listing) - 1:
+        index += 1
+
+        for index, instr in list(helper.walk())[index:]:
+            if instr.opcode == Opcodes.BUILD_TUPLE:
+                count = instr.arg
+
+                args = []
+                for i in range(count):
+                    value = next(helper.findTargetOfStackIndex(i, index))
+
+                    if value.opcode == Opcodes.LOAD_CONST:
+                        args.append(value.argval)
+                    else:
+                        break
+
+                else:
+                    helper.instruction_listing[index] = helper.patcher.createLoadConst(tuple(args))
+                    helper.insertRegion(index, [create_instruction("POP_TOP")] * len(args))
+
+            # todo: for lists/sets/dicts, check usage for constant use (check for "in", lookup, ...)

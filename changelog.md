@@ -1,4 +1,9 @@
 
+# Version 0.1.3 [upcoming]
+- added some more optimizations which do not require annotations, including:
+  - unused variable elimination (including unused assignments)
+  - reusing values instead of write followed by read
+
 # Version 0.1.2
 - added some infrastructure for working with EXTENDED_ARG opcodes 
 

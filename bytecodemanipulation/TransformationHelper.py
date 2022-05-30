@@ -1258,7 +1258,10 @@ class BytecodePatchHelper:
         if offset < 0:
             raise RuntimeError
 
-    def findTargetOfStackIndex(self, index, offset: int):
+    def findTargetOfStackIndex(self, index: int, offset: int):
+        """
+        Yields the source instructions for the data found at "index", where 0 is top, 1 is second from top, ...
+        """
         self.re_eval_instructions()
         instructions = list(self.walk())
         # print(instructions)
