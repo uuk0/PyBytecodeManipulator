@@ -1,4 +1,5 @@
 import dis
+import sys
 
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 from bytecodemanipulation.util import Opcodes, create_instruction
@@ -16,6 +17,7 @@ SIDE_EFFECT_FREE_VALUE_LOAD = {
     Opcodes.LOAD_METHOD,
 }
 
+# These build primitives from A objects from the stack
 BUILD_PRIMITIVE = {
     Opcodes.BUILD_TUPLE,
     Opcodes.BUILD_SET,
@@ -45,19 +47,37 @@ PAIR_STORE_DELETE = {
 }
 
 
-def optimise_code(helper: BytecodePatchHelper):
-    remove_store_delete_pairs(helper)
-    remove_load_dup_pop(helper)
-    remove_load_store_pairs(helper)
-    optimise_store_load_pairs(helper)
-    remove_delete_fast_without_assign(helper)
-    remove_store_fast_without_usage(helper)
-    remove_nop(helper)
-    prepare_inline_expressions(helper)
-    remove_create_primitive_pop(helper)
-    remove_load_dup_pop(helper)
-    remove_delete_fast_without_assign(helper)
-    remove_load_dup_pop(helper)
+if sys.version_info.major <= 3 and sys.version_info.minor < 11:
+    def optimise_code(helper: BytecodePatchHelper):
+        remove_store_delete_pairs(helper)
+        remove_load_dup_pop(helper)
+        remove_load_store_pairs(helper)
+        optimise_store_load_pairs(helper)
+        remove_delete_fast_without_assign(helper)
+        remove_store_fast_without_usage(helper)
+        remove_nop(helper)
+        prepare_inline_expressions(helper)
+        remove_create_primitive_pop(helper)
+        remove_load_dup_pop(helper)
+        remove_delete_fast_without_assign(helper)
+        remove_load_dup_pop(helper)
+
+else:
+    # todo: stack manipulation methods changed
+
+    def optimise_code(helper: BytecodePatchHelper):
+        remove_store_delete_pairs(helper)
+        remove_load_dup_pop(helper)
+        remove_load_store_pairs(helper)
+        optimise_store_load_pairs(helper)
+        remove_delete_fast_without_assign(helper)
+        remove_store_fast_without_usage(helper)
+        remove_nop(helper)
+        prepare_inline_expressions(helper)
+        remove_create_primitive_pop(helper)
+        remove_load_dup_pop(helper)
+        remove_delete_fast_without_assign(helper)
+        remove_load_dup_pop(helper)
 
 
 # Optimise-able:
