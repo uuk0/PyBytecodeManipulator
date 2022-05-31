@@ -877,3 +877,112 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
                 )
 
         helper.store()
+
+
+class SideEffectFreeMethodCallRemover(AbstractBytecodeProcessor):
+    """
+    Removes calls to function which are side effect free
+
+    Requires the methods to be statically known, by e.g. static builtins
+    """
+
+    SIDE_EFFECT_FREE_BUILTINS = {
+        min,
+        max,
+        range,
+    }
+
+    def apply(
+        self,
+        handler,
+        target: MutableCodeObject,
+        helper: BytecodePatchHelper,
+    ):
+        index = -1
+        while index < len(helper.instruction_listing) - 1:
+            index += 1
+
+            for index, instr in list(helper.walk())[index:-2]:
+                if instr.opcode == Opcodes.CALL_FUNCTION and helper.instruction_listing[index + 1].opcode == Opcodes.POP_TOP:
+                    target = next(helper.findSourceOfStackIndex(index, instr.arg))
+
+                    if target.opcode == Opcodes.LOAD_CONST:
+                        target = target.argval
+
+                        if target in self.SIDE_EFFECT_FREE_BUILTINS or ("optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
+                            helper.deleteRegion(index, index+2)
+                            helper.insertRegion(index, [createInstruction("POP_TOP")] * instr.arg)
+                            index -= instr.arg - 2
+                            break
+
+            else:
+                break
+
+        helper.store()
+
+
+class EvalAtOptimisationTime(AbstractBytecodeProcessor):
+    """
+    Helper for evaluating values at optimisation time
+
+    Require calls to be eval to be already constant functions with constant parameters
+    todo: run some normal optimisation beforehand so this can do more
+    """
+
+    OPTIMISATION_TIME_STABLE_BUILTINS = {
+        min,
+        max,
+        tuple,
+        abs,
+        all,
+        any,
+        ascii,
+        bin,
+        hex,
+        callable,
+        chr,
+        compile,
+        isinstance,
+        issubclass,
+        len,
+        oct,
+        ord,
+        pow,
+        repr,
+        round,
+        sum,
+    }
+
+    def apply(
+        self,
+        handler,
+        target: MutableCodeObject,
+        helper: BytecodePatchHelper,
+    ):
+        while True:
+            for index, instr in helper.walk():
+                if instr.opcode == Opcodes.CALL_FUNCTION:
+                    target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg))
+
+                    if target.opcode == Opcodes.LOAD_CONST:
+                        target = target.argval
+
+                        if target in self.OPTIMISATION_TIME_STABLE_BUILTINS or ("optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
+                            args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(instr.arg - 1, -1, -1)]
+
+                            # todo: can we do more in other cases?
+                            if all(ins.opcode == Opcodes.LOAD_CONST for ins in args):
+                                value = target(*(e.argval for e in args))
+
+                                helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+
+                                for ins in args:
+                                    helper.instruction_listing[ins.offset // 2] = createInstruction("NOP")
+
+                                helper.instruction_listing[target_opcode.offset // 2] = createInstruction("NOP")
+
+                                break
+            else:
+                break
+
+        helper.store()

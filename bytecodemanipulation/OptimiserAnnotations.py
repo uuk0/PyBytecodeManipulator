@@ -14,6 +14,8 @@ from bytecodemanipulation.BytecodeProcessors import (
     AbstractBytecodeProcessor,
     MethodInlineProcessor,
     Global2ConstReplace,
+    SideEffectFreeMethodCallRemover,
+    EvalAtOptimisationTime,
 )
 from .BytecodeProcessors import GlobalStaticLookupProcessor
 from .InstructionMatchers import MetaArgMatcher
@@ -59,6 +61,7 @@ class _OptimiserContainer:
         self.code_walkers: typing.List[AbstractBytecodeProcessor] = []
         self.specified_locals: typing.Dict[str, typing.Type] = {}
         self.return_type: typing.Optional[typing.Type] = None
+        self.is_side_effect_free = False
 
         self.attribute_type_marks: typing.Dict[str, typing.Type] = {}
 
@@ -238,6 +241,12 @@ def builtins_are_static():
         optimiser.code_walkers.append(
             GlobalStaticLookupProcessor(matcher=MetaArgMatcher(_is_builtin_name))
         )
+        optimiser.code_walkers.append(
+            SideEffectFreeMethodCallRemover()
+        )
+        optimiser.code_walkers.append(
+            EvalAtOptimisationTime()
+        )
         return target
 
     return annotation
@@ -330,7 +339,7 @@ def constant_arg(name: str):
 def forced_arg_type(name: str, type_accessor: typing.Callable, may_subclass=True):
     """
     Marks a certain arg to have that exact type, or a subclass of it when specified
-    WARNING: when passing another type, will crash as we do optimisations around that type
+    WARNING: when passing another type, may crash as we do optimisations around that type!
 
     :param name: the parameter name
     :param type_accessor: the accessor method for the type of the parameter
@@ -375,6 +384,7 @@ def constant_operation():
 
     def annotation(target: typing.Callable):
         _schedule_optimisation(target).is_constant = True
+        _schedule_optimisation(target).is_side_effect_free = True
         return target
 
     return annotation

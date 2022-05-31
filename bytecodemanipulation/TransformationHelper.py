@@ -146,7 +146,7 @@ if sys.version_info.major <= 3 and sys.version_info.minor < 11:
     POP_SINGLE_VALUE |= {
         Opcodes.YIELD_FROM,
     }
-    METHOD_CALL = Opcodes.CALL_METHOD
+    METHOD_CALL = {Opcodes.CALL_METHOD, Opcodes.CALL_FUNCTION}
 else:
     DO_NOTHING |= {
         Opcodes.RESUME,
@@ -1315,7 +1315,7 @@ class BytecodePatchHelper:
             elif instr.opcode in POP_DOUBLE_VALUE:
                 offset -= 2
 
-            elif instr.opcode == METHOD_CALL:
+            elif instr.opcode in METHOD_CALL:
                 offset -= 1
                 offset += instr.arg - 1
 

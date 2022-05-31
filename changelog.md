@@ -3,6 +3,7 @@
 - added some more optimizations which do not require annotations, including:
   - unused variable elimination (including unused assignments)
   - reusing values instead of write followed by read
+  - eval()-ing some expressions at optimisation time, including when certain things are already known
 
 # Version 0.1.2
 - added some infrastructure for working with EXTENDED_ARG opcodes 

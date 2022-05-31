@@ -2,6 +2,8 @@ import dis
 import timeit
 from unittest import TestCase
 
+from bytecodemanipulation.util import Opcodes
+
 from bytecodemanipulation.OptimiserAnnotations import try_optimise
 
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
@@ -19,10 +21,36 @@ class TestOptimiserAnnotations(TestCase):
 
         run_optimisations()
         global min
+        old_min = min
         min = max
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
 
         self.assertEqual(min(1, 2), 2)
         self.assertEqual(target(1, 2), 1)
+
+        min = old_min
+
+    def test_builtins_are_static_2(self):
+        @builtins_are_static()
+        def target():
+            return min(1, 2)
+
+        self.assertEqual(target(), 1)
+
+        run_optimisations()
+        global min
+        min = max
+
+        dis.dis(target)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 1)
+
+        self.assertEqual(min(1, 2), 2)
+        self.assertEqual(target(), 1)
 
     def test_class_attribute_type_helper(self):
         """
