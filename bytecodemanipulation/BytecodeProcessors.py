@@ -4,6 +4,8 @@ import traceback
 import types
 import typing
 
+from bytecodemanipulation.CodeOptimiser import optimise_code
+
 from bytecodemanipulation.InstructionMatchers import AbstractInstructionMatcher
 from bytecodemanipulation.TransformationHelper import (
     BytecodePatchHelper,
@@ -951,6 +953,9 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
         repr,
         round,
         sum,
+        complex,
+        int,
+        float,
     }
 
     def apply(
@@ -959,6 +964,8 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
         target: MutableCodeObject,
         helper: BytecodePatchHelper,
     ):
+        optimise_code(helper)
+
         while True:
             for index, instr in helper.walk():
                 if instr.opcode == Opcodes.CALL_FUNCTION:
@@ -967,7 +974,7 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                     if target.opcode == Opcodes.LOAD_CONST:
                         target = target.argval
 
-                        if target in self.OPTIMISATION_TIME_STABLE_BUILTINS or ("optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
+                        if target in self.OPTIMISATION_TIME_STABLE_BUILTINS or (hasattr(target, "__dict__") and "optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
                             args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(instr.arg - 1, -1, -1)]
 
                             # todo: can we do more in other cases?

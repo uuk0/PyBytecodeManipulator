@@ -1164,6 +1164,7 @@ class BytecodePatchHelper:
         :param offset: the offset, where 0 is top, and all following numbers (1, 2, 3, ...) give the i+1-th
             element of the stack
         """
+        from .CodeOptimiser import BUILD_PRIMITIVE
 
         self.re_eval_instructions()
         instructions = list(self.walk())
@@ -1203,7 +1204,7 @@ class BytecodePatchHelper:
             elif instr.opcode in POP_DOUBLE_VALUE:
                 offset += 2
 
-            elif instr.opcode == METHOD_CALL:
+            elif instr.opcode in METHOD_CALL:
                 offset += 1
                 offset -= instr.arg - 1
 
@@ -1244,6 +1245,14 @@ class BytecodePatchHelper:
             elif instr.opcode == Opcodes.DUP_TOP_TWO:
                 if offset > 1:
                     offset -= 2
+
+            elif instr.opcode in BUILD_PRIMITIVE:
+                offset += 1
+                offset -= instr.arg - 1
+
+            elif instr.opcode == Opcodes.BUILD_MAP:
+                offset += 1
+                offset -= instr.arg * 2 - 1
 
             elif (
                 sys.version_info.major >= 3
