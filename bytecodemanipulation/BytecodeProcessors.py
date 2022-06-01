@@ -993,3 +993,87 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                 break
 
         helper.store()
+
+
+class StandardLibraryResolver(AbstractBytecodeProcessor):
+    def __init__(self, resolve: str):
+        self.resolve = resolve
+
+    def apply(
+        self,
+        handler,
+        target: MutableCodeObject,
+        helper: BytecodePatchHelper,
+    ):
+        library = __import__(self.resolve)
+
+        for index, instr in helper.walk():
+            if instr.opcode == Opcodes.LOAD_GLOBAL and instr.argval == self.resolve:
+                helper.instruction_listing[index] = helper.patcher.createLoadConst(library)
+
+        helper.store()
+
+
+import math, os, json
+
+
+class StandardLibraryAllResolver(AbstractBytecodeProcessor):
+    STANDARD_MODULE_NAMES = {"math": math, "os": os, "sys": sys, "json": json, "typing": typing, "types": types}
+
+    def __init__(self, do_module_scope_lookup=True):
+        self.do_module_scope_lookup = do_module_scope_lookup
+
+    def apply(
+        self,
+        handler,
+        target: MutableCodeObject,
+        helper: BytecodePatchHelper,
+    ):
+        if self.do_module_scope_lookup:
+            imported_modules = set()
+
+            for index, instr in helper.walk():
+                if instr.opcode == Opcodes.LOAD_GLOBAL and instr.argval in target.target.__globals__:
+                    module = target.target.__globals__[instr.argval]
+                    if module.__name__ in self.STANDARD_MODULE_NAMES and self.STANDARD_MODULE_NAMES[module.__name__] == module:
+                        imported_modules.add(module.__name__)
+
+        else:
+            imported_modules = self.STANDARD_MODULE_NAMES
+
+        for index, instr in helper.walk():
+            if instr.opcode == Opcodes.LOAD_GLOBAL and instr.argval in imported_modules:
+                helper.instruction_listing[index] = helper.patcher.createLoadConst(self.STANDARD_MODULE_NAMES[instr.argval])
+
+                if helper.instruction_listing[index + 1].opcode == Opcodes.LOAD_METHOD:
+                    helper.instruction_listing[index + 1] = createInstruction("LOAD_ATTR", helper.instruction_listing[index + 1].arg)
+
+        helper.store()
+
+
+class StaticObjectAccessorResolver(AbstractBytecodeProcessor):
+    ALL_CHILDREN_OF = {math, os, sys, json, typing, types}
+    SPECIFIC_CHILDREN_OF = {}
+
+    def apply(
+        self,
+        handler,
+        target: MutableCodeObject,
+        helper: BytecodePatchHelper,
+    ):
+        for index, instr in helper.walk():
+            if instr.opcode == Opcodes.LOAD_ATTR:
+                source = next(helper.findSourceOfStackIndex(index, 0))
+
+                if source.opcode == Opcodes.LOAD_CONST:
+                    if source.argval in self.ALL_CHILDREN_OF:
+                        func_usage = next(helper.findTargetOfStackIndex(index, 0))
+
+                        if func_usage.opcode == Opcodes.CALL_METHOD:
+                            helper.instruction_listing[func_usage.offset // 2] = createInstruction("CALL_FUNCTION", func_usage.arg)
+
+                        helper.instruction_listing[index] = helper.patcher.createLoadConst(getattr(source.argval, instr.argval))
+                        helper.insertRegion(index, [createInstruction("POP_TOP")])
+
+        helper.store()
+

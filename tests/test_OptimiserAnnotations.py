@@ -1,7 +1,13 @@
 import dis
+import math
 import timeit
 from unittest import TestCase
 
+from bytecodemanipulation.MutableCodeObject import createInstruction
+
+from bytecodemanipulation.OptimiserAnnotations import name_is_static
+
+from bytecodemanipulation.OptimiserAnnotations import standard_library_is_safe
 from bytecodemanipulation.util import Opcodes
 
 from bytecodemanipulation.OptimiserAnnotations import try_optimise
@@ -208,22 +214,74 @@ class TestOptimiserAnnotations(TestCase):
         self.assertEqual(helper.instruction_listing[0].opname, "LOAD_CONST")
         self.assertEqual(TestCls().test_func(), "HELLO WORLD")
 
-    # def test_math_standard_library_inline(self):
-    #     import bytecodemanipulation.StandardLibraryAnnotations
-    #     import math
-    #
-    #     @builtins_are_static()
-    #     def target():
-    #         return math.sin(0)
-    #
-    #     self.assertEqual(target(), True)
-    #
-    #     run_optimisations()
-    #
-    #     dis.dis(target)
-    #
-    #     helper = BytecodePatchHelper(target)
-    #     self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
-    #     self.assertEqual(helper.instruction_listing[0].argval, True)
-    #
-    #     self.assertEqual(target(), True)
+    def test_math_standard_library_inline(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.sin(0)
+
+        self.assertEqual(target(), 0)
+
+        run_optimisations()
+
+        self.assertEqual(target(), 0)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, math.sin)
+        self.assertEqual(helper.instruction_listing[1].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[1].argval, 0)
+
+    def test_absolute_inline(self):
+        @name_is_static("abs", lambda: abs)
+        def target():
+            return abs(-2)
+
+        dis.dis(target)
+
+        run_optimisations()
+
+        dis.dis(target)
+
+        print(list(target.__code__.co_code), target.__code__.co_consts)
+
+    def test_construction_of_inline_module_call_1(self):
+        def target():
+            return
+
+        helper = BytecodePatchHelper(target)
+        helper.instruction_listing = [
+            helper.patcher.createLoadConst(math.sin),
+            helper.patcher.createLoadConst(0),
+            createInstruction("CALL_FUNCTION", 1),
+            createInstruction("RETURN_VALUE")
+        ]
+        helper.store()
+        helper.patcher.applyPatches()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 0)
+
+    def test_construction_of_inline_module_call_2(self):
+        def target():
+            return math.sin(0)
+
+        helper = BytecodePatchHelper(target)
+
+        helper.patcher.ensureConstant(math)
+
+        helper.instruction_listing = [
+            helper.patcher.createLoadConst(math.sin),
+            helper.patcher.createLoadConst(0),
+            createInstruction("CALL_FUNCTION", 1),
+            createInstruction("RETURN_VALUE")
+        ]
+        helper.store()
+        helper.patcher.applyPatches()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 0)
+
+

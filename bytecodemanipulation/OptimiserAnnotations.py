@@ -16,6 +16,9 @@ from bytecodemanipulation.BytecodeProcessors import (
     Global2ConstReplace,
     SideEffectFreeMethodCallRemover,
     EvalAtOptimisationTime,
+    StandardLibraryResolver,
+    StandardLibraryAllResolver,
+    StaticObjectAccessorResolver,
 )
 from .BytecodeProcessors import GlobalStaticLookupProcessor
 from .InstructionMatchers import MetaArgMatcher
@@ -217,7 +220,7 @@ class _OptimiserContainer:
 def _schedule_optimisation(
     target: typing.Union[typing.Callable, typing.Type],
 ) -> _OptimiserContainer:
-    if not "optimiser_container" in target.__dict__:
+    if "optimiser_container" not in target.__dict__:
         target.optimiser_container = _OptimiserContainer(target)
         _OptimiserContainer.CONTAINERS.append(target.optimiser_container)
 
@@ -246,6 +249,24 @@ def builtins_are_static():
         )
         optimiser.code_walkers.append(
             EvalAtOptimisationTime()
+        )
+        return target
+
+    return annotation
+
+
+def standard_library_is_safe(restriction: str = None):
+    """
+    Marker that standard library stuff is not touched by the code in an modifying way
+    """
+
+    def annotation(target: typing.Callable):
+        optimiser = _schedule_optimisation(target)
+        optimiser.code_walkers.append(
+            StandardLibraryResolver(restriction) if restriction is not None else StandardLibraryAllResolver()
+        )
+        optimiser.code_walkers.append(
+            StaticObjectAccessorResolver()
         )
         return target
 
