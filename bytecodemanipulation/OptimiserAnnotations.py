@@ -265,8 +265,12 @@ def standard_library_is_safe(restriction: str = None):
         optimiser.code_walkers.append(
             StandardLibraryResolver(restriction) if restriction is not None else StandardLibraryAllResolver()
         )
+        # todo: add these only when not present, otherwise move after this
         optimiser.code_walkers.append(
             StaticObjectAccessorResolver()
+        )
+        optimiser.code_walkers.append(
+            EvalAtOptimisationTime()
         )
         return target
 

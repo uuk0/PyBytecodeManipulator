@@ -3,6 +3,7 @@ import sys
 import traceback
 import types
 import typing
+import math
 
 from bytecodemanipulation.CodeOptimiser import optimise_code
 
@@ -931,6 +932,7 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
     todo: run some normal optimisation beforehand so this can do more
     """
 
+    # todo: make data-driven
     OPTIMISATION_TIME_STABLE_BUILTINS = {
         min,
         max,
@@ -956,6 +958,8 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
         complex,
         int,
         float,
+        math.sin,
+        math.cos,
     }
 
     def apply(

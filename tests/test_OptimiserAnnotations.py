@@ -217,6 +217,24 @@ class TestOptimiserAnnotations(TestCase):
     def test_math_standard_library_inline(self):
         @builtins_are_static()
         @standard_library_is_safe()
+        def target(p):
+            return math.sin(p)
+
+        self.assertEqual(target(0), 0)
+
+        run_optimisations()
+
+        self.assertEqual(target(0), 0)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, math.sin)
+        self.assertEqual(helper.instruction_listing[1].opcode, Opcodes.LOAD_FAST)
+        self.assertEqual(helper.instruction_listing[1].argval, "p")
+
+    def test_math_standard_library_inline_const(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
         def target():
             return math.sin(0)
 
@@ -228,9 +246,7 @@ class TestOptimiserAnnotations(TestCase):
 
         helper = BytecodePatchHelper(target)
         self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
-        self.assertEqual(helper.instruction_listing[0].argval, math.sin)
-        self.assertEqual(helper.instruction_listing[1].opcode, Opcodes.LOAD_CONST)
-        self.assertEqual(helper.instruction_listing[1].argval, 0)
+        self.assertEqual(helper.instruction_listing[0].argval, 0)
 
     def test_absolute_inline(self):
         @name_is_static("abs", lambda: abs)
