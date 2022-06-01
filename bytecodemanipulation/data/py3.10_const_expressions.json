@@ -1,0 +1,38 @@
+{
+  "builtins": [
+    "min",
+    "max",
+    "tuple",
+    "abs",
+    "all",
+    "any",
+    "ascii",
+    "bin",
+    "hex",
+    "callable",
+    "chr",
+    "compile",
+    "isinstance",
+    "issubclass",
+    "len",
+    "oct",
+    "ord",
+    "pow",
+    "repr",
+    "round",
+    "sum",
+    "complex",
+    "int",
+    "float"
+  ],
+  "std_library": [
+    {
+      "name": "math",
+      "items": [
+        "sin",
+        "cos",
+        "tan"
+      ]
+    }
+  ]
+}

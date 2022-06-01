@@ -1,9 +1,12 @@
+import builtins
 import dis
 import sys
 import traceback
 import types
 import typing
 import math
+import json
+import os
 
 from bytecodemanipulation.CodeOptimiser import optimise_code
 
@@ -932,35 +935,25 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
     todo: run some normal optimisation beforehand so this can do more
     """
 
-    # todo: make data-driven
-    OPTIMISATION_TIME_STABLE_BUILTINS = {
-        min,
-        max,
-        tuple,
-        abs,
-        all,
-        any,
-        ascii,
-        bin,
-        hex,
-        callable,
-        chr,
-        compile,
-        isinstance,
-        issubclass,
-        len,
-        oct,
-        ord,
-        pow,
-        repr,
-        round,
-        sum,
-        complex,
-        int,
-        float,
-        math.sin,
-        math.cos,
-    }
+    OPTIMISATION_TIME_STABLE_BUILTINS = set()
+
+    @classmethod
+    def init_const_expr(cls):
+        with open(
+                f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_const_expressions.json") as f:
+            data = json.load(f)
+
+        # todo: make data-driven
+        cls.OPTIMISATION_TIME_STABLE_BUILTINS |= {
+            getattr(builtins, e) for e in data.setdefault("builtins", [])
+        }
+
+        for entry in data.setdefault("std_library", []):
+            module = __import__(entry["name"])
+
+            cls.OPTIMISATION_TIME_STABLE_BUILTINS |= {
+                getattr(module, e) for e in entry["items"]
+            }
 
     def apply(
         self,
@@ -997,6 +990,9 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                 break
 
         helper.store()
+
+
+EvalAtOptimisationTime.init_const_expr()
 
 
 class StandardLibraryResolver(AbstractBytecodeProcessor):
