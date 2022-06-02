@@ -83,6 +83,72 @@
         "gamma",
         "lgamma"
       ]
+    },
+    {
+      "name": "os",
+      "items": [
+        "getlogin",
+        "getpid",
+        "strerror",
+        "uname",
+        "major",
+        "minor",
+        "cpu_count"
+      ]
+    },
+    {
+      "name": "sys",
+      "items": [
+        "getandroidapilevel",
+        "getdefaultencoding",
+        "getfilesystemencoding",
+        "getfilesystemencodeerrors",
+        "getwindowsversion"
+      ]
+    },
+    {
+      "name": "json",
+      "items": [
+        "dumps"
+      ]
+    },
+    {
+      "name": "typing",
+      "items": [
+        "cast",
+        "get_type_hints",
+        "get_args",
+        "get_origin",
+        "is_typeddict"
+      ]
+    },
+    {
+      "name": "types",
+      "items": [
+      ]
+    },
+    {
+      "name": "collections",
+      "items": [
+      ]
+    },
+    {
+      "name": "copy",
+      "items": [
+
+      ]
+    },
+    {
+      "name": "ctypes",
+      "items": [
+
+      ]
+    },
+    {
+      "name": "enum",
+      "items": [
+
+      ]
     }
   ]
 }

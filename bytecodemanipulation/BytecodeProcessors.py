@@ -936,6 +936,7 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
     """
 
     OPTIMISATION_TIME_STABLE_BUILTINS = set()
+    STATIC_REF_MODULES = {}
 
     @classmethod
     def init_const_expr(cls):
@@ -950,9 +951,10 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
 
         for entry in data.setdefault("std_library", []):
             module = __import__(entry["name"])
+            cls.STATIC_REF_MODULES[entry["name"]] = module
 
             cls.OPTIMISATION_TIME_STABLE_BUILTINS |= {
-                getattr(module, e) for e in entry["items"]
+                getattr(module, e) for e in entry["items"] if hasattr(module, e)
             }
 
     def apply(
@@ -1038,11 +1040,11 @@ class StandardLibraryResolver(AbstractBytecodeProcessor):
         helper.store()
 
 
-import math, os, json
+import math, os, json, collections
 
 
 class StandardLibraryAllResolver(AbstractBytecodeProcessor):
-    STANDARD_MODULE_NAMES = {"math": math, "os": os, "sys": sys, "json": json, "typing": typing, "types": types}
+    STANDARD_MODULE_NAMES = EvalAtOptimisationTime.STATIC_REF_MODULES
 
     def __init__(self, do_module_scope_lookup=True):
         self.do_module_scope_lookup = do_module_scope_lookup
@@ -1076,7 +1078,7 @@ class StandardLibraryAllResolver(AbstractBytecodeProcessor):
 
 
 class StaticObjectAccessorResolver(AbstractBytecodeProcessor):
-    ALL_CHILDREN_OF = {math, os, sys, json, typing, types}
+    ALL_CHILDREN_OF = set(EvalAtOptimisationTime.STATIC_REF_MODULES.values())
     SPECIFIC_CHILDREN_OF = {}
 
     def apply(
