@@ -300,4 +300,151 @@ class TestOptimiserAnnotations(TestCase):
 
         self.assertEqual(target(), 0)
 
+    def test_math_standard_library_inline_const_2_a(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.log(1)
+
+        self.assertEqual(target(), 0)
+
+        run_optimisations()
+
+        self.assertEqual(target(), 0)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 0)
+
+    def test_math_standard_library_inline_const_2_b(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.log(1, 3)
+
+        self.assertEqual(target(), 0)
+
+        run_optimisations()
+
+        self.assertEqual(target(), 0)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 0)
+
+    def test_math_standard_library_inline_const_2_c(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.log(3, 3)
+
+        self.assertEqual(target(), 1)
+
+        run_optimisations()
+
+        self.assertEqual(target(), 1)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 1)
+
+    def test_math_standard_library_inline_const_3_a(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.perm(3)
+
+        self.assertEqual(target(), 6)
+
+        run_optimisations()
+
+        self.assertEqual(target(), 6)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 6)
+
+    def test_math_standard_library_inline_const_3_b(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.perm(3, 2)
+
+        self.assertEqual(target(), 6)
+
+        run_optimisations()
+
+        self.assertEqual(target(), 6)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 6)
+
+    def test_math_standard_library_inline_const_4_a(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.isclose(1, 1)
+
+        self.assertEqual(target(), True)
+
+        run_optimisations()
+
+        self.assertEqual(target(), True)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, True)
+
+    def test_math_standard_library_inline_const_4_b(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.isclose(1, 6)
+
+        self.assertEqual(target(), False)
+
+        run_optimisations()
+
+        self.assertEqual(target(), False)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, False)
+
+    def test_math_standard_library_inline_const_4_c(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.isclose(1, 1, rel_tol=.5)
+
+        self.assertEqual(target(), True)
+
+        run_optimisations()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), True)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, True)
+
+    def test_math_standard_library_inline_const_4_d(self):
+        @builtins_are_static()
+        @standard_library_is_safe()
+        def target():
+            return math.isclose(1, 1.4, rel_tol=.5, abs_tol=.1)
+
+        self.assertEqual(target(), True)
+
+        run_optimisations()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), True)
+
+        helper = BytecodePatchHelper(target)
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, True)
 

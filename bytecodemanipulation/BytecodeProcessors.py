@@ -984,8 +984,32 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                                     helper.instruction_listing[ins.offset // 2] = createInstruction("NOP")
 
                                 helper.instruction_listing[target_opcode.offset // 2] = createInstruction("NOP")
-
                                 break
+
+                elif instr.opcode == Opcodes.CALL_FUNCTION_KW:
+                    target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg + 1))
+                    kw_source = next(helper.findSourceOfStackIndex(index, 0))
+
+                    if target.opcode == kw_source.opcode == Opcodes.LOAD_CONST:
+                        target = target.argval
+                        kw_args = kw_source.argval
+
+                        if target in self.OPTIMISATION_TIME_STABLE_BUILTINS or (hasattr(target, "__dict__") and "optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
+                            args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(instr.arg, 0, -1)]
+
+                            # todo: can we do more in other cases?
+                            if all(ins.opcode == Opcodes.LOAD_CONST for ins in args):
+                                value = target(*(e.argval for e in args[:(len(args)-len(kw_args))]), **{key: args[len(kw_args)+i].argval for i, key in enumerate(kw_args)})
+
+                                helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+
+                                for ins in args:
+                                    helper.instruction_listing[ins.offset // 2] = createInstruction("NOP")
+
+                                helper.instruction_listing[kw_source.offset // 2] = createInstruction("NOP")
+                                helper.instruction_listing[target_opcode.offset // 2] = createInstruction("NOP")
+                                break
+
             else:
                 break
 

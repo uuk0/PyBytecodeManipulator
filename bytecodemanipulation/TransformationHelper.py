@@ -1302,6 +1302,10 @@ class BytecodePatchHelper:
                 yield instr
                 return
 
+            if instr.opcode == Opcodes.CALL_FUNCTION_KW and offset <= instr.arg + 1:
+                yield instr
+                return
+
             if instr.opcode == Opcodes.BUILD_TUPLE:
                 if offset < instr.arg:
                     yield instr
@@ -1327,6 +1331,10 @@ class BytecodePatchHelper:
             elif instr.opcode in METHOD_CALL:
                 offset -= 1
                 offset += instr.arg - 1
+
+            elif instr.opcode == Opcodes.CALL_FUNCTION_KW:
+                offset -= 1
+                offset += instr.arg
 
             elif instr.opcode == Opcodes.UNPACK_SEQUENCE:
                 offset -= instr.arg - 1
