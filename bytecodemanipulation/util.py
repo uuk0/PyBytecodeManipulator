@@ -291,13 +291,13 @@ class Opcodes:
 
 
 with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_opcodes.json") as f:
-    data = json.load(f)
+    OPCODE_DATA = json.load(f)
 
 
 __MISSING = []
 
 
-for key, value in itertools.chain(data["values"].items(), data["specialize"].items()):
+for key, value in itertools.chain(OPCODE_DATA["opcodes"].items(), OPCODE_DATA.setdefault("specialize", {}).items()):
     if hasattr(Opcodes, key):
         setattr(Opcodes, key, value)
     else:
@@ -311,5 +311,5 @@ print("\n".join(f"    {name} = _unique_value()" for name in __MISSING))
 for attr in list(Opcodes.__dict__.keys()):
     if attr.startswith("__"): continue
 
-    if attr not in data["values"]:
+    if attr not in OPCODE_DATA["opcodes"] and attr not in OPCODE_DATA["specialize"]:
         delattr(Opcodes, attr)

@@ -1,5 +1,5 @@
 {
-  "values": {
+  "opcodes": {
     "POP_TOP": 1,
     "PUSH_NULL": 2,
     "NOP": 9,

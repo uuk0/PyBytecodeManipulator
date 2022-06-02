@@ -1,5 +1,5 @@
 {
-  "values": {
+  "opcodes": {
     "POP_TOP": 1,
     "ROT_TWO": 2,
     "ROT_THREE": 3,
