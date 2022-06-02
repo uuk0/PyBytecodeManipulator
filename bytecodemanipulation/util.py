@@ -221,6 +221,8 @@ class Opcodes:
     POP_JUMP_BACKWARD_IF_NONE = _unique_value()
     POP_JUMP_BACKWARD_IF_FALSE = _unique_value()
     POP_JUMP_BACKWARD_IF_TRUE = _unique_value()
+    GET_LEN = _unique_value()
+
     BINARY_OP_ADAPTIVE = _unique_value()
     BINARY_OP_ADD_FLOAT = _unique_value()
     BINARY_OP_ADD_INT = _unique_value()

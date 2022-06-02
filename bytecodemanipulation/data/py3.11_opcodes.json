@@ -184,35 +184,61 @@
     "DO_TRACING": 255
   },
   "operators": {
-    "binary": [
-      "a + b",
-      "a & b",
-      "a // b",
-      "a << b",
-      "a @ b",
-      "a * b",
-      "a % b",
-      "a | b",
-      "a ** b",
-      "a >> b",
-      "a - b",
-      "a / b",
-      "a ^ b"
-    ],
-    "inplace": [
-      "a += b",
-      "a &= b",
-      "a //= b",
-      "a <<= b",
-      "a @= b",
-      "a *= b",
-      "a %= b",
-      "a |= b",
-      "a **= b",
-      "a >>= b",
-      "a -= b",
-      "a /= b",
-      "a ^= b"
-    ]
+    "BINARY_OP": {
+      "binary": [
+        "a + b",
+        "a & b",
+        "a // b",
+        "a << b",
+        "a @ b",
+        "a * b",
+        "a % b",
+        "a | b",
+        "a ** b",
+        "a >> b",
+        "a - b",
+        "a / b",
+        "a ^ b"
+      ],
+      "inplace": [
+        "a += b",
+        "a &= b",
+        "a //= b",
+        "a <<= b",
+        "a @= b",
+        "a *= b",
+        "a %= b",
+        "a |= b",
+        "a **= b",
+        "a >>= b",
+        "a -= b",
+        "a /= b",
+        "a ^= b"
+      ]
+    },
+    "UNARY_POSITIVE": {
+      "args": 1,
+      "code": "+a"
+    },
+    "UNARY_NEGATIVE": {
+      "args": 1,
+      "code": "-a"
+    },
+    "UNARY_NOT": {
+      "args": 1,
+      "code": "not a"
+    },
+    "UNARY_INVERT": {
+      "args": 1,
+      "code": "~a"
+    },
+    "GET_LEN": {
+      "args": 1,
+      "code": "len(a)"
+    },
+    "LIST_TO_TUPLE": {
+      "args": 1,
+      "code": "tuple(a)"
+    }
   }
 }

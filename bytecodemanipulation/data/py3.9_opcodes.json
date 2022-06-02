@@ -119,5 +119,93 @@
     "SET_UPDATE": 163,
     "DICT_MERGE": 164,
     "DICT_UPDATE": 165
+  },
+  "operators": {
+    "UNARY_POSITIVE": {
+      "args": 1,
+      "code": "+a"
+    },
+    "UNARY_NEGATIVE": {
+      "args": 1,
+      "code": "-a"
+    },
+    "UNARY_NOT": {
+      "args": 1,
+      "code": "not a"
+    },
+    "UNARY_INVERT": {
+      "args": 1,
+      "code": "~a"
+    },
+    "BINARY_MATRIX_MULTIPLY": "a @ b",
+    "INPLACE_MATRIX_MULTIPLY": {
+      "inplace": true,
+      "code": "a @= b"
+    },
+    "BINARY_POWER": "a ** b",
+    "BINARY_MULTIPLY": "a * b",
+    "BINARY_MODULO": "a % b",
+    "BINARY_ADD": "a + b",
+    "BINARY_SUBTRACT": "a - b",
+    "BINARY_SUBSCR": "a[b]",
+    "BINARY_FLOOR_DIVIDE": "a // b",
+    "BINARY_TRUE_DIVIDE": "a / b",
+    "INPLACE_FLOOR_DIVIDE": {
+      "inplace": true,
+      "code": "a //= b"
+    },
+    "INPLACE_TRUE_DIVIDE": {
+      "inplace": true,
+      "code": "a /= b"
+    },
+    "INPLACE_ADD": {
+      "inplace": true,
+      "code": "a += b"
+    },
+    "INPLACE_SUBTRACT": {
+      "inplace": true,
+      "code": "a -= b"
+    },
+    "INPLACE_MULTIPLY": {
+      "inplace": true,
+      "code": "a *= b"
+    },
+    "INPLACE_MODULO": {
+      "inplace": true,
+      "code": "a %= b"
+    },
+    "BINARY_LSHIFT": "a << b",
+    "BINARY_RSHIFT": "a >> b",
+    "BINARY_AND": "a & b",
+    "BINARY_XOR": "a ^ b",
+    "BINARY_OR": "a | b",
+    "INPLACE_POWER": {
+      "inplace": true,
+      "code": "a **= b"
+    },
+    "INPLACE_LSHIFT": {
+      "inplace": true,
+      "code": "a <<= b"
+    },
+    "INPLACE_RSHIFT": {
+      "inplace": true,
+      "code": "a >>= b"
+    },
+    "INPLACE_AND": {
+      "inplace": true,
+      "code": "a &= b"
+    },
+    "INPLACE_XOR": {
+      "inplace": true,
+      "code": "a ^= b"
+    },
+    "INPLACE_OR": {
+      "inplace": true,
+      "code": "a |= b"
+    },
+    "LIST_TO_TUPLE": {
+      "args": 1,
+      "code": "tuple(a)"
+    }
   }
 }
