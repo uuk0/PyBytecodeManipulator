@@ -1,4 +1,6 @@
 import dis
+import json
+import os.path
 import sys
 import typing
 
@@ -76,8 +78,7 @@ class Opcodes:
     INPLACE_FLOOR_DIVIDE = 28
     INPLACE_TRUE_DIVIDE = 29
 
-    if PY_VERSION >= (3, 11):
-        PUSH_EXC_INFO = 35
+    PUSH_EXC_INFO = 35
 
     RERAISE = 48
     WITH_EXCEPT_START = 49
@@ -85,8 +86,7 @@ class Opcodes:
     GET_ANEXT = 51
     BEFORE_ASYNC_WITH = 52
 
-    if PY_VERSION >= (3, 11):
-        BEFORE_WITH = 53
+    BEFORE_WITH = 53
 
     END_ASYNC_FOR = 54
     INPLACE_ADD = 55
@@ -108,14 +108,12 @@ class Opcodes:
     PRINT_EXPR = 70
     LOAD_BUILD_CLASS = 71
 
-    if PY_VERSION < (3, 11):
-        YIELD_FROM = 72
+    YIELD_FROM = 72
 
     GET_AWAITABLE = 73
     LOAD_ASSERTION_ERROR = 74
 
-    if PY_VERSION >= (3, 11):
-        RETURN_GENERATOR = 75
+    RETURN_GENERATOR = 75
 
     INPLACE_LSHIFT = 75
     INPLACE_RSHIFT = 76
@@ -129,10 +127,8 @@ class Opcodes:
     SETUP_ANNOTATIONS = 85
     YIELD_VALUE = 86
 
-    if PY_VERSION < (3, 11):
-        POP_BLOCK = 87
-    else:
-        ASYNC_GEN_WRAP = 87
+    POP_BLOCK = 87
+    ASYNC_GEN_WRAP = 87
 
     POP_EXCEPT = 89
 
@@ -170,69 +166,48 @@ class Opcodes:
     IS_OP = 117
     CONTAINS_OP = 118
 
-    if PY_VERSION >= (3, 11):
-        COPY = 120
+    COPY = 120
 
     JUMP_IF_NOT_EXC_MATCH = 121
 
-    if PY_VERSION < (3, 11):
-        SETUP_FINALLY = 122  # Distance to target address
-    else:
-        BINARY_OP = 122
+    SETUP_FINALLY = 122  # Distance to target address
+    BINARY_OP = 122
 
-    if PY_VERSION > (3, 11):
-        SEND = 123
+    SEND = 123
 
     LOAD_FAST = 124  # Local variable number
     STORE_FAST = 125  # Local variable number
     DELETE_FAST = 126  # Local variable number
 
-    if PY_VERSION > (3, 11):
-        POP_JUMP_IF_NOT_NONE = 128
-        POP_JUMP_IF_NONE = 129
+    POP_JUMP_IF_NOT_NONE = 128
+    POP_JUMP_IF_NONE = 129
 
     RAISE_VARARGS = 130  # Number of raise arguments (1, 2, or 3)
 
-    if PY_VERSION < (3, 11):
-        CALL_FUNCTION = 131  # #args
-    else:
-        LOAD_FAST__LOAD_FAST = 131
+    CALL_FUNCTION = 131  # #args
+    LOAD_FAST__LOAD_FAST = 131
 
     MAKE_FUNCTION = 132  # Flags
     BUILD_SLICE = 133  # Number of items
 
-    if PY_VERSION >= (3, 11):
-        JUMP_NO_INTERRUPT = 134
+    JUMP_NO_INTERRUPT = 134
 
-    LOAD_CLOSURE = 135
+    MAKE_CELL = 135
+    LOAD_CLOSURE = 136
+    LOAD_DEREF = 137
+    STORE_DEREF = 138
+    DELETE_DEREF = 139
 
-    if PY_VERSION >= (3, 11):
-        MAKE_CELL = 135
-        LOAD_CLOSURE = 136
-        LOAD_DEREF = 137
-        STORE_DEREF = 138
-        DELETE_DEREF = 139
+    STORE_FAST__LOAD_FAST = 140
+    LOAD_FAST__LOAD_CONST = 141
 
-    else:
-        LOAD_CLOSURE = 135
-        LOAD_DEREF = 136
-        STORE_DEREF = 137
-        DELETE_DEREF = 138
-
-    if PY_VERSION >= (3, 11):
-        STORE_FAST__LOAD_FAST = 140
-        LOAD_FAST__LOAD_CONST = 141
-
-    if PY_VERSION < (3, 11):
-        CALL_FUNCTION_KW = 141  # #args + #kwargs
+    CALL_FUNCTION_KW = 141  # #args + #kwargs
 
     CALL_FUNCTION_EX = 142  # Flags
 
-    if PY_VERSION < (3, 11):
-        SETUP_WITH = 143
+    SETUP_WITH = 143
 
-    if PY_VERSION >= (3, 11):
-        LOAD_CONST__LOAD_FAST = 143
+    LOAD_CONST__LOAD_FAST = 143
 
     LIST_APPEND = 145
     SET_ADD = 146
@@ -240,14 +215,12 @@ class Opcodes:
 
     LOAD_CLASSDEREF = 148
 
-    if PY_VERSION >= (3, 11):
-        COPY_FREE_VARS = 149
+    COPY_FREE_VARS = 149
 
     EXTENDED_ARG = 144
 
-    if PY_VERSION >= (3, 11):
-        STORE_FAST__STORE_FAST = 150
-        RESUME = 151
+    STORE_FAST__STORE_FAST = 150
+    RESUME = 151
 
     SETUP_ASYNC_WITH = 154
 
@@ -257,15 +230,28 @@ class Opcodes:
 
     LOAD_METHOD = 160
 
-    if PY_VERSION < (3, 11):
-        CALL_METHOD = 161
+    CALL_METHOD = 161
 
     LIST_EXTEND = 162
     SET_UPDATE = 163
     DICT_MERGE = 164
     DICT_UPDATE = 165
 
-    if PY_VERSION >= (3, 11):
-        PRECALL_METHOD = 168
-        CALL_NO_KW = 169
-        CALL_KW = 170
+    PRECALL_METHOD = 168
+    CALL_NO_KW = 169
+    CALL_KW = 170
+
+
+with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_opcodes.json") as f:
+    data = json.load(f)
+
+
+for key, value in data["values"].items():
+    setattr(Opcodes, key, value)
+
+
+for attr in list(Opcodes.__dict__.keys()):
+    if attr.startswith("__"): continue
+
+    if attr not in data["values"]:
+        delattr(Opcodes, attr)
