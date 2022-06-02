@@ -4,7 +4,7 @@ import unittest
 
 from bytecodemanipulation.util import Opcodes
 
-from bytecodemanipulation.CodeOptimiser import optimise_code, optimise_store_load_pairs, remove_store_fast_without_usage, remove_load_dup_pop, remove_create_primitive_pop
+from bytecodemanipulation.CodeOptimiser import optimise_code, optimise_store_load_pairs, remove_store_fast_without_usage, remove_load_dup_pop, remove_create_primitive_pop, trace_load_const_store_fast_load_fast
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 
@@ -148,4 +148,37 @@ class TestOptimizerSystem(unittest.TestCase):
         instance.patcher.applyPatches()
 
         self.assertNotEqual(instance.instruction_listing[4].opcode, Opcodes.BUILD_MAP)
+
+    def test_const_store_load(self):
+        def target():
+            a = 10
+            return a
+
+        instance = BytecodePatchHelper(target)
+
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_FAST)
+
+        trace_load_const_store_fast_load_fast(instance)
+
+        instance.store()
+        instance.patcher.applyPatches()
+
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_CONST)
+
+    def test_const_store_load_2(self):
+        def target():
+            a = 10
+            return a
+
+        instance = BytecodePatchHelper(target)
+
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_FAST)
+
+        optimise_code(instance)
+
+        instance.store()
+        instance.patcher.applyPatches()
+
+        self.assertEqual(instance.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(instance.instruction_listing[0].argval, 10)
 

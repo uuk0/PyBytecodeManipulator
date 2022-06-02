@@ -55,6 +55,7 @@ if sys.version_info.major <= 3 and sys.version_info.minor < 11:
         optimise_store_load_pairs(helper)
         remove_delete_fast_without_assign(helper)
         remove_store_fast_without_usage(helper)
+        # trace_load_const_store_fast_load_fast(helper)
         remove_nop(helper)
         prepare_inline_expressions(helper)
         remove_create_primitive_pop(helper)
@@ -72,6 +73,7 @@ else:
         optimise_store_load_pairs(helper)
         remove_delete_fast_without_assign(helper)
         remove_store_fast_without_usage(helper)
+        # trace_load_const_store_fast_load_fast(helper)
         remove_nop(helper)
         prepare_inline_expressions(helper)
         remove_create_primitive_pop(helper)
@@ -310,3 +312,35 @@ def prepare_inline_expressions(helper: BytecodePatchHelper):
                     helper.insertRegion(index, [create_instruction("POP_TOP")] * len(args))
 
             # todo: for lists/sets/dicts, check usage for constant use (check for "in", lookup, ...)
+
+
+def trace_load_const_store_fast_load_fast(helper: BytecodePatchHelper):
+    """
+    Traces the following bytecode layouts:
+
+    LOAD_CONST XY
+    ...
+    STORE_FAST XY -> AB
+    ...
+    LOAD_FAST AB
+    ...
+
+    where the last LOAD_FAST AB becomes a LOAD_CONST XY
+
+    Currently, not in use, as I did not find a case where this optimising is not applied by another function
+    """
+
+    known_var_values = {}
+
+    for index, instr in list(helper.walk()):
+        if instr.opcode == Opcodes.STORE_FAST:
+            value_instr = next(helper.findSourceOfStackIndex(index, 0))
+
+            if value_instr.opcode == Opcodes.LOAD_CONST:
+                known_var_values[instr.arg] = value_instr.argval
+            elif instr.arg in known_var_values:
+                del known_var_values[instr.arg]
+
+        elif instr.opcode == Opcodes.LOAD_FAST:
+            if instr.arg in known_var_values:
+                helper.instruction_listing[index] = helper.patcher.createLoadConst(known_var_values[instr.arg])
