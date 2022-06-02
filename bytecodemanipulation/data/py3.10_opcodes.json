@@ -212,5 +212,23 @@
       "args": 1,
       "code": "tuple(a)"
     }
+  },
+  "jump_data": {
+    "unconditional": {
+      "absolute": "JUMP_ABSOLUTE",
+      "forward": "JUMP_FORWARD"
+    },
+    "absolute": {
+      "POP_JUMP_IF_TRUE": "value",
+      "POP_JUMP_IF_FALSE": "not value",
+      "JUMP_IF_TRUE_OR_POP": {
+        "code": "value",
+        "true_pops": false
+      },
+      "JUMP_IF_FALSE_OR_POP": {
+        "code": "value",
+        "true_pops": false
+      }
+    }
   }
 }

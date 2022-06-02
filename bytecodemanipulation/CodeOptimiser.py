@@ -65,6 +65,10 @@ if sys.version_info.major <= 3 and sys.version_info.minor < 11:
         remove_load_dup_pop(helper)
         remove_delete_fast_without_assign(helper)
         remove_load_dup_pop(helper)
+        remove_conditional_jump_from_constant_value(helper)
+        remove_load_dup_pop(helper)
+        remove_delete_fast_without_assign(helper)
+        remove_load_dup_pop(helper)
 
 else:
     # todo: stack manipulation methods changed
@@ -81,6 +85,10 @@ else:
         eval_constant_bytecode_expressions(helper)
         prepare_inline_expressions(helper)
         remove_create_primitive_pop(helper)
+        remove_load_dup_pop(helper)
+        remove_delete_fast_without_assign(helper)
+        remove_load_dup_pop(helper)
+        remove_conditional_jump_from_constant_value(helper)
         remove_load_dup_pop(helper)
         remove_delete_fast_without_assign(helper)
         remove_load_dup_pop(helper)
@@ -429,6 +437,80 @@ def expr({', '.join(ARG_NAMES[:args])}):
 
 
 def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
+    for index, instr in list(helper.walk()):
+        opcode = instr.opcode
+
+        if opcode in OPCODE_TO_OP:
+            args, expr = OPCODE_TO_OP[opcode]
+        elif (opcode, instr.arg) in OPCODE_ARG_TO_OP:
+            args, expr = OPCODE_ARG_TO_OP[opcode, instr.arg]
+        else:
+            continue
+
+        args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
+
+        if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):
+            value = expr(*(arg.argval for arg in reversed(args)))
+        else:
+            continue
+
+        for arg in args:
+            helper.instruction_listing[arg.offset // 2] = create_instruction("NOP")
+
+        helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+
+
+OPCODE_DATA.setdefault("jump_data", {})
+OPCODE_DATA["jump_data"].setdefault("unconditional", {})
+
+
+def _parse_jump_data(data: dict) -> typing.Dict[int, typing.Callable[[typing.Any], typing.Tuple[bool, bool]]]:
+    result = {}
+
+    for opname, config in data.items():
+        opcode = getattr(Opcodes, opname)
+
+        if isinstance(config, str):
+            config: dict = {"code": config}
+
+        context = {}
+        exec(f"""
+def expr(value):
+    state = {config['code']}
+
+    if state:
+        return True, {config.setdefault("true_pops", True)}
+
+    return False, {config.setdefault("false_pops", True)}""", context)
+
+        result[opcode] = context["expr"]
+
+    return result
+
+
+JUMP_ABSOLUTE = _parse_jump_data(OPCODE_DATA["jump_data"].setdefault("absolute", {}))
+JUMP_FORWARDS = _parse_jump_data(OPCODE_DATA["jump_data"].setdefault("forward", {}))
+JUMP_BACKWARDS = _parse_jump_data(OPCODE_DATA["jump_data"].setdefault("backward", {}))
+
+
+def _opcode_or_default(name: str | None):
+    return getattr(Opcodes, name) if name is not None else None
+
+
+UNCONDITIONAL_JUMPS = [
+    _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("absolute", None)),
+    _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("forward", None)),
+    _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("backward", None))
+]
+
+
+def remove_conditional_jump_from_constant_value(helper: BytecodePatchHelper):
+    """
+    Removes conditional jumps on constant values, left from previous optimisations
+
+    Specs come from .json data
+    """
+
     index = -1
     while index < len(helper.instruction_listing) - 1:
         index += 1
@@ -436,21 +518,34 @@ def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
         for index, instr in list(helper.walk())[index:]:
             opcode = instr.opcode
 
-            if opcode in OPCODE_TO_OP:
-                args, expr = OPCODE_TO_OP[opcode]
-            elif (opcode, instr.arg) in OPCODE_ARG_TO_OP:
-                args, expr = OPCODE_ARG_TO_OP[opcode, instr.arg]
+            if opcode in JUMP_ABSOLUTE:
+                default = UNCONDITIONAL_JUMPS[0]
+                expr = JUMP_ABSOLUTE[opcode]
+            elif opcode in JUMP_FORWARDS:
+                default = UNCONDITIONAL_JUMPS[1]
+                expr = JUMP_FORWARDS[opcode]
+            elif opcode in JUMP_BACKWARDS:
+                default = UNCONDITIONAL_JUMPS[2]
+                expr = JUMP_BACKWARDS[opcode]
             else:
                 continue
 
-            args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
+            stack_top = next(helper.findSourceOfStackIndex(index, 0))
 
-            if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):
-                value = expr(*(arg.argval for arg in reversed(args)))
+            if stack_top.opcode != Opcodes.LOAD_CONST: continue
+
+            state, pop_top = expr(stack_top.argval)
+
+            if state:
+                helper.instruction_listing[index] = create_instruction(default, instr.arg)
+
+                if pop_top:
+                    helper.insertRegion(index, [create_instruction("POP_TOP")])
+                    index += 1
+
             else:
-                continue
+                helper.instruction_listing[index] = create_instruction("POP_TOP" if pop_top else "NOP")
 
-            for arg in args:
-                helper.instruction_listing[arg.offset // 2] = create_instruction("NOP")
-
-            helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+            break
+        else:
+            break

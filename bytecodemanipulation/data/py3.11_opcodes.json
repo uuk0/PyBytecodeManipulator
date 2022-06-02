@@ -240,5 +240,31 @@
       "args": 1,
       "code": "tuple(a)"
     }
+  },
+  "jump_data": {
+    "unconditional": {
+      "forward": "JUMP_FORWARD",
+      "backward": "JUMP_BACKWARD"
+    },
+    "forward": {
+      "POP_JUMP_FORWARD_IF_TRUE": "value",
+      "POP_JUMP_FORWARD_IF_FALSE": "not value",
+      "POP_JUMP_FORWARD_IF_NOT_NONE": "value is not None",
+      "POP_JUMP_FORWARD_IF_NONE": "value is None",
+      "JUMP_IF_TRUE_OR_POP": {
+        "code": "value",
+        "true_pops": false
+      },
+      "JUMP_IF_FALSE_OR_POP": {
+        "code": "value",
+        "true_pops": false
+      }
+    },
+    "backward": {
+      "POP_JUMP_BACKWARD_IF_TRUE": "value",
+      "POP_JUMP_BACKWARD_IF_FALSE": "not value",
+      "POP_JUMP_BACKWARD_IF_NOT_NONE": "value is not None",
+      "POP_JUMP_BACKWARD_IF_NONE": "value is None"
+    }
   }
 }

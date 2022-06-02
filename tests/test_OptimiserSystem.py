@@ -4,7 +4,7 @@ import unittest
 
 from bytecodemanipulation.util import Opcodes
 
-from bytecodemanipulation.CodeOptimiser import optimise_code, optimise_store_load_pairs, remove_store_fast_without_usage, remove_load_dup_pop, remove_create_primitive_pop, trace_load_const_store_fast_load_fast, eval_constant_bytecode_expressions
+from bytecodemanipulation.CodeOptimiser import optimise_code, optimise_store_load_pairs, remove_store_fast_without_usage, remove_load_dup_pop, remove_create_primitive_pop, trace_load_const_store_fast_load_fast, eval_constant_bytecode_expressions, remove_conditional_jump_from_constant_value
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 
@@ -97,7 +97,7 @@ class TestOptimizerSystem(unittest.TestCase):
         self.assertNotEqual(instance.instruction_listing[1].opcode, Opcodes.DUP_TOP)
 
         # Correctly inlining of expression
-        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_CONST, dis.opname[instance.instruction_listing[2].opcode])
         self.assertEqual(instance.instruction_listing[2].argval, 11)
 
         self.assertEqual(target(), 11)
@@ -209,4 +209,53 @@ class TestOptimizerSystem(unittest.TestCase):
 
         self.assertEqual(instance.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
         self.assertEqual(instance.instruction_listing[0].argval, 10)
+
+    def test_remove_conditional_jump_1(self):
+        def target():
+            a = 1
+            if a:
+                return 10
+
+            return 11
+
+        self.assertEqual(target(), 10)
+
+        instance = BytecodePatchHelper(target)
+
+        # Optimise away that store_fast with the stuff associated with it
+        optimise_store_load_pairs(instance)
+        remove_store_fast_without_usage(instance)
+        remove_load_dup_pop(instance)
+
+        remove_conditional_jump_from_constant_value(instance)
+
+        instance.store()
+        instance.patcher.applyPatches()
+
+        self.assertEqual(instance.instruction_listing[1].opcode, Opcodes.POP_TOP)
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_CONST)
+
+        self.assertEqual(target(), 10)
+
+    def test_remove_conditional_jump_2(self):
+        def target():
+            a = 1
+            if a:
+                return 10
+
+            return 11
+
+        self.assertEqual(target(), 10)
+
+        instance = BytecodePatchHelper(target)
+
+        optimise_code(instance)
+
+        instance.store()
+        instance.patcher.applyPatches()
+
+        self.assertEqual(instance.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(instance.instruction_listing[1].opcode, Opcodes.RETURN_VALUE)
+
+        self.assertEqual(target(), 10)
 
