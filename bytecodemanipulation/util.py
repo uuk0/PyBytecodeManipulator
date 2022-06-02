@@ -41,205 +41,163 @@ else:
         ]
 
 
+__UNIQUE_VALUE = 0
+
+
+def _unique_value():
+    global __UNIQUE_VALUE
+    v = __UNIQUE_VALUE
+    __UNIQUE_VALUE += 1
+    return v
+
+
 class Opcodes:
     """
     Class of all Opcodes
-
-    todo: add all valid names with dummy values & insert real values
-        from .json file & delete not arrival instructions
+    Valid at any point in python's history we support with this library
     """
 
-    POP_TOP = 1
-    ROT_TWO = 2
-    ROT_THREE = 3
-    DUP_TOP = 4
-    DUP_TOP_TWO = 5
-    ROT_FOUR = 6
-
-    NOP = 9
-    UNARY_POSITIVE = 10
-    UNARY_NEGATIVE = 11
-    UNARY_NOT = 12
-
-    UNARY_INVERT = 15
-
-    BINARY_MATRIX_MULTIPLY = 16
-    INPLACE_MATRIX_MULTIPLY = 17
-
-    BINARY_POWER = 19
-    BINARY_MULTIPLY = 20
-
-    BINARY_MODULO = 22
-    BINARY_ADD = 23
-    BINARY_SUBTRACT = 24
-    BINARY_SUBSCR = 25
-    BINARY_FLOOR_DIVIDE = 26
-    BINARY_TRUE_DIVIDE = 27
-    INPLACE_FLOOR_DIVIDE = 28
-    INPLACE_TRUE_DIVIDE = 29
-
-    PUSH_EXC_INFO = 35
-
-    RERAISE = 48
-    WITH_EXCEPT_START = 49
-    GET_AITER = 50
-    GET_ANEXT = 51
-    BEFORE_ASYNC_WITH = 52
-
-    BEFORE_WITH = 53
-
-    END_ASYNC_FOR = 54
-    INPLACE_ADD = 55
-    INPLACE_SUBTRACT = 56
-    INPLACE_MULTIPLY = 57
-
-    INPLACE_MODULO = 59
-    STORE_SUBSCR = 60
-    DELETE_SUBSCR = 61
-    BINARY_LSHIFT = 62
-    BINARY_RSHIFT = 63
-    BINARY_AND = 64
-    BINARY_XOR = 65
-    BINARY_OR = 66
-    INPLACE_POWER = 67
-    GET_ITER = 68
-    GET_YIELD_FROM_ITER = 69
-
-    PRINT_EXPR = 70
-    LOAD_BUILD_CLASS = 71
-
-    YIELD_FROM = 72
-
-    GET_AWAITABLE = 73
-    LOAD_ASSERTION_ERROR = 74
-
-    RETURN_GENERATOR = 75
-
-    INPLACE_LSHIFT = 75
-    INPLACE_RSHIFT = 76
-    INPLACE_AND = 77
-    INPLACE_XOR = 78
-    INPLACE_OR = 79
-
-    LIST_TO_TUPLE = 82
-    RETURN_VALUE = 83
-    IMPORT_STAR = 84
-    SETUP_ANNOTATIONS = 85
-    YIELD_VALUE = 86
-
-    POP_BLOCK = 87
-    ASYNC_GEN_WRAP = 87
-
-    POP_EXCEPT = 89
-
-    HAVE_ARGUMENT = 90  # Opcodes from here have an argument:
-
-    STORE_NAME = 90  # Index in name list
-    DELETE_NAME = 91  # ""
-    UNPACK_SEQUENCE = 92  # Number of tuple items
-    FOR_ITER = 93
-    UNPACK_EX = 94
-    STORE_ATTR = 95  # Index in name list
-    DELETE_ATTR = 96  # ""
-    STORE_GLOBAL = 97  # ""
-    DELETE_GLOBAL = 98  # ""
-    LOAD_CONST = 100  # Index in const list
-    LOAD_NAME = 101  # Index in name list
-    BUILD_TUPLE = 102  # Number of tuple items
-    BUILD_LIST = 103  # Number of list items
-    BUILD_SET = 104  # Number of set items
-    BUILD_MAP = 105  # Number of dict entries
-    LOAD_ATTR = 106  # Index in name list
-    COMPARE_OP = 107  # Comparison operator
-    IMPORT_NAME = 108  # Index in name list
-    IMPORT_FROM = 109  # Index in name list
-
-    JUMP_FORWARD = 110  # Number of bytes to skip
-    JUMP_IF_FALSE_OR_POP = 111  # Target byte offset from beginning of code
-    JUMP_IF_TRUE_OR_POP = 112  # ""
-    JUMP_ABSOLUTE = 113  # ""
-    POP_JUMP_IF_FALSE = 114  # ""
-    POP_JUMP_IF_TRUE = 115  # ""
-
-    LOAD_GLOBAL = 116  # Index in name list
-
-    IS_OP = 117
-    CONTAINS_OP = 118
-
-    COPY = 120
-
-    JUMP_IF_NOT_EXC_MATCH = 121
-
-    SETUP_FINALLY = 122  # Distance to target address
-    BINARY_OP = 122
-
-    SEND = 123
-
-    LOAD_FAST = 124  # Local variable number
-    STORE_FAST = 125  # Local variable number
-    DELETE_FAST = 126  # Local variable number
-
-    POP_JUMP_IF_NOT_NONE = 128
-    POP_JUMP_IF_NONE = 129
-
-    RAISE_VARARGS = 130  # Number of raise arguments (1, 2, or 3)
-
-    CALL_FUNCTION = 131  # #args
-    LOAD_FAST__LOAD_FAST = 131
-
-    MAKE_FUNCTION = 132  # Flags
-    BUILD_SLICE = 133  # Number of items
-
-    JUMP_NO_INTERRUPT = 134
-
-    MAKE_CELL = 135
-    LOAD_CLOSURE = 136
-    LOAD_DEREF = 137
-    STORE_DEREF = 138
-    DELETE_DEREF = 139
-
-    STORE_FAST__LOAD_FAST = 140
-    LOAD_FAST__LOAD_CONST = 141
-
-    CALL_FUNCTION_KW = 141  # #args + #kwargs
-
-    CALL_FUNCTION_EX = 142  # Flags
-
-    SETUP_WITH = 143
-
-    LOAD_CONST__LOAD_FAST = 143
-
-    LIST_APPEND = 145
-    SET_ADD = 146
-    MAP_ADD = 147
-
-    LOAD_CLASSDEREF = 148
-
-    COPY_FREE_VARS = 149
-
-    EXTENDED_ARG = 144
-
-    STORE_FAST__STORE_FAST = 150
-    RESUME = 151
-
-    SETUP_ASYNC_WITH = 154
-
-    FORMAT_VALUE = 155
-    BUILD_CONST_KEY_MAP = 156
-    BUILD_STRING = 157
-
-    LOAD_METHOD = 160
-
-    CALL_METHOD = 161
-
-    LIST_EXTEND = 162
-    SET_UPDATE = 163
-    DICT_MERGE = 164
-    DICT_UPDATE = 165
-
-    PRECALL_METHOD = 168
-    CALL_NO_KW = 169
-    CALL_KW = 170
+    POP_TOP = _unique_value()
+    ROT_TWO = _unique_value()
+    ROT_THREE = _unique_value()
+    DUP_TOP = _unique_value()
+    DUP_TOP_TWO = _unique_value()
+    ROT_FOUR = _unique_value()
+    NOP = _unique_value()
+    UNARY_POSITIVE = _unique_value()
+    UNARY_NEGATIVE = _unique_value()
+    UNARY_NOT = _unique_value()
+    UNARY_INVERT = _unique_value()
+    BINARY_MATRIX_MULTIPLY = _unique_value()
+    INPLACE_MATRIX_MULTIPLY = _unique_value()
+    BINARY_POWER = _unique_value()
+    BINARY_MULTIPLY = _unique_value()
+    BINARY_MODULO = _unique_value()
+    BINARY_ADD = _unique_value()
+    BINARY_SUBTRACT = _unique_value()
+    BINARY_SUBSCR = _unique_value()
+    BINARY_FLOOR_DIVIDE = _unique_value()
+    BINARY_TRUE_DIVIDE = _unique_value()
+    INPLACE_FLOOR_DIVIDE = _unique_value()
+    INPLACE_TRUE_DIVIDE = _unique_value()
+    PUSH_EXC_INFO = _unique_value()
+    RERAISE = _unique_value()
+    WITH_EXCEPT_START = _unique_value()
+    GET_AITER = _unique_value()
+    GET_ANEXT = _unique_value()
+    BEFORE_ASYNC_WITH = _unique_value()
+    BEFORE_WITH = _unique_value()
+    END_ASYNC_FOR = _unique_value()
+    INPLACE_ADD = _unique_value()
+    INPLACE_SUBTRACT = _unique_value()
+    INPLACE_MULTIPLY = _unique_value()
+    INPLACE_MODULO = _unique_value()
+    STORE_SUBSCR = _unique_value()
+    DELETE_SUBSCR = _unique_value()
+    BINARY_LSHIFT = _unique_value()
+    BINARY_RSHIFT = _unique_value()
+    BINARY_AND = _unique_value()
+    BINARY_XOR = _unique_value()
+    BINARY_OR = _unique_value()
+    INPLACE_POWER = _unique_value()
+    GET_ITER = _unique_value()
+    GET_YIELD_FROM_ITER = _unique_value()
+    PRINT_EXPR = _unique_value()
+    LOAD_BUILD_CLASS = _unique_value()
+    YIELD_FROM = _unique_value()
+    GET_AWAITABLE = _unique_value()
+    LOAD_ASSERTION_ERROR = _unique_value()
+    RETURN_GENERATOR = _unique_value()
+    INPLACE_LSHIFT = _unique_value()
+    INPLACE_RSHIFT = _unique_value()
+    INPLACE_AND = _unique_value()
+    INPLACE_XOR = _unique_value()
+    INPLACE_OR = _unique_value()
+    LIST_TO_TUPLE = _unique_value()
+    RETURN_VALUE = _unique_value()
+    IMPORT_STAR = _unique_value()
+    SETUP_ANNOTATIONS = _unique_value()
+    YIELD_VALUE = _unique_value()
+    POP_BLOCK = _unique_value()
+    ASYNC_GEN_WRAP = _unique_value()
+    POP_EXCEPT = _unique_value()
+    HAVE_ARGUMENT = _unique_value()
+    STORE_NAME = _unique_value()
+    DELETE_NAME = _unique_value()
+    UNPACK_SEQUENCE = _unique_value()
+    FOR_ITER = _unique_value()
+    UNPACK_EX = _unique_value()
+    STORE_ATTR = _unique_value()
+    DELETE_ATTR = _unique_value()
+    STORE_GLOBAL = _unique_value()
+    DELETE_GLOBAL = _unique_value()
+    LOAD_CONST = _unique_value()
+    LOAD_NAME = _unique_value()
+    BUILD_TUPLE = _unique_value()
+    BUILD_LIST = _unique_value()
+    BUILD_SET = _unique_value()
+    BUILD_MAP = _unique_value()
+    LOAD_ATTR = _unique_value()
+    COMPARE_OP = _unique_value()
+    IMPORT_NAME = _unique_value()
+    IMPORT_FROM = _unique_value()
+    JUMP_FORWARD = _unique_value()
+    JUMP_IF_FALSE_OR_POP = _unique_value()
+    JUMP_IF_TRUE_OR_POP = _unique_value()
+    JUMP_ABSOLUTE = _unique_value()
+    POP_JUMP_IF_FALSE = _unique_value()
+    POP_JUMP_IF_TRUE = _unique_value()
+    LOAD_GLOBAL = _unique_value()
+    IS_OP = _unique_value()
+    CONTAINS_OP = _unique_value()
+    COPY = _unique_value()
+    JUMP_IF_NOT_EXC_MATCH = _unique_value()
+    SETUP_FINALLY = _unique_value()
+    BINARY_OP = _unique_value()
+    SEND = _unique_value()
+    LOAD_FAST = _unique_value()
+    STORE_FAST = _unique_value()
+    DELETE_FAST = _unique_value()
+    POP_JUMP_IF_NOT_NONE = _unique_value()
+    POP_JUMP_IF_NONE = _unique_value()
+    RAISE_VARARGS = _unique_value()
+    CALL_FUNCTION = _unique_value()
+    LOAD_FAST__LOAD_FAST = _unique_value()
+    MAKE_FUNCTION = _unique_value()
+    BUILD_SLICE = _unique_value()
+    JUMP_NO_INTERRUPT = _unique_value()
+    MAKE_CELL = _unique_value()
+    LOAD_CLOSURE = _unique_value()
+    LOAD_DEREF = _unique_value()
+    STORE_DEREF = _unique_value()
+    DELETE_DEREF = _unique_value()
+    STORE_FAST__LOAD_FAST = _unique_value()
+    LOAD_FAST__LOAD_CONST = _unique_value()
+    CALL_FUNCTION_KW = _unique_value()
+    CALL_FUNCTION_EX = _unique_value()
+    SETUP_WITH = _unique_value()
+    LOAD_CONST__LOAD_FAST = _unique_value()
+    LIST_APPEND = _unique_value()
+    SET_ADD = _unique_value()
+    MAP_ADD = _unique_value()
+    LOAD_CLASSDEREF = _unique_value()
+    COPY_FREE_VARS = _unique_value()
+    EXTENDED_ARG = _unique_value()
+    STORE_FAST__STORE_FAST = _unique_value()
+    RESUME = _unique_value()
+    SETUP_ASYNC_WITH = _unique_value()
+    FORMAT_VALUE = _unique_value()
+    BUILD_CONST_KEY_MAP = _unique_value()
+    BUILD_STRING = _unique_value()
+    LOAD_METHOD = _unique_value()
+    CALL_METHOD = _unique_value()
+    LIST_EXTEND = _unique_value()
+    SET_UPDATE = _unique_value()
+    DICT_MERGE = _unique_value()
+    DICT_UPDATE = _unique_value()
+    PRECALL_METHOD = _unique_value()
+    CALL_NO_KW = _unique_value()
+    CALL_KW = _unique_value()
 
 
 with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_opcodes.json") as f:
