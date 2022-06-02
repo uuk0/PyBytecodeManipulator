@@ -314,3 +314,125 @@ for attr in list(Opcodes.__dict__.keys()):
 
     if attr not in OPCODE_DATA["opcodes"] and attr not in OPCODE_DATA["specialize"]:
         delattr(Opcodes, attr)
+
+
+OPCODE_TO_OP: typing.Dict[int, typing.Tuple[int, typing.Callable]] = {}
+OPCODE_ARG_TO_OP: typing.Dict[typing.Tuple[int, int], typing.Tuple[int, typing.Callable]] = {}
+_ARG_NAMES = "abcdefghi"
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 11:
+    for opname, config in OPCODE_DATA.setdefault("operators", {}).items():
+        opcode = getattr(Opcodes, opname)
+
+        if isinstance(config, str):
+            config: dict = {"code": config, "direct": True}
+
+        if config.setdefault("direct", False):
+            code = config["code"]
+            args = config.setdefault("args", 2)
+
+            if config.setdefault("inplace", False):
+                context = {}
+                exec(f"""
+                def expr({', '.join(_ARG_NAMES[:args])}):
+                    {code}
+                    return a""", context)
+                expr = context["expr"]
+            else:
+                expr = eval(f"lambda {', '.join(_ARG_NAMES[:args])}: {code}")
+
+            OPCODE_TO_OP[opcode] = args, expr
+            continue
+
+        arg = -1
+
+        for code in config.setdefault("binary", []):
+            arg += 1
+
+            expr = eval("lambda a, b: " + code)
+            OPCODE_ARG_TO_OP[opcode, arg] = 2, expr
+
+        for code in config.setdefault("inplace", []):
+            arg += 1
+
+            context = {}
+            exec(f"""
+def expr(a, b):
+    {code}
+    return a""", context)
+
+            expr = context["expr"]
+            OPCODE_ARG_TO_OP[opcode, arg] = 2, expr
+
+elif sys.version_info.major > 3:
+    raise RuntimeError("Someone forgot to implement this!!!")
+
+else:
+    for opname, config in OPCODE_DATA.setdefault("operators", {}).items():
+        opcode = getattr(Opcodes, opname)
+
+        if isinstance(config, str):
+            config: dict = {"code": config}
+
+        if config.setdefault("direct", True):
+            code = config["code"]
+            args = config.setdefault("args", 2)
+
+            if config.setdefault("inplace", False):
+                context = {}
+                exec(f"""
+def expr({', '.join(_ARG_NAMES[:args])}):
+    {code}
+    return a""", context)
+                expr = context["expr"]
+            else:
+                expr = eval(f"lambda {', '.join(_ARG_NAMES[:args])}: {code}")
+
+            OPCODE_TO_OP[opcode] = args, expr
+
+        else:
+            raise RuntimeError("Pre python 3.11 is not allowed to define arg-related operations")
+
+
+OPCODE_DATA.setdefault("jump_data", {})
+OPCODE_DATA["jump_data"].setdefault("unconditional", {})
+
+
+def _parse_jump_data(data: dict) -> typing.Dict[int, typing.Callable[[typing.Any], typing.Tuple[bool, bool]]]:
+    result = {}
+
+    for opname, config in data.items():
+        opcode = getattr(Opcodes, opname)
+
+        if isinstance(config, str):
+            config: dict = {"code": config}
+
+        context = {}
+        exec(f"""
+def expr(value):
+    state = {config['code']}
+
+    if state:
+        return True, {config.setdefault("true_pops", True)}
+
+    return False, {config.setdefault("false_pops", True)}""", context)
+
+        result[opcode] = context["expr"]
+
+    return result
+
+
+JUMP_ABSOLUTE = _parse_jump_data(OPCODE_DATA["jump_data"].setdefault("absolute", {}))
+JUMP_FORWARDS = _parse_jump_data(OPCODE_DATA["jump_data"].setdefault("forward", {}))
+JUMP_BACKWARDS = _parse_jump_data(OPCODE_DATA["jump_data"].setdefault("backward", {}))
+
+
+def _opcode_or_default(name: str | None):
+    return getattr(Opcodes, name) if name is not None else None
+
+
+UNCONDITIONAL_JUMPS = [
+    _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("absolute", None)),
+    _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("forward", None)),
+    _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("backward", None))
+]

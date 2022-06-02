@@ -70,6 +70,7 @@ def capture_local_static(name: str):
 OFFSET_JUMPS = dis.hasjrel
 REAL_JUMPS = dis.hasjabs
 
+# todo: move to json data
 DO_NOTHING = {
     Opcodes.NOP,
 }
