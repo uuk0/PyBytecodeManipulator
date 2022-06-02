@@ -1,4 +1,5 @@
 import dis
+import itertools
 import json
 import os.path
 import sys
@@ -198,14 +199,113 @@ class Opcodes:
     PRECALL_METHOD = _unique_value()
     CALL_NO_KW = _unique_value()
     CALL_KW = _unique_value()
+    PUSH_NULL = _unique_value()
+    GET_LEN = _unique_value()
+    MATCH_MAPPING = _unique_value()
+    MATCH_SEQUENCE = _unique_value()
+    MATCH_KEYS = _unique_value()
+    CHECK_EXC_MATCH = _unique_value()
+    CHECK_EG_MATCH = _unique_value()
+    PREP_RERAISE_STAR = _unique_value()
+    SWAP = _unique_value()
+    POP_JUMP_FORWARD_IF_FALSE = _unique_value()
+    POP_JUMP_FORWARD_IF_TRUE = _unique_value()
+    POP_JUMP_FORWARD_IF_NOT_NONE = _unique_value()
+    POP_JUMP_FORWARD_IF_NONE = _unique_value()
+    JUMP_BACKWARD_NO_INTERRUPT = _unique_value()
+    JUMP_BACKWARD = _unique_value()
+    PRECALL = _unique_value()
+    CALL = _unique_value()
+    KW_NAMES = _unique_value()
+    POP_JUMP_BACKWARD_IF_NOT_NONE = _unique_value()
+    POP_JUMP_BACKWARD_IF_NONE = _unique_value()
+    POP_JUMP_BACKWARD_IF_FALSE = _unique_value()
+    POP_JUMP_BACKWARD_IF_TRUE = _unique_value()
+    BINARY_OP_ADAPTIVE = _unique_value()
+    BINARY_OP_ADD_FLOAT = _unique_value()
+    BINARY_OP_ADD_INT = _unique_value()
+    BINARY_OP_ADD_UNICODE = _unique_value()
+    BINARY_OP_INPLACE_ADD_UNICODE = _unique_value()
+    BINARY_OP_MULTIPLY_FLOAT = _unique_value()
+    BINARY_OP_MULTIPLY_INT = _unique_value()
+    BINARY_OP_SUBTRACT_FLOAT = _unique_value()
+    BINARY_OP_SUBTRACT_INT = _unique_value()
+    BINARY_SUBSCR_ADAPTIVE = _unique_value()
+    BINARY_SUBSCR_DICT = _unique_value()
+    BINARY_SUBSCR_GETITEM = _unique_value()
+    BINARY_SUBSCR_LIST_INT = _unique_value()
+    BINARY_SUBSCR_TUPLE_INT = _unique_value()
+    CALL_ADAPTIVE = _unique_value()
+    CALL_PY_EXACT_ARGS = _unique_value()
+    CALL_PY_WITH_DEFAULTS = _unique_value()
+    COMPARE_OP_ADAPTIVE = _unique_value()
+    COMPARE_OP_FLOAT_JUMP = _unique_value()
+    COMPARE_OP_INT_JUMP = _unique_value()
+    COMPARE_OP_STR_JUMP = _unique_value()
+    EXTENDED_ARG_QUICK = _unique_value()
+    JUMP_BACKWARD_QUICK = _unique_value()
+    LOAD_ATTR_ADAPTIVE = _unique_value()
+    LOAD_ATTR_INSTANCE_VALUE = _unique_value()
+    LOAD_ATTR_MODULE = _unique_value()
+    LOAD_ATTR_SLOT = _unique_value()
+    LOAD_ATTR_WITH_HINT = _unique_value()
+    LOAD_GLOBAL_ADAPTIVE = _unique_value()
+    LOAD_GLOBAL_BUILTIN = _unique_value()
+    LOAD_GLOBAL_MODULE = _unique_value()
+    LOAD_METHOD_ADAPTIVE = _unique_value()
+    LOAD_METHOD_CLASS = _unique_value()
+    LOAD_METHOD_MODULE = _unique_value()
+    LOAD_METHOD_NO_DICT = _unique_value()
+    LOAD_METHOD_WITH_DICT = _unique_value()
+    LOAD_METHOD_WITH_VALUES = _unique_value()
+    PRECALL_ADAPTIVE = _unique_value()
+    PRECALL_BOUND_METHOD = _unique_value()
+    PRECALL_BUILTIN_CLASS = _unique_value()
+    PRECALL_BUILTIN_FAST_WITH_KEYWORDS = _unique_value()
+    PRECALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS = _unique_value()
+    PRECALL_NO_KW_BUILTIN_FAST = _unique_value()
+    PRECALL_NO_KW_BUILTIN_O = _unique_value()
+    PRECALL_NO_KW_ISINSTANCE = _unique_value()
+    PRECALL_NO_KW_LEN = _unique_value()
+    PRECALL_NO_KW_LIST_APPEND = _unique_value()
+    PRECALL_NO_KW_METHOD_DESCRIPTOR_FAST = _unique_value()
+    PRECALL_NO_KW_METHOD_DESCRIPTOR_NOARGS = _unique_value()
+    PRECALL_NO_KW_METHOD_DESCRIPTOR_O = _unique_value()
+    PRECALL_NO_KW_STR_1 = _unique_value()
+    PRECALL_NO_KW_TUPLE_1 = _unique_value()
+    PRECALL_NO_KW_TYPE_1 = _unique_value()
+    PRECALL_PYFUNC = _unique_value()
+    RESUME_QUICK = _unique_value()
+    STORE_ATTR_ADAPTIVE = _unique_value()
+    STORE_ATTR_INSTANCE_VALUE = _unique_value()
+    STORE_ATTR_SLOT = _unique_value()
+    STORE_ATTR_WITH_HINT = _unique_value()
+    STORE_SUBSCR_ADAPTIVE = _unique_value()
+    STORE_SUBSCR_DICT = _unique_value()
+    STORE_SUBSCR_LIST_INT = _unique_value()
+    UNPACK_SEQUENCE_ADAPTIVE = _unique_value()
+    UNPACK_SEQUENCE_LIST = _unique_value()
+    UNPACK_SEQUENCE_TUPLE = _unique_value()
+    UNPACK_SEQUENCE_TWO_TUPLE = _unique_value()
+    DO_TRACING = _unique_value()
 
 
 with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_opcodes.json") as f:
     data = json.load(f)
 
 
-for key, value in data["values"].items():
-    setattr(Opcodes, key, value)
+__MISSING = []
+
+
+for key, value in itertools.chain(data["values"].items(), data["specialize"].items()):
+    if hasattr(Opcodes, key):
+        setattr(Opcodes, key, value)
+    else:
+        __MISSING.append(key)
+        print(f"Skipping Opcode {key} with ID {value}")
+
+
+print("\n".join(f"    {name} = _unique_value()" for name in __MISSING))
 
 
 for attr in list(Opcodes.__dict__.keys()):
