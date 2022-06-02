@@ -40,6 +40,13 @@ else:
 
 
 class Opcodes:
+    """
+    Class of all Opcodes
+
+    todo: add all valid names with dummy values & insert real values
+        from .json file & delete not arrival instructions
+    """
+
     POP_TOP = 1
     ROT_TWO = 2
     ROT_THREE = 3

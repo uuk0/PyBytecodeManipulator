@@ -4,7 +4,7 @@ import unittest
 
 from bytecodemanipulation.util import Opcodes
 
-from bytecodemanipulation.CodeOptimiser import optimise_code, optimise_store_load_pairs, remove_store_fast_without_usage, remove_load_dup_pop, remove_create_primitive_pop, trace_load_const_store_fast_load_fast
+from bytecodemanipulation.CodeOptimiser import optimise_code, optimise_store_load_pairs, remove_store_fast_without_usage, remove_load_dup_pop, remove_create_primitive_pop, trace_load_const_store_fast_load_fast, eval_constant_bytecode_expressions
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
 
@@ -96,7 +96,35 @@ class TestOptimizerSystem(unittest.TestCase):
 
         self.assertNotEqual(instance.instruction_listing[1].opcode, Opcodes.DUP_TOP)
 
+        # Correctly inlining of expression
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(instance.instruction_listing[2].argval, 11)
+
         self.assertEqual(target(), 11)
+
+    def test_above_combined_2(self):
+        def target():
+            a = 10
+            return a - 1
+
+        self.assertEqual(target(), 9)
+
+        instance = BytecodePatchHelper(target)
+
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_FAST)
+
+        optimise_code(instance)
+
+        instance.store()
+        instance.patcher.applyPatches()
+
+        self.assertNotEqual(instance.instruction_listing[1].opcode, Opcodes.DUP_TOP)
+
+        # Correctly inlining of expression
+        self.assertEqual(instance.instruction_listing[2].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(instance.instruction_listing[2].argval, 9)
+
+        self.assertEqual(target(), 9)
 
     # Again, that one function has multiple optimisations
     def test_primitive_build_remove_simple(self):

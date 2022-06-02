@@ -57,6 +57,7 @@ if sys.version_info.major <= 3 and sys.version_info.minor < 11:
         remove_store_fast_without_usage(helper)
         # trace_load_const_store_fast_load_fast(helper)
         remove_nop(helper)
+        eval_constant_bytecode_expressions(helper)
         prepare_inline_expressions(helper)
         remove_create_primitive_pop(helper)
         remove_load_dup_pop(helper)
@@ -75,6 +76,7 @@ else:
         remove_store_fast_without_usage(helper)
         # trace_load_const_store_fast_load_fast(helper)
         remove_nop(helper)
+        eval_constant_bytecode_expressions(helper)
         prepare_inline_expressions(helper)
         remove_create_primitive_pop(helper)
         remove_load_dup_pop(helper)
@@ -344,3 +346,161 @@ def trace_load_const_store_fast_load_fast(helper: BytecodePatchHelper):
         elif instr.opcode == Opcodes.LOAD_FAST:
             if instr.arg in known_var_values:
                 helper.instruction_listing[index] = helper.patcher.createLoadConst(known_var_values[instr.arg])
+
+
+TAKES_ONE = {
+    Opcodes.UNARY_POSITIVE,
+    Opcodes.UNARY_NEGATIVE,
+    Opcodes.UNARY_NOT,
+    Opcodes.UNARY_INVERT,
+    Opcodes.LIST_TO_TUPLE,
+}
+TAKES_TWO = {
+    Opcodes.BINARY_MATRIX_MULTIPLY,
+    Opcodes.INPLACE_MATRIX_MULTIPLY,
+    Opcodes.BINARY_POWER,
+    Opcodes.BINARY_MULTIPLY,
+    Opcodes.BINARY_MODULO,
+    Opcodes.BINARY_ADD,
+    Opcodes.BINARY_SUBTRACT,
+    Opcodes.BINARY_SUBSCR,
+    Opcodes.BINARY_FLOOR_DIVIDE,
+    Opcodes.BINARY_TRUE_DIVIDE,
+    Opcodes.INPLACE_FLOOR_DIVIDE,
+    Opcodes.INPLACE_TRUE_DIVIDE,
+    Opcodes.INPLACE_ADD,
+    Opcodes.INPLACE_SUBTRACT,
+    Opcodes.INPLACE_MULTIPLY,
+    Opcodes.INPLACE_MODULO,
+    Opcodes.BINARY_LSHIFT,
+    Opcodes.BINARY_RSHIFT,
+    Opcodes.BINARY_AND,
+    Opcodes.BINARY_XOR,
+    Opcodes.BINARY_OR,
+    Opcodes.INPLACE_POWER,
+    Opcodes.INPLACE_LSHIFT,
+    Opcodes.INPLACE_RSHIFT,
+    Opcodes.INPLACE_AND,
+    Opcodes.INPLACE_XOR,
+    Opcodes.INPLACE_OR,
+}
+
+
+def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
+    index = -1
+    while index < len(helper.instruction_listing) - 1:
+        index += 1
+
+        for index, instr in list(helper.walk())[index:]:
+            opcode = instr.opcode
+
+            if opcode in TAKES_ONE:
+                arg_instr = next(helper.findSourceOfStackIndex(index, 0))
+
+                if arg_instr.opcode != Opcodes.LOAD_CONST: continue
+
+                value = arg_instr.argval
+
+                if opcode == Opcodes.UNARY_POSITIVE:
+                    value = +value
+                elif opcode == Opcodes.UNARY_NEGATIVE:
+                    value = -value
+                elif opcode == Opcodes.UNARY_NOT:
+                    value = not value
+                elif opcode == Opcodes.UNARY_INVERT:
+                    value = ~value
+                elif opcode == Opcodes.LIST_TO_TUPLE:
+                    value = tuple(value)
+                else:
+                    raise RuntimeError(opcode)
+
+                helper.instruction_listing[arg_instr.offset // 2] = create_instruction("NOP")
+
+            elif opcode in TAKES_TWO:
+                lhs_instr = next(helper.findSourceOfStackIndex(index, 0))
+                rhs_instr = next(helper.findSourceOfStackIndex(index, 1))
+
+                if not (rhs_instr.opcode == lhs_instr.opcode == Opcodes.LOAD_CONST):
+                    continue
+
+                rhs = rhs_instr.argval
+                lhs = lhs_instr.argval
+
+                # TODO: we need something better here!!!
+                if opcode == Opcodes.BINARY_MATRIX_MULTIPLY:
+                    value = rhs @ lhs
+                elif opcode == Opcodes.INPLACE_MATRIX_MULTIPLY:
+                    rhs @= lhs
+                    value = rhs
+                elif opcode == Opcodes.BINARY_POWER:
+                    value = rhs ** lhs
+                elif opcode == Opcodes.BINARY_MULTIPLY:
+                    value = rhs * lhs
+                elif opcode == Opcodes.BINARY_MODULO:
+                    value = rhs % lhs
+                elif opcode == Opcodes.BINARY_ADD:
+                    value = rhs + lhs
+                elif opcode == Opcodes.BINARY_SUBTRACT:
+                    value = rhs - lhs
+                elif opcode == Opcodes.BINARY_SUBSCR:
+                    value = rhs[lhs]
+                elif opcode == Opcodes.BINARY_FLOOR_DIVIDE:
+                    value = rhs // lhs
+                elif opcode == Opcodes.BINARY_TRUE_DIVIDE:
+                    value = rhs / lhs
+                elif opcode == Opcodes.INPLACE_FLOOR_DIVIDE:
+                    rhs //= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_TRUE_DIVIDE:
+                    rhs /= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_ADD:
+                    rhs += lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_SUBTRACT:
+                    rhs -= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_MULTIPLY:
+                    rhs *= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_MODULO:
+                    rhs %= lhs
+                    value = rhs
+                elif opcode == Opcodes.BINARY_LSHIFT:
+                    value = rhs << lhs
+                elif opcode == Opcodes.BINARY_RSHIFT:
+                    value = rhs >> lhs
+                elif opcode == Opcodes.BINARY_AND:
+                    value = rhs & lhs
+                elif opcode == Opcodes.BINARY_XOR:
+                    value = rhs ^ lhs
+                elif opcode == Opcodes.BINARY_OR:
+                    value = rhs | lhs
+                elif opcode == Opcodes.INPLACE_POWER:
+                    rhs **= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_LSHIFT:
+                    rhs <<= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_RSHIFT:
+                    rhs >>= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_AND:
+                    rhs &= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_XOR:
+                    rhs ^= lhs
+                    value = rhs
+                elif opcode == Opcodes.INPLACE_OR:
+                    rhs |= lhs
+                    value = rhs
+                else:
+                    raise RuntimeError(opcode)
+
+                helper.instruction_listing[rhs_instr.offset // 2] = create_instruction("NOP")
+                helper.instruction_listing[lhs_instr.offset // 2] = create_instruction("NOP")
+
+            else:
+                continue
+
+            helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
