@@ -1452,7 +1452,7 @@ class TestBytecodeHandler(TestCase):
     def test_branch_remover_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
-        handler = TransformationHandler()
+        handler = TransformationHandler(do_code_optimisation=False)
 
         def target(p):
             if p:
@@ -1460,11 +1460,15 @@ class TestBytecodeHandler(TestCase):
 
             return 1
 
+        dis.dis(target)
+
         self.assertEqual(target(True), 0)
 
         handler.makeFunctionArrival("test", target)
         handler.remove_flow_branch("test")
         handler.applyTransforms()
+
+        dis.dis(target)
 
         self.assertEqual(target(True), 1)
 

@@ -1,4 +1,7 @@
 
+# Version 0.1.10 [upcoming]
+- made some instruction configs .json config able
+
 # Version 0.1.9
 - added some more optimizations which do not require annotations, including:
   - unused variable elimination (including unused assignments)

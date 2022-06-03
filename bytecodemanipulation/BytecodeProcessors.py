@@ -17,13 +17,16 @@ from bytecodemanipulation.TransformationHelper import (
 )
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject, createInstruction
 from bytecodemanipulation.util import JUMP_ABSOLUTE
-from bytecodemanipulation.util import Opcodes
+from bytecodemanipulation.util import JUMP_BACKWARDS
+from bytecodemanipulation.util import JUMP_FORWARDS
+from bytecodemanipulation.util import Opcodes, OPCODE_DATA
 from bytecodemanipulation.util import UNCONDITIONAL_JUMPS
 
-POP_JUMPS = {
-    Opcodes.POP_JUMP_IF_FALSE,
-    Opcodes.POP_JUMP_IF_TRUE,
-}
+# Check, and jump and pop only when check passes
+POP_JUMPS = set(getattr(Opcodes, e) for e in OPCODE_DATA.setdefault("control_flow", {}).setdefault("check_and_jump_pop", []))
+
+# Pop, check, jump
+JUMP_POPS = set(getattr(Opcodes, e) for e in OPCODE_DATA.setdefault("control_flow", {}).setdefault("pop_and_check_jump", []))
 
 if sys.version_info.major >= 3 and sys.version_info.minor > 11:
     POP_JUMPS |= {
@@ -795,18 +798,13 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
         while index < len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                # todo: move to .json config
-                if instr.opcode in {
-                    Opcodes.JUMP_IF_FALSE_OR_POP,
-                    Opcodes.JUMP_IF_TRUE_OR_POP,
-                }:
+                if instr.opcode in JUMP_POPS:
                     if self.modifyAt(
                         helper, index, match, pop=self.target_jumped_branch
                     ):
                         match += 1
                         break
 
-                # todo: move to .json config
                 elif instr.opcode in POP_JUMPS:
                     if self.modifyAt(helper, index, match):
                         match += 1
@@ -825,18 +823,23 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
             )
 
             if self.target_jumped_branch:
-                # TODO: refactor to use .json config
-
                 if instr.opcode in JUMP_ABSOLUTE:
                     helper.insertRegion(
                         index + 1, [createInstruction(UNCONDITIONAL_JUMPS[0], instr.arg + 1)]
                     )
 
-                else:
-                    # todo: py3.11 check for backwards jump
+                elif instr.opcode in JUMP_FORWARDS:
                     helper.insertRegion(
                         index + 1, [createInstruction(UNCONDITIONAL_JUMPS[1], instr.arg)]
                     )
+
+                elif instr.opcode in JUMP_BACKWARDS:
+                    helper.insertRegion(
+                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[2], instr.arg)]
+                    )
+
+                else:
+                    raise RuntimeError(instr)
 
             return True
 

@@ -6,6 +6,7 @@ import types
 import typing
 
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject, createInstruction
+from .util import OPCODE_DATA
 
 from .util import Opcodes, JUMP_ABSOLUTE, JUMP_FORWARDS, JUMP_BACKWARDS
 from .util import UNCONDITIONAL_JUMPS
@@ -67,90 +68,18 @@ def capture_local_static(name: str):
 # todo: add a way to capture global variables
 # todo: add a way to capture cell variables
 
-# todo: move to json data
-DO_NOTHING = {
-    Opcodes.NOP,
-}
-LOAD_SINGLE_VALUE = {
-    Opcodes.LOAD_FAST,
-    Opcodes.LOAD_CONST,
-    Opcodes.LOAD_DEREF,
-    Opcodes.LOAD_GLOBAL,
-    Opcodes.LOAD_BUILD_CLASS,
-    Opcodes.LOAD_NAME,
-    Opcodes.LOAD_CLASSDEREF,
-}
-POP_SINGLE_VALUE = {
-    Opcodes.POP_TOP,
-    Opcodes.STORE_FAST,
-    Opcodes.STORE_DEREF,
-    Opcodes.STORE_GLOBAL,
-    Opcodes.STORE_NAME,
-    Opcodes.PRINT_EXPR,
-    Opcodes.YIELD_VALUE,
-}
-POP_DOUBLE_VALUE = {
-    Opcodes.STORE_ATTR,
-    Opcodes.STORE_SUBSCR,
-}
-POP_DOUBLE_AND_PUSH_SINGLE = {
-    Opcodes.STORE_SUBSCR,
-    Opcodes.DELETE_SUBSCR,
-    Opcodes.STORE_ATTR,
-    Opcodes.BINARY_POWER,
-    Opcodes.BINARY_MULTIPLY,
-    Opcodes.BINARY_MATRIX_MULTIPLY,
-    Opcodes.BINARY_FLOOR_DIVIDE,
-    Opcodes.BINARY_TRUE_DIVIDE,
-    Opcodes.BINARY_MODULO,
-    Opcodes.BINARY_ADD,
-    Opcodes.BINARY_SUBTRACT,
-    Opcodes.BINARY_SUBSCR,
-    Opcodes.BINARY_LSHIFT,
-    Opcodes.BINARY_RSHIFT,
-    Opcodes.BINARY_AND,
-    Opcodes.BINARY_XOR,
-    Opcodes.BINARY_OR,
-    Opcodes.INPLACE_POWER,
-    Opcodes.INPLACE_MULTIPLY,
-    Opcodes.INPLACE_MATRIX_MULTIPLY,
-    Opcodes.INPLACE_FLOOR_DIVIDE,
-    Opcodes.INPLACE_TRUE_DIVIDE,
-    Opcodes.INPLACE_MODULO,
-    Opcodes.INPLACE_ADD,
-    Opcodes.INPLACE_SUBTRACT,
-    Opcodes.INPLACE_LSHIFT,
-    Opcodes.INPLACE_RSHIFT,
-    Opcodes.INPLACE_AND,
-    Opcodes.INPLACE_XOR,
-    Opcodes.INPLACE_OR,
-}
-POP_SINGLE_AND_PUSH_SINGLE = {
-    Opcodes.LOAD_METHOD,
-    Opcodes.UNARY_POSITIVE,
-    Opcodes.UNARY_NEGATIVE,
-    Opcodes.UNARY_NOT,
-    Opcodes.UNARY_INVERT,
-    Opcodes.GET_ITER,
-    Opcodes.GET_YIELD_FROM_ITER,
-    Opcodes.GET_AWAITABLE,
-    Opcodes.GET_AITER,
-    Opcodes.GET_ANEXT,
-    Opcodes.LOAD_ATTR,
-}
+DO_NOTHING = set(getattr(Opcodes, e) for e in OPCODE_DATA.setdefault("stack_effects", {}).setdefault("do_nothing", []))
+LOAD_SINGLE_VALUE = set(getattr(Opcodes, e) for e in OPCODE_DATA["stack_effects"].setdefault("load_single", []))
+POP_SINGLE_VALUE = set(getattr(Opcodes, e) for e in OPCODE_DATA["stack_effects"].setdefault("pop_single", []))
+POP_DOUBLE_VALUE = set(getattr(Opcodes, e) for e in OPCODE_DATA["stack_effects"].setdefault("pop_double", []))
+POP_DOUBLE_AND_PUSH_SINGLE = set(getattr(Opcodes, e) for e in OPCODE_DATA["stack_effects"].setdefault("pop_double_and_push_single", []))
+POP_SINGLE_AND_PUSH_SINGLE = set(getattr(Opcodes, e) for e in OPCODE_DATA["stack_effects"].setdefault("pop_single_and_push_single", []))
 
 
 if sys.version_info.major <= 3 and sys.version_info.minor < 11:
-    POP_SINGLE_VALUE |= {
-        Opcodes.YIELD_FROM,
-    }
     METHOD_CALL = {Opcodes.CALL_METHOD, Opcodes.CALL_FUNCTION}
 else:
-    DO_NOTHING |= {
-        Opcodes.RESUME,
-        Opcodes.COPY_FREE_VARS,
-    }
-    METHOD_CALL = Opcodes.CALL_NO_KW
+    METHOD_CALL = Opcodes.CALL
 
 
 def rebind_instruction_from_insert(instr: dis.Instruction, new_index: int, new_size: int):

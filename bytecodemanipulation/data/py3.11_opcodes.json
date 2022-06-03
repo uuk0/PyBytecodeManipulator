@@ -266,5 +266,66 @@
       "POP_JUMP_BACKWARD_IF_NOT_NONE": "value is not None",
       "POP_JUMP_BACKWARD_IF_NONE": "value is None"
     }
+  },
+  "stack_effects": {
+    "do_nothing": [
+      "NOP",
+      "RESUME",
+      "COPY_FREE_VARS"
+    ],
+    "load_single": [
+      "LOAD_FAST",
+      "LOAD_CONST",
+      "LOAD_DEREF",
+      "LOAD_GLOBAL",
+      "LOAD_BUILD_CLASS",
+      "LOAD_NAME",
+      "LOAD_CLASSDEREF"
+    ],
+    "pop_single": [
+      "POP_TOP",
+      "STORE_FAST",
+      "STORE_DEREF",
+      "STORE_GLOBAL",
+      "STORE_NAME",
+      "PRINT_EXPR",
+      "YIELD_VALUE"
+    ],
+    "pop_double": [
+      "STORE_ATTR",
+      "STORE_SUBSCR"
+    ],
+    "pop_double_and_push_single": [
+      "BINARY_OP"
+    ],
+    "pop_single_and_push_single": [
+      "LOAD_METHOD",
+      "UNARY_POSITIVE",
+      "UNARY_NEGATIVE",
+      "UNARY_NOT",
+      "UNARY_INVERT",
+      "GET_ITER",
+      "GET_YIELD_FROM_ITER",
+      "GET_AWAITABLE",
+      "GET_AITER",
+      "GET_ANEXT",
+      "LOAD_ATTR"
+    ]
+  },
+  "control_flow": {
+    "check_and_jump_pop": [
+      "JUMP_IF_FALSE_OR_POP",
+      "JUMP_IF_TRUE_OR_POP"
+    ],
+    "pop_and_check_jump": [
+      "POP_JUMP_FORWARD_IF_FALSE",
+      "POP_JUMP_FORWARD_IF_TRUE",
+      "POP_JUMP_FORWARD_IF_NONE",
+      "POP_JUMP_FORWARD_IF_NOT_NONE",
+      "POP_JUMP_BACKWARD_IF_FALSE",
+      "POP_JUMP_BACKWARD_IF_TRUE",
+      "POP_JUMP_BACKWARD_IF_NONE",
+      "POP_JUMP_BACKWARD_IF_NOT_NONE"
+    ]
   }
 }
