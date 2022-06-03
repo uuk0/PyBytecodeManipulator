@@ -58,29 +58,97 @@ class Opcodes:
     Valid at any point in python's history we support with this library
     """
 
-    POP_TOP = _unique_value()
-    ROT_TWO = _unique_value()
-    ROT_THREE = _unique_value()
-    DUP_TOP = _unique_value()
-    DUP_TOP_TWO = _unique_value()
-    ROT_FOUR = _unique_value()
+    # Does nothing
     NOP = _unique_value()
+
+    # Pops the top value from the stack
+    POP_TOP = _unique_value()
+
+    # Swaps the top with the second element from stack
+    # Valid only in versions up to 3.10
+    ROT_TWO = _unique_value()
+
+    # Pushes the top of stack at the third position, leaving the old third at the new
+    # second and the old second at top
+    # Valid only in versions up to 3.10
+    ROT_THREE = _unique_value()
+
+    # Like ROT_THREE, but pushes the top to the fourth position
+    # Valid only in versions up to 3.10
+    ROT_FOUR = _unique_value()
+
+    # Duplicates the value at stack top
+    DUP_TOP = _unique_value()
+
+    # ..., A, B -> ..., A, B, A, B
+    DUP_TOP_TWO = _unique_value()
+
+    # Implement the +x, -x, not x and ~x operators respectively
     UNARY_POSITIVE = _unique_value()
     UNARY_NEGATIVE = _unique_value()
     UNARY_NOT = _unique_value()
     UNARY_INVERT = _unique_value()
+
+    # Operators for binary (xy = a + b) and inplace (a += b)
+    # Valid only in versions up to 3.10
     BINARY_MATRIX_MULTIPLY = _unique_value()
     INPLACE_MATRIX_MULTIPLY = _unique_value()
     BINARY_POWER = _unique_value()
+    INPLACE_POWER = _unique_value()
     BINARY_MULTIPLY = _unique_value()
+    INPLACE_MULTIPLY = _unique_value()
     BINARY_MODULO = _unique_value()
+    INPLACE_MODULO = _unique_value()
     BINARY_ADD = _unique_value()
+    INPLACE_ADD = _unique_value()
     BINARY_SUBTRACT = _unique_value()
+    INPLACE_SUBTRACT = _unique_value()
     BINARY_SUBSCR = _unique_value()
     BINARY_FLOOR_DIVIDE = _unique_value()
     BINARY_TRUE_DIVIDE = _unique_value()
     INPLACE_FLOOR_DIVIDE = _unique_value()
     INPLACE_TRUE_DIVIDE = _unique_value()
+    BINARY_LSHIFT = _unique_value()
+    INPLACE_LSHIFT = _unique_value()
+    BINARY_RSHIFT = _unique_value()
+    INPLACE_RSHIFT = _unique_value()
+    BINARY_AND = _unique_value()
+    INPLACE_AND = _unique_value()
+    BINARY_XOR = _unique_value()
+    INPLACE_XOR = _unique_value()
+    BINARY_OR = _unique_value()
+    INPLACE_OR = _unique_value()
+
+    IS_OP = _unique_value()
+    CONTAINS_OP = _unique_value()
+
+    COMPARE_OP = _unique_value()
+
+    # Contains all operations in one
+    # Valid since python 3.11
+    BINARY_OP = _unique_value()
+
+    STORE_SUBSCR = _unique_value()
+    DELETE_SUBSCR = _unique_value()
+
+    LOAD_GLOBAL = _unique_value()
+    STORE_GLOBAL = _unique_value()
+    DELETE_GLOBAL = _unique_value()
+
+    LOAD_FAST = _unique_value()
+    STORE_FAST = _unique_value()
+    DELETE_FAST = _unique_value()
+
+    LOAD_NAME = _unique_value()
+    STORE_NAME = _unique_value()
+    DELETE_NAME = _unique_value()
+
+    LOAD_ATTR = _unique_value()
+    STORE_ATTR = _unique_value()
+    DELETE_ATTR = _unique_value()
+
+    LOAD_CONST = _unique_value()
+
     PUSH_EXC_INFO = _unique_value()
     RERAISE = _unique_value()
     WITH_EXCEPT_START = _unique_value()
@@ -89,18 +157,7 @@ class Opcodes:
     BEFORE_ASYNC_WITH = _unique_value()
     BEFORE_WITH = _unique_value()
     END_ASYNC_FOR = _unique_value()
-    INPLACE_ADD = _unique_value()
-    INPLACE_SUBTRACT = _unique_value()
-    INPLACE_MULTIPLY = _unique_value()
-    INPLACE_MODULO = _unique_value()
-    STORE_SUBSCR = _unique_value()
-    DELETE_SUBSCR = _unique_value()
-    BINARY_LSHIFT = _unique_value()
-    BINARY_RSHIFT = _unique_value()
-    BINARY_AND = _unique_value()
-    BINARY_XOR = _unique_value()
-    BINARY_OR = _unique_value()
-    INPLACE_POWER = _unique_value()
+
     GET_ITER = _unique_value()
     GET_YIELD_FROM_ITER = _unique_value()
     PRINT_EXPR = _unique_value()
@@ -109,11 +166,7 @@ class Opcodes:
     GET_AWAITABLE = _unique_value()
     LOAD_ASSERTION_ERROR = _unique_value()
     RETURN_GENERATOR = _unique_value()
-    INPLACE_LSHIFT = _unique_value()
-    INPLACE_RSHIFT = _unique_value()
-    INPLACE_AND = _unique_value()
-    INPLACE_XOR = _unique_value()
-    INPLACE_OR = _unique_value()
+
     LIST_TO_TUPLE = _unique_value()
     RETURN_VALUE = _unique_value()
     IMPORT_STAR = _unique_value()
@@ -122,48 +175,40 @@ class Opcodes:
     POP_BLOCK = _unique_value()
     ASYNC_GEN_WRAP = _unique_value()
     POP_EXCEPT = _unique_value()
-    HAVE_ARGUMENT = _unique_value()
-    STORE_NAME = _unique_value()
-    DELETE_NAME = _unique_value()
     UNPACK_SEQUENCE = _unique_value()
     FOR_ITER = _unique_value()
     UNPACK_EX = _unique_value()
-    STORE_ATTR = _unique_value()
-    DELETE_ATTR = _unique_value()
-    STORE_GLOBAL = _unique_value()
-    DELETE_GLOBAL = _unique_value()
-    LOAD_CONST = _unique_value()
-    LOAD_NAME = _unique_value()
+
     BUILD_TUPLE = _unique_value()
     BUILD_LIST = _unique_value()
     BUILD_SET = _unique_value()
     BUILD_MAP = _unique_value()
-    LOAD_ATTR = _unique_value()
-    COMPARE_OP = _unique_value()
+
     IMPORT_NAME = _unique_value()
     IMPORT_FROM = _unique_value()
-    JUMP_FORWARD = _unique_value()
+
     JUMP_IF_FALSE_OR_POP = _unique_value()
     JUMP_IF_TRUE_OR_POP = _unique_value()
+
+    JUMP_FORWARD = _unique_value()
+
     JUMP_ABSOLUTE = _unique_value()
     POP_JUMP_IF_FALSE = _unique_value()
     POP_JUMP_IF_TRUE = _unique_value()
-    LOAD_GLOBAL = _unique_value()
-    IS_OP = _unique_value()
-    CONTAINS_OP = _unique_value()
-    COPY = _unique_value()
     JUMP_IF_NOT_EXC_MATCH = _unique_value()
-    SETUP_FINALLY = _unique_value()
-    BINARY_OP = _unique_value()
-    SEND = _unique_value()
-    LOAD_FAST = _unique_value()
-    STORE_FAST = _unique_value()
-    DELETE_FAST = _unique_value()
     POP_JUMP_IF_NOT_NONE = _unique_value()
     POP_JUMP_IF_NONE = _unique_value()
+
+    # Copies the element at <arg> to stack top
+    # Valid since python 3.11
+    COPY = _unique_value()
+
+    SETUP_FINALLY = _unique_value()
+
+    SEND = _unique_value()
+
     RAISE_VARARGS = _unique_value()
     CALL_FUNCTION = _unique_value()
-    LOAD_FAST__LOAD_FAST = _unique_value()
     MAKE_FUNCTION = _unique_value()
     BUILD_SLICE = _unique_value()
     JUMP_NO_INTERRUPT = _unique_value()
@@ -172,8 +217,6 @@ class Opcodes:
     LOAD_DEREF = _unique_value()
     STORE_DEREF = _unique_value()
     DELETE_DEREF = _unique_value()
-    STORE_FAST__LOAD_FAST = _unique_value()
-    LOAD_FAST__LOAD_CONST = _unique_value()
     CALL_FUNCTION_KW = _unique_value()
     CALL_FUNCTION_EX = _unique_value()
     SETUP_WITH = _unique_value()
@@ -184,7 +227,6 @@ class Opcodes:
     LOAD_CLASSDEREF = _unique_value()
     COPY_FREE_VARS = _unique_value()
     EXTENDED_ARG = _unique_value()
-    STORE_FAST__STORE_FAST = _unique_value()
     RESUME = _unique_value()
     SETUP_ASYNC_WITH = _unique_value()
     FORMAT_VALUE = _unique_value()
@@ -221,6 +263,11 @@ class Opcodes:
     POP_JUMP_BACKWARD_IF_NONE = _unique_value()
     POP_JUMP_BACKWARD_IF_FALSE = _unique_value()
     POP_JUMP_BACKWARD_IF_TRUE = _unique_value()
+
+    LOAD_FAST__LOAD_FAST = _unique_value()
+    STORE_FAST__LOAD_FAST = _unique_value()
+    LOAD_FAST__LOAD_CONST = _unique_value()
+    STORE_FAST__STORE_FAST = _unique_value()
 
     BINARY_OP_ADAPTIVE = _unique_value()
     BINARY_OP_ADD_FLOAT = _unique_value()

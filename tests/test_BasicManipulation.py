@@ -1452,7 +1452,7 @@ class TestBytecodeHandler(TestCase):
     def test_branch_remover_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
-        handler = TransformationHandler(do_code_optimisation=False)
+        handler = TransformationHandler(do_code_optimisation=False, debug_code=True)
 
         def target(p):
             if p:

@@ -1,6 +1,7 @@
 
 # Version 0.1.10 [upcoming]
 - made some instruction configs .json config able
+- emulator will crash now with a good exception message when a jump goes out of bounds
 
 # Version 0.1.9
 - added some more optimizations which do not require annotations, including:

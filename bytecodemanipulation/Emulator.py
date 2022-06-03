@@ -36,6 +36,10 @@ class InstructionExecutionException(Exception):
     pass
 
 
+class InstructionPointerOutOfRange(Exception):
+    pass
+
+
 class ExecutionManager:
     INSTRUCTIONS: typing.List[
         typing.Tuple[
@@ -82,6 +86,13 @@ class ExecutionManager:
 
         while env.running:
             cp = env.cp
+
+            if cp >= len(wrapper.instruction_listing):
+                raise InstructionPointerOutOfRange(f"{cp} > {len(wrapper.instruction_listing) - 1}")
+
+            elif cp < 0:
+                raise InstructionPointerOutOfRange(f"{cp} < 0")
+
             instr = wrapper.instruction_listing[cp]
 
             if instr.opcode not in self.opcode2executor:
