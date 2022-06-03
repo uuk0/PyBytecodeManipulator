@@ -22,5 +22,6 @@ with open("setup.py", mode="w") as f:
 
 subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", "build", "twine"])
 subprocess.call([sys.executable, "-m", "build"])
+print("username: __token__; password: see config file")
 print(f"{sys.executable} -m twine upload dist/*")
 

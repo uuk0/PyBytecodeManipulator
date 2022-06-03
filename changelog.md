@@ -1,5 +1,5 @@
 
-# Version 0.1.3 [upcoming]
+# Version 0.1.9
 - added some more optimizations which do not require annotations, including:
   - unused variable elimination (including unused assignments)
   - reusing values instead of write followed by read
