@@ -290,6 +290,9 @@ class Opcodes:
     UNPACK_SEQUENCE_TWO_TUPLE = _unique_value()
     DO_TRACING = _unique_value()
 
+    LOAD_FAST_OUTER = 1000
+    STORE_FAST_OUTER = 1001
+
 
 with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_opcodes.json") as f:
     OPCODE_DATA = json.load(f)
@@ -309,10 +312,10 @@ for key, value in itertools.chain(OPCODE_DATA["opcodes"].items(), OPCODE_DATA.se
 print("\n".join(f"    {name} = _unique_value()" for name in __MISSING))
 
 
-for attr in list(Opcodes.__dict__.keys()):
+for attr, value in list(Opcodes.__dict__.items()):
     if attr.startswith("__"): continue
 
-    if attr not in OPCODE_DATA["opcodes"] and attr not in OPCODE_DATA["specialize"]:
+    if attr not in OPCODE_DATA["opcodes"] and attr not in OPCODE_DATA["specialize"] and value < 1000:
         delattr(Opcodes, attr)
 
 
@@ -398,11 +401,15 @@ OPCODE_DATA.setdefault("jump_data", {})
 OPCODE_DATA["jump_data"].setdefault("unconditional", {})
 
 
-def _parse_jump_data(data: dict) -> typing.Dict[int, typing.Callable[[typing.Any], typing.Tuple[bool, bool]]]:
+def _parse_jump_data(data: dict) -> typing.Dict[int, typing.Callable[[typing.Any], typing.Tuple[bool, bool]] | None]:
     result = {}
 
     for opname, config in data.items():
         opcode = getattr(Opcodes, opname)
+
+        if config is None:
+            result[opcode] = None
+            continue
 
         if isinstance(config, str):
             config: dict = {"code": config}
@@ -431,8 +438,12 @@ def _opcode_or_default(name: str | None):
     return getattr(Opcodes, name) if name is not None else None
 
 
-UNCONDITIONAL_JUMPS = [
+UNCONDITIONAL_JUMPS: typing.List[int | None] = [
     _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("absolute", None)),
     _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("forward", None)),
     _opcode_or_default(OPCODE_DATA["jump_data"]["unconditional"].setdefault("backward", None))
 ]
+
+JUMP_ABSOLUTE[UNCONDITIONAL_JUMPS[0]] = None
+JUMP_FORWARDS[UNCONDITIONAL_JUMPS[1]] = None
+JUMP_BACKWARDS[UNCONDITIONAL_JUMPS[2]] = None
