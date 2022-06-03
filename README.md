@@ -18,10 +18,12 @@ Supported python versions:
 - 3.8 and below: unsupported; will produce syntax errors due to using new features
 - 3.9 (WIP)
 - 3.10 (main development)
-- 3.11[a4] (forward porting; WIP)
+- 3.11[a4] (forward porting; WIP; Currently not working fully)
 
-Other version may work, but due to possible internal changes, we do not recommend using 
-them together with this library!
+Other versions will not work as a lot of config is stored in .json files per-version,
+so you may need to provide your own .json config files for the version you need.
+
+(Some versions might be plug-and-play, but most will require code changes additionally)
 
 ## Why are there so many print()-s?
 
@@ -39,6 +41,8 @@ are currently in an inter-stage of the code, so other stuff has priority.
 
 - Nuitka (https://github.com/Nuitka/Nuitka): Incompatible; will break as nuitka removes the \_\_code__ attribute 
   we modify
+- Other bytecode modification / analysers: Should work as long as you as the user does NOT expose intermediate
+  results which might contain internal instructions
 
 
 ## Debugging your injections 

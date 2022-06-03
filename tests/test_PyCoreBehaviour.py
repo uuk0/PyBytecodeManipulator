@@ -1,12 +1,15 @@
-import dis
-import time
+import sys
 from unittest import TestCase
+
+from bytecodemanipulation.util import Opcodes
 
 from bytecodemanipulation.MutableCodeObject import createInstruction
 
+from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
 
-class TestSelfModifyingCode(TestCase):
-    def test_simple(self):
+
+class TestPyCoreBehaviour(TestCase):
+    def test_simple_self_modifying(self):
         """
         This test is for checking what effects it has to apply patches to a running function.
         The best case would be no effect, as of python 3.10, this is the case
@@ -32,3 +35,25 @@ class TestSelfModifyingCode(TestCase):
         helper.re_eval_instructions()
 
         self.assertEqual(helper.instruction_listing[-4].opname, "LOAD_CONST")
+
+    def test_non_standard_instructions(self):
+        # WARNING: this might not work!
+
+        if sys.version_info.major < 3 or sys.version_info.minor < 11:
+            return
+
+        def target():
+            pass
+
+        instance = BytecodePatchHelper(target)
+        instance.instruction_listing = [
+            instance.patcher.createLoadConst(1),
+            instance.patcher.createLoadConst(1),
+            createInstruction(Opcodes.BINARY_OP_ADD_INT),
+            createInstruction(Opcodes.RETURN_VALUE)
+        ]
+        instance.store()
+        instance.patcher.applyPatches()
+
+        self.assertEqual(target(), 2)
+

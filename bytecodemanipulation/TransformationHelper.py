@@ -1280,7 +1280,7 @@ class BytecodePatchHelper:
             if offset >= len(instructions):
                 raise RuntimeError(offset, instructions[index + 1])
 
-            print(instr, offset)
+            # print(instr, offset)
 
             if offset == 0:  # Currently, at top
                 if instr.opcode in POP_SINGLE_VALUE or instr.opcode in POP_DOUBLE_VALUE:
