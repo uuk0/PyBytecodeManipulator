@@ -9,6 +9,7 @@ __all__ = ["MutableCodeObject"]
 
 import typing
 
+from bytecodemanipulation.util import OPCODE_NAMES
 from bytecodemanipulation.util import Opcodes
 
 
@@ -18,7 +19,7 @@ def null():
 
 def createInstruction(instruction: typing.Union[str, int], arg=0, argval=None):
     return dis.Instruction(
-        instruction if isinstance(instruction, str) else dis.opname[instruction],
+        instruction if isinstance(instruction, str) else OPCODE_NAMES[instruction],
         dis.opmap[instruction] if isinstance(instruction, str) else instruction,
         arg,
         argval,
@@ -124,7 +125,7 @@ class MutableCodeObject:
             self.qual_name = None
 
     def create_default_write_opcodes(
-        self, total_previous_args: int, ensure_target: "MutableCodeObject" = None
+        self, total_previous_args: int, ensure_target: "MutableCodeObject" = None, prefix=""
     ) -> typing.Tuple[dis.Instruction]:
         if ensure_target is None:
             ensure_target = self
@@ -137,7 +138,7 @@ class MutableCodeObject:
 
         return sum(
             [
-                (ensure_target.createLoadConst(e), ensure_target.createStoreFast(name))
+                (ensure_target.createLoadConst(e), ensure_target.createStoreFast(prefix+name))
                 for e, name in zip(
                     self.func_defaults[head:],
                     self.variable_names[: self.argument_count][-count:],
@@ -412,6 +413,9 @@ class MutableCodeObject:
 
         for instr in new_instructions:
             try:
+                if instr.opcode > 255:
+                    raise ValueError(instr)
+
                 self.code_string.append(instr.opcode)
 
                 if instr.arg is not None:

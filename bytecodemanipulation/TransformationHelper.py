@@ -7,7 +7,8 @@ import typing
 
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject, createInstruction
 
-from .util import Opcodes
+from .util import Opcodes, JUMP_ABSOLUTE, JUMP_FORWARDS, JUMP_BACKWARDS
+from .util import UNCONDITIONAL_JUMPS
 
 
 def reconstruct_instruction(
@@ -65,10 +66,6 @@ def capture_local_static(name: str):
 # todo: add a way to capture free variables
 # todo: add a way to capture global variables
 # todo: add a way to capture cell variables
-
-
-OFFSET_JUMPS = dis.hasjrel
-REAL_JUMPS = dis.hasjabs
 
 # todo: move to json data
 DO_NOTHING = {
@@ -157,7 +154,7 @@ else:
 
 
 def rebind_instruction_from_insert(instr: dis.Instruction, new_index: int, new_size: int):
-    if instr.opcode in OFFSET_JUMPS:
+    if instr.opcode in JUMP_FORWARDS:
         offset = instr.arg
 
         if offset + instr.offset >= new_index >= instr.offset:
@@ -169,7 +166,20 @@ def rebind_instruction_from_insert(instr: dis.Instruction, new_index: int, new_s
             instr, arg=offset
         )
 
-    elif instr.opcode in REAL_JUMPS:
+    # todo: is this correct?
+    elif instr.opcode in JUMP_BACKWARDS:
+        offset = instr.arg
+
+        if instr.offset >= new_index >= instr.offset - offset:
+            offset += new_size
+        elif instr.offset < new_index <= instr.offset - offset:
+            offset -= new_size
+
+        return reconstruct_instruction(
+            instr, arg=offset
+        )
+
+    elif instr.opcode in JUMP_ABSOLUTE:
         offset = instr.arg
 
         if offset >= new_index:
@@ -292,7 +302,7 @@ class BytecodePatchHelper:
         i = 0
         size = end - start
 
-        def rebind_offset(o: int) -> int:
+        def rebind_fwd(o: int) -> int:
             nonlocal i
 
             # Is our jump target IN the region?
@@ -307,6 +317,26 @@ class BytecodePatchHelper:
                 return o - size
 
             if i + o < start and i >= end:
+                return o + size
+
+            return o
+
+        def rebind_bwd(o: int) -> int:
+            nonlocal i
+
+            # Is our jump target IN the region?
+            if start <= i - o < end and safety:
+                if maps_invalid_to != -1:
+                    # todo: is this correct?
+                    return maps_invalid_to - i
+
+                raise RuntimeError("Instruction to jump to is getting deleted")
+
+            # If we jump OVER the region
+            if i - o >= end and i < start:
+                return o - size
+
+            if i - o < start and i >= end:
                 return o + size
 
             return o
@@ -328,13 +358,19 @@ class BytecodePatchHelper:
                 continue
 
             # Check control flow
-            if instr.opcode in OFFSET_JUMPS:
+            if instr.opcode in JUMP_FORWARDS:
                 offset = instr.arg
                 self.instruction_listing[i] = reconstruct_instruction(
-                    instr, arg=rebind_offset(offset)
+                    instr, arg=rebind_fwd(offset)
                 )
 
-            elif instr.opcode in REAL_JUMPS:
+            elif instr.opcode in JUMP_BACKWARDS:
+                offset = instr.arg
+                self.instruction_listing[i] = reconstruct_instruction(
+                    instr, arg=rebind_bwd(offset)
+                )
+
+            elif instr.opcode in JUMP_ABSOLUTE:
                 self.instruction_listing[i] = reconstruct_instruction(
                     instr, arg=rebind_real(instr.arg)
                 )
@@ -347,12 +383,14 @@ class BytecodePatchHelper:
 
         WARNING: the user is required to make sure that stack & variable constraints still hold
 
+        todo: add variant for adding a single instruction, which can be implemented a lot faster than this stuff
+
         :param start: where to start the insertion, the first instruction becomes the start index
         :param instructions: list of instructions to insert
         """
         size = len(instructions)
 
-        def rebind_offset(o: int) -> int:
+        def rebind_fwd(o: int) -> int:
             nonlocal i
 
             # If we jump OVER the region
@@ -360,6 +398,18 @@ class BytecodePatchHelper:
                 return o + size
 
             if i + o < start <= i:
+                return o - size
+
+            return o
+
+        def rebind_bwd(o: int) -> int:
+            nonlocal i
+
+            # If we jump OVER the region
+            if i - o >= start > i:
+                return o + size
+
+            if i - o < start <= i:
                 return o - size
 
             return o
@@ -374,13 +424,20 @@ class BytecodePatchHelper:
 
         for i, instr in self.walk():
             # Check control flow
-            if instr.opcode in OFFSET_JUMPS:
+
+            if instr.opcode in JUMP_FORWARDS:
                 offset = instr.arg
                 self.instruction_listing[i] = reconstruct_instruction(
-                    instr, arg=rebind_offset(offset)
+                    instr, arg=rebind_fwd(offset)
                 )
 
-            elif instr.opcode in REAL_JUMPS:
+            elif instr.opcode in JUMP_BACKWARDS:
+                offset = instr.arg
+                self.instruction_listing[i] = reconstruct_instruction(
+                    instr, arg=rebind_bwd(offset)
+                )
+
+            elif instr.opcode in JUMP_BACKWARDS:
                 self.instruction_listing[i] = reconstruct_instruction(
                     instr, arg=rebind_real(instr.arg)
                 )
@@ -487,10 +544,7 @@ class BytecodePatchHelper:
 
         # Rebind all inner local variables to something we cannot possibly enter as code,
         # so we cannot get conflicts (in the normal case)
-        # todo: what happens if we inline a method with the same name?
-        target.variable_names = [
-            method.target.__name__ + "::" + e for e in target.variable_names
-        ]
+        # todo: what happens if we inline two methods with the same name? -> add attribute at target method level?
 
         helper = BytecodePatchHelper(target)
 
@@ -504,13 +558,6 @@ class BytecodePatchHelper:
             # print("encountered ASYNC method")
             if helper.instruction_listing[0].opname == "GEN_START":
                 helper.deleteRegion(0, 1)
-
-        # Rewire JUMP_ABSOLUTE instructions to the new offset
-        for index, instr in helper.walk():
-            if instr.opname == "JUMP_ABSOLUTE":
-                helper.instruction_listing[index] = reconstruct_instruction(
-                    instr, instr.arg + start
-                )
 
         # Remove the initial RESUME opcode as it is not needed twice
         if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
@@ -529,59 +576,51 @@ class BytecodePatchHelper:
                         [instr],
                     )
 
-        captured = {}
-        captured_indices = set()
-        captured_names = set()
+        inner_name2outer_name: typing.Dict[str, typing.Tuple[int, str]] = {}
 
-        protect = set()
-
-        # Walk across the code and look out of captures
-
+        # Walk across the code and look out of captures and outer returns
+        # and make them our special instructions which are not changed afterwards
         index = -1
         while index != len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
-                # print(index, instr, self.CALL_FUNCTION_NAME)
+                if instr.opname == self.CALL_FUNCTION_NAME and instr.arg <= 1:
+                    func_load_index, func_load = next(helper.findSourceOfStackIndexWithIndex(index, instr.arg, re_eval=False))
 
-                if instr.opname == self.CALL_FUNCTION_NAME and index > 1:
-                    possible_load = helper.instruction_listing[index - 2]
-
-                    # print(index, instr, self.CALL_FUNCTION_NAME, possible_load)
-
-                    if possible_load.opname in (
+                    if func_load.opname in (
                         "LOAD_GLOBAL",
                         "LOAD_DEREF",
-                    ) and possible_load.argval in (
+                    ) and func_load.argval in (
                         "capture_local",
                         "capture_local_static",
                     ):
-                        assert (
-                            helper.instruction_listing[index - 1].opname == "LOAD_CONST"
-                        ), "captured must be local var"
+                        local_instr_index, local_instr = next(helper.findSourceOfStackIndexWithIndex(index, 0, re_eval=False))
 
-                        local = helper.instruction_listing[index - 1].argval
+                        if local_instr.opcode != Opcodes.LOAD_CONST:
+                            raise RuntimeError("can capture locals only from constant names")
 
-                        # print(f"captured local '{local}'")
+                        outer_local = local_instr.argval
+
+                        # todo: use findTargetOfStackIndex
+                        possible_store = helper.instruction_listing[index + 1]
 
                         if (
-                            helper.instruction_listing[index + 1].opname == "STORE_FAST"
-                            and possible_load.argval == "capture_local"
+                            possible_store.opcode == Opcodes.STORE_FAST
+                            and func_load.argval == "capture_local"
                         ):
-                            capture_target = helper.instruction_listing[
-                                index + 1
-                            ].argval
+                            capture_store_target = possible_store.argval
 
-                            captured[
-                                capture_target
-                            ] = local, self.patcher.ensureVarName(local)
-                            captured_indices.add(index)
-                            captured_names.add(local)
+                            inner_name2outer_name[capture_store_target] = self.patcher.ensureVarName(outer_local), outer_local
 
-                            # LOAD_<method> "capture_local"  {index-2}
-                            # LOAD_CONST <local name>        {index-1}
                             # CALL_FUNCTION 1                {index+0}
                             # STORE_FAST <new local name>    {index+1}
-                            helper.deleteRegion(index - 2, index + 2)
+                            helper.deleteRegion(index, index + 2)
+
+                            # LOAD_CONST <local name>        {index-1}
+                            helper.deleteRegion(local_instr_index, local_instr_index + 1)
+
+                            # LOAD_<method> "capture_local"  {index-2}
+                            helper.deleteRegion(func_load_index, func_load_index + 1, maps_invalid_to=func_load_index)
 
                             # print(f"found local variable access onto '{local}' from '{capture_target}' "
                             #       f"(var index: {self.patcher.ensureVarName(local)}) at {index} ({instr})")
@@ -592,44 +631,44 @@ class BytecodePatchHelper:
                         # This branch is also the only branch for capture_local_static() as than
                         # it is stored wherever it is needed
                         else:
-                            captured_names.add(local)
+                            # LOAD_FAST replacing function call opcode
+                            helper.instruction_listing[index - 2] = createInstruction(Opcodes.LOAD_FAST_OUTER, self.patcher.ensureVarName(outer_local), outer_local)
 
-                            # LOAD_<method> "capture_local"  {index-2}
-                            # LOAD_CONST <local name>        {index-1}
                             # CALL_FUNCTION 1                {index+0}
-                            helper.deleteRegion(index - 2, index + 1)
-                            helper.insertRegion(
-                                index - 2,
-                                [self.patcher.createLoadFast(local)],
-                            )
+                            helper.deleteRegion(index, index + 1)
 
-                            # print(f"found local variable read-only access onto '{local}';"
-                            #       f" replacing with link to real local at index {self.patcher.ensureVarName(local)}")
+                            # LOAD_CONST <local name>        {index-1}
+                            helper.deleteRegion(local_instr_index, local_instr_index + 1)
 
                         break
+
+                    if func_load.opname in (
+                        "LOAD_GLOBAL",
+                        "LOAD_DEREF",
+                    ) and func_load.argval == "injected_return":
+                        helper.instruction_listing[index] = createInstruction(Opcodes.RETURN_OUTER)
+
+                        if instr.arg == 0:
+                            helper.insertRegion(index, helper.patcher.createLoadConst(None))
+
+                        helper.deleteRegion(func_load_index, func_load_index + 1, maps_invalid_to=func_load_index)
+                        index -= 1
+                        break
+
             else:
                 break
 
-        # print("protected", ("'" + "', '".join(captured_names) + "'") if captured_names else "null")
-
-        # Rebind the captured locals
-        for index, instr in list(helper.walk()):
-            if instr.opcode in dis.haslocal:
-                if instr.argval in captured and index not in captured_indices:
-                    name, i = captured[instr.argval]
-                    helper.instruction_listing[index] = dis.Instruction(
-                        instr.opname,
-                        instr.opcode,
-                        i,
-                        name,
-                        name,
-                        0,
-                        0,
-                        False,
-                    )
-                    protect.add(index)
-                    # print(f"transforming local access at {index}: '{instr.argval}' to "
-                    #       f"'{name}' (old index: {instr.arg}, new: {i}) ({instr})")
+        # Rebind locals; The ones we expose outers with will become temporary opcodes; and the other ones get the special name
+        for index, instr in helper.walk():
+            if instr.opcode == Opcodes.LOAD_FAST and instr.argval in inner_name2outer_name:
+                helper.instruction_listing[index] = createInstruction(Opcodes.LOAD_FAST_OUTER, *inner_name2outer_name[instr.argval])
+            elif instr.opcode == Opcodes.STORE_FAST and instr.argval in inner_name2outer_name:
+                helper.instruction_listing[index] = createInstruction(Opcodes.STORE_FAST_OUTER, *inner_name2outer_name[instr.argval])
+            elif instr.opcode == Opcodes.DELETE_FAST and instr.argval in inner_name2outer_name:
+                helper.instruction_listing[index] = createInstruction(Opcodes.DELETE_FAST_OUTER, *inner_name2outer_name[instr.argval])
+            elif instr.opcode in dis.haslocal:
+                name = helper.patcher.target.__name__ + "::" + instr.argval
+                helper.instruction_listing[index] = reconstruct_instruction(instr, self.patcher.ensureVarName(name), name)
 
         # Return becomes jump instruction, the function TAIL is currently not known,
         # so we need to trick it a little by setting its value to 0, and later waling over it and rebinding that
@@ -641,22 +680,12 @@ class BytecodePatchHelper:
 
             for index, instr in list(helper.walk())[index:]:
                 if instr.opname == "RETURN_VALUE":
-                    helper.deleteRegion(index, index + 1)
+                    helper.instruction_listing[index] = createInstruction(Opcodes.JUMP_TO_INJECTION_END)
 
                     # If we want to discard the returned result, we need to add a POP_TOP instruction
                     if discard_return_result:
-                        helper.insertRegion(
-                            index,
-                            [
-                                createInstruction("POP_TOP"),
-                                createInstruction("JUMP_ABSOLUTE", 0, 0),
-                            ],
-                        )
-                    else:
-                        helper.insertRegion(
-                            index,
-                            [createInstruction("JUMP_ABSOLUTE", 0, 0)],
-                        )
+                        helper.insertRegion(index, [createInstruction("POP_TOP")])
+
                     break
             else:
                 break
@@ -664,66 +693,15 @@ class BytecodePatchHelper:
         # The last return statement does not need a jump_absolute wrapper, as it continues into
         # normal code
         size = len(helper.instruction_listing)
-        assert (
-            helper.instruction_listing[size - 1].opname == "JUMP_ABSOLUTE"
-        ), f"something went horribly wrong, got {helper.instruction_listing[size - 1]}!"
+        if helper.instruction_listing[size - 1].opcode != Opcodes.JUMP_TO_INJECTION_END:
+            raise RuntimeError(f"something went horribly wrong, got {helper.instruction_listing[size - 1]} instead of a JUMP_TO_INJECTION_END instruction!")
+
         helper.deleteRegion(size - 1, size)
 
-        index = -1
-        while index < len(helper.instruction_listing) - 1:
-            index += 1
-            for index, instr in list(helper.walk())[index:]:
-                if instr.opname == self.CALL_FUNCTION_NAME and index > 1:
-                    if instr.arg == 1:
-                        possible_load = helper.instruction_listing[index - 2]
-
-                        if (
-                            possible_load.opname in ("LOAD_GLOBAL", "LOAD_DEREF")
-                            and possible_load.argval == "injected_return"
-                        ):
-                            # Delete the LOAD_GLOBAL instruction
-                            helper.instruction_listing[index] = createInstruction(
-                                "RETURN_VALUE"
-                            )
-                            helper.deleteRegion(
-                                index + 1, index + 2, maps_invalid_to=index + 1
-                            )
-                            helper.deleteRegion(index - 2, index - 1)
-                            index -= 3
-                            protect.add(index)
-                            break
-
-                    elif instr.arg == 0:
-                        possible_load = helper.instruction_listing[index - 1]
-
-                        if (
-                            possible_load.opname == "LOAD_GLOBAL"
-                            and possible_load.argval == "injected_return"
-                        ):
-                            helper.instruction_listing[
-                                index - 1
-                            ] = self.patcher.createLoadConst(None)
-                            helper.instruction_listing[index] = createInstruction(
-                                "RETURN_VALUE"
-                            )
-                            helper.deleteRegion(
-                                index + 1, index + 2, maps_invalid_to=index + 1
-                            )
-                            helper.deleteRegion(index - 2, index - 1)
-                            index -= 3
-                            protect.add(index - 1)
-                            break
-            else:
-                break
-
         instructions = list(helper.walk())
-        # print(instructions)
 
-        # Now rebind all
+        # Now rebind all instructions requiring data outside the code array
         for index, instr in instructions:
-            if index in protect:
-                continue
-
             if instr.opcode in dis.hasconst:
                 # print("constant", instr)
                 helper.instruction_listing[index] = reconstruct_instruction(
@@ -731,7 +709,7 @@ class BytecodePatchHelper:
                     self.patcher.ensureConstant(instr.argval),
                 )
 
-            elif instr.opcode in dis.haslocal and instr.argval not in captured_names:
+            elif instr.opcode in dis.haslocal:
                 name = instr.argval
                 # print(f"rebinding real local '{instr.argval}' to '{name}'", instr, index)
                 helper.instruction_listing[index] = reconstruct_instruction(
@@ -752,12 +730,19 @@ class BytecodePatchHelper:
 
         bind_locals = [
             self.patcher.createStoreFast(e)
-            for e in reversed(target.variable_names[:added_args])
+            for e in reversed([target.target.__name__ + "::" + e for e in target.variable_names[:added_args]])
         ] + list(
             helper.patcher.create_default_write_opcodes(
-                added_args, ensure_target=self.patcher
+                added_args, ensure_target=self.patcher, prefix=target.target.__name__ + "::"
             )
         )
+
+        # Rewire JUMP_ABSOLUTE instructions to the new offset
+        for index, instr in helper.walk():
+            if instr.opcode in JUMP_ABSOLUTE and instr.arg != 0:
+                helper.instruction_listing[index] = reconstruct_instruction(
+                    instr, instr.arg + start
+                )
 
         # print(self.patcher.target, helper.patcher.target, bind_locals)
 
@@ -767,28 +752,17 @@ class BytecodePatchHelper:
             + list(inter_code)
             + helper.instruction_listing
             + [
-                self.patcher.createLoadConst("injected:internal"),
-                createInstruction("POP_TOP"),
+                createInstruction(Opcodes.INJECTION_TAIL_TRACK)
             ],
         )
 
         self.patcher.max_stack_size += target.max_stack_size
         self.patcher.number_of_locals += target.number_of_locals
 
-        try:
-            self.store()
-        except:
-            self.print_stats()
-            raise
-
-        # self.print_stats()
-
         # Find out where the old instruction ended
         for index, instr in self.walk():
-            if instr.opname == "LOAD_CONST" and instr.argval == "injected:internal":
-                following = self.instruction_listing[index + 1]
-                assert following.opname == "POP_TOP"
-                self.deleteRegion(index, index + 2)
+            if instr.opcode == Opcodes.INJECTION_TAIL_TRACK:
+                self.deleteRegion(index, index+1)
                 tail_index = index
                 break
         else:
@@ -796,11 +770,28 @@ class BytecodePatchHelper:
             raise RuntimeError("Tail not found after insertion!")
 
         for index, instr in list(self.walk())[start:tail_index]:
-            if instr.opname == "JUMP_ABSOLUTE" and instr.argval == 0:
-                self.instruction_listing[index] = reconstruct_instruction(
-                    instr,
-                    tail_index,
+
+            # Bind the JUMP_ABSOLUTE calls for jumping out of the injected now to the correct tail
+            if instr.opcode == Opcodes.JUMP_TO_INJECTION_END:
+                self.instruction_listing[index] = createInstruction(
+                    UNCONDITIONAL_JUMPS[1], len(helper.instruction_listing) - index
                 )
+
+            # Remap the captures local instructions
+            elif instr.opcode == Opcodes.LOAD_FAST_OUTER:
+                self.instruction_listing[index] = createInstruction(Opcodes.LOAD_FAST, instr.arg, instr.argval)
+            elif instr.opcode == Opcodes.STORE_FAST_OUTER:
+                self.instruction_listing[index] = createInstruction(Opcodes.STORE_FAST, instr.arg, instr.argval)
+            elif instr.opcode == Opcodes.DELETE_FAST_OUTER:
+                self.instruction_listing[index] = createInstruction(Opcodes.DELETE_FAST, instr.arg, instr.argval)
+            elif instr.opcode == Opcodes.RETURN_OUTER:
+                self.instruction_listing[index] = createInstruction(Opcodes.RETURN_VALUE)
+
+        try:
+            self.store()
+        except:
+            self.print_stats()
+            raise
 
         return tail_index
 
@@ -1153,8 +1144,13 @@ class BytecodePatchHelper:
         print("Cell vars:", self.patcher.cell_vars)
 
     def findSourceOfStackIndex(
-        self, index: int, offset: int
+        self, index: int, offset: int, re_eval=True
     ) -> typing.Iterator[dis.Instruction]:
+        return (e[1] for e in self.findSourceOfStackIndexWithIndex(index, offset, re_eval=re_eval))
+
+    def findSourceOfStackIndexWithIndex(
+        self, index: int, offset: int, re_eval=True
+    ) -> typing.Iterator[typing.Tuple[int, dis.Instruction]]:
         """
         Finds the source instruction of the given stack element.
         Uses advanced back-tracking in code
@@ -1167,7 +1163,7 @@ class BytecodePatchHelper:
         """
         from .CodeOptimiser import BUILD_PRIMITIVE
 
-        self.re_eval_instructions()
+        if re_eval: self.re_eval_instructions()
         instructions = list(self.walk())
         # print(instructions)
         # print(index, offset)
@@ -1180,14 +1176,14 @@ class BytecodePatchHelper:
 
             if offset == 0:  # Currently, at top
                 if instr.opcode in LOAD_SINGLE_VALUE:
-                    yield instr
+                    yield index, instr
                     return
 
                 elif (
                     instr.opcode in POP_DOUBLE_AND_PUSH_SINGLE
                     or instr.opcode in POP_SINGLE_AND_PUSH_SINGLE
                 ):
-                    yield instr
+                    yield index, instr
                     return
 
             if instr.opcode in POP_SINGLE_AND_PUSH_SINGLE or instr.opcode in DO_NOTHING:

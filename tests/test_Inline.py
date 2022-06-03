@@ -173,7 +173,7 @@ class TestInline(TestCase):
             global TEST_TARGET
             TEST_TARGET += p * q
 
-        # dis.dis(a)
+        dis.dis(a)
 
         helper = BytecodePatchHelper(a)
         processor = MethodInlineProcessor("b", target_accessor=lambda: b)
@@ -181,7 +181,7 @@ class TestInline(TestCase):
         helper.store()
         helper.patcher.applyPatches()
 
-        # dis.dis(a)
+        dis.dis(a)
 
         a(2)
         self.assertEqual(TEST_TARGET, 2)

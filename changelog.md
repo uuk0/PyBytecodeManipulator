@@ -5,6 +5,11 @@
   - reusing values instead of write followed by read
   - eval()-ing some expressions at optimisation time, including when certain things are already known
 - refactored the opcode class to be .json-based, so it is more clean
+- fixed possible issue when an absolute jump occurs in injected code using capture_local() or similar
+- better handling of some cases of capture_local() and similar for parameter detection
+- cleaned up insertion code a bit
+- made it possible to add hidden instructions for temporary use (e.g. preventing an operation on certain elements)
+- changed how insertMethodAt() operates quit a bit, still exposing same API, but inner workings are changed
 
 # Version 0.1.2
 - added some infrastructure for working with EXTENDED_ARG opcodes 

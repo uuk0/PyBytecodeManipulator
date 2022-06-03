@@ -284,7 +284,7 @@ class TestInsertMethod(TestCase):
 
         self.assertEqual(target(), 0)
 
-    def test_injected_early_exit_2(self):
+    def test_injected_early_exit_with_capture_local_and_condition(self):
         from bytecodemanipulation.TransformationHelper import (
             MutableCodeObject,
             BytecodePatchHelper,
@@ -298,14 +298,21 @@ class TestInsertMethod(TestCase):
             if a:
                 injected_return(0)
 
-        # dis.dis(test)
+        dis.dis(test)
+
+        dis.dis(target)
 
         helper = BytecodePatchHelper(target)
         helper.insertMethodAt(0, test)
         helper.store()
         helper.patcher.applyPatches()
 
-        # dis.dis(target)
+        print("new")
+        dis.dis(target)
+
+        helper.enable_verbose_exceptions()
+        helper.store()
+        helper.patcher.applyPatches()
 
         self.assertEqual(target(True), 0)
         self.assertEqual(target(False), 1)
@@ -329,6 +336,8 @@ class TestInsertMethod(TestCase):
         helper.insertMethodAt(0, test)
         helper.store()
         helper.patcher.applyPatches()
+
+        dis.dis(target)
 
         self.assertEqual(target(True), 0)
         self.assertEqual(target(False), 2)

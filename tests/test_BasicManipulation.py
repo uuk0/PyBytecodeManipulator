@@ -532,7 +532,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 1)
         reset_test_methods()
 
-    def test_processor_inject_at_head_1(self):
+    def test_processor_inject_at_head_single_with_constant_arg(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -555,7 +555,7 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 3)
         reset_test_methods()
 
-    def test_processor_inject_at_head_2(self):
+    def test_processor_inject_at_head_double_inject_with_constant_arg(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
         reset_test_methods()
@@ -583,11 +583,9 @@ class TestBytecodeHandler(TestCase):
         self.assertEqual(invoked, 8)
         reset_test_methods()
 
-    def test_processor_inject_at_head_inline_1(self):
+    def test_processor_inject_at_head_inline_with_capture(self):
         def target(a=3):
             return a
-
-        # dis.dis(target)
 
         handler = TransformationHandler()
         handler.makeFunctionArrival("test", target)
@@ -597,10 +595,6 @@ class TestBytecodeHandler(TestCase):
             global INVOKED
             INVOKED += capture_local("a")
 
-        # print("---")
-        # dis.dis(inject)
-        # print(inject.__code__.co_varnames)
-
         global INVOKED
         INVOKED = 0
         self.assertEqual(target(), 3)
@@ -608,8 +602,6 @@ class TestBytecodeHandler(TestCase):
 
         # Will apply the later processor first, as it is optional, and as such can break when overriding it
         handler.applyTransforms()
-
-        # dis.dis(target)
 
         INVOKED = 0
         self.assertEqual(target(), 3)

@@ -16,8 +16,9 @@ from bytecodemanipulation.TransformationHelper import (
     reconstruct_instruction,
 )
 from bytecodemanipulation.MutableCodeObject import MutableCodeObject, createInstruction
+from bytecodemanipulation.util import JUMP_ABSOLUTE
 from bytecodemanipulation.util import Opcodes
-
+from bytecodemanipulation.util import UNCONDITIONAL_JUMPS
 
 POP_JUMPS = {
     Opcodes.POP_JUMP_IF_FALSE,
@@ -794,6 +795,7 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
         while index < len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
+                # todo: move to .json config
                 if instr.opcode in {
                     Opcodes.JUMP_IF_FALSE_OR_POP,
                     Opcodes.JUMP_IF_TRUE_OR_POP,
@@ -804,6 +806,7 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
                         match += 1
                         break
 
+                # todo: move to .json config
                 elif instr.opcode in POP_JUMPS:
                     if self.modifyAt(helper, index, match):
                         match += 1
@@ -822,13 +825,17 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
             )
 
             if self.target_jumped_branch:
-                if instr.opcode in dis.hasjabs:
+                # TODO: refactor to use .json config
+
+                if instr.opcode in JUMP_ABSOLUTE:
                     helper.insertRegion(
-                        index + 1, [createInstruction("JUMP_ABSOLUTE", instr.arg + 1)]
+                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[0], instr.arg + 1)]
                     )
+
                 else:
+                    # todo: py3.11 check for backwards jump
                     helper.insertRegion(
-                        index + 1, [createInstruction("JUMP_RELATIVE", instr.arg)]
+                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[1], instr.arg)]
                     )
 
             return True

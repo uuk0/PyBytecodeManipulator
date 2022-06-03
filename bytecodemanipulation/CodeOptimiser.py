@@ -408,6 +408,9 @@ def remove_conditional_jump_from_constant_value(helper: BytecodePatchHelper):
             else:
                 continue
 
+            if expr is None:
+                continue
+
             stack_top = next(helper.findSourceOfStackIndex(index, 0))
 
             if stack_top.opcode != Opcodes.LOAD_CONST: continue

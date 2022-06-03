@@ -292,6 +292,10 @@ class Opcodes:
 
     LOAD_FAST_OUTER = 1000
     STORE_FAST_OUTER = 1001
+    DELETE_FAST_OUTER = 1002
+    JUMP_TO_INJECTION_END = 1003
+    INJECTION_TAIL_TRACK = 1004
+    RETURN_OUTER = 1005
 
 
 with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.version_info.minor}_opcodes.json") as f:
@@ -299,11 +303,13 @@ with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.ver
 
 
 __MISSING = []
+OPCODE_NAMES = [None] * 2000
 
 
 for key, value in itertools.chain(OPCODE_DATA["opcodes"].items(), OPCODE_DATA.setdefault("specialize", {}).items()):
     if hasattr(Opcodes, key):
         setattr(Opcodes, key, value)
+        OPCODE_NAMES[value] = key
     else:
         __MISSING.append(key)
         print(f"Skipping Opcode {key} with ID {value}")
@@ -315,8 +321,11 @@ print("\n".join(f"    {name} = _unique_value()" for name in __MISSING))
 for attr, value in list(Opcodes.__dict__.items()):
     if attr.startswith("__"): continue
 
-    if attr not in OPCODE_DATA["opcodes"] and attr not in OPCODE_DATA["specialize"] and value < 1000:
-        delattr(Opcodes, attr)
+    if attr not in OPCODE_DATA["opcodes"] and attr not in OPCODE_DATA["specialize"]:
+        if value < 1000:
+            delattr(Opcodes, attr)
+        else:
+            OPCODE_NAMES[value] = attr
 
 
 OPCODE_TO_OP: typing.Dict[int, typing.Tuple[int, typing.Callable]] = {}
