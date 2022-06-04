@@ -798,15 +798,15 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
         while index < len(helper.instruction_listing) - 1:
             index += 1
             for index, instr in list(helper.walk())[index:]:
+                # Pop, check, jump
                 if instr.opcode in JUMP_POPS:
-                    if self.modifyAt(
-                        helper, index, match, pop=self.target_jumped_branch
-                    ):
+                    if self.modifyAt(helper, index, match):
                         match += 1
                         break
 
+                # check, (jump & pop)
                 elif instr.opcode in POP_JUMPS:
-                    if self.modifyAt(helper, index, match):
+                    if self.modifyAt(helper, index, match, pop=self.target_jumped_branch):
                         match += 1
                         break
             else:
@@ -824,18 +824,26 @@ class RemoveFlowBranchProcessor(AbstractBytecodeProcessor):
 
             if self.target_jumped_branch:
                 if instr.opcode in JUMP_ABSOLUTE:
-                    helper.insertRegion(
-                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[0], instr.arg + 1)]
-                    )
+                    # In python 3.11, there are two absolute jumps, but no unconditional variant, so we need
+                    # to use a JUMP_FORWARD instruction  todo: use also JUMP_BACKWARD
+                    if UNCONDITIONAL_JUMPS[0] is None:
+                        helper.insertRegion(
+                            index + 1, [createInstruction(UNCONDITIONAL_JUMPS[1], instr.arg + 1 - index)]
+                        )
+
+                    else:
+                        helper.insertRegion(
+                            index + 1, [createInstruction(UNCONDITIONAL_JUMPS[0], instr.arg + 1)]
+                        )
 
                 elif instr.opcode in JUMP_FORWARDS:
                     helper.insertRegion(
-                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[1], instr.arg)]
+                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[1], instr.arg + 1)]
                     )
 
                 elif instr.opcode in JUMP_BACKWARDS:
                     helper.insertRegion(
-                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[2], instr.arg)]
+                        index + 1, [createInstruction(UNCONDITIONAL_JUMPS[2], instr.arg + 1)]
                     )
 
                 else:

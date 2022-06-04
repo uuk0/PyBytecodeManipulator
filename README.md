@@ -18,7 +18,7 @@ Supported python versions:
 - 3.8 and below: unsupported; will produce syntax errors due to using new features
 - 3.9 (WIP)
 - 3.10 (main development)
-- 3.11[a4] (forward porting; WIP; Currently not working fully)
+- 3.11.0[b3] (forward porting; WIP; Currently not working)
 
 Other versions will not work as a lot of config is stored in .json files per-version,
 so you may need to provide your own .json config files for the version you need.

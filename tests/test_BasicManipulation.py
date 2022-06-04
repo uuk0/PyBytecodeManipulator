@@ -397,6 +397,9 @@ class TestBytecodeHandler(TestCase):
     def test_global_to_const_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
+        def target():
+            test()
+
         handler = TransformationHandler()
 
         invoked = False
@@ -405,9 +408,8 @@ class TestBytecodeHandler(TestCase):
             nonlocal invoked
             invoked = True
 
-        handler.replace_global_with_constant(
-            "tests.test_BasicManipulation:test_global", "test", callback
-        )
+        handler.makeFunctionArrival("test", target)
+        handler.replace_global_with_constant("test", "test", callback)
 
         handler.applyTransforms()
         test_global()
@@ -1452,7 +1454,7 @@ class TestBytecodeHandler(TestCase):
     def test_branch_remover_1(self):
         from bytecodemanipulation.Transformers import TransformationHandler
 
-        handler = TransformationHandler(do_code_optimisation=False, debug_code=True)
+        handler = TransformationHandler(do_code_optimisation=False)
 
         def target(p):
             if p:
@@ -1469,6 +1471,11 @@ class TestBytecodeHandler(TestCase):
         handler.applyTransforms()
 
         dis.dis(target)
+
+        helper = BytecodePatchHelper(target)
+        helper.enable_verbose_exceptions()
+        helper.store()
+        helper.patcher.applyPatches()
 
         self.assertEqual(target(True), 1)
 

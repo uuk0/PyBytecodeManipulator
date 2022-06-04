@@ -190,6 +190,26 @@ def remove_load_dup_pop(helper: BytecodePatchHelper):
             break
 
 
+def remove_load_dup_pop_py_3_11(helper: BytecodePatchHelper):
+    index = -1
+    while index < len(helper.instruction_listing) - 1:
+        index += 1
+        for index, instr in list(helper.walk())[index:]:
+            if instr.opcode == Opcodes.POP_TOP and index > 0:
+                previous = helper.instruction_listing[index - 1]
+                if previous.opcode in SIDE_EFFECT_FREE_VALUE_LOAD or previous.opcode == Opcodes.COPY:
+                    # Delete the side effect free result and the POP_TOP instruction
+                    helper.deleteRegion(index - 1, index + 1)
+                    index -= 2
+                    break
+        else:
+            break
+
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 11:
+    remove_load_dup_pop = remove_load_dup_pop_py_3_11
+
+
 def remove_load_store_pairs(helper: BytecodePatchHelper):
     """
     Optimiser method for removing side effect free LOAD_XX followed by STORE_XX to the same space

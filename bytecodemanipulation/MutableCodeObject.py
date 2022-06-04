@@ -67,9 +67,7 @@ class MutableCodeObject:
         obj.cell_vars = list(code.co_cellvars)
 
         if sys.version_info.minor >= 11 or typing.TYPE_CHECKING:
-            obj.column_table = code.co_columntable
             obj.exception_table = code.co_exceptiontable
-            obj.end_line_table = code.co_endlinetable
             obj.qual_name = code.co_qualname
 
         obj.parameters = inspect.signature(target).parameters.values()
@@ -207,8 +205,6 @@ class MutableCodeObject:
                 self.qual_name,
                 self.first_line_number,
                 self.line_number_table,
-                self.end_line_table,
-                self.column_table,
                 self.exception_table,
                 tuple(self.free_vars),
                 tuple(self.cell_vars),
@@ -262,8 +258,6 @@ class MutableCodeObject:
                     self.qual_name,
                     self.first_line_number,
                     self.line_number_table,
-                    self.end_line_table,
-                    self.column_table,
                     self.exception_table,
                     tuple(self.free_vars),
                     tuple(self.cell_vars),
