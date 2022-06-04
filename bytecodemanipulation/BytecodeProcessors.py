@@ -135,7 +135,10 @@ class Global2ConstReplace(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         match = -1
-        for index, instruction in helper.getLoadGlobalsLoading(self.global_name):
+        for index, instr in helper.walk():
+            if instr.opcode != Opcodes.LOAD_GLOBAL or instr.argval != self.global_name:
+                continue
+
             match += 1
 
             if self.matcher is not None and not self.matcher.matches(

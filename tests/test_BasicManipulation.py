@@ -412,13 +412,17 @@ class TestBytecodeHandler(TestCase):
         handler.replace_global_with_constant("test", "test", callback)
 
         handler.applyTransforms()
-        test_global()
+        target()
 
         self.assertTrue(invoked)
         reset_test_methods()
 
     def test_global_to_const_2(self):
         from bytecodemanipulation.Transformers import TransformationHandler
+
+        def target():
+            test()
+            test_global()
 
         handler = TransformationHandler()
 
@@ -428,12 +432,11 @@ class TestBytecodeHandler(TestCase):
             nonlocal invoked
             invoked += 1
 
-        handler.replace_global_with_constant(
-            "tests.test_BasicManipulation:test_global2", "test", callback
-        )
+        handler.makeFunctionArrival("test", target)
+        handler.replace_global_with_constant("test", "test", callback)
 
         handler.applyTransforms()
-        test_global2()
+        target()
 
         self.assertEqual(invoked, 1)
         reset_test_methods()
