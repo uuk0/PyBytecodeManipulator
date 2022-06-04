@@ -36,24 +36,3 @@ class TestPyCoreBehaviour(TestCase):
 
         self.assertEqual(helper.instruction_listing[-4].opname, "LOAD_CONST")
 
-    def test_non_standard_instructions(self):
-        # WARNING: this might not work!
-
-        if sys.version_info.major < 3 or sys.version_info.minor < 11:
-            return
-
-        def target():
-            pass
-
-        instance = BytecodePatchHelper(target)
-        instance.instruction_listing = [
-            instance.patcher.createLoadConst(1),
-            instance.patcher.createLoadConst(1),
-            createInstruction(Opcodes.BINARY_OP_ADD_INT),
-            createInstruction(Opcodes.RETURN_VALUE)
-        ]
-        instance.store()
-        instance.patcher.applyPatches()
-
-        self.assertEqual(target(), 2)
-

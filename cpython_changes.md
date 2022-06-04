@@ -2,6 +2,24 @@
 This is a list of relevant changes to the internal python API 
 we rely on
 
+
+# Python 3.12
+
+First commit: https://github.com/python/cpython/commit/e851177536b44ebc616ddbe51aebcd1f30857f34
+
+## Python 3.12a0
+
+Core (Bytecode):
+- https://github.com/python/cpython/issues/93382: Speed up the PyCode_GetCode() function which also improves accessing the co_code attribute in Python.
+- https://github.com/python/cpython/issues/93223: When a bytecode instruction jumps to an unconditional jump instruction, the first instruction can often be optimized to target the unconditional jump’s target directly. For tracing reasons, this would previously only occur if both instructions have the same line number. This also now occurs if the unconditional jump is artificial, i.e., if it has no associated line number.
+- https://github.com/python/cpython/issues/93143: Avoid NULL checks for uninitialized local variables by determining at compile time which variables must be initialized.
+- https://github.com/python/cpython/issues/93061: Backward jumps after async for loops are no longer given dubious line numbers.
+- https://github.com/python/cpython/issues/89914: The operand of the YIELD_VALUE instruction is set to the stack depth. This is done to help frame handling on yield and may assist debuggers.
+- https://github.com/python/cpython/issues/90690: The PRECALL instruction has been removed. It offered only a small advantage for specialization and is not needed in the vast majority of cases.
+- https://github.com/python/cpython/issues/92777: Specialize LOAD_METHOD for objects with lazy dictionaries. Patch by Ken Jin.
+- https://github.com/python/cpython/issues/92619: Make the compiler duplicate an exit block only if none of its instructions have a lineno (previously only the first instruction in the block was checked, leading to unnecessarily duplicated blocks).
+
+
 # Python 3.11
 
 ## Python 3.11a5 (not complete)
