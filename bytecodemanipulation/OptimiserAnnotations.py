@@ -229,7 +229,12 @@ def _schedule_optimisation(
 
 def run_optimisations():
     for instance in _OptimiserContainer.CONTAINERS:
-        instance.optimise_target()
+        try:
+            instance.optimise_target()
+        except:
+            print(instance.target)
+            raise
+
     _OptimiserContainer.CONTAINERS.clear()
 
 

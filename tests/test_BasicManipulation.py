@@ -400,6 +400,8 @@ class TestBytecodeHandler(TestCase):
         def target():
             test()
 
+        dis.dis(target)
+
         handler = TransformationHandler()
 
         invoked = False
@@ -412,6 +414,10 @@ class TestBytecodeHandler(TestCase):
         handler.replace_global_with_constant("test", "test", callback)
 
         handler.applyTransforms()
+
+        print(len(target.__code__.co_code))
+        dis.dis(target)
+
         target()
 
         self.assertTrue(invoked)

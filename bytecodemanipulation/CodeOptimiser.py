@@ -183,7 +183,7 @@ def remove_load_dup_pop(helper: BytecodePatchHelper):
                 previous = helper.instruction_listing[index - 1]
                 if previous.opcode in SIDE_EFFECT_FREE_VALUE_LOAD or previous.opcode == Opcodes.DUP_TOP:
                     # Delete the side effect free result and the POP_TOP instruction
-                    helper.deleteRegion(index - 1, index + 1)
+                    helper.deleteRegion(index - 1, index + 1, maps_invalid_to=index - 1)
                     index -= 2
                     break
         else:
@@ -199,7 +199,7 @@ def remove_load_dup_pop_py_3_11(helper: BytecodePatchHelper):
                 previous = helper.instruction_listing[index - 1]
                 if previous.opcode in SIDE_EFFECT_FREE_VALUE_LOAD or previous.opcode == Opcodes.COPY:
                     # Delete the side effect free result and the POP_TOP instruction
-                    helper.deleteRegion(index - 1, index + 1)
+                    helper.deleteRegion(index - 1, index + 1, maps_invalid_to=index - 1)
                     index -= 2
                     break
         else:
@@ -332,7 +332,10 @@ def prepare_inline_expressions(helper: BytecodePatchHelper):
 
                 args = []
                 for i in range(count):
-                    value = next(helper.findTargetOfStackIndex(i, index))
+                    try:
+                        value = next(helper.findTargetOfStackIndex(i, index))
+                    except (NotImplementedError, RuntimeError):
+                        break
 
                     if value.opcode == Opcodes.LOAD_CONST:
                         args.append(value.argval)
@@ -389,7 +392,10 @@ def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
         else:
             continue
 
-        args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
+        try:
+            args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
+        except (NotImplementedError, RuntimeError, StopIteration):
+            continue
 
         if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):
             value = expr(*(arg.argval for arg in reversed(args)))
@@ -431,9 +437,13 @@ def remove_conditional_jump_from_constant_value(helper: BytecodePatchHelper):
             if expr is None:
                 continue
 
-            stack_top = next(helper.findSourceOfStackIndex(index, 0))
+            try:
+                stack_top = next(helper.findSourceOfStackIndex(index, 0))
+            except NotImplementedError:
+                continue
 
-            if stack_top.opcode != Opcodes.LOAD_CONST: continue
+            if stack_top.opcode != Opcodes.LOAD_CONST:
+                continue
 
             state, pop_top = expr(stack_top.argval)
 

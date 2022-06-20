@@ -148,6 +148,9 @@ class Global2ConstReplace(AbstractBytecodeProcessor):
 
             helper.instruction_listing[index] = target.createLoadConst(self.after)
 
+            if sys.version_info.minor >= 11 and instr.arg & 1:
+                helper.insertRegion(index, [target.createLoadConst(None)])
+
         helper.store()
 
     def __repr__(self):
@@ -989,7 +992,10 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
         while True:
             for index, instr in helper.walk():
                 if instr.opcode == Opcodes.CALL_FUNCTION:
-                    target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg))
+                    try:
+                        target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg))
+                    except (NotImplementedError, RuntimeError, StopIteration):
+                        continue
 
                     if target.opcode == Opcodes.LOAD_CONST:
                         target = target.argval
@@ -1010,7 +1016,11 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                                 break
 
                 elif instr.opcode == Opcodes.CALL_FUNCTION_KW:
-                    target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg + 1))
+                    try:
+                        target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg + 1))
+                    except (NotImplementedError, RuntimeError):
+                        continue
+
                     kw_source = next(helper.findSourceOfStackIndex(index, 0))
 
                     if target.opcode == kw_source.opcode == Opcodes.LOAD_CONST:

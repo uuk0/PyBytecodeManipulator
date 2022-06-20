@@ -350,7 +350,7 @@ with open(f"{os.path.dirname(__file__)}/data/py{sys.version_info.major}.{sys.ver
 
 
 __MISSING = []
-OPCODE_NAMES = [None] * 2000
+OPCODE_NAMES: typing.List[typing.Optional[str]] = [None] * 2000
 
 
 for key, value in itertools.chain(OPCODE_DATA["opcodes"].items(), OPCODE_DATA.setdefault("specialize", {}).items()):

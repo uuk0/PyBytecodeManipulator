@@ -9,6 +9,9 @@ __all__ = ["MutableCodeObject"]
 
 import typing
 
+from bytecodemanipulation.util import JUMP_ABSOLUTE
+from bytecodemanipulation.util import JUMP_BACKWARDS
+from bytecodemanipulation.util import JUMP_FORWARDS
 from bytecodemanipulation.util import OPCODE_NAMES
 from bytecodemanipulation.util import Opcodes
 
@@ -322,18 +325,129 @@ class MutableCodeObject:
     if sys.version_info.major >= 3 and sys.version_info.minor >= 11:
 
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
-            data = list(
-                dis._get_instructions_bytes(
-                    self.code_string,
-                    self.get_name_by_index,
-                    self.names,
-                    self.constants,
-                    None,
-                    None,
-                )
-            )
+            data = list(self._get_instruction_list())
             return data
 
+        def _get_instruction_list(self) -> typing.Iterable[dis.Instruction]:
+            extend = 0
+
+            for index in range(len(self.code_string) // 2):
+                opcode = self.code_string[index * 2]
+                arg = self.code_string[index * 2 + 1] + extend * 256
+
+                if opcode == Opcodes.EXTENDED_ARG:
+                    extend = arg
+                    continue
+
+                opname = OPCODE_NAMES[opcode]
+
+                if opcode in dis.hasconst:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        self.constants[arg],
+                        repr(self.constants[arg]),
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode in dis.haslocal:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        self.variable_names[arg],
+                        self.variable_names[arg],
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode == Opcodes.LOAD_GLOBAL:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        self.names[arg >> 1],
+                        self.names[arg >> 1],
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode in dis.hasname:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        self.names[arg],
+                        self.names[arg],
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode in JUMP_ABSOLUTE:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        arg,
+                        arg,
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode in JUMP_FORWARDS:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        index + arg,
+                        index + arg,
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode in JUMP_BACKWARDS:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        index - arg,
+                        index - arg,
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opcode == Opcodes.CALL:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        arg,
+                        arg,
+                        index * 2,
+                        None,
+                        False,
+                    )
+
+                elif opname is not None:
+                    yield dis.Instruction(
+                        opname,
+                        opcode,
+                        arg,
+                        None,
+                        None,
+                        index * 2,
+                        None,
+                        False,
+                    )
     else:
 
         def get_instruction_list(self) -> typing.List[dis.Instruction]:
@@ -359,7 +473,7 @@ class MutableCodeObject:
         skipped = 0
 
         for index, instr in enumerate(instruction_list):
-            if instr.opname == "EXTENDED_ARG":
+            if instr.opcode == Opcodes.EXTENDED_ARG:
                 skipped += 1
                 continue
 
@@ -374,18 +488,7 @@ class MutableCodeObject:
 
                 for delta, e in enumerate(data[:-1]):
                     new_instructions.append(
-                        (
-                            dis.Instruction(
-                                "EXTENDED_ARG",
-                                144,
-                                e,
-                                e,
-                                "",
-                                index - (len(data) - delta),
-                                None,
-                                False,
-                            )
-                        )
+                        createInstruction("EXTENDED_ARG", e)
                     )
 
                 if len(data) != skipped + 1:
@@ -396,6 +499,7 @@ class MutableCodeObject:
 
                         for i, instr2 in itertools.dropwhile(lambda a, b: a <= index, enumerate(instruction_list)):
                             instruction_list[i] = rebind_instruction_from_insert(instr2, index, len(data) - skipped - 1)
+
                     else:
                         # todo: implement instruction offset remap
                         raise NotImplementedError(data, skipped)
@@ -406,10 +510,10 @@ class MutableCodeObject:
             new_instructions.append(instr)
 
         for instr in new_instructions:
-            try:
-                if instr.opcode > 255:
-                    raise ValueError(instr)
+            if instr.opcode > 255:
+                raise ValueError(instr)
 
+            try:
                 self.code_string.append(instr.opcode)
 
                 if instr.arg is not None:

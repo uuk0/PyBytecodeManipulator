@@ -285,7 +285,8 @@
       "INPLACE_RSHIFT",
       "INPLACE_AND",
       "INPLACE_XOR",
-      "INPLACE_OR"
+      "INPLACE_OR",
+      "IS_OP"
     ],
     "pop_single_and_push_single": [
       "LOAD_METHOD",
