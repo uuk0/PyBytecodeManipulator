@@ -408,6 +408,7 @@ def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
             try:
                 value = expr(*(arg.argval for arg in reversed(args)))
             except:
+                helper.print_stats()
                 print(instr)
                 print(list(reversed(args)))
                 traceback.print_exc()

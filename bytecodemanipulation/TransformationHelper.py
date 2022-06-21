@@ -1115,6 +1115,10 @@ class BytecodePatchHelper:
                     yield index, instr
                     return
 
+                elif instr.opcode in METHOD_CALL:
+                    yield index, instr
+                    return
+
             if instr.opcode in POP_SINGLE_AND_PUSH_SINGLE or instr.opcode in DO_NOTHING:
                 continue
 

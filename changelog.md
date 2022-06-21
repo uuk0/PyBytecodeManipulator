@@ -5,6 +5,7 @@
 - @name_is_static() annotation will now forward the matcher argument correctly
 - some of the not documented optimization annotations were changed
 - fixed issue with name_is_static() not correctly resolving the name
+- fixed issues with some source instr following failing
 
 # Version 0.1.9
 - added some more optimizations which do not require annotations, including:
