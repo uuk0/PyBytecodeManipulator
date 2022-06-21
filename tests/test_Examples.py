@@ -62,20 +62,24 @@ class TestSet1(TestCase):
         self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
         self.assertEqual(helper.instruction_listing[0].argval, 3)
 
-    # def test_complex_eval(self):
-    #     @builtins_are_static()
-    #     @name_is_static("test", lambda: test)
-    #     def target():
-    #         return test(test(test(1) - test(-2)) * test(0)) // test(4)
-    #
-    #     self.assertEqual(target(), 10)
-    #
-    #     run_optimisations()
-    #
-    #     dis.dis(target)
-    #
-    #     self.assertEqual(target(), 10)
-    #
-    #     helper = BytecodePatchHelper(target)
-    #     self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
-    #     self.assertEqual(helper.instruction_listing[0].argval, 10)
+    def test_complex_eval(self):
+        @builtins_are_static()
+        @name_is_static("test", lambda: test)
+        def target():
+            return test(test(test(1) - test(-2)) * test(0)) // test(4)
+
+        self.assertEqual(target(), 10)
+
+        run_optimisations()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 10)
+
+        helper = BytecodePatchHelper(target)
+
+        # Remove NOP's we might have left
+        optimise_code(helper)
+
+        self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
+        self.assertEqual(helper.instruction_listing[0].argval, 10)

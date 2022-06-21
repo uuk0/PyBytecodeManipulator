@@ -8,6 +8,9 @@ import math
 import json
 import os
 
+from bytecodemanipulation.CodeOptimiser import remove_load_dup_pop
+from bytecodemanipulation.CodeOptimiser import remove_nop
+
 from bytecodemanipulation.CodeOptimiser import optimise_code
 
 from bytecodemanipulation.InstructionMatchers import AbstractInstructionMatcher
@@ -935,11 +938,10 @@ class SideEffectFreeMethodCallRemover(AbstractBytecodeProcessor):
         target: MutableCodeObject,
         helper: BytecodePatchHelper,
     ):
-        index = -1
-        while index < len(helper.instruction_listing) - 1:
-            index += 1
+        while True:
+            hits = 0
 
-            for index, instr in list(helper.walk())[index:-2]:
+            for index, instr in list(helper.walk()):
                 if instr.opcode == Opcodes.CALL_FUNCTION and helper.instruction_listing[index + 1].opcode == Opcodes.POP_TOP:
                     target = next(helper.findSourceOfStackIndex(index, instr.arg))
 
@@ -949,10 +951,9 @@ class SideEffectFreeMethodCallRemover(AbstractBytecodeProcessor):
                         if target in self.SIDE_EFFECT_FREE_BUILTINS or (hasattr(target, "__dict__") and "optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
                             helper.deleteRegion(index, index+2)
                             helper.insertRegion(index, [createInstruction("POP_TOP")] * instr.arg)
-                            index -= instr.arg - 2
-                            break
+                            hits += 1
 
-            else:
+            if not hits:
                 break
 
         helper.store()
@@ -997,11 +998,14 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
         optimise_code(helper)
 
         while True:
+            hits = 0
+
             for index, instr in helper.walk():
                 if instr.opcode == Opcodes.CALL_FUNCTION:
                     try:
                         target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg))
-                    except (NotImplementedError, RuntimeError, StopIteration):
+                    except (NotImplementedError, RuntimeError, StopIteration) as e:
+                        print("exception", e)
                         continue
 
                     if target.opcode == Opcodes.LOAD_CONST:
@@ -1020,7 +1024,7 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                                     helper.instruction_listing[ins.offset // 2] = createInstruction("NOP")
 
                                 helper.instruction_listing[target_opcode.offset // 2] = createInstruction("NOP")
-                                break
+                                hits += 1
 
                 elif instr.opcode == Opcodes.CALL_FUNCTION_KW:
                     try:
@@ -1048,10 +1052,12 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
 
                                 helper.instruction_listing[kw_source.offset // 2] = createInstruction("NOP")
                                 helper.instruction_listing[target_opcode.offset // 2] = createInstruction("NOP")
-                                break
+                                hits += 1
 
-            else:
+            if not hits:
                 break
+
+            optimise_code(helper)
 
         helper.store()
 

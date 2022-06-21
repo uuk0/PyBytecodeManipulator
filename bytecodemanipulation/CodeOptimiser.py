@@ -348,8 +348,6 @@ def prepare_inline_expressions(helper: BytecodePatchHelper):
                     helper.insertRegion(index, [create_instruction("POP_TOP")] * len(args))
                     break
 
-            # todo: for lists/sets/dicts, check usage for constant use (check for "in", lookup, ...)
-
         else:
             break
 
@@ -387,39 +385,45 @@ def trace_load_const_store_fast_load_fast(helper: BytecodePatchHelper):
 
 
 def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
-    # helper.print_stats()
+    while True:
+        has_hit = False
 
-    for index, instr in list(helper.walk()):
-        opcode = instr.opcode
+        for index, instr in list(helper.walk()):
+            opcode = instr.opcode
 
-        if opcode in OPCODE_TO_OP:
-            args, expr = OPCODE_TO_OP[opcode]
-        elif (opcode, instr.arg) in OPCODE_ARG_TO_OP:
-            args, expr = OPCODE_ARG_TO_OP[opcode, instr.arg]
-        else:
-            continue
+            if opcode in OPCODE_TO_OP:
+                args, expr = OPCODE_TO_OP[opcode]
+            elif (opcode, instr.arg) in OPCODE_ARG_TO_OP:
+                args, expr = OPCODE_ARG_TO_OP[opcode, instr.arg]
+            else:
+                continue
 
-        try:
-            args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
-        except (NotImplementedError, RuntimeError, StopIteration, ValueError):
-            continue
-
-        if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):
             try:
-                value = expr(*(arg.argval for arg in reversed(args)))
-            except:
-                helper.print_stats()
-                print(instr)
-                print(list(reversed(args)))
-                traceback.print_exc()
-                return
-        else:
-            continue
+                args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
+            except (NotImplementedError, RuntimeError, StopIteration, ValueError) as e:
+                print("exception", e)
+                continue
 
-        for arg in args:
-            helper.instruction_listing[arg.offset // 2] = create_instruction("NOP")
+            if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):
+                try:
+                    value = expr(*(arg.argval for arg in reversed(args)))
+                except:
+                    helper.print_stats()
+                    print(instr)
+                    print(list(reversed(args)))
+                    traceback.print_exc()
+                    return
+            else:
+                continue
 
-        helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+            for arg in args:
+                helper.instruction_listing[arg.offset // 2] = create_instruction("NOP")
+
+            helper.instruction_listing[index] = helper.patcher.createLoadConst(value)
+            has_hit = True
+
+        if not has_hit:
+            break
 
 
 def remove_conditional_jump_from_constant_value(helper: BytecodePatchHelper):
