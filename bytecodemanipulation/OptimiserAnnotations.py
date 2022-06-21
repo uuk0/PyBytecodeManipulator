@@ -21,7 +21,7 @@ from bytecodemanipulation.BytecodeProcessors import (
     StaticObjectAccessorResolver,
 )
 from .BytecodeProcessors import GlobalStaticLookupProcessor
-from .InstructionMatchers import MetaArgMatcher
+from .InstructionMatchers import MetaArgMatcher, AndMatcher
 from .util import Opcodes
 from .CodeOptimiser import optimise_code
 
@@ -62,8 +62,8 @@ class _OptimiserContainer:
         self.is_self_constant = False
         self.constant_args: typing.Set[str] = set()
         self.code_walkers: typing.List[AbstractBytecodeProcessor] = []
-        self.specified_locals: typing.Dict[str, typing.Type] = {}
-        self.return_type: typing.Optional[typing.Type] = None
+        self.specified_locals: typing.Dict[str, typing.Tuple[typing.Type, bool]] = {}
+        self.return_type: typing.Optional[typing.Tuple[typing.Type, bool]] = None
         self.is_side_effect_free = False
 
         self.attribute_type_marks: typing.Dict[str, typing.Type] = {}
@@ -262,7 +262,7 @@ def builtins_are_static():
 
 def standard_library_is_safe(restriction: str = None):
     """
-    Marker that standard library stuff is not touched by the code in an modifying way
+    Marker that standard library stuff is not touched by the code in a modifying way
     """
 
     def annotation(target: typing.Callable):
@@ -295,7 +295,7 @@ def name_is_static(name: str, accessor: typing.Callable, matcher: AbstractInstru
     def annotation(target: typing.Callable):
         optimiser = _schedule_optimisation(target)
         optimiser.code_walkers.append(
-            Global2ConstReplace(name, accessor(), matcher=MetaArgMatcher(_is_builtin_name))
+            Global2ConstReplace(name, accessor(), matcher=AndMatcher(MetaArgMatcher(lambda _, n: n == name), matcher))
         )
         return target
 
@@ -304,8 +304,14 @@ def name_is_static(name: str, accessor: typing.Callable, matcher: AbstractInstru
 
 def returns_argument(index: int = 0):
     """
-    Marks a function to return a certain argument
-    Can be used in some cases for optimisation
+    Marks a function to return a certain argument.
+    Can be used in some cases for optimisation, as we might need that arg after the function call immediately,
+    so we can remove a LOAD_XX instruction for accessing the arg
+
+    Can be used when mutating a mutable object, but not for mutating an immutable object inside.
+
+    WARNING: has no safety checks in place, use only when you know what you are doing (or you want to
+    explicit replace the value of the result)
     """
 
     def annotation(target: typing.Callable):
@@ -327,6 +333,7 @@ def object_method_is_protected(
     The optimiser is allowed to add this to calls not marked as they are here
 
     todo: implement
+    todo: connect to @typing.final?
     """
 
     def annotation(target: typing.Callable):
@@ -340,8 +347,11 @@ def object_method_is_protected(
 def constant_global():
     """
     Marks the method as mutating only the internal state of the class / object, no global
-    variables
-    This can lead to optimisations into caching globals around the code
+    variables.
+
+    This can lead to optimisations into caching globals around the code.
+
+    Currently not implemented, behaviour when writing to globals anyway is currently not defined
     """
 
     def annotation(target: typing.Callable):
@@ -354,7 +364,9 @@ def constant_global():
 def constant_arg(name: str):
     """
     Promises that the given arg will not be modified
+
     Only affects mutable data types
+
     Removes the need to copy the data during inlining
     """
 
@@ -370,6 +382,11 @@ def forced_arg_type(name: str, type_accessor: typing.Callable, may_subclass=True
     """
     Marks a certain arg to have that exact type, or a subclass of it when specified
     WARNING: when passing another type, may crash as we do optimisations around that type!
+
+    Setting may_subclass to False might drastically increase performance, depending on the class itself,
+    but it might cause more issues when passing the wrong type into it
+
+    todo: implement
 
     :param name: the parameter name
     :param type_accessor: the accessor method for the type of the parameter
@@ -409,25 +426,15 @@ def forced_attribute_type(name: str, type_accessor: typing.Callable[[], typing.T
 def constant_operation():
     """
     Promises that the method will not affect the state of the system, meaning it is e.g.
-    a getter method
+    a getter method, or a helper function (e.g. min(), max(), ...)
+
+    When the args are all known at optimisation time, we might eval the result also at optimisation time
+    and replace the function call entirely
     """
 
     def annotation(target: typing.Callable):
         _schedule_optimisation(target).is_constant = True
         _schedule_optimisation(target).is_side_effect_free = True
-        return target
-
-    return annotation
-
-
-def cycle_stable_result():
-    """
-    Similar to constant_global_operation(), but is only constant in one cycle,
-    meaning most likely it can only be cached in a single method and its sub-parts
-    """
-
-    def annotation(target: typing.Callable):
-        _schedule_optimisation(target)
         return target
 
     return annotation
@@ -446,9 +453,10 @@ def mutable_attribute(name: str):
     return annotation
 
 
-def immutable_attribute(name: str):
+def immutable_attribute(name: str, is_static=False):
     """
-    Marks a certain attribute to be immutable
+    Marks a certain attribute to be immutable, meaning it is either
+    "static-immutable" (only set once in class body) or "dynamic-immutable" (only set once in the constructor)
     """
 
     def annotation(target: typing.Type):
@@ -504,6 +512,8 @@ def eval_static(call_target: str):
 
     The optimiser is allowed to decide to add tis by its own when it encounters a method marked
     as constant
+
+    todo: call_target should become a lazy getter for the function itself
     """
 
     def annotation(target: typing.Callable):
@@ -541,6 +551,8 @@ def access_static(name: str):
     and puts it in the bytecode as a constant
 
     'name' can be a tree like shared.IS_CLIENT
+
+    todo: add option to add a value-getter for accessing
     """
 
     def annotation(target: typing.Callable):
@@ -550,10 +562,12 @@ def access_static(name: str):
     return annotation
 
 
-def access_once(name: str):
+def access_once(name: str, move_early=True):
     """
     Accesses a variable which may get accessed multiple times only once's and cache the result.
-    May move the access as early as possible
+    May move the access as early as possible, including beforehand (can be disabled by setting move_early to False).
+    Moving early might happen only when the method is known at an earlier point in the bytecode.
+    Might struggle with big expressions
     """
 
     def annotation(target: typing.Callable):
@@ -563,11 +577,15 @@ def access_once(name: str):
     return annotation
 
 
-def try_optimise():
+def try_optimise(static_builtins=False):
     """
     Tries to optimise the given method
     Above annotations will also use this annotation by default
+
+    :param static_builtins: same as the @builtins_are_static() annotation
     """
+    if static_builtins:
+        return builtins_are_static()
 
     def annotation(target: typing.Callable):
         _schedule_optimisation(target)
@@ -576,29 +594,27 @@ def try_optimise():
     return annotation
 
 
-def assign_local_type(name: str, access: str):
+def assign_local_type(name: str, access: typing.Callable, may_subclass=True):
+    """
+    Assigns the type of a specific local variable in the whole function body
+
+    todo: add a variant only affecting the area between two matchers
+    """
+
     def annotation(target: typing.Callable):
-        module, path = access.split(":")
-        module = importlib.import_module(module)
-
-        for e in path.split("."):
-            module = getattr(module, e)
-
-        _schedule_optimisation(target).specified_locals[name] = module
+        _schedule_optimisation(target).specified_locals[name] = access(), may_subclass
         return target
 
     return annotation
 
 
-def promise_return_type(access: str):
+def promise_return_type(access: typing.Callable, may_subclass=True):
+    """
+    Defines the function return type
+    """
+
     def annotation(target: typing.Callable):
-        module, path = access.split(":")
-        module = importlib.import_module(module)
-
-        for e in path.split("."):
-            module = getattr(module, e)
-
-        _schedule_optimisation(target).return_type = module
+        _schedule_optimisation(target).return_type = access, may_subclass
         return target
 
     return annotation
@@ -611,9 +627,24 @@ def no_internal_cache():
 
     Can be used together with constant_global_operation / constant_operation on methods to
     make optimising more instances away easier.
+    """
 
-    Allows to inline certain expressions at optimisation time if the underlying object is only used
-    as a calculator
+    def annotation(target: typing.Callable):
+        _schedule_optimisation(target)
+        return target
+
+    return annotation
+
+
+def alternative_for_construction(alternate_target: typing.Callable):
+    """
+    Similar to no_internal_cache(), but will replace the object construction with
+    an function call to <target> with the same args given the constructor.
+    Expects no return value.
+
+    Useful when you need to do stuff with some values, but not all, so your code is more optimal
+
+    todo: should alternate_target be lazy?
     """
 
     def annotation(target: typing.Callable):

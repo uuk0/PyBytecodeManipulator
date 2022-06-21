@@ -135,21 +135,26 @@ class Global2ConstReplace(AbstractBytecodeProcessor):
         helper: BytecodePatchHelper,
     ):
         match = -1
-        for index, instr in helper.walk():
-            if instr.opcode != Opcodes.LOAD_GLOBAL or instr.argval != self.global_name:
-                continue
+        while True:
+            for index, instr in list(helper.walk()):
+                if instr.opcode != Opcodes.LOAD_GLOBAL or instr.argval != self.global_name:
+                    continue
 
-            match += 1
+                match += 1
 
-            if self.matcher is not None and not self.matcher.matches(
-                helper, index, match
-            ):
-                continue
+                if self.matcher is not None and not self.matcher.matches(
+                    helper, index, match
+                ):
+                    continue
 
-            helper.instruction_listing[index] = target.createLoadConst(self.after)
+                helper.instruction_listing[index] = target.createLoadConst(self.after)
 
-            if sys.version_info.minor >= 11 and instr.arg & 1:
-                helper.insertRegion(index, [target.createLoadConst(None)])
+                if sys.version_info.minor >= 11 and instr.arg & 1:
+                    helper.insertRegion(index, [target.createLoadConst(None)])
+                    # Ok, we changed the layout of the data, so we need to jump back
+                    break
+            else:
+                break
 
         helper.store()
 
@@ -902,6 +907,8 @@ class GlobalStaticLookupProcessor(AbstractBytecodeProcessor):
                     except KeyError:
                         value = eval(instr.argval)
 
+                # print(index, value)
+
                 helper.instruction_listing[index] = helper.patcher.createLoadConst(
                     value
                 )
@@ -939,7 +946,7 @@ class SideEffectFreeMethodCallRemover(AbstractBytecodeProcessor):
                     if target.opcode == Opcodes.LOAD_CONST:
                         target = target.argval
 
-                        if target in self.SIDE_EFFECT_FREE_BUILTINS or ("optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
+                        if target in self.SIDE_EFFECT_FREE_BUILTINS or (hasattr(target, "__dict__") and "optimiser_container" in target.__dict__ and target.optimiser_container.is_side_effect_free):
                             helper.deleteRegion(index, index+2)
                             helper.insertRegion(index, [createInstruction("POP_TOP")] * instr.arg)
                             index -= instr.arg - 2

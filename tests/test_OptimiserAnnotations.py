@@ -448,3 +448,25 @@ class TestOptimiserAnnotations(TestCase):
         self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
         self.assertEqual(helper.instruction_listing[0].argval, True)
 
+    def test_double_builtin_call(self):
+        @builtins_are_static()
+        def target():
+            return list((2354, 42323)) + list((2354235, 14234234))
+
+        self.assertEqual(target(), [2354, 42323, 2354235, 14234234])
+
+        run_optimisations()
+
+        self.assertEqual(target(), [2354, 42323, 2354235, 14234234])
+
+    def test_double_builtin_call_2(self):
+        @builtins_are_static()
+        def target():
+            return range(*list((12, 16))+list((2,)))
+
+        self.assertEqual(target(), range(12, 16, 2))
+
+        run_optimisations()
+
+        self.assertEqual(target(), range(12, 16, 2))
+

@@ -1,5 +1,6 @@
 import dis
 import sys
+import traceback
 import typing
 
 from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
@@ -335,18 +336,22 @@ def prepare_inline_expressions(helper: BytecodePatchHelper):
                     try:
                         value = next(helper.findTargetOfStackIndex(i, index))
                     except (NotImplementedError, RuntimeError):
-                        break
+                        continue
 
                     if value.opcode == Opcodes.LOAD_CONST:
                         args.append(value.argval)
                     else:
-                        break
+                        continue
 
                 else:
                     helper.instruction_listing[index] = helper.patcher.createLoadConst(tuple(args))
                     helper.insertRegion(index, [create_instruction("POP_TOP")] * len(args))
+                    break
 
             # todo: for lists/sets/dicts, check usage for constant use (check for "in", lookup, ...)
+
+        else:
+            break
 
 
 def trace_load_const_store_fast_load_fast(helper: BytecodePatchHelper):
@@ -382,6 +387,8 @@ def trace_load_const_store_fast_load_fast(helper: BytecodePatchHelper):
 
 
 def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
+    # helper.print_stats()
+
     for index, instr in list(helper.walk()):
         opcode = instr.opcode
 
@@ -394,11 +401,17 @@ def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
 
         try:
             args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
-        except (NotImplementedError, RuntimeError, StopIteration):
+        except (NotImplementedError, RuntimeError, StopIteration, ValueError):
             continue
 
         if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):
-            value = expr(*(arg.argval for arg in reversed(args)))
+            try:
+                value = expr(*(arg.argval for arg in reversed(args)))
+            except:
+                print(instr)
+                print(list(reversed(args)))
+                traceback.print_exc()
+                return
         else:
             continue
 
@@ -439,7 +452,7 @@ def remove_conditional_jump_from_constant_value(helper: BytecodePatchHelper):
 
             try:
                 stack_top = next(helper.findSourceOfStackIndex(index, 0))
-            except NotImplementedError:
+            except (NotImplementedError, ValueError):
                 continue
 
             if stack_top.opcode != Opcodes.LOAD_CONST:

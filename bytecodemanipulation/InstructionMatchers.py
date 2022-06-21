@@ -35,7 +35,7 @@ class AndMatcher(AbstractInstructionMatcher):
         self, function: BytecodePatchHelper, index: int, match_count: int
     ) -> bool:
         return all(
-            matcher.matches(function, index, match_count) for matcher in self.matchers
+            matcher.matches(function, index, match_count) for matcher in self.matchers if matcher is not None
         )
 
     def __and__(self, other):

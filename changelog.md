@@ -2,6 +2,9 @@
 # Version 0.1.10 [upcoming]
 - made some instruction configs .json config able
 - emulator will crash now with a good exception message when a jump goes out of bounds
+- @name_is_static() annotation will now forward the matcher argument correctly
+- some of the not documented optimization annotations were changed
+- fixed issue with name_is_static() not correctly resolving the name
 
 # Version 0.1.9
 - added some more optimizations which do not require annotations, including:
