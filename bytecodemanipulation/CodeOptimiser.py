@@ -401,7 +401,7 @@ def eval_constant_bytecode_expressions(helper: BytecodePatchHelper):
             try:
                 args = [next(helper.findSourceOfStackIndex(index, i)) for i in range(args)]
             except (NotImplementedError, RuntimeError, StopIteration, ValueError) as e:
-                print("exception", e)
+                traceback.print_exc()
                 continue
 
             if all(arg.opcode == Opcodes.LOAD_CONST for arg in args):

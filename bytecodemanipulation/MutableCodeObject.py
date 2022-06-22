@@ -448,6 +448,9 @@ class MutableCodeObject:
                         None,
                         False,
                     )
+
+                else:
+                    raise RuntimeError(opname)
     else:
 
         def get_instruction_list(self) -> typing.List[dis.Instruction]:

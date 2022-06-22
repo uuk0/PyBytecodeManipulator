@@ -50,8 +50,6 @@ class TestSet1(TestCase):
 
         run_optimisations()
 
-        dis.dis(target)
-
         self.assertEqual(target(), 3)
 
         helper = BytecodePatchHelper(target)
@@ -72,8 +70,6 @@ class TestSet1(TestCase):
 
         run_optimisations()
 
-        dis.dis(target)
-
         self.assertEqual(target(), 10)
 
         helper = BytecodePatchHelper(target)
@@ -83,3 +79,17 @@ class TestSet1(TestCase):
 
         self.assertEqual(helper.instruction_listing[0].opcode, Opcodes.LOAD_CONST)
         self.assertEqual(helper.instruction_listing[0].argval, 10)
+
+    def test_dict_funcs(self):
+        @builtins_are_static()
+        def target():
+            d = {}
+            d.setdefault("test", []).append("Hello World!")
+            return d
+
+        self.assertEqual(target(), {"test": ["Hello World!"]})
+
+        run_optimisations()
+
+        self.assertEqual(target(), {"test": ["Hello World!"]})
+

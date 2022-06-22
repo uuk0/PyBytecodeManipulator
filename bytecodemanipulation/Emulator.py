@@ -546,5 +546,12 @@ class OpcodeListToTuple(AbstractInstructionExecutor):
         env.push(tuple(env.pop()))
 
 
+@register_opcode("LIST_EXTEND")
+class OpcodeListExtend(AbstractInstructionExecutor):
+    @classmethod
+    def invoke(cls, instr: dis.Instruction, env: ExecutionEnvironment):
+        env.seek(1).extend(env.pop())
+
+
 for manager in ExecutionManager.MANAGERS:
     manager.init()

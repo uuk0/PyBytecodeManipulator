@@ -1115,7 +1115,7 @@ class BytecodePatchHelper:
                     yield index, instr
                     return
 
-                elif instr.opcode in METHOD_CALL:
+                elif instr.opcode in METHOD_CALL or instr.opcode == Opcodes.BUILD_SLICE:
                     yield index, instr
                     return
 
@@ -1183,6 +1183,10 @@ class BytecodePatchHelper:
             elif instr.opcode == Opcodes.BUILD_MAP:
                 offset += 1
                 offset -= instr.arg * 2 - 1
+
+            elif instr.opcode == Opcodes.BUILD_SLICE:
+                offset += 1
+                offset -= instr.arg - 1
 
             elif (
                 sys.version_info.major >= 3

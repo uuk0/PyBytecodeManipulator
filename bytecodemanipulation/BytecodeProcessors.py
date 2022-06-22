@@ -1005,7 +1005,7 @@ class EvalAtOptimisationTime(AbstractBytecodeProcessor):
                     try:
                         target = target_opcode = next(helper.findSourceOfStackIndex(index, instr.arg))
                     except (NotImplementedError, RuntimeError, StopIteration) as e:
-                        print("exception", e)
+                        traceback.print_exc()
                         continue
 
                     if target.opcode == Opcodes.LOAD_CONST:

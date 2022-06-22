@@ -220,6 +220,8 @@ class _OptimiserContainer:
 def _schedule_optimisation(
     target: typing.Union[typing.Callable, typing.Type],
 ) -> _OptimiserContainer:
+    # todo: forward optimisations to lambda expressions
+
     if "optimiser_container" not in target.__dict__:
         target.optimiser_container = _OptimiserContainer(target)
         _OptimiserContainer.CONTAINERS.append(target.optimiser_container)
