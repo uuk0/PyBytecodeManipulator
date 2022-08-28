@@ -13,7 +13,7 @@ version = input("version: ")
 with open("setup.py", mode="r") as f:
     data = f.read().split("\n")
 
-assert data[8].strip().startswith("version=\"")
+assert data[8].strip().startswith('version="')
 
 data[8] = f'    version="{version}",'
 
@@ -24,4 +24,3 @@ subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", "build", "
 subprocess.call([sys.executable, "-m", "build"])
 print("username: __token__; password: see config file")
 print(f"{sys.executable} -m twine upload dist/*")
-
