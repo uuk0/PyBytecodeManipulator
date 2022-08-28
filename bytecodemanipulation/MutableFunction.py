@@ -233,7 +233,7 @@ class MutableFunction:
         self.code_object: types.CodeType = target.__code__
 
         self.argument_count = self.code_object.co_argcount
-        self.cellvars = list(self.code_object.co_cellvars)
+        self.cell_variables = list(self.code_object.co_cellvars)
         self.__raw_code = bytearray(self.code_object.co_code)
         self.constants = list(self.code_object.co_consts)
         self.filename = self.code_object.co_filename
@@ -251,6 +251,29 @@ class MutableFunction:
         self.shared_variable_names = list(self.code_object.co_varnames)
 
         self.__instructions: typing.Optional[typing.List[_Instruction]] = None
+
+    def create_code_obj(self) -> types.CodeType:
+        return types.CodeType(
+            self.argument_count,
+            self.positional_only_argument_count,
+            self.keyword_only_argument_count,
+            len(self.shared_variable_names),
+            self.stack_size,
+            self.code_flags,
+            bytes(self.raw_code),
+            tuple(self.constants),
+            tuple(self.shared_names),
+            tuple(self.shared_variable_names),
+            self.filename,
+            self.function_name,
+            self.first_line_number,
+            bytes(self.lnotab),
+            tuple(self.free_variables),
+            tuple(self.cell_variables),
+        )
+
+    def reassign_to_function(self):
+        self.target.__code__ = self.create_code_obj()
 
     def decode_instructions(self):
         if self.__instructions is not None:

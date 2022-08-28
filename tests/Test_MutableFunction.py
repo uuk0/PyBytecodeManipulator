@@ -37,9 +37,17 @@ class TestMutableFunction(TestCase):
 
             return True
 
-        dis.dis(target)
-
         mut = MutableFunction(target)
         mut.instructions[0].optimise_tree()
         mut.assemble_instructions_from_tree(mut.instructions[0])
+
+    def test_reassign(self):
+        def target():
+            return "test"
+
+        mut = MutableFunction(target)
+        mut.instructions = mut.instructions
+        mut.reassign_to_function()
+
+        self.assertEqual(target(), "test")
 
