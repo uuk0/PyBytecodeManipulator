@@ -47,7 +47,7 @@ class _Instruction:
         self.arg_value = arg_value
         self.arg = arg
 
-        if self.arg is not None and self.arg_value is None:
+        if self.arg is not None and self.arg_value is None and (_deocde_next or not self.has_jump()):
             self.change_arg(self.arg)
         elif self.arg_value is not None and self.arg is None:
             self.change_arg_value(self.arg_value)
@@ -71,6 +71,9 @@ class _Instruction:
             (self.arg == other.arg if self.arg is not None and other.arg is not None else True) and
             (self.arg_value == other.arg_value if self.arg_value is not None and other.arg_value is not None else True)
         )
+
+    def __hash__(self):
+        return id(self)
 
     def get_arg(self):
         return 0 if self.arg is None else self.arg
@@ -97,13 +100,13 @@ class _Instruction:
             elif self.opcode in dis.hasconst:
                 self.arg = self.function.allocate_shared_constant(value)
             elif self.opcode in dis.haslocal:
-                assert isinstance(value, str)
+                assert isinstance(value, str), (value, self.opname)
                 self.arg = self.function.allocate_shared_variable_name(value)
             elif self.opcode in dis.hasjabs:
-                assert isinstance(value, _Instruction)
+                assert isinstance(value, _Instruction), value
                 self.arg = value.offset
             elif self.opcode in dis.hasjrel:
-                assert isinstance(value, _Instruction)
+                assert isinstance(value, _Instruction), value
                 self.arg = value.offset - self.offset
         else:
             self.arg = None
@@ -147,7 +150,7 @@ class _Instruction:
         return self.has_jump_absolute() or self.has_jump_forward() or self.has_jump_backward()
 
     def has_unconditional_jump(self):
-        return self.opcode in (dis.opmap["JUMP_ABSOLUT"], dis.opmap["JUMP_FORWARD"])
+        return self.opcode in (dis.opmap["JUMP_ABSOLUTE"], dis.opmap["JUMP_FORWARD"])
 
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
@@ -181,6 +184,9 @@ class _Instruction:
         Requires next_instruction's to be set, meaning it must be owned at some point by a function
         """
 
+        if visited is None:
+            visited = set()
+
         if self in visited: return
 
         while self.next_instruction is not None:
@@ -190,7 +196,7 @@ class _Instruction:
                 self.next_instruction = self.next_instruction.next_instruction
                 continue
 
-            if self.next_instruction.opname in ("JUMP_ABSOLUT", "JUMP_FORWARD"):
+            if self.next_instruction.opname in ("JUMP_ABSOLUTE", "JUMP_FORWARD"):
                 self.next_instruction = self.next_instruction.arg_value
                 continue
 
@@ -264,7 +270,7 @@ class MutableFunction:
                 arg += extra * 256
                 extra = 0
 
-                self.__instructions.append(_Instruction(self, i // 2, opcode, arg, _deocde_next=False))
+                self.__instructions.append(_Instruction(self, i // 2, opcode, arg=arg, _deocde_next=False))
 
     def assemble_instructions_from_tree(self, root: _Instruction):
         # 1. Assemble a linear stream of instructions, containing all instructions
@@ -277,7 +283,7 @@ class MutableFunction:
 
         instructions: typing.List[_Instruction] = []
         pending_instructions = [root]
-        visited: typing.Set[_Instruction] = []
+        visited: typing.Set[_Instruction] = set()
 
         # While we have branches, we need to decode them
         while pending_instructions:
@@ -291,6 +297,11 @@ class MutableFunction:
             while instruction not in visited:
                 # If it branches off, it needs to be visited later on
                 if instruction.has_jump():
+                    if instruction.arg_value is None:
+                        instruction.update_owner(self, instruction.offset)
+
+                    assert instruction.arg_value is not None, instruction
+
                     pending_instructions.append(instruction.arg_value)
 
                 instructions.append(instruction)
@@ -298,6 +309,11 @@ class MutableFunction:
 
                 if instruction.has_stop_flow():
                     break
+
+                if instruction.next_instruction is None:
+                    instruction.update_owner(self, instruction.offset)
+
+                assert instruction.next_instruction is not None, instruction
 
                 instruction = instruction.next_instruction
 
@@ -312,7 +328,7 @@ class MutableFunction:
                 jump = _Instruction(
                     self,
                     -1,
-                    "JUMP_ABSOLUT",
+                    "JUMP_ABSOLUTE",
                     instruction.next_instruction,
                 )
                 jump.next_instruction = instruction
