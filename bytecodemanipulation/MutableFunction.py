@@ -1,14 +1,7 @@
-import dis
 import types
 import typing
 import inspect
-
-
-END_CONTROL_FLOW = (
-    dis.opmap["RETURN_VALUE"],
-    dis.opmap["RAISE_VARARGS"],
-    dis.opmap["RAISE_VARARGS"],
-)
+from bytecodemanipulation.Opcodes import Opcodes, END_CONTROL_FLOW, OPCODE2NAME, OPNAME2CODE, HAS_NAME, HAS_CONST, HAS_LOCAL, HAS_JUMP_ABSOLUTE, HAS_JUMP_FORWARD, UNCONDITIONAL_JUMPS
 
 
 class LinearCodeConstraintViolationException(Exception): pass
@@ -18,9 +11,9 @@ class _Instruction:
     @classmethod
     def _pair_instruction(cls, opcode: int | str) -> typing.Tuple[int, str]:
         if isinstance(opcode, int):
-            return opcode, dis.opname[opcode]
+            return opcode, OPCODE2NAME[opcode]
 
-        return dis.opmap[opcode], opcode
+        return OPNAME2CODE[opcode], opcode
 
     __slots__ = (
         "function",
@@ -94,18 +87,18 @@ class _Instruction:
         self.arg_value = value
 
         if self.function is not None:
-            if self.opcode in dis.hasname:
+            if self.opcode in HAS_NAME:
                 assert isinstance(value, str)
                 self.arg = self.function.allocate_shared_name(value)
-            elif self.opcode in dis.hasconst:
+            elif self.opcode in HAS_CONST:
                 self.arg = self.function.allocate_shared_constant(value)
-            elif self.opcode in dis.haslocal:
+            elif self.opcode in HAS_LOCAL:
                 assert isinstance(value, str), (value, self.opname)
                 self.arg = self.function.allocate_shared_variable_name(value)
-            elif self.opcode in dis.hasjabs:
+            elif self.opcode in HAS_JUMP_ABSOLUTE:
                 assert isinstance(value, _Instruction), value
                 self.arg = value.offset
-            elif self.opcode in dis.hasjrel:
+            elif self.opcode in HAS_JUMP_FORWARD:
                 assert isinstance(value, _Instruction), value
                 self.arg = value.offset - self.offset
         else:
@@ -115,33 +108,33 @@ class _Instruction:
         self.arg = arg
 
         if self.function is not None:
-            if self.opcode in dis.hasname:
+            if self.opcode in HAS_NAME:
                 self.arg_value = self.function.shared_names[arg]
-            elif self.opcode in dis.hasconst:
+            elif self.opcode in HAS_CONST:
                 self.arg_value = self.function.constants[arg]
-            elif self.opcode in dis.haslocal:
+            elif self.opcode in HAS_LOCAL:
                 self.arg_value = self.function.shared_variable_names[arg]
-            elif self.opcode in dis.hasjabs:
+            elif self.opcode in HAS_JUMP_ABSOLUTE:
                 self.arg_value = self.function.instructions[arg]
-            elif self.opcode in dis.hasjrel and self.offset is not None:
+            elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
                 self.arg_value = self.function.instructions[arg + self.offset]
         else:
             self.arg_value = None
 
     def has_name(self):
-        return self.opcode in dis.hasname
+        return self.opcode in HAS_NAME
 
     def has_constant(self):
-        return self.opcode in dis.hasconst
+        return self.opcode in HAS_CONST
 
     def has_local(self):
-        return self.opcode in dis.haslocal
+        return self.opcode in HAS_LOCAL
 
     def has_jump_absolute(self):
-        return self.opcode in dis.hasjabs
+        return self.opcode in HAS_JUMP_ABSOLUTE
 
     def has_jump_forward(self):
-        return self.opcode in dis.hasjrel
+        return self.opcode in HAS_JUMP_FORWARD
 
     def has_jump_backward(self):
         return False
@@ -150,7 +143,7 @@ class _Instruction:
         return self.has_jump_absolute() or self.has_jump_forward() or self.has_jump_backward()
 
     def has_unconditional_jump(self):
-        return self.opcode in (dis.opmap["JUMP_ABSOLUTE"], dis.opmap["JUMP_FORWARD"])
+        return self.opcode in UNCONDITIONAL_JUMPS
 
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
@@ -285,7 +278,7 @@ class MutableFunction:
         for i in range(0, len(self.__raw_code), 2):
             opcode, arg = self.__raw_code[i : i + 2]
 
-            if opcode == dis.opmap["EXTENDED_ARG"]:
+            if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
                 self.__instructions.append(_Instruction(self, i // 2, "NOP", _deocde_next=False))
 
@@ -511,7 +504,7 @@ class MutableFunction:
                     iarg = extend % 256
                     extend //= 256
 
-                    self.__raw_code[(i - offset) * 2:(i - offset + 1) * 2] = bytes([dis.opmap["EXTENDED_ARG"], iarg])
+                    self.__raw_code[(i - offset) * 2:(i - offset + 1) * 2] = bytes([Opcodes.EXTENDED_ARG, iarg])
                     offset += 1
 
             self.__raw_code += bytes([instruction.opcode, arg])
@@ -543,10 +536,10 @@ class MutableFunction:
                     iarg = extend % 256
                     extend //= 256
 
-                    if self.__raw_code[(i - offset) * 2] != dis.opmap["NOP"]:
+                    if self.__raw_code[(i - offset) * 2] != Opcodes.NOP:
                         raise ValueError(f"Cannot assemble fast, not enough NOP's for instruction {instruction}")
 
-                    self.__raw_code[(i - offset) * 2:(i - offset + 1) * 2] = bytes([dis.opmap["EXTENDED_ARG"], iarg])
+                    self.__raw_code[(i - offset) * 2:(i - offset + 1) * 2] = bytes([Opcodes.EXTENDED_ARG, iarg])
                     offset += 1
 
             self.__raw_code += bytes([instruction.opcode, arg])
