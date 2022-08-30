@@ -93,7 +93,19 @@ def cache_global_name(
     return annotate
 
 
-def guarantee_builtin_names_are_protected():
+def guarantee_builtin_names_are_protected(white_list: typing.Iterable[str] = None, black_list: typing.Iterable[str] = None):
+    """
+    Annotation marking all builtin names as protected, meaning they can be cached
+
+    :param white_list: if provided, only builtins named as entries in the iterable will be optimised
+    :param black_list: if provided, only builtins NOT in this list will be optimised
+    :raises ValueError: when both white_list and black_list are provided
+    :raises BreaksOwnGuaranteesException: (at optimisation time) if a write to an optimise-able builtin name is detected
+    """
+
+    if white_list is not None and black_list is not None:
+        raise ValueError("Both white list and black list are provided!")
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -103,8 +115,23 @@ def guarantee_builtin_names_are_protected():
 
 
 def guarantee_exact_local_type(
-    local_name: str, data_type: typing.Type | typing.Callable[[], typing.Type]
+    local_name: str, data_type: typing.Type = None, lazy_data_type: typing.Callable[[], typing.Type] = None
 ):
+    """
+    Guarantees that the given local name has the exact type. Not a subclass of it.
+
+    The optimiser is allowed to use this type of optimisation when it detects a static data type
+    (e.g. a single write with a predictable exact type, e.g. constants)
+
+    :param local_name: the local name provided
+    :param data_type: the data type the local has
+    :param lazy_data_type: or a getter for the data type
+    :raises ValueError: if both data_type and lazy_data_type are provided
+    """
+
+    if data_type is not None and lazy_data_type is not None:
+        raise ValueError("Both data_type and lazy_data_type are provided!")
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -116,8 +143,23 @@ def guarantee_exact_local_type(
 def guarantee_exact_local_var_attribute_type(
     local_name: str,
     attr_name: str,
-    data_type: typing.Type | typing.Callable[[], typing.Type],
+    data_type: typing.Type = None,
+    lazy_data_type: typing.Callable[[], typing.Type] = None,
 ):
+    """
+    Similar to guarantee_exact_local_type(), but set the data type of an attribute of a local.
+    This resembles the concept of dynamic attributes, with case-to-case known data values.
+
+    :param local_name: the local name provided
+    :param attr_name: the attribute name of the local
+    :param data_type: the data type the local has
+    :param lazy_data_type: or a getter for the data type
+    :raises ValueError: if both data_type and lazy_data_type are provided
+    """
+
+    if data_type is not None and lazy_data_type is not None:
+        raise ValueError("Both data_type and lazy_data_type are provided!")
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -127,8 +169,21 @@ def guarantee_exact_local_var_attribute_type(
 
 
 def guarantee_exact_return_type(
-    data_type: typing.Type | typing.Callable[[], typing.Type]
+    data_type: typing.Type = None,
+    lazy_data_type: typing.Callable[[], typing.Type] = None,
 ):
+    """
+    The other side of guarantee_exact_local_type(), inferred by the function called,
+    so the other side can optimise for this data type.
+    Requires the exact function to be known at optimisation time.
+    :param data_type: the data type the local has
+    :param lazy_data_type: or a getter for the data type
+    :raises ValueError: if both data_type and lazy_data_type are provided
+    """
+
+    if data_type is not None and lazy_data_type is not None:
+        raise ValueError("Both data_type and lazy_data_type are provided!")
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -138,8 +193,16 @@ def guarantee_exact_return_type(
 
 
 def guarantee_exact_return_attribute_type(
-    name: str, data_type: typing.Type | typing.Callable[[], typing.Type]
+    data_type: typing.Type = None,
+    lazy_data_type: typing.Callable[[], typing.Type] = None,
 ):
+    """
+    The guarantee_exact_local_var_attribute_type() variant of guarantee_exact_return_type()
+    """
+
+    if data_type is not None and lazy_data_type is not None:
+        raise ValueError("Both data_type and lazy_data_type are provided!")
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -152,7 +215,13 @@ def guarantee_may_raise_only(
     *exceptions: Exception
     | typing.List[Exception | typing.Callable[[], Exception]]
     | typing.Callable[[], Exception]
+    | Exception
 ):
+    """
+    Guarantees that this function may only raise the given exceptions, provided in direct or lazy form, and
+    optional in single-instance
+    """
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -164,6 +233,10 @@ def guarantee_may_raise_only(
 def guarantee_module_import(
     name: str, module: type(typing) | typing.Callable[[], type(typing)]
 ):
+    """
+    Guarantees that a given GLOBAL name is imported, and provides the module or a lazy module getter for it
+    """
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
@@ -173,6 +246,33 @@ def guarantee_module_import(
 
 
 def guarantee_constant_result():
+    """
+    Guarantees that this function will return the same value if invoked with the same args
+    Implies that the function does NOT modify the args again if seen again.
+    """
+
+    def annotate(target):
+        container = _OptimisationContainer.get_for_target(target)
+
+        return target
+
+    return annotate
+
+
+def guarantee_constant_state_unless():
+    """
+    Guarantees that all methods on this object are non-state-changing, excluding functions annotated with changes_object_state()
+    """
+
+    def annotate(target):
+        container = _OptimisationContainer.get_for_target(target)
+
+        return target
+
+    return annotate
+
+
+def changes_object_state():
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
