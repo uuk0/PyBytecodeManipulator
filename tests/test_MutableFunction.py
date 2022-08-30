@@ -9,7 +9,10 @@ class TestMutableFunction(TestCase):
             pass
 
         mut = MutableFunction(target)
-        self.assertEqual([Instruction("LOAD_CONST", None), Instruction("RETURN_VALUE")], mut.instructions)
+        self.assertEqual(
+            [Instruction("LOAD_CONST", None), Instruction("RETURN_VALUE")],
+            mut.instructions,
+        )
 
     def test_reassemble(self):
         def target():
@@ -20,7 +23,10 @@ class TestMutableFunction(TestCase):
         mut.assemble_fast(mut.instructions)
         mut.raw_code = mut.raw_code
 
-        self.assertEqual([Instruction("LOAD_CONST", None), Instruction("RETURN_VALUE")], mut.instructions)
+        self.assertEqual(
+            [Instruction("LOAD_CONST", None), Instruction("RETURN_VALUE")],
+            mut.instructions,
+        )
 
     def test_complex_tree_reassemble(self):
         def target(a):
@@ -50,4 +56,3 @@ class TestMutableFunction(TestCase):
         mut.reassign_to_function()
 
         self.assertEqual(target(), "test")
-

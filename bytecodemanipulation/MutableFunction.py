@@ -1,10 +1,23 @@
+import dis
 import types
 import typing
 import inspect
-from bytecodemanipulation.Opcodes import Opcodes, END_CONTROL_FLOW, OPCODE2NAME, OPNAME2CODE, HAS_NAME, HAS_CONST, HAS_LOCAL, HAS_JUMP_ABSOLUTE, HAS_JUMP_FORWARD, UNCONDITIONAL_JUMPS
+from bytecodemanipulation.Opcodes import (
+    Opcodes,
+    END_CONTROL_FLOW,
+    OPCODE2NAME,
+    OPNAME2CODE,
+    HAS_NAME,
+    HAS_CONST,
+    HAS_LOCAL,
+    HAS_JUMP_ABSOLUTE,
+    HAS_JUMP_FORWARD,
+    UNCONDITIONAL_JUMPS,
+)
 
 
-class LinearCodeConstraintViolationException(Exception): pass
+class LinearCodeConstraintViolationException(Exception):
+    pass
 
 
 class _Instruction:
@@ -40,7 +53,11 @@ class _Instruction:
         self.arg_value = arg_value
         self.arg = arg
 
-        if self.arg is not None and self.arg_value is None and (_deocde_next or not self.has_jump()):
+        if (
+            self.arg is not None
+            and self.arg_value is None
+            and (_deocde_next or not self.has_jump())
+        ):
             self.change_arg(self.arg)
         elif self.arg_value is not None and self.arg is None:
             self.change_arg_value(self.arg_value)
@@ -49,20 +66,41 @@ class _Instruction:
         # Will raise an exception if changed and not using assemble_instructions_from_tree()
         self.next_instruction: typing.Optional[_Instruction] = (
             None
-            if function is None or offset is None or self.opcode in END_CONTROL_FLOW or not _deocde_next
+            if function is None
+            or offset is None
+            or self.opcode in END_CONTROL_FLOW
+            or not _deocde_next
             else function.instructions[offset + 1]
         )
 
     def __repr__(self):
-        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value}, has_next={self.next_instruction is not None})"
+        assert isinstance(self.function.function_name, str)
+        assert isinstance(self.offset, int)
+        assert isinstance(self.opcode, int)
+        assert isinstance(self.arg, int) or self.arg is None
+        assert self != self.arg_value
+
+        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value if not isinstance(self.arg_value, _Instruction) else self.arg_value.repr_safe()}, has_next={self.next_instruction is not None})"
+
+    def repr_safe(self):
+        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value=..., has_next={self.next_instruction is not None})"
 
     def __eq__(self, other):
-        if not isinstance(other, _Instruction): return False
+        if not isinstance(other, _Instruction):
+            return False
 
         return (
-            self.opcode == other.opcode and
-            (self.arg == other.arg if self.arg is not None and other.arg is not None else True) and
-            (self.arg_value == other.arg_value if self.arg_value is not None and other.arg_value is not None else True)
+            self.opcode == other.opcode
+            and (
+                self.arg == other.arg
+                if self.arg is not None and other.arg is not None
+                else True
+            )
+            and (
+                self.arg_value == other.arg_value
+                if self.arg_value is not None and other.arg_value is not None
+                else True
+            )
         )
 
     def __hash__(self):
@@ -80,6 +118,7 @@ class _Instruction:
             if self.function is None
             or self.offset is None
             or self.opcode in END_CONTROL_FLOW
+            or self.offset == -1
             else self.function.instructions[self.offset + 1]
         )
 
@@ -140,7 +179,11 @@ class _Instruction:
         return False
 
     def has_jump(self):
-        return self.has_jump_absolute() or self.has_jump_forward() or self.has_jump_backward()
+        return (
+            self.has_jump_absolute()
+            or self.has_jump_forward()
+            or self.has_jump_backward()
+        )
 
     def has_unconditional_jump(self):
         return self.opcode in UNCONDITIONAL_JUMPS
@@ -149,6 +192,8 @@ class _Instruction:
         return self.opcode in END_CONTROL_FLOW
 
     def update_owner(self, function: "MutableFunction", offset: int):
+        previous_function = self.function
+
         self.function = function
         self.offset = offset
 
@@ -161,8 +206,8 @@ class _Instruction:
             self.change_arg_value(self.arg_value)
 
         self.next_instruction = (
-            None
-            if function is None or offset is None or self.opcode in END_CONTROL_FLOW
+            (None if previous_function != function else self.next_instruction)
+            if function is None or offset is None or self.opcode in END_CONTROL_FLOW or offset == -1 or offset + 1 >= len(function.instructions)
             else function.instructions[offset + 1]
         )
 
@@ -180,7 +225,8 @@ class _Instruction:
         if visited is None:
             visited = set()
 
-        if self in visited: return
+        if self in visited:
+            return
 
         while self.next_instruction is not None:
             assert isinstance(self.next_instruction, _Instruction)
@@ -195,12 +241,18 @@ class _Instruction:
 
             break
 
-        if self.next_instruction is not None:
-            self.next_instruction.optimise_tree(visited | {self})
+        visited.add(self)
 
-        if (self.has_jump_absolute() or self.has_jump_forward() or self.has_jump_backward()) and self.arg_value is not None:
+        if self.next_instruction is not None:
+            self.next_instruction.optimise_tree(visited)
+
+        if (
+            self.has_jump_absolute()
+            or self.has_jump_forward()
+            or self.has_jump_backward()
+        ) and self.arg_value is not None:
             assert isinstance(self.arg_value, _Instruction)
-            self.arg_value.optimise_tree(visited | {self})
+            self.arg_value.optimise_tree(visited)
 
 
 if typing.TYPE_CHECKING:
@@ -246,6 +298,8 @@ class MutableFunction:
         self.__instructions: typing.Optional[typing.List[_Instruction]] = None
 
     def create_code_obj(self) -> types.CodeType:
+        self.assemble_fast(self.__instructions)
+
         return types.CodeType(
             self.argument_count,
             self.positional_only_argument_count,
@@ -280,15 +334,22 @@ class MutableFunction:
 
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
-                self.__instructions.append(_Instruction(self, i // 2, "NOP", _deocde_next=False))
+                self.__instructions.append(
+                    _Instruction(self, i // 2, "NOP", _deocde_next=False)
+                )
 
             else:
                 arg += extra * 256
                 extra = 0
 
-                self.__instructions.append(_Instruction(self, i // 2, opcode, arg=arg, _deocde_next=False))
+                self.__instructions.append(
+                    _Instruction(self, i // 2, opcode, arg=arg, _deocde_next=False)
+                )
 
-    def assemble_instructions_from_tree(self, root: _Instruction):
+        for i, instruction in enumerate(self.instructions):
+            instruction.update_owner(self, i)
+
+    def assemble_instructions_from_tree(self, root: _Instruction, breaks_flow=tuple()):
         # 1. Assemble a linear stream of instructions, containing all instructions
         # 2. check instructions which require unconditional JUMP's and insert them
         # 3. update instruction positions
@@ -297,11 +358,119 @@ class MutableFunction:
         # 6. Resolve jump target into real values
         # 7. Profit! (Maybe use assemble_fast() here!
 
-        instructions: typing.List[_Instruction] = []
-        pending_instructions = [root]
-        visited: typing.Set[_Instruction] = set()
+        instructions = self.assemble_linear_instructions(breaks_flow, root)
+        self.update_instruction_offsets(instructions)
+
+        self.insert_needed_jumps(instructions)
+
+        self.update_instruction_offsets(instructions)
+
+        self.update_jump_args(instructions)
+        required_extends = self.get_required_arg_extensions(instructions)
+        self.insert_required_nops(instructions, required_extends)
+        self.update_jump_args(instructions)
+
+        # Check how many EXTENDED_ARG we really need
+        required_extends_2 = self.get_required_arg_extensions(instructions)
+
+        if required_extends != required_extends_2:
+            # todo: here, walk again over the instruction list
+            raise NotImplementedError
+
+        # For a last time, walk over the instructions and tie them together
+        for i, instruction in enumerate(instructions):
+            if (
+                not instruction.has_stop_flow()
+                and not instruction.has_unconditional_jump()
+            ):
+                instruction.next_instruction = instructions[i + 1]
+
+        self.assemble_fast(instructions)
+        # We do not re-decode, as that would invalidate the instruction instances here
+
+    def update_instruction_offsets(self, instructions):
+        # Update instruction positions
+        for i, instruction in enumerate(instructions):
+            instruction.offset = i
+
+    def insert_required_nops(self, instructions, required_extends):
+        write_offset = 0
+        # Now insert the required NOP's
+        for instruction, count in zip(instructions[:], required_extends):
+            if count == 0:
+                continue
+
+            for _ in range(count):
+                pos = instruction.offset + write_offset
+                instructions.insert(
+                    pos, nop_instr := _Instruction(self, pos, "NOP")
+                )
+
+            write_offset += count
+
+    def get_required_arg_extensions(self, instructions):
+        # Check how many EXTENDED_ARG we need
+        required_extends = [0] * len(instructions)
+        for i, instruction in enumerate(instructions):
+            arg = instruction.arg
+
+            if arg is None:
+                if instruction.opcode < dis.HAVE_ARGUMENT:
+                    arg = 0
+                else:
+                    print(instruction)
+
+            if arg >= 256 ** 3:
+                count = 3
+            elif arg >= 256 ** 2:
+                count = 2
+            elif arg >= 256:
+                count = 1
+            else:
+                count = 0
+            required_extends[i] = count
+        return required_extends
+
+    def update_jump_args(self, instructions):
+        # Update the raw arg for jumps
+        for instruction in instructions:
+            if instruction.next_instruction is None: continue
+
+            if instruction.has_jump_absolute():
+                instruction.arg = instruction.next_instruction.offset
+            elif instruction.has_jump_forward():
+                instruction.arg = (
+                        instruction.next_instruction.offset - instruction.offset
+                )
+            elif instruction.has_jump_backward():
+                instruction.arg = (
+                        instruction.offset - instruction.next_instruction.offset
+                )
+
+    def insert_needed_jumps(self, instructions):
+        # Check for unconditional jumps required
+        for instruction in instructions[:]:
+            if instruction.has_stop_flow():
+                continue
+
+            if instruction.next_instruction is not None and instruction.offset + 1 != instruction.next_instruction.offset:
+                jump = _Instruction(
+                    self,
+                    -1,
+                    "JUMP_ABSOLUTE",
+                    instruction.next_instruction,
+                )
+                jump.next_instruction = instruction
+                instruction.next_instruction = jump
+                instructions.insert(instructions.index(instruction) + 1, jump)
+
+    def assemble_linear_instructions(self, breaks_flow, root):
 
         # While we have branches, we need to decode them
+        pending_instructions = [root]
+        visited: typing.Set[_Instruction] = set()
+        instructions: typing.List[_Instruction] = []
+
         while pending_instructions:
             instruction = pending_instructions.pop()
 
@@ -323,115 +492,31 @@ class MutableFunction:
                 instructions.append(instruction)
                 visited.add(instruction)
 
-                if instruction.has_stop_flow():
+                if instruction.has_stop_flow() or instruction in breaks_flow or instruction.opcode in breaks_flow:
                     break
 
                 if instruction.next_instruction is None:
                     instruction.update_owner(self, instruction.offset)
 
+                # The next instruction MUST be set if it does NOT end the control flow
                 assert instruction.next_instruction is not None, instruction
 
                 instruction = instruction.next_instruction
 
-        del pending_instructions
-        del visited
-
-        # Check for unconditional jumps required
-        for instruction in instructions[:]:
-            if instruction.has_stop_flow(): continue
-
-            if instruction.offset + 1 != instruction.next_instruction.offset:
-                jump = _Instruction(
-                    self,
-                    -1,
-                    "JUMP_ABSOLUTE",
-                    instruction.next_instruction,
-                )
-                jump.next_instruction = instruction
-                instruction.next_instruction = jump
-                instructions.insert(instructions.index(instruction) + 1, jump)
-
-        # Update instruction positions
-        for i, instruction in enumerate(instructions):
-            instruction.offset = i
-
-        # Update the raw arg for jumps
-        for instruction in instructions:
-            if instruction.has_jump_absolute():
-                instruction.arg = instruction.next_instruction.offset
-            elif instruction.has_jump_forward():
-                instruction.arg = instruction.next_instruction.offset - instruction.offset
-            elif instruction.has_jump_backward():
-                instruction.arg = instruction.offset - instruction.next_instruction.offset
-
-        # Check how many EXTENDED_ARG we need
-        required_extends = [0] * len(instructions)
-        for i, instruction in enumerate(instructions):
-            arg = instruction.arg
-            if arg >= 256 ** 3:
-                count = 3
-            elif arg >= 256 ** 2:
-                count = 2
-            elif arg >= 256:
-                count = 1
-            else:
-                count = 0
-            required_extends[i] = count
-
-        write_offset = 0
-
-        # Now insert the required NOP's
-        for instruction, count in zip(instructions[:], required_extends):
-            if count == 0:
-                continue
-
-            for _ in range(count):
-                instructions.insert(instruction.offset + write_offset, _Instruction(self, -1, "NOP"))
-
-            write_offset += count
-
-        # Update the raw arg for jumps
-        for instruction in instructions:
-            if instruction.has_jump_absolute():
-                instruction.arg = instruction.next_instruction.offset
-            elif instruction.has_jump_forward():
-                instruction.arg = instruction.next_instruction.offset - instruction.offset
-            elif instruction.has_jump_backward():
-                instruction.arg = instruction.offset - instruction.next_instruction.offset
-
-        # Check how many EXTENDED_ARG we need
-        required_extends_2 = [0] * len(instructions)
-        for i, instruction in enumerate(instructions):
-            arg = instruction.arg
-            if arg >= 256 ** 3:
-                count = 3
-            elif arg >= 256 ** 2:
-                count = 2
-            elif arg >= 256:
-                count = 1
-            else:
-                count = 0
-            required_extends_2[i] = count
-
-        if required_extends != required_extends_2:
-            # todo: here, walk again over the instruction list
-            raise NotImplementedError
-
-        # For a last time, walk over the instructions and
-        for i, instruction in enumerate(instructions):
-            if not instruction.has_stop_flow() and not instruction.has_unconditional_jump():
-                instruction.next_instruction = instructions[i + 1]
-
-        self.assemble_fast(instructions)
-        # We do not re-decode, as that would invalidate the instruction instances here
+        return instructions
 
     def assemble_instructions(self):
 
         # Check for linearity violations
         for i, instruction in enumerate(self.__instructions):
-            if instruction.next_instruction is not None and instruction.offset + 1 != instruction.next_instruction.offset:
+            if (
+                instruction.next_instruction is not None
+                and instruction.offset + 1 != instruction.next_instruction.offset
+            ):
                 # todo: do we want to dynamic use assemble_instructions_from_tree()?
-                raise LinearCodeConstraintViolationException(f"Failed between instruction {instruction} and {instruction.next_instruction}, use assemble_instructions_from_tree(...) to assemble from an non-normal tree")
+                raise LinearCodeConstraintViolationException(
+                    f"Failed between instruction {instruction} and {instruction.next_instruction}, use assemble_instructions_from_tree(...) to assemble from an non-normal tree"
+                )
 
         needs_tree_assemble = False
         root = self.__instructions[0]
@@ -446,9 +531,9 @@ class MutableFunction:
                 continue
 
             if instruction.arg is not None:
-                if instruction.arg >= 256 ** 3:
+                if instruction.arg >= 256**3:
                     count = 3
-                elif instruction.arg >= 256 ** 2:
+                elif instruction.arg >= 256**2:
                     count = 2
                 elif instruction.arg >= 256:
                     count = 1
@@ -474,11 +559,7 @@ class MutableFunction:
 
                     # And now, insert the "NOP"'s required after the previous for the things
                     for delta in range(missing):
-                        nop = _Instruction(
-                            self,
-                            previous.offset + delta + 1,
-                            "NOP"
-                        )
+                        nop = _Instruction(self, previous.offset + delta + 1, "NOP")
                         nop.next_instruction = instruction
                         previous.next_instruction = nop
                         previous = nop
@@ -504,7 +585,9 @@ class MutableFunction:
                     iarg = extend % 256
                     extend //= 256
 
-                    self.__raw_code[(i - offset) * 2:(i - offset + 1) * 2] = bytes([Opcodes.EXTENDED_ARG, iarg])
+                    self.__raw_code[(i - offset) * 2 : (i - offset + 1) * 2] = bytes(
+                        [Opcodes.EXTENDED_ARG, iarg]
+                    )
                     offset += 1
 
             self.__raw_code += bytes([instruction.opcode, arg])
@@ -537,9 +620,13 @@ class MutableFunction:
                     extend //= 256
 
                     if self.__raw_code[(i - offset) * 2] != Opcodes.NOP:
-                        raise ValueError(f"Cannot assemble fast, not enough NOP's for instruction {instruction}")
+                        raise ValueError(
+                            f"Cannot assemble fast, not enough NOP's for instruction {instruction}"
+                        )
 
-                    self.__raw_code[(i - offset) * 2:(i - offset + 1) * 2] = bytes([Opcodes.EXTENDED_ARG, iarg])
+                    self.__raw_code[(i - offset) * 2 : (i - offset + 1) * 2] = bytes(
+                        [Opcodes.EXTENDED_ARG, iarg]
+                    )
                     offset += 1
 
             self.__raw_code += bytes([instruction.opcode, arg])

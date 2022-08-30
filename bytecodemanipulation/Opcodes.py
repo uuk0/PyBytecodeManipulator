@@ -1,5 +1,3 @@
-
-
 class Opcodes:
     POP_TOP = 1
     ROT_TWO = 2
@@ -149,6 +147,10 @@ class Opcodes:
     DICT_MERGE = 164
     DICT_UPDATE = 165
 
+    INTERMEDIATE_INNER_RETURN = 256
+    INTERMEDIATE_OUTER_RETURN = 257
+    INTERMEDIATE_LOAD_FAST = 258
+
 
 OPCODE2NAME = {}
 OPNAME2CODE = {}
@@ -164,6 +166,8 @@ END_CONTROL_FLOW = (
     Opcodes.RETURN_VALUE,
     Opcodes.RERAISE,
     Opcodes.RAISE_VARARGS,
+    Opcodes.INTERMEDIATE_OUTER_RETURN,
+    Opcodes.INTERMEDIATE_INNER_RETURN,
 )
 
 HAS_NAME = (
@@ -181,14 +185,19 @@ HAS_NAME = (
     Opcodes.LOAD_METHOD,
 )
 
-HAS_CONST = (
-    Opcodes.LOAD_CONST,
+HAS_GLOBAL = (
+    Opcodes.STORE_GLOBAL,
+    Opcodes.DELETE_GLOBAL,
+    Opcodes.LOAD_GLOBAL,
 )
+
+HAS_CONST = (Opcodes.LOAD_CONST,)
 
 HAS_LOCAL = (
     Opcodes.LOAD_FAST,
     Opcodes.STORE_FAST,
     Opcodes.DELETE_FAST,
+    Opcodes.INTERMEDIATE_LOAD_FAST,
 )
 
 HAS_JUMP_ABSOLUTE = (
@@ -198,6 +207,7 @@ HAS_JUMP_ABSOLUTE = (
     Opcodes.JUMP_IF_NOT_EXC_MATCH,
     Opcodes.POP_JUMP_IF_FALSE,
     Opcodes.POP_JUMP_IF_TRUE,
+    Opcodes.INTERMEDIATE_INNER_RETURN,
 )
 
 HAS_JUMP_FORWARD = (
@@ -211,4 +221,5 @@ HAS_JUMP_FORWARD = (
 UNCONDITIONAL_JUMPS = (
     Opcodes.JUMP_ABSOLUTE,
     Opcodes.JUMP_FORWARD,
+    Opcodes.INTERMEDIATE_INNER_RETURN,
 )
