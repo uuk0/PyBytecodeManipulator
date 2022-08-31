@@ -1,4 +1,8 @@
 import typing
+import builtins
+
+
+BUILTIN_CACHE = builtins.__dict__.copy()
 
 
 class ValueIsNotArrivalException(Exception):
@@ -27,6 +31,21 @@ class _OptimisationContainer:
         self.target = target
         self.parents: typing.List["_OptimisationContainer"] = []
         self.optimisations: typing.List[AbstractOptimisationWalker] = []
+
+        self.lazy_global_name_cache: typing.Dict[str, typing.Callable[[], object]] = {}
+        self.dereference_global_name_cache: typing.Dict[str, object] = {}
+
+        self.lazy_local_var_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
+        self.dereference_local_var_types: typing.Dict[str, typing.Type | None] = {}
+
+        self.lazy_local_var_attr_type: typing.Dict[typing.Tuple[str, str], typing.Callable[[], typing.Type]] = {}
+        self.dereference_local_var_attr_type: typing.Dict[typing.Tuple[str, str], typing.Type] = {}
+
+        self.lazy_return_type: typing.Callable[[], typing.Type] | None = None
+        self.dereference_return_type: typing.Type | None = None
+
+        self.lazy_return_attr_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
+        self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
     def add_optimisation(self, optimiser: "AbstractOptimisationWalker"):
         self.optimisations.append(optimiser)
@@ -79,14 +98,7 @@ def cache_global_name(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.add_optimisation(
-            _CacheGlobalOptimisationWalker(
-                name,
-                accessor,
-                ignore_unsafe_writes,
-                ignore_global_is_never_used,
-            )
-        )
+        container.lazy_global_name_cache[name] = accessor
 
         return target
 
@@ -108,6 +120,7 @@ def guarantee_builtin_names_are_protected(white_list: typing.Iterable[str] = Non
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.dereference_global_name_cache.update(BUILTIN_CACHE)
 
         return target
 
@@ -134,6 +147,7 @@ def guarantee_exact_local_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.lazy_local_var_type[local_name] = lazy_data_type if lazy_data_type is not None else lambda: data_type
 
         return target
 
@@ -162,6 +176,7 @@ def guarantee_exact_local_var_attribute_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.lazy_local_var_attr_type[(local_name, attr_name)] = lazy_data_type if lazy_data_type is not None else lambda: data_type
 
         return target
 
@@ -186,6 +201,7 @@ def guarantee_exact_return_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.lazy_return_type = lazy_data_type if lazy_data_type is not None else lambda: data_type
 
         return target
 
@@ -193,6 +209,7 @@ def guarantee_exact_return_type(
 
 
 def guarantee_exact_return_attribute_type(
+    attr_name: str,
     data_type: typing.Type = None,
     lazy_data_type: typing.Callable[[], typing.Type] = None,
 ):
@@ -205,6 +222,7 @@ def guarantee_exact_return_attribute_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.lazy_return_attr_type[attr_name] = lazy_data_type if lazy_data_type is not None else lambda: data_type
 
         return target
 
