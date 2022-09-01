@@ -1,6 +1,10 @@
 import typing
 import builtins
 
+from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
+from bytecodemanipulation.optimiser_util import remove_nops
 
 BUILTIN_CACHE = builtins.__dict__.copy()
 
@@ -36,7 +40,7 @@ class _OptimisationContainer:
         self.dereference_global_name_cache: typing.Dict[str, object] = {}
 
         self.lazy_local_var_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
-        self.dereference_local_var_types: typing.Dict[str, typing.Type | None] = {}
+        self.dereference_local_var_type: typing.Dict[str, typing.Type | None] = {}
 
         self.lazy_local_var_attr_type: typing.Dict[typing.Tuple[str, str], typing.Callable[[], typing.Type]] = {}
         self.dereference_local_var_attr_type: typing.Dict[typing.Tuple[str, str], typing.Type] = {}
@@ -47,30 +51,64 @@ class _OptimisationContainer:
         self.lazy_return_attr_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
         self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
+        self.is_constant_op = False
+
     def add_optimisation(self, optimiser: "AbstractOptimisationWalker"):
         self.optimisations.append(optimiser)
         _ANNOTATIONS.append(optimiser)
         return self
+
+    def run_optimisers(self):
+        # resolve the lazy types
+        self._resolve_lazy_references()
+
+        # Create mutable wrapper around the target
+        mutable = MutableFunction(self.target)
+
+        # Walk over the code and resolve cached globals
+        self._inline_load_globals(mutable)
+
+        # Inline invokes to builtins and other known is_constant_op-s with static args
+        inline_constant_method_invokes(mutable)
+
+        remove_nops(mutable)
+
+        mutable.reassign_to_function()
+
+    def _inline_load_globals(self, mutable):
+        for instruction in mutable.instructions:
+            if instruction.opcode == Opcodes.LOAD_GLOBAL:
+                if instruction.arg_value in self.dereference_global_name_cache:
+                    instruction.change_opcode(Opcodes.LOAD_CONST)
+                    instruction.change_arg_value(self.dereference_global_name_cache[instruction.arg_value])
+
+            elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
+                if instruction.arg_value in self.dereference_global_name_cache:
+                    raise BreaksOwnGuaranteesException(f"Global {instruction.arg_value} is cached but written to!")
+
+        # todo: throw GlobalIsNeverAccessedException if wanted
+
+    def _resolve_lazy_references(self):
+        for key, lazy in self.lazy_global_name_cache.items():
+            if key not in self.dereference_global_name_cache:
+                self.dereference_global_name_cache[key] = lazy()
+        for key, lazy in self.lazy_local_var_type.items():
+            if key not in self.dereference_local_var_type:
+                self.dereference_local_var_type[key] = lazy()
+        for key, lazy in self.lazy_local_var_attr_type.items():
+            if key not in self.dereference_local_var_attr_type:
+                self.dereference_local_var_attr_type[key] = lazy()
+        if self.dereference_return_type is None and self.lazy_return_type is not None:
+            self.dereference_return_type = self.lazy_return_type()
+        for key, lazy in self.lazy_return_attr_type.items():
+            if key not in self.dereference_return_attr_type:
+                self.dereference_return_attr_type[key] = lazy()
 
 
 class AbstractOptimisationWalker:
     """
     Optimisation walker for classes and functions, constructed by the optimiser annotations
     """
-
-
-class _CacheGlobalOptimisationWalker(AbstractOptimisationWalker):
-    def __init__(
-        self,
-        name: str,
-        accessor: typing.Callable[[], object] = None,
-        ignore_unsafe_writes=False,
-        ignore_global_is_never_used=False,
-    ):
-        self.name = name
-        self.accessor = accessor
-        self.ignore_unsafe_writes = ignore_unsafe_writes
-        self.ignore_global_is_never_used = ignore_global_is_never_used
 
 
 def cache_global_name(
@@ -271,6 +309,7 @@ def guarantee_constant_result():
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.is_constant_op = True
 
         return target
 

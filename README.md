@@ -15,8 +15,6 @@ at runtime!
 
 Supported python versions:
 
-- 3.8 and below: unsupported; will produce syntax errors due to using new features
-- 3.9 (WIP)
 - 3.10 (main development)
 - 3.11.0[b3] (forward porting; WIP; Currently not working)
 

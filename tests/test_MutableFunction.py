@@ -44,8 +44,7 @@ class TestMutableFunction(TestCase):
             return True
 
         mut = MutableFunction(target)
-        mut.instructions[0].optimise_tree()
-        mut.assemble_instructions_from_tree(mut.instructions[0])
+        mut.assemble_instructions_from_tree(mut.instructions[0].optimise_tree())
 
     def test_reassign(self):
         def target():

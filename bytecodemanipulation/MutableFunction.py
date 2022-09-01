@@ -213,7 +213,7 @@ class _Instruction:
 
         return self
 
-    def optimise_tree(self, visited: typing.Set["_Instruction"] = None):
+    def optimise_tree(self, visited: typing.Set["_Instruction"] = None) -> "_Instruction":
         """
         Optimises the instruction tree, removing NOP's and inlining unconditional jumps
         WARNING: this WILL invalidate the linearity of any instruction list, you MUST use assemble_instructions_from_tree()
@@ -225,8 +225,11 @@ class _Instruction:
         if visited is None:
             visited = set()
 
+        if self.opcode == Opcodes.NOP and self.next_instruction is not None:
+            return self.next_instruction.optimise_tree(visited)
+
         if self in visited:
-            return
+            return self
 
         while self.next_instruction is not None:
             assert isinstance(self.next_instruction, _Instruction)
@@ -244,7 +247,7 @@ class _Instruction:
         visited.add(self)
 
         if self.next_instruction is not None:
-            self.next_instruction.optimise_tree(visited)
+            self.next_instruction = self.next_instruction.optimise_tree(visited)
 
         if (
             self.has_jump_absolute()
@@ -252,7 +255,9 @@ class _Instruction:
             or self.has_jump_backward()
         ) and self.arg_value is not None:
             assert isinstance(self.arg_value, _Instruction)
-            self.arg_value.optimise_tree(visited)
+            self.arg_value = self.arg_value.optimise_tree(visited)
+
+        return self
 
 
 if typing.TYPE_CHECKING:
@@ -678,3 +683,35 @@ class MutableFunction:
             return self.shared_variable_names.index(variable_name)
         self.shared_variable_names.append(variable_name)
         return len(self.shared_variable_names) - 1
+
+    def trace_stack_position(self, instr_offset: int, stack_position: int) -> _Instruction:
+        assert instr_offset >= 0
+        assert stack_position >= 0
+
+        print(instr_offset, stack_position)
+
+        while True:
+            instr_offset -= 1
+
+            assert instr_offset >= 0
+
+            instruction = self.instructions[instr_offset]
+
+            if instruction.opcode == Opcodes.NOP:
+                continue
+
+            if instruction.opcode in (
+                Opcodes.LOAD_CONST,
+                Opcodes.LOAD_GLOBAL,
+                Opcodes.LOAD_FAST,
+                Opcodes.LOAD_DEREF,
+            ):
+                if stack_position == 0:
+                    return instruction
+                stack_position -= 1
+                continue
+
+            if instruction.opcode == Opcodes.RETURN_VALUE:
+                raise ValueError(instruction)
+
+            raise RuntimeError(instruction)
