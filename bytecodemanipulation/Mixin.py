@@ -2,20 +2,6 @@ import importlib
 import typing
 
 
-class Util:
-    @classmethod
-    def return_(cls, value=None):
-        pass
-
-    @classmethod
-    def load_fast(cls, name: str):
-        pass
-
-    @classmethod
-    def link_fast(cls, inner: str, outer: str):
-        pass
-
-
 class _MixinContainer:
     class MixinFunctionContainer:
         def __init__(self, target: typing.Callable):

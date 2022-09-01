@@ -4,6 +4,7 @@ import builtins
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
+from bytecodemanipulation.optimiser_util import remove_branch_on_constant
 from bytecodemanipulation.optimiser_util import remove_nops
 
 BUILTIN_CACHE = builtins.__dict__.copy()
@@ -86,6 +87,9 @@ class _OptimisationContainer:
 
         # Inline invokes to builtins and other known is_constant_op-s with static args
         inline_constant_method_invokes(mutable)
+
+        # Remove conditional jumps no longer required
+        remove_branch_on_constant(mutable)
 
         remove_nops(mutable)
 
