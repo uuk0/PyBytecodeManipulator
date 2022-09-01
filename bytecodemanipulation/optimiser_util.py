@@ -69,13 +69,21 @@ def inline_constant_method_invokes(mutable: MutableFunction):
 
         for instruction in mutable.instructions:
             if instruction.opcode == Opcodes.CALL_FUNCTION:
-                target = mutable.trace_stack_position(instruction.offset, instruction.arg)
+                target = mutable.trace_stack_position(
+                    instruction.offset, instruction.arg
+                )
 
                 if target.opcode == Opcodes.LOAD_CONST:
                     function: typing.Callable = target.arg_value
 
-                    if function in CONSTANT_BUILTINS or (hasattr(function, "_OPTIMISER_CONTAINER") and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op):
-                        args = [mutable.trace_stack_position(instruction.offset, i) for i in range(instruction.arg - 1, -1, -1)]
+                    if function in CONSTANT_BUILTINS or (
+                        hasattr(function, "_OPTIMISER_CONTAINER")
+                        and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op
+                    ):
+                        args = [
+                            mutable.trace_stack_position(instruction.offset, i)
+                            for i in range(instruction.arg - 1, -1, -1)
+                        ]
 
                         if all(instr.opcode == Opcodes.LOAD_CONST for instr in args):
                             result = function(*(e.arg_value for e in args))
@@ -105,7 +113,13 @@ def inline_constant_binary_ops(mutable: MutableFunction):
                 if hasattr(value, method):
                     method = getattr(value, method)
 
-                    if not callable(method) or not (type(value) in CONSTANT_BUILTIN_TYPES or (hasattr(method, "_OPTIMISER_CONTAINER") and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op)):
+                    if not callable(method) or not (
+                        type(value) in CONSTANT_BUILTIN_TYPES
+                        or (
+                            hasattr(method, "_OPTIMISER_CONTAINER")
+                            and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
+                        )
+                    ):
                         continue
 
                     try:
@@ -128,8 +142,13 @@ def inline_constant_binary_ops(mutable: MutableFunction):
 
                 method = getattr(value, method)
 
-                if not callable(method) or not (type(value) in CONSTANT_BUILTIN_TYPES or (
-                        hasattr(method, "_OPTIMISER_CONTAINER") and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op)):
+                if not callable(method) or not (
+                    type(value) in CONSTANT_BUILTIN_TYPES
+                    or (
+                        hasattr(method, "_OPTIMISER_CONTAINER")
+                        and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
+                    )
+                ):
                     continue
 
                 try:
@@ -147,4 +166,3 @@ def remove_nops(mutable: MutableFunction):
     root = mutable.instructions[0]
     root = root.optimise_tree()
     mutable.assemble_instructions_from_tree(root)
-

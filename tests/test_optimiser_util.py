@@ -1,7 +1,12 @@
 import dis
 from unittest import TestCase
 from bytecodemanipulation.optimiser_util import *
-from bytecodemanipulation.Optimiser import guarantee_constant_result, cache_global_name, _OptimisationContainer, BUILTIN_CACHE
+from bytecodemanipulation.Optimiser import (
+    guarantee_constant_result,
+    cache_global_name,
+    _OptimisationContainer,
+    BUILTIN_CACHE,
+)
 
 
 BUILTIN_INLINE = _OptimisationContainer(None)
@@ -52,4 +57,3 @@ class TestOptimiserUtil(TestCase):
         mutable = MutableFunction(target)
 
         self.assertEqual(2, mutable.instructions[0].arg_value)
-

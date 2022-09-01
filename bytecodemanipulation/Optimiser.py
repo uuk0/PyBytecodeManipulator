@@ -39,16 +39,24 @@ class _OptimisationContainer:
         self.lazy_global_name_cache: typing.Dict[str, typing.Callable[[], object]] = {}
         self.dereference_global_name_cache: typing.Dict[str, object] = {}
 
-        self.lazy_local_var_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
+        self.lazy_local_var_type: typing.Dict[
+            str, typing.Callable[[], typing.Type]
+        ] = {}
         self.dereference_local_var_type: typing.Dict[str, typing.Type | None] = {}
 
-        self.lazy_local_var_attr_type: typing.Dict[typing.Tuple[str, str], typing.Callable[[], typing.Type]] = {}
-        self.dereference_local_var_attr_type: typing.Dict[typing.Tuple[str, str], typing.Type] = {}
+        self.lazy_local_var_attr_type: typing.Dict[
+            typing.Tuple[str, str], typing.Callable[[], typing.Type]
+        ] = {}
+        self.dereference_local_var_attr_type: typing.Dict[
+            typing.Tuple[str, str], typing.Type
+        ] = {}
 
         self.lazy_return_type: typing.Callable[[], typing.Type] | None = None
         self.dereference_return_type: typing.Type | None = None
 
-        self.lazy_return_attr_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
+        self.lazy_return_attr_type: typing.Dict[
+            str, typing.Callable[[], typing.Type]
+        ] = {}
         self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
         self.is_constant_op = False
@@ -71,22 +79,17 @@ class _OptimisationContainer:
         # Inline invokes to builtins and other known is_constant_op-s with static args
         inline_constant_method_invokes(mutable)
 
+        # Resolve known constant types
+        self._resolve_constant_local_types(mutable)
+        # self._resolve_constant_local_attr_types(mutable)
+        # todo: use return type of known functions
+
+        # Inline invokes to builtins and other known is_constant_op-s with static args
+        inline_constant_method_invokes(mutable)
+
         remove_nops(mutable)
 
         mutable.reassign_to_function()
-
-    def _inline_load_globals(self, mutable):
-        for instruction in mutable.instructions:
-            if instruction.opcode == Opcodes.LOAD_GLOBAL:
-                if instruction.arg_value in self.dereference_global_name_cache:
-                    instruction.change_opcode(Opcodes.LOAD_CONST)
-                    instruction.change_arg_value(self.dereference_global_name_cache[instruction.arg_value])
-
-            elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
-                if instruction.arg_value in self.dereference_global_name_cache:
-                    raise BreaksOwnGuaranteesException(f"Global {instruction.arg_value} is cached but written to!")
-
-        # todo: throw GlobalIsNeverAccessedException if wanted
 
     def _resolve_lazy_references(self):
         for key, lazy in self.lazy_global_name_cache.items():
@@ -103,6 +106,45 @@ class _OptimisationContainer:
         for key, lazy in self.lazy_return_attr_type.items():
             if key not in self.dereference_return_attr_type:
                 self.dereference_return_attr_type[key] = lazy()
+
+    def _inline_load_globals(self, mutable: MutableFunction):
+        for instruction in mutable.instructions:
+            if instruction.opcode == Opcodes.LOAD_GLOBAL:
+                if instruction.arg_value in self.dereference_global_name_cache:
+                    instruction.change_opcode(Opcodes.LOAD_CONST)
+                    instruction.change_arg_value(
+                        self.dereference_global_name_cache[instruction.arg_value]
+                    )
+
+            elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
+                if instruction.arg_value in self.dereference_global_name_cache:
+                    raise BreaksOwnGuaranteesException(
+                        f"Global {instruction.arg_value} is cached but written to!"
+                    )
+
+        # todo: throw GlobalIsNeverAccessedException if wanted
+
+    def _resolve_constant_local_types(self, mutable: MutableFunction):
+        for instruction in mutable.instructions:
+            if instruction.opcode == Opcodes.LOAD_ATTR:
+                source = mutable.trace_stack_position(instruction.offset, 0)
+
+                if source.opcode in (Opcodes.LOAD_FAST, Opcodes.LOAD_METHOD):
+                    if source.arg_value not in self.dereference_local_var_type:
+                        continue
+
+                    data_type = self.dereference_local_var_type[source.arg_value]
+
+                    if not hasattr(data_type, instruction.arg_value):
+                        return
+
+                    # todo: check for dynamic class variables!
+
+                    attr = getattr(data_type, instruction.arg_value)
+
+                    instruction.change_opcode(Opcodes.LOAD_CONST)
+                    instruction.change_arg_value(attr)
+                    source.change_opcode(Opcodes.NOP)
 
 
 class AbstractOptimisationWalker:
@@ -143,7 +185,9 @@ def cache_global_name(
     return annotate
 
 
-def guarantee_builtin_names_are_protected(white_list: typing.Iterable[str] = None, black_list: typing.Iterable[str] = None):
+def guarantee_builtin_names_are_protected(
+    white_list: typing.Iterable[str] = None, black_list: typing.Iterable[str] = None
+):
     """
     Annotation marking all builtin names as protected, meaning they can be cached
 
@@ -166,7 +210,9 @@ def guarantee_builtin_names_are_protected(white_list: typing.Iterable[str] = Non
 
 
 def guarantee_exact_local_type(
-    local_name: str, data_type: typing.Type = None, lazy_data_type: typing.Callable[[], typing.Type] = None
+    local_name: str,
+    data_type: typing.Type = None,
+    lazy_data_type: typing.Callable[[], typing.Type] = None,
 ):
     """
     Guarantees that the given local name has the exact type. Not a subclass of it.
@@ -185,7 +231,9 @@ def guarantee_exact_local_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.lazy_local_var_type[local_name] = lazy_data_type if lazy_data_type is not None else lambda: data_type
+        container.lazy_local_var_type[local_name] = (
+            lazy_data_type if lazy_data_type is not None else lambda: data_type
+        )
 
         return target
 
@@ -214,7 +262,9 @@ def guarantee_exact_local_var_attribute_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.lazy_local_var_attr_type[(local_name, attr_name)] = lazy_data_type if lazy_data_type is not None else lambda: data_type
+        container.lazy_local_var_attr_type[(local_name, attr_name)] = (
+            lazy_data_type if lazy_data_type is not None else lambda: data_type
+        )
 
         return target
 
@@ -239,7 +289,9 @@ def guarantee_exact_return_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.lazy_return_type = lazy_data_type if lazy_data_type is not None else lambda: data_type
+        container.lazy_return_type = (
+            lazy_data_type if lazy_data_type is not None else lambda: data_type
+        )
 
         return target
 
@@ -260,7 +312,9 @@ def guarantee_exact_return_attribute_type(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.lazy_return_attr_type[attr_name] = lazy_data_type if lazy_data_type is not None else lambda: data_type
+        container.lazy_return_attr_type[attr_name] = (
+            lazy_data_type if lazy_data_type is not None else lambda: data_type
+        )
 
         return target
 

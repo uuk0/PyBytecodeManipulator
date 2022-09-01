@@ -122,6 +122,10 @@ class _Instruction:
             else self.function.instructions[self.offset + 1]
         )
 
+        if self.opcode == Opcodes.NOP:
+            self.arg = 0
+            self.arg_value = None
+
     def change_arg_value(self, value: object):
         self.arg_value = value
 
@@ -207,13 +211,19 @@ class _Instruction:
 
         self.next_instruction = (
             (None if previous_function != function else self.next_instruction)
-            if function is None or offset is None or self.opcode in END_CONTROL_FLOW or offset == -1 or offset + 1 >= len(function.instructions)
+            if function is None
+            or offset is None
+            or self.opcode in END_CONTROL_FLOW
+            or offset == -1
+            or offset + 1 >= len(function.instructions)
             else function.instructions[offset + 1]
         )
 
         return self
 
-    def optimise_tree(self, visited: typing.Set["_Instruction"] = None) -> "_Instruction":
+    def optimise_tree(
+        self, visited: typing.Set["_Instruction"] = None
+    ) -> "_Instruction":
         """
         Optimises the instruction tree, removing NOP's and inlining unconditional jumps
         WARNING: this WILL invalidate the linearity of any instruction list, you MUST use assemble_instructions_from_tree()
@@ -407,9 +417,7 @@ class MutableFunction:
 
             for _ in range(count):
                 pos = instruction.offset + write_offset
-                instructions.insert(
-                    pos, nop_instr := _Instruction(self, pos, "NOP")
-                )
+                instructions.insert(pos, nop_instr := _Instruction(self, pos, "NOP"))
 
             write_offset += count
 
@@ -425,9 +433,9 @@ class MutableFunction:
                 else:
                     print(instruction)
 
-            if arg >= 256 ** 3:
+            if arg >= 256**3:
                 count = 3
-            elif arg >= 256 ** 2:
+            elif arg >= 256**2:
                 count = 2
             elif arg >= 256:
                 count = 1
@@ -439,17 +447,18 @@ class MutableFunction:
     def update_jump_args(self, instructions):
         # Update the raw arg for jumps
         for instruction in instructions:
-            if instruction.next_instruction is None: continue
+            if instruction.next_instruction is None:
+                continue
 
             if instruction.has_jump_absolute():
                 instruction.arg = instruction.next_instruction.offset
             elif instruction.has_jump_forward():
                 instruction.arg = (
-                        instruction.next_instruction.offset - instruction.offset
+                    instruction.next_instruction.offset - instruction.offset
                 )
             elif instruction.has_jump_backward():
                 instruction.arg = (
-                        instruction.offset - instruction.next_instruction.offset
+                    instruction.offset - instruction.next_instruction.offset
                 )
 
     def insert_needed_jumps(self, instructions):
@@ -458,7 +467,10 @@ class MutableFunction:
             if instruction.has_stop_flow():
                 continue
 
-            if instruction.next_instruction is not None and instruction.offset + 1 != instruction.next_instruction.offset:
+            if (
+                instruction.next_instruction is not None
+                and instruction.offset + 1 != instruction.next_instruction.offset
+            ):
                 jump = _Instruction(
                     self,
                     -1,
@@ -497,7 +509,11 @@ class MutableFunction:
                 instructions.append(instruction)
                 visited.add(instruction)
 
-                if instruction.has_stop_flow() or instruction in breaks_flow or instruction.opcode in breaks_flow:
+                if (
+                    instruction.has_stop_flow()
+                    or instruction in breaks_flow
+                    or instruction.opcode in breaks_flow
+                ):
                     break
 
                 if instruction.next_instruction is None:
@@ -684,11 +700,13 @@ class MutableFunction:
         self.shared_variable_names.append(variable_name)
         return len(self.shared_variable_names) - 1
 
-    def trace_stack_position(self, instr_offset: int, stack_position: int) -> _Instruction:
+    def trace_stack_position(
+        self, instr_offset: int, stack_position: int
+    ) -> _Instruction:
         assert instr_offset >= 0
         assert stack_position >= 0
 
-        print(instr_offset, stack_position)
+        # print(instr_offset, stack_position)
 
         while True:
             instr_offset -= 1
@@ -697,7 +715,7 @@ class MutableFunction:
 
             instruction = self.instructions[instr_offset]
 
-            if instruction.opcode == Opcodes.NOP:
+            if instruction.opcode in (Opcodes.NOP,):
                 continue
 
             if instruction.opcode in (
@@ -709,6 +727,13 @@ class MutableFunction:
                 if stack_position == 0:
                     return instruction
                 stack_position -= 1
+                continue
+
+            if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
+                if stack_position == 0:
+                    return instruction
+                stack_position -= 1
+                stack_position += instruction.arg
                 continue
 
             if instruction.opcode == Opcodes.RETURN_VALUE:

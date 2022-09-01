@@ -63,50 +63,7 @@ that exact method.
 
 # Examples
 
-Replacing a code constant (in the whole function body):
-```python
-from bytecodemanipulation.Transformers import TransformationHandler
-
-handler = TransformationHandler()
-
-
-def test():
-  return 0
-
-
-handler.makeFunctionArrival("test", test)
-
-# Replaces the constant '0' from the return with a '1'
-handler.replace_method_constant("test", 0, 1)
-
-handler.applyTransforms()
-
-assert test() == 1
-```
-
-We can also select single constants, like the following:
-```python
-from bytecodemanipulation.Transformers import TransformationHandler
-from bytecodemanipulation.InstructionMatchers import CounterMatcher
-
-handler = TransformationHandler()
-
-
-def test():
-  print(0)
-  return 0
-
-
-handler.makeFunctionArrival("test", test)
-
-# Replaces the constant '0' from the return with a '1'
-handler.replace_method_constant("test", 0, 1, matcher=CounterMatcher(1, 1))
-
-handler.applyTransforms()
-
-# This will return 1, but print 0
-assert test() == 1
-```
+TODO
 
 
 ## Code Formatting
