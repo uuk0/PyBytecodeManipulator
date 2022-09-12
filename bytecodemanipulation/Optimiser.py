@@ -67,6 +67,9 @@ class _OptimisationContainer:
         ] = {}
         self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
+        self.lazy_attribute_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
+        self.dereference_attribute_type: typing.Dict[str, typing.Type] = {}
+
         self.is_constant_op = False
         self.is_side_effect_free_op = False
 
@@ -92,7 +95,6 @@ class _OptimisationContainer:
 
     def add_optimisation(self, optimiser: "AbstractOptimisationWalker"):
         self.optimisations.append(optimiser)
-        _ANNOTATIONS.append(optimiser)
         return self
 
     def run_optimisers(self):
@@ -165,6 +167,9 @@ class _OptimisationContainer:
         for key, lazy in self.lazy_return_attr_type.items():
             if key not in self.dereference_return_attr_type:
                 self.dereference_return_attr_type[key] = lazy()
+        for key, lazy in self.lazy_attribute_type.items():
+            if key not in self.dereference_attribute_type:
+                self.dereference_attribute_type[key] = lazy()
 
     def _inline_load_globals(self, mutable: MutableFunction) -> bool:
         dirty = False
@@ -501,18 +506,6 @@ def apply_now():
     return annotate
 
 
-def changes_object_state():
-    def annotate(target):
-        container = _OptimisationContainer.get_for_target(target)
-
-        return target
-
-    return annotate
-
-
-_ANNOTATIONS = []
-
-
 class IOptimised:
     """
     Implement this to apply optimisation on parts of the class
@@ -523,7 +516,7 @@ class IOptimised:
     Annotate with above functions to apply method on whole classes / functions
     """
 
-    _OPTIMISER_ANNOTATIONS = []
+    _OPTIMISER_CONTAINER: _OptimisationContainer = None
 
     @classmethod
     def for_unbound_method(cls, target: typing.Callable) -> "IOptimised":
@@ -531,15 +524,15 @@ class IOptimised:
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
-        cls._OPTIMISER_ANNOTATIONS = cls._OPTIMISER_ANNOTATIONS + _ANNOTATIONS
-        _ANNOTATIONS.clear()
-
-    @classmethod
-    def ignore_optimiser_exceptions(cls):
-        return cls
+        cls._OPTIMISER_CONTAINER = _OptimisationContainer(cls)
 
     @classmethod
     def guarantee_this_attribute_exact_type(
         cls, attr_name: str, data_type: typing.Type | typing.Callable[[], typing.Type]
     ):
+        if not isinstance(data_type, type):
+            cls._OPTIMISER_CONTAINER.lazy_attribute_type[attr_name] = data_type
+        else:
+            cls._OPTIMISER_CONTAINER.dereference_attribute_type[attr_name] = data_type
+
         return cls
