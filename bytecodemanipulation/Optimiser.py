@@ -1,3 +1,5 @@
+import inspect
+import types
 import typing
 import builtins
 
@@ -8,6 +10,7 @@ from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
 from bytecodemanipulation.optimiser_util import remove_branch_on_constant
 from bytecodemanipulation.optimiser_util import remove_local_var_assign_without_use
 from bytecodemanipulation.optimiser_util import remove_nops
+from bytecodemanipulation.util import _is_parent_of
 
 BUILTIN_CACHE = builtins.__dict__.copy()
 
@@ -34,9 +37,10 @@ class _OptimisationContainer:
         target._OPTIMISER_CONTAINER = container
         return container
 
-    def __init__(self, target):
+    def __init__(self, target: types.FunctionType | types.MethodType | typing.Type):
         self.target = target
         self.parents: typing.List["_OptimisationContainer"] = []
+        self.children: typing.List["_OptimisationContainer"] = []
         self.optimisations: typing.List[AbstractOptimisationWalker] = []
 
         self.lazy_global_name_cache: typing.Dict[str, typing.Callable[[], object]] = {}
@@ -68,12 +72,38 @@ class _OptimisationContainer:
 
         self.may_raise_exceptions: typing.Set[typing.Type[Exception] | Exception] | None = None
 
+    def _walk_children_and_copy_attributes(self):
+        for value in self.target.__dict__.values():
+            if isinstance(value, type) or inspect.ismethod(value) or inspect.isfunction(value) or isinstance(value, staticmethod):
+                if _is_parent_of(value, self.target):
+                    container = self.get_for_target(value)
+                    container._copy_from(self)
+                    self.children.append(container)
+
+    def _copy_from(self, parent: "_OptimisationContainer"):
+        self.parents.append(parent)
+
+        self.lazy_global_name_cache.update({key: value for key, value in parent.lazy_global_name_cache.items() if key not in self.lazy_global_name_cache})
+        self.dereference_global_name_cache.update({key: value for key, value in parent.dereference_global_name_cache.items() if key not in self.dereference_global_name_cache})
+        self.unsafe_global_writes_allowed |= parent.unsafe_global_writes_allowed
+
+        for child in self.children:
+            child._copy_from(parent)
+
     def add_optimisation(self, optimiser: "AbstractOptimisationWalker"):
         self.optimisations.append(optimiser)
         _ANNOTATIONS.append(optimiser)
         return self
 
     def run_optimisers(self):
+        if isinstance(self.target, type):
+            self._walk_children_and_copy_attributes()
+
+            for child in self.children:
+                child.run_optimisers()
+
+            return
+
         # resolve the lazy types
         self._resolve_lazy_references()
 

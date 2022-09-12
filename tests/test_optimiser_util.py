@@ -18,6 +18,13 @@ def test_target(a, b):
     return a + b
 
 
+@cache_global_name("test_target", lambda: test_target)
+class Outer_test_inline_const_function_on_parent:
+    @staticmethod
+    def target():
+        return test_target(1, 1)
+
+
 class TestOptimiserUtil(TestCase):
     def test_inline_constant_method_invoke(self):
         def target():
@@ -55,6 +62,14 @@ class TestOptimiserUtil(TestCase):
         _OptimisationContainer.get_for_target(target).run_optimisers()
 
         mutable = MutableFunction(target)
+
+        self.assertEqual(2, mutable.instructions[0].arg_value)
+
+    def test_inline_const_function_on_parent(self):
+        container = _OptimisationContainer.get_for_target(Outer_test_inline_const_function_on_parent)
+        container.run_optimisers()
+
+        mutable = MutableFunction(Outer_test_inline_const_function_on_parent.target)
 
         self.assertEqual(2, mutable.instructions[0].arg_value)
 

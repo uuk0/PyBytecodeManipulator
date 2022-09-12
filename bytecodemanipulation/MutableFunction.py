@@ -296,6 +296,9 @@ else:
 
 class MutableFunction:
     def __init__(self, target: types.FunctionType | types.MethodType):
+        if isinstance(target, staticmethod):
+            target = target.__func__
+
         self.target = target
         self.code_object: types.CodeType = target.__code__
 
