@@ -232,6 +232,9 @@ class _Instruction:
         Requires next_instruction's to be set, meaning it must be owned at some point by a function
         """
 
+        if self.has_unconditional_jump():
+            return self.arg_value.optimise_tree(visited)
+
         if visited is None:
             visited = set()
 
@@ -256,7 +259,7 @@ class _Instruction:
 
         visited.add(self)
 
-        if self.next_instruction is not None:
+        if self.next_instruction is not None and not self.has_stop_flow() and not self.has_unconditional_jump():
             self.next_instruction = self.next_instruction.optimise_tree(visited)
 
         if (
@@ -734,6 +737,13 @@ class MutableFunction:
                     return instruction
                 stack_position -= 1
                 stack_position += instruction.arg
+                continue
+
+            if instruction.opcode in (Opcodes.COMPARE_OP,):
+                if stack_position == 0:
+                    return instruction
+                stack_position -= 1
+                stack_position += 2
                 continue
 
             if instruction.opcode == Opcodes.RETURN_VALUE:

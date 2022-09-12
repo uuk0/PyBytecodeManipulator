@@ -1,3 +1,4 @@
+import traceback
 import typing
 
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -58,6 +59,12 @@ OPCODE_TO_ATTR_DOUBLE = {
     Opcodes.BINARY_OR: "__or__",
     (Opcodes.IS_OP, 0): lambda a, b: a is b,
     (Opcodes.IS_OP, 1): lambda a, b: a is not b,
+    (Opcodes.COMPARE_OP, 0): lambda a, b: a < b,
+    (Opcodes.COMPARE_OP, 1): lambda a, b: a <= b,
+    (Opcodes.COMPARE_OP, 2): lambda a, b: a == b,
+    (Opcodes.COMPARE_OP, 3): lambda a, b: a != b,
+    (Opcodes.COMPARE_OP, 4): lambda a, b: a > b,
+    (Opcodes.COMPARE_OP, 5): lambda a, b: a >= b,
 }
 
 
@@ -134,28 +141,30 @@ def inline_constant_binary_ops(mutable: MutableFunction):
                     target.change_opcode(Opcodes.NOP)
 
         elif instruction.opcode in OPCODE_TO_ATTR_DOUBLE or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_DOUBLE:
-            method = OPCODE_TO_ATTR_SINGLE[instruction.opcode if instruction.opcode in OPCODE_TO_ATTR_DOUBLE else (instruction.opcode, instruction.arg)]
+            method = OPCODE_TO_ATTR_DOUBLE[instruction.opcode if instruction.opcode in OPCODE_TO_ATTR_DOUBLE else (instruction.opcode, instruction.arg)]
 
-            arg = mutable.trace_stack_position(instruction.offset, 0)
+            arg = mutable.trace_stack_position(instruction.offset, 1)
             target = mutable.trace_stack_position(instruction.offset, 0)
 
             if arg.opcode == target.opcode == Opcodes.LOAD_CONST:
                 value = target.arg_value
 
-                method = getattr(value, method) if isinstance(method, str) else method
+                if isinstance(method, str):
+                    method = getattr(value, method)
 
-                if not callable(method) or not (
-                    type(value) in CONSTANT_BUILTIN_TYPES
-                    or (
-                        hasattr(method, "_OPTIMISER_CONTAINER")
-                        and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
-                    )
-                ):
-                    continue
+                    if not callable(method) or not (
+                        type(value) in CONSTANT_BUILTIN_TYPES
+                        or (
+                            hasattr(method, "_OPTIMISER_CONTAINER")
+                            and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
+                        )
+                    ):
+                        continue
 
                 try:
-                    value = method(arg.arg_value)
+                    value = method(arg.arg_value, target.arg_value)
                 except:
+                    traceback.print_exc()
                     continue
 
                 instruction.change_opcode(Opcodes.LOAD_CONST)
@@ -233,15 +242,14 @@ def remove_branch_on_constant(mutable: MutableFunction):
                     flag = bool(source.arg_value)
 
                     if instruction.opcode == Opcodes.POP_JUMP_IF_FALSE:
-                        if instruction.opcode == Opcodes.JUMP_IF_FALSE_OR_POP:
-                            flag = not flag
+                        flag = not flag
 
-                        source.change_opcode(Opcodes.NOP)
+                    source.change_opcode(Opcodes.NOP)
 
-                        if flag:
-                            instruction.change_opcode(Opcodes.JUMP_ABSOLUTE)
-                        else:
-                            instruction.change_opcode(Opcodes.NOP)
+                    if flag:
+                        instruction.change_opcode(Opcodes.JUMP_ABSOLUTE)
+                    else:
+                        instruction.change_opcode(Opcodes.NOP)
 
 
 def remove_nops(mutable: MutableFunction):

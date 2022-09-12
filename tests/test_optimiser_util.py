@@ -70,3 +70,21 @@ class TestOptimiserUtil(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(mutable.instructions[0].arg_value, 1)
+
+    def test_branch_remover_2(self):
+        def target():
+            if 0 != 0:
+                return 0
+            return 1
+
+        dis.dis(target)
+
+        mutable = MutableFunction(target)
+        inline_constant_binary_ops(mutable)
+        remove_branch_on_constant(mutable)
+        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(mutable.instructions[0].arg_value, 1)
