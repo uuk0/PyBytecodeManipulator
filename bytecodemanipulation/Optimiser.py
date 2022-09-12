@@ -3,8 +3,10 @@ import builtins
 
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
 from bytecodemanipulation.optimiser_util import remove_branch_on_constant
+from bytecodemanipulation.optimiser_util import remove_local_var_assign_without_use
 from bytecodemanipulation.optimiser_util import remove_nops
 
 BUILTIN_CACHE = builtins.__dict__.copy()
@@ -61,6 +63,7 @@ class _OptimisationContainer:
         self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
         self.is_constant_op = False
+        self.is_side_effect_free_op = False
 
     def add_optimisation(self, optimiser: "AbstractOptimisationWalker"):
         self.optimisations.append(optimiser)
@@ -79,6 +82,10 @@ class _OptimisationContainer:
         # Walk over the entries as long as the optimisers are doing their stuff
         while dirty:
             dirty = False
+
+            dirty = inline_const_value_pop_pairs(mutable) or dirty
+
+            dirty = remove_local_var_assign_without_use(mutable) or dirty
 
             # Walk over the code and resolve cached globals
             dirty = self._inline_load_globals(mutable) or dirty
@@ -99,7 +106,10 @@ class _OptimisationContainer:
 
             remove_nops(mutable)
 
-        mutable.assemble_instructions_from_tree(mutable.instructions[0])
+            mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+
+        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+
         mutable.reassign_to_function()
 
     def _resolve_lazy_references(self):
@@ -384,6 +394,20 @@ def guarantee_constant_result():
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
         container.is_constant_op = True
+
+        return target
+
+    return annotate
+
+
+def guarantee_side_effect_free_call():
+    """
+    Guarantees that this function will not modify the state of anything associated
+    """
+
+    def annotate(target):
+        container = _OptimisationContainer.get_for_target(target)
+        container.is_side_effect_free_op = True
 
         return target
 

@@ -401,7 +401,11 @@ class MutableFunction:
                 not instruction.has_stop_flow()
                 and not instruction.has_unconditional_jump()
             ):
-                instruction.next_instruction = instructions[i + 1]
+                try:
+                    instruction.next_instruction = instructions[i + 1]
+                except:
+                    print(instruction)
+                    raise
 
         self.assemble_fast(instructions)
         # We do not re-decode, as that would invalidate the instruction instances here

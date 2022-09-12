@@ -1,6 +1,7 @@
 import traceback
 import typing
 
+from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.MutableFunctionHelpers import MutableFunctionWithTree
@@ -66,6 +67,84 @@ OPCODE_TO_ATTR_DOUBLE = {
     (Opcodes.COMPARE_OP, 4): lambda a, b: a > b,
     (Opcodes.COMPARE_OP, 5): lambda a, b: a >= b,
 }
+
+
+SIDE_EFFECT_FREE_LOADS = {
+    Opcodes.LOAD_FAST,
+    Opcodes.LOAD_NAME,
+    Opcodes.LOAD_GLOBAL,
+    Opcodes.LOAD_CONST,
+    Opcodes.LOAD_ASSERTION_ERROR,
+    Opcodes.LOAD_BUILD_CLASS,
+    Opcodes.LOAD_ASSERTION_ERROR,
+    Opcodes.DUP_TOP,
+}
+
+
+def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
+    dirty = False
+
+    for instruction in mutable.instructions:
+        if instruction.opcode == Opcodes.POP_TOP:
+            source = mutable.trace_stack_position(instruction.offset, 0)
+
+            # Inline LOAD_XX - POP pairs
+            if source.opcode in SIDE_EFFECT_FREE_LOADS:
+                instruction.change_opcode(Opcodes.NOP)
+                source.change_opcode(Opcodes.NOP)
+                dirty = True
+                continue
+
+            # Inline CALL_XX (constant expr) - POP pairs
+            if source.opcode == Opcodes.CALL_FUNCTION:
+                func_invoke = mutable.trace_stack_position(source.offset, source.arg)
+
+                if func_invoke.opcode == Opcodes.LOAD_CONST:
+                    function = func_invoke.arg_value
+
+                    if function in CONSTANT_BUILTINS or (
+                        hasattr(function, "_OPTIMISER_CONTAINER")
+                        and getattr(function, "_OPTIMISER_CONTAINER").is_side_effect_free_op
+                    ):
+                        instruction.change_opcode(Opcodes.NOP)
+
+                        if func_invoke.arg == 0:
+                            func_invoke.change_opcode(Opcodes.NOP)
+                            continue
+                        pops = func_invoke.arg
+
+                        func_invoke.change_opcode(Opcodes.POP_TOP)
+                        pops -= 1
+
+                        if pops:
+                            for _ in range(pops):
+                                nop = Instruction(Opcodes.NOP)
+                                nop.next_instruction = func_invoke.next_instruction
+                                func_invoke.next_instruction = nop
+
+                            mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+                            return True
+
+                        continue
+
+    return dirty
+
+
+def remove_local_var_assign_without_use(mutable: MutableFunction) -> bool:
+    dirty = False
+
+    last_loads_of_local = [-1] * len(mutable.shared_variable_names)
+
+    for instruction in mutable.instructions:
+        if instruction.opcode == Opcodes.LOAD_FAST:
+            last_loads_of_local[instruction.arg] = instruction.offset
+
+    for instruction in mutable.instructions:
+        if instruction.opcode in (Opcodes.STORE_FAST, Opcodes.DELETE_FAST) and last_loads_of_local[instruction.arg] < instruction.offset:
+            instruction.change_opcode(Opcodes.POP_TOP)
+            dirty = True
+
+    return dirty
 
 
 def inline_constant_method_invokes(mutable: MutableFunction) -> bool:

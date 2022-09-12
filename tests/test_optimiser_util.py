@@ -88,3 +88,17 @@ class TestOptimiserUtil(TestCase):
         dis.dis(target)
 
         self.assertEqual(mutable.instructions[0].arg_value, 1)
+
+    def test_load_pop_pair_removal(self):
+        def target():
+            a = 10
+
+        mutable = MutableFunction(target)
+        remove_local_var_assign_without_use(mutable)
+        inline_const_value_pop_pairs(mutable)
+        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(mutable.instructions[0].arg_value, None)
