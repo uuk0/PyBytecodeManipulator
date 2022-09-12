@@ -76,6 +76,7 @@ class _OptimisationContainer:
 
         dirty = True
 
+        # Walk over the entries as long as the optimisers are doing their stuff
         while dirty:
             dirty = False
 

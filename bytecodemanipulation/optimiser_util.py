@@ -69,7 +69,7 @@ OPCODE_TO_ATTR_DOUBLE = {
 
 
 def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
-    dirty = inline_constant_binary_ops(mutable)
+    dirty = False
 
     for instruction in mutable.instructions:
         if instruction.opcode == Opcodes.CALL_FUNCTION:
@@ -101,7 +101,6 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
 
                         dirty = True
 
-    dirty = inline_constant_binary_ops(mutable) or dirty
     return dirty
 
 
