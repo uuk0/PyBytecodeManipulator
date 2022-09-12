@@ -68,48 +68,46 @@ OPCODE_TO_ATTR_DOUBLE = {
 }
 
 
-def inline_constant_method_invokes(mutable: MutableFunction):
-    repass = True
+def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
+    dirty = inline_constant_binary_ops(mutable)
 
-    while repass:
-        repass = False
+    for instruction in mutable.instructions:
+        if instruction.opcode == Opcodes.CALL_FUNCTION:
+            target = mutable.trace_stack_position(
+                instruction.offset, instruction.arg
+            )
 
-        inline_constant_binary_ops(mutable)
+            if target.opcode == Opcodes.LOAD_CONST:
+                function: typing.Callable = target.arg_value
 
-        for instruction in mutable.instructions:
-            if instruction.opcode == Opcodes.CALL_FUNCTION:
-                target = mutable.trace_stack_position(
-                    instruction.offset, instruction.arg
-                )
+                if function in CONSTANT_BUILTINS or (
+                    hasattr(function, "_OPTIMISER_CONTAINER")
+                    and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op
+                ):
+                    args = [
+                        mutable.trace_stack_position(instruction.offset, i)
+                        for i in range(instruction.arg - 1, -1, -1)
+                    ]
 
-                if target.opcode == Opcodes.LOAD_CONST:
-                    function: typing.Callable = target.arg_value
+                    if all(instr.opcode == Opcodes.LOAD_CONST for instr in args):
+                        result = function(*(e.arg_value for e in args))
 
-                    if function in CONSTANT_BUILTINS or (
-                        hasattr(function, "_OPTIMISER_CONTAINER")
-                        and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op
-                    ):
-                        args = [
-                            mutable.trace_stack_position(instruction.offset, i)
-                            for i in range(instruction.arg - 1, -1, -1)
-                        ]
+                        instruction.change_opcode(Opcodes.LOAD_CONST)
+                        instruction.change_arg_value(result)
+                        target.change_opcode(Opcodes.NOP)
 
-                        if all(instr.opcode == Opcodes.LOAD_CONST for instr in args):
-                            result = function(*(e.arg_value for e in args))
+                        for arg in args:
+                            arg.change_opcode(Opcodes.NOP)
 
-                            instruction.change_opcode(Opcodes.LOAD_CONST)
-                            instruction.change_arg_value(result)
-                            target.change_opcode(Opcodes.NOP)
+                        dirty = True
 
-                            for arg in args:
-                                arg.change_opcode(Opcodes.NOP)
-
-                            repass = True
-
-    inline_constant_binary_ops(mutable)
+    dirty = inline_constant_binary_ops(mutable) or dirty
+    return dirty
 
 
-def inline_constant_binary_ops(mutable: MutableFunction):
+def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
+    dirty = False
+
     for instruction in mutable.instructions:
         if instruction.opcode in OPCODE_TO_ATTR_SINGLE or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_SINGLE:
             method = OPCODE_TO_ATTR_SINGLE[instruction.opcode if instruction.opcode in OPCODE_TO_ATTR_SINGLE else (instruction.opcode, instruction.arg)]
@@ -139,6 +137,7 @@ def inline_constant_binary_ops(mutable: MutableFunction):
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(value)
                     target.change_opcode(Opcodes.NOP)
+                    dirty = True
 
         elif instruction.opcode in OPCODE_TO_ATTR_DOUBLE or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_DOUBLE:
             method = OPCODE_TO_ATTR_DOUBLE[instruction.opcode if instruction.opcode in OPCODE_TO_ATTR_DOUBLE else (instruction.opcode, instruction.arg)]
@@ -171,6 +170,7 @@ def inline_constant_binary_ops(mutable: MutableFunction):
                 instruction.change_arg_value(value)
                 target.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
+                dirty = True
 
         elif instruction.opcode == Opcodes.BUILD_TUPLE:
             args = [
@@ -185,6 +185,8 @@ def inline_constant_binary_ops(mutable: MutableFunction):
                 for arg in args:
                     arg.change_opcode(Opcodes.NOP)
 
+                dirty = True
+
         elif instruction.opcode == Opcodes.BUILD_SLICE:
             args = [
                 mutable.trace_stack_position(instruction.offset, i)
@@ -197,6 +199,8 @@ def inline_constant_binary_ops(mutable: MutableFunction):
 
                 for arg in args:
                     arg.change_opcode(Opcodes.NOP)
+
+                dirty = True
 
         elif instruction.opcode == Opcodes.BUILD_STRING:
             args = [
@@ -211,8 +215,14 @@ def inline_constant_binary_ops(mutable: MutableFunction):
                 for arg in args:
                     arg.change_opcode(Opcodes.NOP)
 
+                dirty = True
 
-def remove_branch_on_constant(mutable: MutableFunction):
+    return dirty
+
+
+def remove_branch_on_constant(mutable: MutableFunction) -> bool:
+    dirty = False
+
     for instruction in mutable.instructions:
         if instruction.has_jump() and not instruction.has_unconditional_jump():
             source = mutable.trace_stack_position(instruction.offset, 0)
@@ -233,6 +243,8 @@ def remove_branch_on_constant(mutable: MutableFunction):
                         source.change_opcode(Opcodes.NOP)
                         instruction.change_opcode(Opcodes.NOP)
 
+                    dirty = True
+
                     continue
 
                 if instruction.opcode in (
@@ -250,6 +262,10 @@ def remove_branch_on_constant(mutable: MutableFunction):
                         instruction.change_opcode(Opcodes.JUMP_ABSOLUTE)
                     else:
                         instruction.change_opcode(Opcodes.NOP)
+
+                    dirty = True
+
+    return dirty
 
 
 def remove_nops(mutable: MutableFunction):

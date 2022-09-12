@@ -74,25 +74,31 @@ class _OptimisationContainer:
         # Create mutable wrapper around the target
         mutable = MutableFunction(self.target)
 
-        # Walk over the code and resolve cached globals
-        self._inline_load_globals(mutable)
+        dirty = True
 
-        # Inline invokes to builtins and other known is_constant_op-s with static args
-        inline_constant_method_invokes(mutable)
+        while dirty:
+            dirty = False
 
-        # Resolve known constant types
-        self._resolve_constant_local_types(mutable)
-        # self._resolve_constant_local_attr_types(mutable)
-        # todo: use return type of known functions
+            # Walk over the code and resolve cached globals
+            dirty = self._inline_load_globals(mutable) or dirty
 
-        # Inline invokes to builtins and other known is_constant_op-s with static args
-        inline_constant_method_invokes(mutable)
+            # Inline invokes to builtins and other known is_constant_op-s with static args
+            dirty = inline_constant_method_invokes(mutable) or dirty
 
-        # Remove conditional jumps no longer required
-        remove_branch_on_constant(mutable)
+            # Resolve known constant types
+            dirty = self._resolve_constant_local_types(mutable) or dirty
+            # self._resolve_constant_local_attr_types(mutable)
+            # todo: use return type of known functions
 
-        remove_nops(mutable)
+            # Inline invokes to builtins and other known is_constant_op-s with static args
+            dirty = inline_constant_method_invokes(mutable) or dirty
 
+            # Remove conditional jumps no longer required
+            dirty = remove_branch_on_constant(mutable) or dirty
+
+            remove_nops(mutable)
+
+        mutable.assemble_instructions_from_tree(mutable.instructions[0])
         mutable.reassign_to_function()
 
     def _resolve_lazy_references(self):
@@ -111,7 +117,9 @@ class _OptimisationContainer:
             if key not in self.dereference_return_attr_type:
                 self.dereference_return_attr_type[key] = lazy()
 
-    def _inline_load_globals(self, mutable: MutableFunction):
+    def _inline_load_globals(self, mutable: MutableFunction) -> bool:
+        dirty = False
+
         for instruction in mutable.instructions:
             if instruction.opcode == Opcodes.LOAD_GLOBAL:
                 if instruction.arg_value in self.dereference_global_name_cache:
@@ -119,6 +127,7 @@ class _OptimisationContainer:
                     instruction.change_arg_value(
                         self.dereference_global_name_cache[instruction.arg_value]
                     )
+                    dirty = True
 
             elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
                 if instruction.arg_value in self.dereference_global_name_cache:
@@ -127,8 +136,11 @@ class _OptimisationContainer:
                     )
 
         # todo: throw GlobalIsNeverAccessedException if wanted
+        return dirty
 
-    def _resolve_constant_local_types(self, mutable: MutableFunction):
+    def _resolve_constant_local_types(self, mutable: MutableFunction) -> bool:
+        dirty = False
+
         for instruction in mutable.instructions:
             if instruction.opcode == Opcodes.LOAD_ATTR:
                 source = mutable.trace_stack_position(instruction.offset, 0)
@@ -149,6 +161,9 @@ class _OptimisationContainer:
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(attr)
                     source.change_opcode(Opcodes.NOP)
+                    dirty = True
+
+        return dirty
 
 
 class AbstractOptimisationWalker:
