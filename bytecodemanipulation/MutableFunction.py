@@ -763,17 +763,11 @@ class MutableFunction:
                 stack_position += instruction.arg * 2
                 continue
 
-            if instruction.opcode in (Opcodes.COMPARE_OP,):
-                if stack_position == 0:
-                    return instruction
-                stack_position -= 1
-                stack_position += 2
-                continue
-
             if instruction.opcode == Opcodes.RETURN_VALUE:
                 raise ValueError(instruction)
 
             if instruction.opcode in (
+                Opcodes.COMPARE_OP,
                 Opcodes.LIST_EXTEND,
                 Opcodes.LIST_APPEND,
                 Opcodes.SET_ADD,
