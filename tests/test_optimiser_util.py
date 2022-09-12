@@ -99,6 +99,51 @@ class TestOptimiserUtil(TestCase):
         mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
         mutable.reassign_to_function()
 
+        self.assertEqual(mutable.instructions[0].arg_value, None)
+
+    def test_remove_list_build(self):
+        def target():
+            [200, 400, 200]
+            a = [10]
+
+        mutable = MutableFunction(target)
+        remove_local_var_assign_without_use(mutable)
+        inline_const_value_pop_pairs(mutable)
+        inline_const_value_pop_pairs(mutable)
+        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        mutable.reassign_to_function()
+
+        self.assertEqual(mutable.instructions[0].arg_value, None)
+
+    # TODO: is there a way to make this work?
+    # def test_remove_list_build_stacked(self):
+    #     def target():
+    #         [200, 400, 200, [342, 234]]
+    #
+    #     dis.dis(target)
+    #
+    #     mutable = MutableFunction(target)
+    #     remove_local_var_assign_without_use(mutable)
+    #     inline_const_value_pop_pairs(mutable)
+    #     inline_const_value_pop_pairs(mutable)
+    #     mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+    #     mutable.reassign_to_function()
+    #
+    #     dis.dis(target)
+    #
+    #     self.assertEqual(mutable.instructions[0].arg_value, None)
+
+    def test_remove_list_build_stacked_2(self):
+        def target():
+            [200, 400, 200, (342, 234)]
+
+        mutable = MutableFunction(target)
+        remove_local_var_assign_without_use(mutable)
+        inline_const_value_pop_pairs(mutable)
+        inline_const_value_pop_pairs(mutable)
+        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        mutable.reassign_to_function()
+
         dis.dis(target)
 
         self.assertEqual(mutable.instructions[0].arg_value, None)

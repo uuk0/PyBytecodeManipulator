@@ -736,11 +736,20 @@ class MutableFunction:
                 stack_position -= 1
                 continue
 
-            if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
+            if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD, Opcodes.BUILD_TUPLE, Opcodes.BUILD_LIST, Opcodes.BUILD_SET, Opcodes.BUILD_SLICE):
                 if stack_position == 0:
                     return instruction
+
                 stack_position -= 1
                 stack_position += instruction.arg
+                continue
+
+            if instruction.opcode == Opcodes.BUILD_MAP:
+                if stack_position == 0:
+                    return instruction
+
+                stack_position -= 1
+                stack_position += instruction.arg * 2
                 continue
 
             if instruction.opcode in (Opcodes.COMPARE_OP,):
@@ -752,5 +761,13 @@ class MutableFunction:
 
             if instruction.opcode == Opcodes.RETURN_VALUE:
                 raise ValueError(instruction)
+
+            if instruction.opcode in (Opcodes.LIST_EXTEND, Opcodes.LIST_APPEND, Opcodes.SET_ADD, Opcodes.SET_UPDATE, Opcodes.DICT_UPDATE, Opcodes.DICT_MERGE):
+                if stack_position == 0:
+                    return instruction
+
+                stack_position -= 1
+                stack_position += 2
+                continue
 
             raise RuntimeError(instruction)

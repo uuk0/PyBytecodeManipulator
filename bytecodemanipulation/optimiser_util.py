@@ -116,16 +116,44 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
                         func_invoke.change_opcode(Opcodes.POP_TOP)
                         pops -= 1
 
-                        if pops:
-                            for _ in range(pops):
-                                nop = Instruction(Opcodes.NOP)
-                                nop.next_instruction = func_invoke.next_instruction
-                                func_invoke.next_instruction = nop
+                        if not pops: continue
 
-                            mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
-                            return True
+                        for _ in range(pops):
+                            nop = Instruction(Opcodes.NOP)
+                            nop.next_instruction = func_invoke.next_instruction
+                            func_invoke.next_instruction = nop
 
-                        continue
+                        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+                        return True
+
+            if source.opcode in (Opcodes.BUILD_LIST, Opcodes.BUILD_SET, Opcodes.BUILD_MAP):
+                count = source.arg
+
+                if source.opcode == Opcodes.BUILD_MAP:
+                    count *= 2
+
+                instruction.change_opcode(Opcodes.NOP)
+
+                if count == 0:
+                    source.change_opcode(Opcodes.NOP)
+                    dirty = True
+                    continue
+
+                source.change_opcode(Opcodes.POP_TOP)
+
+                if count == 1:
+                    dirty = True
+                    continue
+
+                count -= 1
+
+                for _ in range(count):
+                    nop = Instruction(Opcodes.NOP)
+                    nop.next_instruction = source.next_instruction
+                    source.next_instruction = nop
+
+                mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+                return True
 
     return dirty
 
