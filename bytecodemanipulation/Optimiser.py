@@ -41,6 +41,7 @@ class _OptimisationContainer:
 
         self.lazy_global_name_cache: typing.Dict[str, typing.Callable[[], object]] = {}
         self.dereference_global_name_cache: typing.Dict[str, object] = {}
+        self.unsafe_global_writes_allowed: typing.Set[str] = set()
 
         self.lazy_local_var_type: typing.Dict[
             str, typing.Callable[[], typing.Type]
@@ -64,6 +65,8 @@ class _OptimisationContainer:
 
         self.is_constant_op = False
         self.is_side_effect_free_op = False
+
+        self.may_raise_exceptions: typing.Set[typing.Type[Exception] | Exception] | None = None
 
     def add_optimisation(self, optimiser: "AbstractOptimisationWalker"):
         self.optimisations.append(optimiser)
@@ -110,6 +113,9 @@ class _OptimisationContainer:
                 mutable.instructions[0].optimise_tree()
             )
 
+            for optimiser in self.optimisations:
+                dirty = optimiser.apply(self, mutable) or dirty
+
         mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
 
         mutable.reassign_to_function()
@@ -136,19 +142,19 @@ class _OptimisationContainer:
         for instruction in mutable.instructions:
             if instruction.opcode == Opcodes.LOAD_GLOBAL:
                 if instruction.arg_value in self.dereference_global_name_cache:
+                    name = instruction.arg_value
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(
-                        self.dereference_global_name_cache[instruction.arg_value]
+                        self.dereference_global_name_cache[name]
                     )
                     dirty = True
 
             elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
-                if instruction.arg_value in self.dereference_global_name_cache:
+                if instruction.arg_value in self.dereference_global_name_cache and instruction.arg_value not in self.unsafe_global_writes_allowed:
                     raise BreaksOwnGuaranteesException(
                         f"Global {instruction.arg_value} is cached but written to!"
                     )
 
-        # todo: throw GlobalIsNeverAccessedException if wanted
         return dirty
 
     def _resolve_constant_local_types(self, mutable: MutableFunction) -> bool:
@@ -165,7 +171,7 @@ class _OptimisationContainer:
                     data_type = self.dereference_local_var_type[source.arg_value]
 
                     if not hasattr(data_type, instruction.arg_value):
-                        return
+                        continue
 
                     # todo: check for dynamic class variables!
 
@@ -184,12 +190,17 @@ class AbstractOptimisationWalker:
     Optimisation walker for classes and functions, constructed by the optimiser annotations
     """
 
+    def apply(self, container: "_OptimisationContainer", mutable: MutableFunction) -> bool:
+        """
+        Applies this optimisation on the given container with the MutableFunction as target
+        """
+        raise NotImplementedError
+
 
 def cache_global_name(
     name: str,
     accessor: typing.Callable[[], object] = None,
     ignore_unsafe_writes=False,
-    ignore_global_is_never_used=False,
 ):
     """
     Allows the optimiser to cache a given global name ahead of execution.
@@ -200,7 +211,6 @@ def cache_global_name(
     May raise ValueIsNotArrivalException() when the result cannot currently be accessed.
     When this is raised, the optimiser might skip optimisation of this value.
     :param ignore_unsafe_writes: if the optimiser should ignore STORE_GLOBAL instructions writing to the same name as here cached
-    :param ignore_global_is_never_used: if the optimiser should ignore if no LOAD_GLOBAL instruction accesses this global
     :returns: an annotation for a function or class
     :raises BreaksOwnGuaranteesException: Raised at optimisation time when ignore_unsafe_writes is False and the global name accessed
     is written to in the same method.
@@ -211,6 +221,9 @@ def cache_global_name(
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
         container.lazy_global_name_cache[name] = accessor
+
+        if ignore_unsafe_writes:
+            container.unsafe_global_writes_allowed.add(name)
 
         return target
 
@@ -234,7 +247,13 @@ def guarantee_builtin_names_are_protected(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.dereference_global_name_cache.update(BUILTIN_CACHE)
+
+        if white_list:
+            container.dereference_global_name_cache.update({key: value for key, value in BUILTIN_CACHE.items() if key in white_list})
+        elif black_list:
+            container.dereference_global_name_cache.update({key: value for key, value in BUILTIN_CACHE.items() if key not in black_list})
+        else:
+            container.dereference_global_name_cache.update(BUILTIN_CACHE)
 
         return target
 
@@ -367,6 +386,23 @@ def guarantee_may_raise_only(
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
 
+        exceptions_deref = set()
+
+        for exception in exceptions:
+            if isinstance(exception, Exception) or (isinstance(exception, typing.Type) and issubclass(exception, Exception)):
+                exceptions_deref.add(exception)
+            elif callable(exception):
+                exceptions_deref.add(exception())
+            elif isinstance(exception, list):
+                exceptions_deref |= {
+                    exc if isinstance(exc, Exception) or (isinstance(exc, typing.Type) and issubclass(exc, Exception)) else exc()
+                    for exc in exception
+                }
+            else:
+                raise ValueError(exception)
+
+        container.may_raise_exceptions = exceptions_deref
+
         return target
 
     return annotate
@@ -381,6 +417,11 @@ def guarantee_module_import(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+
+        if callable(module):
+            container.lazy_global_name_cache[name] = module
+        else:
+            container.dereference_global_name_cache[name] = module
 
         return target
 
@@ -404,7 +445,8 @@ def guarantee_constant_result():
 
 def guarantee_side_effect_free_call():
     """
-    Guarantees that this function will not modify the state of anything associated
+    Guarantees that this function will not modify the state of anything associated, so it
+    can be safely removed from the call chain of another function
     """
 
     def annotate(target):
@@ -416,13 +458,13 @@ def guarantee_side_effect_free_call():
     return annotate
 
 
-def guarantee_constant_state_unless():
+def apply_now():
     """
-    Guarantees that all methods on this object are non-state-changing, excluding functions annotated with changes_object_state()
+    Applies the optimisations NOW
     """
-
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+        container.run_optimisers()
 
         return target
 
