@@ -104,7 +104,9 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
                     if function in CONSTANT_BUILTINS or (
                         hasattr(function, "_OPTIMISER_CONTAINER")
-                        and getattr(function, "_OPTIMISER_CONTAINER").is_side_effect_free_op
+                        and getattr(
+                            function, "_OPTIMISER_CONTAINER"
+                        ).is_side_effect_free_op
                     ):
                         instruction.change_opcode(Opcodes.NOP)
 
@@ -116,17 +118,24 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
                         func_invoke.change_opcode(Opcodes.POP_TOP)
                         pops -= 1
 
-                        if not pops: continue
+                        if not pops:
+                            continue
 
                         for _ in range(pops):
                             nop = Instruction(Opcodes.NOP)
                             nop.next_instruction = func_invoke.next_instruction
                             func_invoke.next_instruction = nop
 
-                        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+                        mutable.assemble_instructions_from_tree(
+                            mutable.instructions[0].optimise_tree()
+                        )
                         return True
 
-            if source.opcode in (Opcodes.BUILD_LIST, Opcodes.BUILD_SET, Opcodes.BUILD_MAP):
+            if source.opcode in (
+                Opcodes.BUILD_LIST,
+                Opcodes.BUILD_SET,
+                Opcodes.BUILD_MAP,
+            ):
                 count = source.arg
 
                 if source.opcode == Opcodes.BUILD_MAP:
@@ -152,7 +161,9 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
                     nop.next_instruction = source.next_instruction
                     source.next_instruction = nop
 
-                mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+                mutable.assemble_instructions_from_tree(
+                    mutable.instructions[0].optimise_tree()
+                )
                 return True
 
     return dirty
@@ -168,7 +179,10 @@ def remove_local_var_assign_without_use(mutable: MutableFunction) -> bool:
             last_loads_of_local[instruction.arg] = instruction.offset
 
     for instruction in mutable.instructions:
-        if instruction.opcode in (Opcodes.STORE_FAST, Opcodes.DELETE_FAST) and last_loads_of_local[instruction.arg] < instruction.offset:
+        if (
+            instruction.opcode in (Opcodes.STORE_FAST, Opcodes.DELETE_FAST)
+            and last_loads_of_local[instruction.arg] < instruction.offset
+        ):
             instruction.change_opcode(Opcodes.POP_TOP)
             dirty = True
 
@@ -180,9 +194,7 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
 
     for instruction in mutable.instructions:
         if instruction.opcode == Opcodes.CALL_FUNCTION:
-            target = mutable.trace_stack_position(
-                instruction.offset, instruction.arg
-            )
+            target = mutable.trace_stack_position(instruction.offset, instruction.arg)
 
             if target.opcode == Opcodes.LOAD_CONST:
                 function: typing.Callable = target.arg_value
@@ -215,8 +227,15 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
     dirty = False
 
     for instruction in mutable.instructions:
-        if instruction.opcode in OPCODE_TO_ATTR_SINGLE or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_SINGLE:
-            method = OPCODE_TO_ATTR_SINGLE[instruction.opcode if instruction.opcode in OPCODE_TO_ATTR_SINGLE else (instruction.opcode, instruction.arg)]
+        if (
+            instruction.opcode in OPCODE_TO_ATTR_SINGLE
+            or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_SINGLE
+        ):
+            method = OPCODE_TO_ATTR_SINGLE[
+                instruction.opcode
+                if instruction.opcode in OPCODE_TO_ATTR_SINGLE
+                else (instruction.opcode, instruction.arg)
+            ]
 
             target = mutable.trace_stack_position(instruction.offset, 0)
 
@@ -224,7 +243,9 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                 value = target.arg_value
 
                 if hasattr(value, method):
-                    method = getattr(value, method) if isinstance(method, str) else method
+                    method = (
+                        getattr(value, method) if isinstance(method, str) else method
+                    )
 
                     if not callable(method) or not (
                         type(value) in CONSTANT_BUILTIN_TYPES
@@ -245,8 +266,15 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                     target.change_opcode(Opcodes.NOP)
                     dirty = True
 
-        elif instruction.opcode in OPCODE_TO_ATTR_DOUBLE or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_DOUBLE:
-            method = OPCODE_TO_ATTR_DOUBLE[instruction.opcode if instruction.opcode in OPCODE_TO_ATTR_DOUBLE else (instruction.opcode, instruction.arg)]
+        elif (
+            instruction.opcode in OPCODE_TO_ATTR_DOUBLE
+            or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_DOUBLE
+        ):
+            method = OPCODE_TO_ATTR_DOUBLE[
+                instruction.opcode
+                if instruction.opcode in OPCODE_TO_ATTR_DOUBLE
+                else (instruction.opcode, instruction.arg)
+            ]
 
             arg = mutable.trace_stack_position(instruction.offset, 1)
             target = mutable.trace_stack_position(instruction.offset, 0)
@@ -338,7 +366,7 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
 
                 if instruction.opcode in (
                     Opcodes.JUMP_IF_TRUE_OR_POP,
-                    Opcodes.JUMP_IF_FALSE_OR_POP
+                    Opcodes.JUMP_IF_FALSE_OR_POP,
                 ):
                     if instruction.opcode == Opcodes.JUMP_IF_FALSE_OR_POP:
                         flag = not flag

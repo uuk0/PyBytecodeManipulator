@@ -106,7 +106,9 @@ class _OptimisationContainer:
 
             remove_nops(mutable)
 
-            mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+            mutable.assemble_instructions_from_tree(
+                mutable.instructions[0].optimise_tree()
+            )
 
         mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
 

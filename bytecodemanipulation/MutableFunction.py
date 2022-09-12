@@ -259,7 +259,11 @@ class _Instruction:
 
         visited.add(self)
 
-        if self.next_instruction is not None and not self.has_stop_flow() and not self.has_unconditional_jump():
+        if (
+            self.next_instruction is not None
+            and not self.has_stop_flow()
+            and not self.has_unconditional_jump()
+        ):
             self.next_instruction = self.next_instruction.optimise_tree(visited)
 
         if (
@@ -736,7 +740,14 @@ class MutableFunction:
                 stack_position -= 1
                 continue
 
-            if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD, Opcodes.BUILD_TUPLE, Opcodes.BUILD_LIST, Opcodes.BUILD_SET, Opcodes.BUILD_SLICE):
+            if instruction.opcode in (
+                Opcodes.CALL_FUNCTION,
+                Opcodes.CALL_METHOD,
+                Opcodes.BUILD_TUPLE,
+                Opcodes.BUILD_LIST,
+                Opcodes.BUILD_SET,
+                Opcodes.BUILD_SLICE,
+            ):
                 if stack_position == 0:
                     return instruction
 
@@ -762,7 +773,14 @@ class MutableFunction:
             if instruction.opcode == Opcodes.RETURN_VALUE:
                 raise ValueError(instruction)
 
-            if instruction.opcode in (Opcodes.LIST_EXTEND, Opcodes.LIST_APPEND, Opcodes.SET_ADD, Opcodes.SET_UPDATE, Opcodes.DICT_UPDATE, Opcodes.DICT_MERGE):
+            if instruction.opcode in (
+                Opcodes.LIST_EXTEND,
+                Opcodes.LIST_APPEND,
+                Opcodes.SET_ADD,
+                Opcodes.SET_UPDATE,
+                Opcodes.DICT_UPDATE,
+                Opcodes.DICT_MERGE,
+            ):
                 if stack_position == 0:
                     return instruction
 
