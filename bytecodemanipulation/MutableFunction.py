@@ -321,6 +321,90 @@ class Instruction:
 
         return self
 
+    def trace_stack_position(self, stack_position: int) -> typing.Iterator["Instruction"]:
+        for instr in self.previous_instructions:
+            yield from instr._trace_stack_position(stack_position, set())
+
+    def _trace_stack_position(self, stack_position: int, yielded: typing.Set["Instruction"]) -> typing.Iterator["Instruction"]:
+        assert stack_position >= 0
+
+        if self.opcode in (Opcodes.NOP,):
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(stack_position, yielded)
+            return
+
+        if self.opcode in (
+            Opcodes.LOAD_CONST,
+            Opcodes.LOAD_GLOBAL,
+            Opcodes.LOAD_FAST,
+            Opcodes.LOAD_DEREF,
+        ):
+            if stack_position == 0:
+                yielded.add(self)
+                yield self
+                return
+
+            stack_position -= 1
+
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(stack_position, yielded)
+            return
+
+        if self.opcode in (
+            Opcodes.CALL_FUNCTION,
+            Opcodes.CALL_METHOD,
+            Opcodes.BUILD_TUPLE,
+            Opcodes.BUILD_LIST,
+            Opcodes.BUILD_SET,
+            Opcodes.BUILD_SLICE,
+        ):
+            if stack_position == 0:
+                yielded.add(self)
+                yield self
+
+            stack_position -= 1
+            stack_position += self.arg
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(stack_position, yielded)
+            return
+
+        if self.opcode == Opcodes.BUILD_MAP:
+            if stack_position == 0:
+                yielded.add(self)
+                yield self
+                return
+
+            stack_position -= 1
+            stack_position += self.arg * 2
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(stack_position, yielded)
+            return
+
+        if self.opcode == Opcodes.RETURN_VALUE:
+            raise ValueError(self)
+
+        if self.opcode in (
+            Opcodes.COMPARE_OP,
+            Opcodes.LIST_EXTEND,
+            Opcodes.LIST_APPEND,
+            Opcodes.SET_ADD,
+            Opcodes.SET_UPDATE,
+            Opcodes.DICT_UPDATE,
+            Opcodes.DICT_MERGE,
+        ):
+            if stack_position == 0:
+                yielded.add(self)
+                yield self
+                return
+
+            stack_position -= 1
+            stack_position += 2
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(stack_position, yielded)
+            return
+
+        raise RuntimeError(self)
+
 
 class MutableFunction:
     def __init__(self, target: types.FunctionType | types.MethodType):
@@ -752,76 +836,3 @@ class MutableFunction:
             return self.shared_variable_names.index(variable_name)
         self.shared_variable_names.append(variable_name)
         return len(self.shared_variable_names) - 1
-
-    def trace_stack_position(
-        self, instr_offset: int, stack_position: int
-    ) -> Instruction:
-        assert instr_offset >= 0
-        assert stack_position >= 0
-
-        # print(instr_offset, stack_position)
-
-        while True:
-            instr_offset -= 1
-
-            assert instr_offset >= 0
-
-            instruction = self.instructions[instr_offset]
-
-            if instruction.opcode in (Opcodes.NOP,):
-                continue
-
-            if instruction.opcode in (
-                Opcodes.LOAD_CONST,
-                Opcodes.LOAD_GLOBAL,
-                Opcodes.LOAD_FAST,
-                Opcodes.LOAD_DEREF,
-            ):
-                if stack_position == 0:
-                    return instruction
-                stack_position -= 1
-                continue
-
-            if instruction.opcode in (
-                Opcodes.CALL_FUNCTION,
-                Opcodes.CALL_METHOD,
-                Opcodes.BUILD_TUPLE,
-                Opcodes.BUILD_LIST,
-                Opcodes.BUILD_SET,
-                Opcodes.BUILD_SLICE,
-            ):
-                if stack_position == 0:
-                    return instruction
-
-                stack_position -= 1
-                stack_position += instruction.arg
-                continue
-
-            if instruction.opcode == Opcodes.BUILD_MAP:
-                if stack_position == 0:
-                    return instruction
-
-                stack_position -= 1
-                stack_position += instruction.arg * 2
-                continue
-
-            if instruction.opcode == Opcodes.RETURN_VALUE:
-                raise ValueError(instruction)
-
-            if instruction.opcode in (
-                Opcodes.COMPARE_OP,
-                Opcodes.LIST_EXTEND,
-                Opcodes.LIST_APPEND,
-                Opcodes.SET_ADD,
-                Opcodes.SET_UPDATE,
-                Opcodes.DICT_UPDATE,
-                Opcodes.DICT_MERGE,
-            ):
-                if stack_position == 0:
-                    return instruction
-
-                stack_position -= 1
-                stack_position += 2
-                continue
-
-            raise RuntimeError(instruction)

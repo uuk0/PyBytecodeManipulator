@@ -86,7 +86,7 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
     for instruction in mutable.instructions:
         if instruction.opcode == Opcodes.POP_TOP:
-            source = mutable.trace_stack_position(instruction.offset, 0)
+            source = next(instruction.trace_stack_position(0))
 
             # Inline LOAD_XX - POP pairs
             if source.opcode in SIDE_EFFECT_FREE_LOADS:
@@ -97,7 +97,7 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
             # Inline CALL_XX (constant expr) - POP pairs
             if source.opcode == Opcodes.CALL_FUNCTION:
-                func_invoke = mutable.trace_stack_position(source.offset, source.arg)
+                func_invoke = next(instruction.trace_stack_position(source.arg))
 
                 if func_invoke.opcode == Opcodes.LOAD_CONST:
                     function = func_invoke.arg_value
@@ -194,7 +194,7 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
 
     for instruction in mutable.instructions:
         if instruction.opcode == Opcodes.CALL_FUNCTION:
-            target = mutable.trace_stack_position(instruction.offset, instruction.arg)
+            target = next(instruction.trace_stack_position(instruction.arg))
 
             if target.opcode == Opcodes.LOAD_CONST:
                 function: typing.Callable = target.arg_value
@@ -204,7 +204,7 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
                     and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op
                 ):
                     args = [
-                        mutable.trace_stack_position(instruction.offset, i)
+                        next(instruction.trace_stack_position(i))
                         for i in range(instruction.arg - 1, -1, -1)
                     ]
 
@@ -237,7 +237,7 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                 else (instruction.opcode, instruction.arg)
             ]
 
-            target = mutable.trace_stack_position(instruction.offset, 0)
+            target = next(instruction.trace_stack_position(0))
 
             if target.opcode == Opcodes.LOAD_CONST:
                 value = target.arg_value
@@ -276,8 +276,8 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                 else (instruction.opcode, instruction.arg)
             ]
 
-            arg = mutable.trace_stack_position(instruction.offset, 1)
-            target = mutable.trace_stack_position(instruction.offset, 0)
+            arg = next(instruction.trace_stack_position(1))
+            target = next(instruction.trace_stack_position(0))
 
             if arg.opcode == target.opcode == Opcodes.LOAD_CONST:
                 value = target.arg_value
@@ -308,7 +308,7 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
 
         elif instruction.opcode == Opcodes.BUILD_TUPLE:
             args = [
-                mutable.trace_stack_position(instruction.offset, i)
+                next(instruction.trace_stack_position(i))
                 for i in range(instruction.arg - 1, -1, -1)
             ]
 
@@ -323,7 +323,7 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
 
         elif instruction.opcode == Opcodes.BUILD_SLICE:
             args = [
-                mutable.trace_stack_position(instruction.offset, i)
+                next(instruction.trace_stack_position(i))
                 for i in range(instruction.arg - 1, -1, -1)
             ]
 
@@ -338,7 +338,7 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
 
         elif instruction.opcode == Opcodes.BUILD_STRING:
             args = [
-                mutable.trace_stack_position(instruction.offset, i)
+                next(instruction.trace_stack_position(i))
                 for i in range(instruction.arg - 1, -1, -1)
             ]
 
@@ -359,7 +359,7 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
 
     for instruction in mutable.instructions:
         if instruction.has_jump() and not instruction.has_unconditional_jump():
-            source = mutable.trace_stack_position(instruction.offset, 0)
+            source = next(instruction.trace_stack_position(0))
 
             if source.opcode == Opcodes.LOAD_CONST:
                 flag = bool(source.arg_value)
