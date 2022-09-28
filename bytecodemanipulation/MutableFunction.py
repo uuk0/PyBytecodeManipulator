@@ -35,7 +35,8 @@ class Instruction:
         "opname",
         "arg_value",
         "arg",
-        "next_instruction",
+        "_next_instruction",
+        "previous_instructions",
     )
 
     @classmethod
@@ -68,7 +69,7 @@ class Instruction:
 
         # Reference to the next instruction
         # Will raise an exception if changed and not using assemble_instructions_from_tree()
-        self.next_instruction: typing.Optional[Instruction] = (
+        self._next_instruction: typing.Optional[Instruction] = (
             None
             if function is None
             or offset is None
@@ -76,6 +77,46 @@ class Instruction:
             or not _decode_next
             else function.instructions[offset + 1]
         )
+
+        self.previous_instructions: typing.List["Instruction"] | None = None
+
+    def add_previous_instruction(self, instruction: "Instruction"):
+        if self.previous_instructions is None:
+            self.previous_instructions = [instruction]
+        elif instruction not in self.previous_instructions:
+            self.previous_instructions.append(instruction)
+
+    def remove_previous_instruction(self, instruction: "Instruction"):
+        if self.previous_instructions is not None and instruction in self.previous_instructions:
+            self.previous_instructions.remove(instruction)
+
+    def get_previous_instructions(self) -> typing.List["Instruction"]:
+        if self.has_stop_flow(): return []
+
+        if self.previous_instructions is None:
+            if self.function is None:
+                raise ValueError(f"Instruction {self} is not bound!")
+
+            self.function.prepare_previous_instructions()
+
+            if self.previous_instructions is None:
+                raise RuntimeError(f"Could not find previous instructions for {self}")
+
+        return self.previous_instructions
+
+    def set_next_instruction(self, instruction: typing.Optional["Instruction"]):
+        if self._next_instruction is not None:
+            self._next_instruction.remove_previous_instruction(self)
+
+        self._next_instruction = instruction
+
+        if instruction is not None:
+            instruction.add_previous_instruction(self)
+
+    def get_next_instruction(self) -> typing.Optional["Instruction"]:
+        return self._next_instruction
+
+    next_instruction = property(get_next_instruction, set_next_instruction)
 
     def __repr__(self):
         assert isinstance(self.function.function_name, str)
@@ -360,6 +401,17 @@ class MutableFunction:
 
         for i, instruction in enumerate(self.instructions):
             instruction.update_owner(self, i)
+
+        self.prepare_previous_instructions()
+
+    def prepare_previous_instructions(self):
+        for instruction in self.instructions:
+            if instruction.has_stop_flow(): continue
+
+            instruction.next_instruction.add_previous_instruction(instruction)
+
+            if instruction.has_jump():
+                typing.cast(Instruction, instruction.arg_value).add_previous_instruction(instruction)
 
     def assemble_instructions_from_tree(self, root: Instruction, breaks_flow=tuple()):
         # 1. Assemble a linear stream of instructions, containing all instructions
