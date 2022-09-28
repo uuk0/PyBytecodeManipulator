@@ -1,6 +1,7 @@
 import traceback
 import typing
 
+from bytecodemanipulation.MutableFunction import AbstractInstructionWalker
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes

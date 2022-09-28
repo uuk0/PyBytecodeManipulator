@@ -20,6 +20,11 @@ class LinearCodeConstraintViolationException(Exception):
     pass
 
 
+class AbstractInstructionWalker:
+    def visit(self, instruction: "Instruction"):
+        raise NotImplementedError
+
+
 class Instruction:
     @classmethod
     def _pair_instruction(cls, opcode: int | str) -> typing.Tuple[int, str]:
@@ -79,6 +84,19 @@ class Instruction:
         )
 
         self.previous_instructions: typing.List["Instruction"] | None = None
+
+    def apply_visitor(self, visitor: AbstractInstructionWalker, visited: typing.Set["Instruction"] = None):
+        if visited is None:
+            visited = set()
+
+        visitor.visit(self)
+
+        if self.has_stop_flow(): return
+
+        self.next_instruction.apply_visitor(visitor, visited)
+
+        if self.has_jump():
+            typing.cast(Instruction, self.arg_value).apply_visitor(visitor, visited)
 
     def add_previous_instruction(self, instruction: "Instruction"):
         if self.previous_instructions is None:
