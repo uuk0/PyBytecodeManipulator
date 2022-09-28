@@ -20,7 +20,7 @@ class LinearCodeConstraintViolationException(Exception):
     pass
 
 
-class _Instruction:
+class Instruction:
     @classmethod
     def _pair_instruction(cls, opcode: int | str) -> typing.Tuple[int, str]:
         if isinstance(opcode, int):
@@ -38,10 +38,14 @@ class _Instruction:
         "next_instruction",
     )
 
+    @classmethod
+    def create(cls, *args, **kwargs):
+        return cls(None, None, *args, **kwargs)
+
     def __init__(
         self,
         function: typing.Optional["MutableFunction"],
-        offset: int,
+        offset: int | None,
         opcode_or_name: int | str,
         arg_value: object = None,
         arg: int = None,
@@ -64,7 +68,7 @@ class _Instruction:
 
         # Reference to the next instruction
         # Will raise an exception if changed and not using assemble_instructions_from_tree()
-        self.next_instruction: typing.Optional[_Instruction] = (
+        self.next_instruction: typing.Optional[Instruction] = (
             None
             if function is None
             or offset is None
@@ -80,13 +84,13 @@ class _Instruction:
         assert isinstance(self.arg, int) or self.arg is None
         assert self != self.arg_value
 
-        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value if not isinstance(self.arg_value, _Instruction) else self.arg_value.repr_safe()}, has_next={self.next_instruction is not None})"
+        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value if not isinstance(self.arg_value, Instruction) else self.arg_value.repr_safe()}, has_next={self.next_instruction is not None})"
 
     def repr_safe(self):
         return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value=..., has_next={self.next_instruction is not None})"
 
     def __eq__(self, other):
-        if not isinstance(other, _Instruction):
+        if not isinstance(other, Instruction):
             return False
 
         return (
@@ -139,10 +143,10 @@ class _Instruction:
                 assert isinstance(value, str), (value, self.opname)
                 self.arg = self.function.allocate_shared_variable_name(value)
             elif self.opcode in HAS_JUMP_ABSOLUTE:
-                assert isinstance(value, _Instruction), value
+                assert isinstance(value, Instruction), value
                 self.arg = value.offset
             elif self.opcode in HAS_JUMP_FORWARD:
-                assert isinstance(value, _Instruction), value
+                assert isinstance(value, Instruction), value
                 self.arg = value.offset - self.offset
         else:
             self.arg = None
@@ -222,8 +226,8 @@ class _Instruction:
         return self
 
     def optimise_tree(
-        self, visited: typing.Set["_Instruction"] = None
-    ) -> "_Instruction":
+        self, visited: typing.Set["Instruction"] = None
+    ) -> "Instruction":
         """
         Optimises the instruction tree, removing NOP's and inlining unconditional jumps
         WARNING: this WILL invalidate the linearity of any instruction list, you MUST use assemble_instructions_from_tree()
@@ -245,7 +249,7 @@ class _Instruction:
             return self
 
         while self.next_instruction is not None:
-            assert isinstance(self.next_instruction, _Instruction)
+            assert isinstance(self.next_instruction, Instruction)
 
             if self.next_instruction.opname == "NOP":
                 self.next_instruction = self.next_instruction.next_instruction
@@ -271,27 +275,10 @@ class _Instruction:
             or self.has_jump_forward()
             or self.has_jump_backward()
         ) and self.arg_value is not None:
-            assert isinstance(self.arg_value, _Instruction)
+            assert isinstance(self.arg_value, Instruction)
             self.arg_value = self.arg_value.optimise_tree(visited)
 
         return self
-
-
-if typing.TYPE_CHECKING:
-
-    class Instruction(_Instruction):
-        def __init__(
-            self, opcode_or_name: int | str, arg_value: object = None, arg: int = None
-        ):
-            pass
-
-else:
-
-    def Instruction(*args, **kwargs) -> _Instruction:
-        return _Instruction(None, -1, *args, **kwargs)
-
-    # copy over some stuff
-    Instruction._pair_instruction = _Instruction._pair_instruction
 
 
 class MutableFunction:
@@ -320,7 +307,7 @@ class MutableFunction:
         self.stack_size = self.code_object.co_stacksize
         self.shared_variable_names = list(self.code_object.co_varnames)
 
-        self.__instructions: typing.Optional[typing.List[_Instruction]] = None
+        self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
     def create_code_obj(self) -> types.CodeType:
         self.assemble_fast(self.__instructions)
@@ -360,7 +347,7 @@ class MutableFunction:
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
                 self.__instructions.append(
-                    _Instruction(self, i // 2, "NOP", _deocde_next=False)
+                    Instruction(self, i // 2, "NOP", _deocde_next=False)
                 )
 
             else:
@@ -368,13 +355,13 @@ class MutableFunction:
                 extra = 0
 
                 self.__instructions.append(
-                    _Instruction(self, i // 2, opcode, arg=arg, _deocde_next=False)
+                    Instruction(self, i // 2, opcode, arg=arg, _deocde_next=False)
                 )
 
         for i, instruction in enumerate(self.instructions):
             instruction.update_owner(self, i)
 
-    def assemble_instructions_from_tree(self, root: _Instruction, breaks_flow=tuple()):
+    def assemble_instructions_from_tree(self, root: Instruction, breaks_flow=tuple()):
         # 1. Assemble a linear stream of instructions, containing all instructions
         # 2. check instructions which require unconditional JUMP's and insert them
         # 3. update instruction positions
@@ -431,7 +418,7 @@ class MutableFunction:
 
             for _ in range(count):
                 pos = instruction.offset + write_offset
-                instructions.insert(pos, nop_instr := _Instruction(self, pos, "NOP"))
+                instructions.insert(pos, nop_instr := Instruction.create(self, pos, "NOP"))
 
             write_offset += count
 
@@ -485,7 +472,7 @@ class MutableFunction:
                 instruction.next_instruction is not None
                 and instruction.offset + 1 != instruction.next_instruction.offset
             ):
-                jump = _Instruction(
+                jump = Instruction(
                     self,
                     -1,
                     "JUMP_ABSOLUTE",
@@ -499,8 +486,8 @@ class MutableFunction:
 
         # While we have branches, we need to decode them
         pending_instructions = [root]
-        visited: typing.Set[_Instruction] = set()
-        instructions: typing.List[_Instruction] = []
+        visited: typing.Set[Instruction] = set()
+        instructions: typing.List[Instruction] = []
 
         while pending_instructions:
             instruction = pending_instructions.pop()
@@ -584,7 +571,7 @@ class MutableFunction:
 
                     # If we are at HEAD, we require some clever handling, as "previous" is None at the moment
                     if i == 0:
-                        root = previous = _Instruction(
+                        root = previous = Instruction(
                             self,
                             0,
                             "NOP",
@@ -594,7 +581,7 @@ class MutableFunction:
 
                     # And now, insert the "NOP"'s required after the previous for the things
                     for delta in range(missing):
-                        nop = _Instruction(self, previous.offset + delta + 1, "NOP")
+                        nop = Instruction(self, previous.offset + delta + 1, "NOP")
                         nop.next_instruction = instruction
                         previous.next_instruction = nop
                         previous = nop
@@ -627,7 +614,7 @@ class MutableFunction:
 
             self.__raw_code += bytes([instruction.opcode, arg])
 
-    def assemble_fast(self, instructions: typing.List[_Instruction]):
+    def assemble_fast(self, instructions: typing.List[Instruction]):
         """
         Assembles the instruction list in FAST mode
         Removes some safety checks, and removes the dynamic assemble_instructions_from_tree() forwarding.
@@ -686,7 +673,7 @@ class MutableFunction:
 
         return self.__instructions
 
-    def set_instructions(self, instructions: typing.List[_Instruction]):
+    def set_instructions(self, instructions: typing.List[Instruction]):
         # Update the ownerships of the instructions, so they point to us now
         # todo: do we want to copy in some cases?
         self.__instructions = [
@@ -716,7 +703,7 @@ class MutableFunction:
 
     def trace_stack_position(
         self, instr_offset: int, stack_position: int
-    ) -> _Instruction:
+    ) -> Instruction:
         assert instr_offset >= 0
         assert stack_position >= 0
 

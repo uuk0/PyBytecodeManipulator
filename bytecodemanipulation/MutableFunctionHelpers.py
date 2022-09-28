@@ -182,7 +182,7 @@ def _inline_outer_return(
     if len(args) == 0:
         instruction.change_opcode(Opcodes.LOAD_CONST)
         instruction.change_arg_value(None)
-        return_instr = Instruction(Opcodes.RETURN_VALUE)
+        return_instr = Instruction.create(Opcodes.RETURN_VALUE)
         return_instr.update_owner(tree.mutable, -1)
         return_instr.next_instruction = instruction.next_instruction
         instruction.next_instruction = return_instr
@@ -208,7 +208,7 @@ def insert_method_into(
         body = MutableFunctionWithTree(body)
 
     if offset == -1:
-        HEAD_INSTRUCTION = Instruction("NOP")
+        HEAD_INSTRUCTION = Instruction.create("NOP")
         HEAD_INSTRUCTION.function = body.mutable
         HEAD_INSTRUCTION.next_instruction = body.root
         body.root = HEAD_INSTRUCTION
@@ -237,7 +237,7 @@ def insert_method_into(
             previous.next_instruction = instr
 
         if instr.opcode == Opcodes.INTERMEDIATE_INNER_RETURN:
-            previous.next_instruction = Instruction(Opcodes.POP_TOP)
+            previous.next_instruction = Instruction.create(Opcodes.POP_TOP)
             previous.next_instruction.update_owner(to_insert, -1)
             previous.next_instruction.next_instruction = instr
 
@@ -252,7 +252,7 @@ def insert_method_into(
     to_insert.assemble_instructions_from_tree(
         to_insert.instructions[0],
         breaks_flow=(
-            Instruction(Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction),
+            Instruction.create(Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction),
         ),
     )
     to_insert.decode_instructions()
