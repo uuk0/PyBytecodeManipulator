@@ -49,7 +49,7 @@ class Instruction:
         opcode_or_name: int | str,
         arg_value: object = None,
         arg: int = None,
-        _deocde_next=True,
+        _decode_next=True,
     ):
         self.function = function
         self.offset = offset
@@ -60,7 +60,7 @@ class Instruction:
         if (
             self.arg is not None
             and self.arg_value is None
-            and (_deocde_next or not self.has_jump())
+            and (_decode_next or not self.has_jump())
         ):
             self.change_arg(self.arg)
         elif self.arg_value is not None and self.arg is None:
@@ -73,7 +73,7 @@ class Instruction:
             if function is None
             or offset is None
             or self.opcode in END_CONTROL_FLOW
-            or not _deocde_next
+            or not _decode_next
             else function.instructions[offset + 1]
         )
 
@@ -347,7 +347,7 @@ class MutableFunction:
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
                 self.__instructions.append(
-                    Instruction(self, i // 2, "NOP", _deocde_next=False)
+                    Instruction(self, i // 2, "NOP", _decode_next=False)
                 )
 
             else:
@@ -355,7 +355,7 @@ class MutableFunction:
                 extra = 0
 
                 self.__instructions.append(
-                    Instruction(self, i // 2, opcode, arg=arg, _deocde_next=False)
+                    Instruction(self, i // 2, opcode, arg=arg, _decode_next=False)
                 )
 
         for i, instruction in enumerate(self.instructions):
