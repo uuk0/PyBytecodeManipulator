@@ -252,7 +252,9 @@ def insert_method_into(
     to_insert.assemble_instructions_from_tree(
         to_insert.instructions[0],
         breaks_flow=(
-            Instruction.create(Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction),
+            Instruction.create(
+                Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction
+            ),
         ),
     )
     to_insert.decode_instructions()

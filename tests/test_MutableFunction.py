@@ -10,7 +10,10 @@ class TestMutableFunction(TestCase):
 
         mut = MutableFunction(target)
         self.assertEqual(
-            [Instruction.create("LOAD_CONST", None), Instruction.create("RETURN_VALUE")],
+            [
+                Instruction.create("LOAD_CONST", None),
+                Instruction.create("RETURN_VALUE"),
+            ],
             mut.instructions,
         )
 
@@ -24,7 +27,10 @@ class TestMutableFunction(TestCase):
         mut.raw_code = mut.raw_code
 
         self.assertEqual(
-            [Instruction.create("LOAD_CONST", None), Instruction.create("RETURN_VALUE")],
+            [
+                Instruction.create("LOAD_CONST", None),
+                Instruction.create("RETURN_VALUE"),
+            ],
             mut.instructions,
         )
 

@@ -66,7 +66,9 @@ class TestOptimiserUtil(TestCase):
         self.assertEqual(2, mutable.instructions[0].arg_value)
 
     def test_inline_const_function_on_parent(self):
-        container = _OptimisationContainer.get_for_target(Outer_test_inline_const_function_on_parent)
+        container = _OptimisationContainer.get_for_target(
+            Outer_test_inline_const_function_on_parent
+        )
         container.run_optimisers()
 
         mutable = MutableFunction(Outer_test_inline_const_function_on_parent.target)

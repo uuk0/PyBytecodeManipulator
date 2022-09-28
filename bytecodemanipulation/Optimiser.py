@@ -67,17 +67,26 @@ class _OptimisationContainer:
         ] = {}
         self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
-        self.lazy_attribute_type: typing.Dict[str, typing.Callable[[], typing.Type]] = {}
+        self.lazy_attribute_type: typing.Dict[
+            str, typing.Callable[[], typing.Type]
+        ] = {}
         self.dereference_attribute_type: typing.Dict[str, typing.Type] = {}
 
         self.is_constant_op = False
         self.is_side_effect_free_op = False
 
-        self.may_raise_exceptions: typing.Set[typing.Type[Exception] | Exception] | None = None
+        self.may_raise_exceptions: typing.Set[
+            typing.Type[Exception] | Exception
+        ] | None = None
 
     def _walk_children_and_copy_attributes(self):
         for value in self.target.__dict__.values():
-            if isinstance(value, type) or inspect.ismethod(value) or inspect.isfunction(value) or isinstance(value, staticmethod):
+            if (
+                isinstance(value, type)
+                or inspect.ismethod(value)
+                or inspect.isfunction(value)
+                or isinstance(value, staticmethod)
+            ):
                 if _is_parent_of(value, self.target):
                     container = self.get_for_target(value)
                     container._copy_from(self)
@@ -86,8 +95,20 @@ class _OptimisationContainer:
     def _copy_from(self, parent: "_OptimisationContainer"):
         self.parents.append(parent)
 
-        self.lazy_global_name_cache.update({key: value for key, value in parent.lazy_global_name_cache.items() if key not in self.lazy_global_name_cache})
-        self.dereference_global_name_cache.update({key: value for key, value in parent.dereference_global_name_cache.items() if key not in self.dereference_global_name_cache})
+        self.lazy_global_name_cache.update(
+            {
+                key: value
+                for key, value in parent.lazy_global_name_cache.items()
+                if key not in self.lazy_global_name_cache
+            }
+        )
+        self.dereference_global_name_cache.update(
+            {
+                key: value
+                for key, value in parent.dereference_global_name_cache.items()
+                if key not in self.dereference_global_name_cache
+            }
+        )
         self.unsafe_global_writes_allowed |= parent.unsafe_global_writes_allowed
 
         for child in self.children:
@@ -185,7 +206,10 @@ class _OptimisationContainer:
                     dirty = True
 
             elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
-                if instruction.arg_value in self.dereference_global_name_cache and instruction.arg_value not in self.unsafe_global_writes_allowed:
+                if (
+                    instruction.arg_value in self.dereference_global_name_cache
+                    and instruction.arg_value not in self.unsafe_global_writes_allowed
+                ):
                     raise BreaksOwnGuaranteesException(
                         f"Global {instruction.arg_value} is cached but written to!"
                     )
@@ -225,7 +249,9 @@ class AbstractOptimisationWalker:
     Optimisation walker for classes and functions, constructed by the optimiser annotations
     """
 
-    def apply(self, container: "_OptimisationContainer", mutable: MutableFunction) -> bool:
+    def apply(
+        self, container: "_OptimisationContainer", mutable: MutableFunction
+    ) -> bool:
         """
         Applies this optimisation on the given container with the MutableFunction as target
         """
@@ -284,9 +310,21 @@ def guarantee_builtin_names_are_protected(
         container = _OptimisationContainer.get_for_target(target)
 
         if white_list:
-            container.dereference_global_name_cache.update({key: value for key, value in BUILTIN_CACHE.items() if key in white_list})
+            container.dereference_global_name_cache.update(
+                {
+                    key: value
+                    for key, value in BUILTIN_CACHE.items()
+                    if key in white_list
+                }
+            )
         elif black_list:
-            container.dereference_global_name_cache.update({key: value for key, value in BUILTIN_CACHE.items() if key not in black_list})
+            container.dereference_global_name_cache.update(
+                {
+                    key: value
+                    for key, value in BUILTIN_CACHE.items()
+                    if key not in black_list
+                }
+            )
         else:
             container.dereference_global_name_cache.update(BUILTIN_CACHE)
 
@@ -424,13 +462,18 @@ def guarantee_may_raise_only(
         exceptions_deref = set()
 
         for exception in exceptions:
-            if isinstance(exception, Exception) or (isinstance(exception, typing.Type) and issubclass(exception, Exception)):
+            if isinstance(exception, Exception) or (
+                isinstance(exception, typing.Type) and issubclass(exception, Exception)
+            ):
                 exceptions_deref.add(exception)
             elif callable(exception):
                 exceptions_deref.add(exception())
             elif isinstance(exception, list):
                 exceptions_deref |= {
-                    exc if isinstance(exc, Exception) or (isinstance(exc, typing.Type) and issubclass(exc, Exception)) else exc()
+                    exc
+                    if isinstance(exc, Exception)
+                    or (isinstance(exc, typing.Type) and issubclass(exc, Exception))
+                    else exc()
                     for exc in exception
                 }
             else:
@@ -497,6 +540,7 @@ def apply_now():
     """
     Applies the optimisations NOW
     """
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
         container.run_optimisers()

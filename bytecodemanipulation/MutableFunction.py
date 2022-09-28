@@ -85,13 +85,18 @@ class Instruction:
 
         self.previous_instructions: typing.List["Instruction"] | None = None
 
-    def apply_visitor(self, visitor: AbstractInstructionWalker, visited: typing.Set["Instruction"] = None):
+    def apply_visitor(
+        self,
+        visitor: AbstractInstructionWalker,
+        visited: typing.Set["Instruction"] = None,
+    ):
         if visited is None:
             visited = set()
 
         visitor.visit(self)
 
-        if self.has_stop_flow(): return
+        if self.has_stop_flow():
+            return
 
         self.next_instruction.apply_visitor(visitor, visited)
 
@@ -105,11 +110,15 @@ class Instruction:
             self.previous_instructions.append(instruction)
 
     def remove_previous_instruction(self, instruction: "Instruction"):
-        if self.previous_instructions is not None and instruction in self.previous_instructions:
+        if (
+            self.previous_instructions is not None
+            and instruction in self.previous_instructions
+        ):
             self.previous_instructions.remove(instruction)
 
     def get_previous_instructions(self) -> typing.List["Instruction"]:
-        if self.has_stop_flow(): return []
+        if self.has_stop_flow():
+            return []
 
         if self.previous_instructions is None:
             if self.function is None:
@@ -284,9 +293,7 @@ class Instruction:
 
         return self
 
-    def optimise_tree(
-        self, visited: typing.Set["Instruction"] = None
-    ) -> "Instruction":
+    def optimise_tree(self, visited: typing.Set["Instruction"] = None) -> "Instruction":
         """
         Optimises the instruction tree, removing NOP's and inlining unconditional jumps
         WARNING: this WILL invalidate the linearity of any instruction list, you MUST use assemble_instructions_from_tree()
@@ -339,11 +346,15 @@ class Instruction:
 
         return self
 
-    def trace_stack_position(self, stack_position: int) -> typing.Iterator["Instruction"]:
+    def trace_stack_position(
+        self, stack_position: int
+    ) -> typing.Iterator["Instruction"]:
         for instr in self.previous_instructions:
             yield from instr._trace_stack_position(stack_position, set())
 
-    def _trace_stack_position(self, stack_position: int, yielded: typing.Set["Instruction"]) -> typing.Iterator["Instruction"]:
+    def _trace_stack_position(
+        self, stack_position: int, yielded: typing.Set["Instruction"]
+    ) -> typing.Iterator["Instruction"]:
         assert stack_position >= 0
 
         if self in yielded:
@@ -371,10 +382,14 @@ class Instruction:
             for instr in self.previous_instructions:
                 yield from instr._trace_stack_position(additional_pos, yielded)
 
-    def trace_stack_position_use(self, stack_position: int) -> typing.Iterator["Instruction"]:
+    def trace_stack_position_use(
+        self, stack_position: int
+    ) -> typing.Iterator["Instruction"]:
         yield from self._trace_stack_position(stack_position, set())
 
-    def _trace_stack_position_use(self, stack_position: int, yielded: typing.Set["Instruction"]) -> typing.Iterator["Instruction"]:
+    def _trace_stack_position_use(
+        self, stack_position: int, yielded: typing.Set["Instruction"]
+    ) -> typing.Iterator["Instruction"]:
         assert stack_position >= 0
 
         if self in yielded:
@@ -528,12 +543,15 @@ class MutableFunction:
 
     def prepare_previous_instructions(self):
         for instruction in self.instructions:
-            if instruction.has_stop_flow(): continue
+            if instruction.has_stop_flow():
+                continue
 
             instruction.next_instruction.add_previous_instruction(instruction)
 
             if instruction.has_jump():
-                typing.cast(Instruction, instruction.arg_value).add_previous_instruction(instruction)
+                typing.cast(
+                    Instruction, instruction.arg_value
+                ).add_previous_instruction(instruction)
 
     def assemble_instructions_from_tree(self, root: Instruction, breaks_flow=tuple()):
         # 1. Assemble a linear stream of instructions, containing all instructions
@@ -592,7 +610,9 @@ class MutableFunction:
 
             for _ in range(count):
                 pos = instruction.offset + write_offset
-                instructions.insert(pos, nop_instr := Instruction.create(self, pos, "NOP"))
+                instructions.insert(
+                    pos, nop_instr := Instruction.create(self, pos, "NOP")
+                )
 
             write_offset += count
 
