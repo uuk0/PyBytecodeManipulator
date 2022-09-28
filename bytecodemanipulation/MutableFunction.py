@@ -328,10 +328,65 @@ class Instruction:
     def _trace_stack_position(self, stack_position: int, yielded: typing.Set["Instruction"]) -> typing.Iterator["Instruction"]:
         assert stack_position >= 0
 
-        if self.opcode in (Opcodes.NOP,):
-            for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(stack_position, yielded)
+        if self in yielded:
             return
+
+        pushed, popped, additional_pos = self.get_stack_affect()
+
+        if pushed > stack_position:
+            yielded.add(self)
+            yield self
+
+            if additional_pos:
+                for instr in self.previous_instructions:
+                    yield from instr._trace_stack_position(additional_pos, yielded)
+
+            return
+
+        stack_position -= pushed
+        stack_position += popped
+
+        for instr in self.previous_instructions:
+            yield from instr._trace_stack_position(stack_position, yielded)
+
+        if additional_pos:
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(additional_pos, yielded)
+
+    def trace_stack_position_use(self, stack_position: int) -> typing.Iterator["Instruction"]:
+        yield from self._trace_stack_position(stack_position, set())
+
+    def _trace_stack_position_use(self, stack_position: int, yielded: typing.Set["Instruction"]) -> typing.Iterator["Instruction"]:
+        assert stack_position >= 0
+
+        if self in yielded:
+            return
+
+        pushed, popped, additional_pos = self.get_stack_affect()
+
+        if popped > stack_position:
+            yielded.add(self)
+            yield self
+
+            if additional_pos:
+                for instr in self.previous_instructions:
+                    yield from instr._trace_stack_position(additional_pos, yielded)
+
+            return
+
+        stack_position -= popped
+        stack_position += pushed
+
+        for instr in self.previous_instructions:
+            yield from instr._trace_stack_position(stack_position, yielded)
+
+        if additional_pos:
+            for instr in self.previous_instructions:
+                yield from instr._trace_stack_position(additional_pos, yielded)
+
+    def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
+        if self.opcode in (Opcodes.NOP,):
+            return 0, 0, None
 
         if self.opcode in (
             Opcodes.LOAD_CONST,
@@ -339,16 +394,7 @@ class Instruction:
             Opcodes.LOAD_FAST,
             Opcodes.LOAD_DEREF,
         ):
-            if stack_position == 0:
-                yielded.add(self)
-                yield self
-                return
-
-            stack_position -= 1
-
-            for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(stack_position, yielded)
-            return
+            return 1, 0, None
 
         if self.opcode in (
             Opcodes.CALL_FUNCTION,
@@ -358,27 +404,10 @@ class Instruction:
             Opcodes.BUILD_SET,
             Opcodes.BUILD_SLICE,
         ):
-            if stack_position == 0:
-                yielded.add(self)
-                yield self
-
-            stack_position -= 1
-            stack_position += self.arg
-            for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(stack_position, yielded)
-            return
+            return 1, self.arg, None
 
         if self.opcode == Opcodes.BUILD_MAP:
-            if stack_position == 0:
-                yielded.add(self)
-                yield self
-                return
-
-            stack_position -= 1
-            stack_position += self.arg * 2
-            for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(stack_position, yielded)
-            return
+            return 1, self.arg * 2, None
 
         if self.opcode == Opcodes.RETURN_VALUE:
             raise ValueError(self)
@@ -392,16 +421,7 @@ class Instruction:
             Opcodes.DICT_UPDATE,
             Opcodes.DICT_MERGE,
         ):
-            if stack_position == 0:
-                yielded.add(self)
-                yield self
-                return
-
-            stack_position -= 1
-            stack_position += 2
-            for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(stack_position, yielded)
-            return
+            return 1, 2, None
 
         raise RuntimeError(self)
 
