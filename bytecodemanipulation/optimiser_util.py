@@ -1,77 +1,12 @@
-import math
 import traceback
 import typing
+from bytecodemanipulation.annotated_std import CONSTANT_BUILTIN_TYPES
+from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 
-from bytecodemanipulation.MutableFunction import AbstractInstructionWalker
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.MutableFunctionHelpers import MutableFunctionWithTree
-
-CONSTANT_BUILTINS = [
-    min,
-    max,
-    int,
-    str,
-    float,
-    tuple,
-    complex,
-    abs,
-    math.sin,
-    math.cos,
-    math.tan,
-    math.sinh,
-    math.cosh,
-    math.tanh,
-    math.asin,
-    math.acos,
-    math.atan,
-    math.atan2,
-    math.asinh,
-    math.acosh,
-    math.atanh,
-    math.comb,
-    math.copysign,
-    math.degrees,
-    math.dist,
-    math.exp,
-    math.fabs,
-    math.factorial,
-    math.floor,
-    math.fmod,
-    math.fsum,
-    math.gamma,
-    math.hypot,
-    math.isclose,
-    math.isfinite,
-    math.isinf,
-    math.isnan,
-    math.isqrt,
-    math.lcm,
-    math.ldexp,
-    math.lgamma,
-    math.log,
-    math.log10,
-    math.log1p,
-    math.log2,
-    math.modf,
-    math.nextafter,
-    math.perm,
-    math.pow,
-    math.prod,
-    math.radians,
-    math.sqrt,
-    math.trunc,
-    math.ulp,
-]
-
-CONSTANT_BUILTIN_TYPES = [
-    int,
-    float,
-    tuple,
-    complex,
-]
-
+from bytecodemanipulation.Opcodes import SIDE_EFFECT_FREE_LOADS
 
 OPCODE_TO_ATTR_SINGLE = {
     Opcodes.UNARY_POSITIVE: "__pos__",
@@ -114,18 +49,6 @@ OPCODE_TO_ATTR_DOUBLE = {
     (Opcodes.COMPARE_OP, 3): lambda a, b: a != b,
     (Opcodes.COMPARE_OP, 4): lambda a, b: a > b,
     (Opcodes.COMPARE_OP, 5): lambda a, b: a >= b,
-}
-
-
-SIDE_EFFECT_FREE_LOADS = {
-    Opcodes.LOAD_FAST,
-    Opcodes.LOAD_NAME,
-    Opcodes.LOAD_GLOBAL,
-    Opcodes.LOAD_CONST,
-    Opcodes.LOAD_ASSERTION_ERROR,
-    Opcodes.LOAD_BUILD_CLASS,
-    Opcodes.LOAD_ASSERTION_ERROR,
-    Opcodes.DUP_TOP,
 }
 
 
@@ -308,8 +231,8 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                     )
 
                     if not callable(method) or not (
-                        type(value) in CONSTANT_BUILTIN_TYPES
-                        or (
+                            type(value) in CONSTANT_BUILTIN_TYPES
+                            or (
                             hasattr(method, "_OPTIMISER_CONTAINER")
                             and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
                         )
@@ -346,8 +269,8 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                     method = getattr(value, method)
 
                     if not callable(method) or not (
-                        type(value) in CONSTANT_BUILTIN_TYPES
-                        or (
+                            type(value) in CONSTANT_BUILTIN_TYPES
+                            or (
                             hasattr(method, "_OPTIMISER_CONTAINER")
                             and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
                         )

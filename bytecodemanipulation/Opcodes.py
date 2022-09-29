@@ -1,3 +1,6 @@
+import typing
+
+
 class Opcodes:
     POP_TOP = 1
     ROT_TWO = 2
@@ -155,71 +158,24 @@ class Opcodes:
 OPCODE2NAME = {}
 OPNAME2CODE = {}
 
-for key, value in Opcodes.__dict__.items():
-    key: str
-    if key.isupper() and isinstance(value, int):
-        OPNAME2CODE[key] = value
-        OPCODE2NAME[value] = key
+
+def init_maps():
+    OPNAME2CODE.clear()
+    OPCODE2NAME.clear()
+
+    for key, value in Opcodes.__dict__.items():
+        key: str
+        if key.isupper() and isinstance(value, int):
+            OPNAME2CODE[key] = value
+            OPCODE2NAME[value] = key
 
 
-END_CONTROL_FLOW = (
-    Opcodes.RETURN_VALUE,
-    Opcodes.RERAISE,
-    Opcodes.RAISE_VARARGS,
-    Opcodes.INTERMEDIATE_OUTER_RETURN,
-    Opcodes.INTERMEDIATE_INNER_RETURN,
-)
-
-HAS_NAME = (
-    Opcodes.STORE_NAME,
-    Opcodes.DELETE_NAME,
-    Opcodes.LOAD_NAME,
-    Opcodes.STORE_ATTR,
-    Opcodes.DELETE_ATTR,
-    Opcodes.LOAD_ATTR,
-    Opcodes.STORE_GLOBAL,
-    Opcodes.DELETE_GLOBAL,
-    Opcodes.LOAD_GLOBAL,
-    Opcodes.IMPORT_NAME,
-    Opcodes.IMPORT_FROM,
-    Opcodes.LOAD_METHOD,
-)
-
-HAS_GLOBAL = (
-    Opcodes.STORE_GLOBAL,
-    Opcodes.DELETE_GLOBAL,
-    Opcodes.LOAD_GLOBAL,
-)
-
-HAS_CONST = (Opcodes.LOAD_CONST,)
-
-HAS_LOCAL = (
-    Opcodes.LOAD_FAST,
-    Opcodes.STORE_FAST,
-    Opcodes.DELETE_FAST,
-    Opcodes.INTERMEDIATE_LOAD_FAST,
-)
-
-HAS_JUMP_ABSOLUTE = (
-    Opcodes.JUMP_ABSOLUTE,
-    Opcodes.JUMP_IF_FALSE_OR_POP,
-    Opcodes.JUMP_IF_TRUE_OR_POP,
-    Opcodes.JUMP_IF_NOT_EXC_MATCH,
-    Opcodes.POP_JUMP_IF_FALSE,
-    Opcodes.POP_JUMP_IF_TRUE,
-    Opcodes.INTERMEDIATE_INNER_RETURN,
-)
-
-HAS_JUMP_FORWARD = (
-    Opcodes.FOR_ITER,
-    Opcodes.JUMP_FORWARD,
-    Opcodes.SETUP_FINALLY,
-    Opcodes.SETUP_WITH,
-    Opcodes.SETUP_ASYNC_WITH,
-)
-
-UNCONDITIONAL_JUMPS = (
-    Opcodes.JUMP_ABSOLUTE,
-    Opcodes.JUMP_FORWARD,
-    Opcodes.INTERMEDIATE_INNER_RETURN,
-)
+END_CONTROL_FLOW: typing.List[int] = []
+HAS_NAME: typing.List[int] = []
+HAS_GLOBAL: typing.List[int] = []
+HAS_CONST: typing.List[int] = []
+HAS_LOCAL: typing.List[int] = []
+HAS_JUMP_ABSOLUTE: typing.List[int] = []
+HAS_JUMP_FORWARD: typing.List[int] = []
+UNCONDITIONAL_JUMPS: typing.List[int] = []
+SIDE_EFFECT_FREE_LOADS: typing.List[int] = []

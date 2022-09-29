@@ -1,7 +1,6 @@
 import dis
 import types
 import typing
-import inspect
 from bytecodemanipulation.Opcodes import (
     Opcodes,
     END_CONTROL_FLOW,
@@ -14,15 +13,14 @@ from bytecodemanipulation.Opcodes import (
     HAS_JUMP_FORWARD,
     UNCONDITIONAL_JUMPS,
 )
+import bytecodemanipulation.data
+from bytecodemanipulation.util import AbstractInstructionWalker
+
+bytecodemanipulation.data.init()
 
 
 class LinearCodeConstraintViolationException(Exception):
     pass
-
-
-class AbstractInstructionWalker:
-    def visit(self, instruction: "Instruction"):
-        raise NotImplementedError
 
 
 class Instruction:

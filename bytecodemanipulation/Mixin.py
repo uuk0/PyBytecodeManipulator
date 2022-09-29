@@ -2,7 +2,7 @@ import importlib
 import typing
 from abc import ABC
 
-from bytecodemanipulation.MutableFunction import AbstractInstructionWalker
+from bytecodemanipulation.util import AbstractInstructionWalker
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 

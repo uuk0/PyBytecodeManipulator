@@ -1,0 +1,18 @@
+{
+  "constant": [
+    "min",
+    "max",
+    "int",
+    "str",
+    "float",
+    "tuple",
+    "complex",
+    "abs"
+  ],
+  "const_builtin_types": [
+    "int",
+    "float",
+    "tuple",
+    "complex"
+  ]
+}

@@ -1,4 +1,5 @@
 import dis
+import math
 from unittest import TestCase
 from bytecodemanipulation.optimiser_util import *
 from bytecodemanipulation.Optimiser import (
