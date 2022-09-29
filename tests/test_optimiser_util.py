@@ -164,3 +164,14 @@ class TestOptimiserUtil(TestCase):
         dis.dis(target)
 
         self.assertEqual(mutable.instructions[0].arg_value, None)
+
+    def test_inline_static_attribute_access_typing(self):
+        def target():
+            return typing.cast(int, 0)
+
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        dis.dis(target)
+
+        mutable = MutableFunction(target)
+        self.assertEqual(Instruction.create(Opcodes.LOAD_CONST, 0), mutable.instructions[0])

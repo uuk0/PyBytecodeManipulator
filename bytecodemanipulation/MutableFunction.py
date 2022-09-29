@@ -46,7 +46,7 @@ class Instruction:
 
     @classmethod
     def create(cls, *args, **kwargs):
-        return cls(None, None, *args, **kwargs)
+        return cls(None, -1, *args, **kwargs)
 
     def __init__(
         self,
@@ -146,7 +146,7 @@ class Instruction:
     next_instruction = property(get_next_instruction, set_next_instruction)
 
     def __repr__(self):
-        assert isinstance(self.function.function_name, str)
+        assert self.function is None or isinstance(self.function.function_name, str)
         assert isinstance(self.offset, int)
         assert isinstance(self.opcode, int)
         assert isinstance(self.arg, int) or self.arg is None
@@ -267,7 +267,7 @@ class Instruction:
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
 
-    def update_owner(self, function: "MutableFunction", offset: int):
+    def update_owner(self, function: "MutableFunction", offset: int, update_following=True):
         previous_function = self.function
 
         self.function = function
@@ -281,15 +281,16 @@ class Instruction:
         elif self.arg_value is not None and self.arg is None:
             self.change_arg_value(self.arg_value)
 
-        self.next_instruction = (
-            (None if previous_function != function else self.next_instruction)
-            if function is None
-            or offset is None
-            or self.opcode in END_CONTROL_FLOW
-            or offset == -1
-            or offset + 1 >= len(function.instructions)
-            else function.instructions[offset + 1]
-        )
+        if update_following:
+            self.next_instruction = (
+                (None if previous_function != function else self.next_instruction)
+                if function is None
+                or offset is None
+                or self.opcode in END_CONTROL_FLOW
+                or offset == -1
+                or offset + 1 >= len(function.instructions)
+                else function.instructions[offset + 1]
+            )
 
         return self
 
@@ -818,7 +819,7 @@ class MutableFunction:
         """
 
         self.__instructions = [
-            instruction.update_owner(self, i)
+            instruction.update_owner(self, i, update_following=False)
             for i, instruction in enumerate(instructions)
         ]
 

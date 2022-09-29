@@ -194,7 +194,7 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
     dirty = False
 
     for instruction in mutable.instructions:
-        if instruction.opcode == Opcodes.CALL_FUNCTION:
+        if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
             target = next(instruction.trace_stack_position(instruction.arg))
 
             if target.opcode == Opcodes.LOAD_CONST:
@@ -220,6 +220,18 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
                             arg.change_opcode(Opcodes.NOP)
 
                         dirty = True
+
+                # inline typing.cast(<type>, <value>) cast to only represent <value>
+                elif function == typing.cast:
+                    type_loader = next(instruction.trace_stack_position(1))
+
+                    if type_loader.opcode in SIDE_EFFECT_FREE_LOADS:
+                        instruction.change_opcode(Opcodes.NOP)
+                        type_loader.change_opcode(Opcodes.NOP)
+                        target.change_opcode(Opcodes.NOP)
+                        dirty = True
+
+                    # todo: insert a POP_TOP for popping the second from top
 
     return dirty
 
@@ -398,6 +410,26 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
                     else:
                         instruction.change_opcode(Opcodes.NOP)
 
+                    dirty = True
+
+    return dirty
+
+
+def inline_static_attribute_access(mutable: MutableFunction) -> bool:
+    dirty = False
+
+    for instruction in mutable.instructions:
+        if instruction.opcode in (Opcodes.LOAD_ATTR, Opcodes.LOAD_METHOD):
+            source_instr = next(instruction.trace_stack_position(0))
+
+            if source_instr.opcode == Opcodes.LOAD_CONST:
+                source: typing.Any = source_instr.arg_value
+
+                if hasattr(source, "_OPTIMISER_CONTAINER") and source._OPTIMISER_CONTAINER.is_static:
+                    attr_name = instruction.arg_value
+                    source_instr.change_opcode(Opcodes.NOP)
+                    instruction.change_opcode(Opcodes.LOAD_CONST)
+                    instruction.change_arg_value(getattr(source, attr_name))
                     dirty = True
 
     return dirty

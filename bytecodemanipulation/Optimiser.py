@@ -7,6 +7,7 @@ from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
+from bytecodemanipulation.optimiser_util import inline_static_attribute_access
 from bytecodemanipulation.optimiser_util import remove_branch_on_constant
 from bytecodemanipulation.optimiser_util import remove_local_var_assign_without_use
 from bytecodemanipulation.optimiser_util import remove_nops
@@ -44,7 +45,9 @@ class _OptimisationContainer:
         self.optimisations: typing.List[AbstractOptimisationWalker] = []
 
         self.lazy_global_name_cache: typing.Dict[str, typing.Callable[[], object]] = {}
-        self.dereference_global_name_cache: typing.Dict[str, object] = {}
+        self.dereference_global_name_cache: typing.Dict[str, object] = {
+            "typing": typing,
+        }
         self.unsafe_global_writes_allowed: typing.Set[str] = set()
 
         self.lazy_local_var_type: typing.Dict[
@@ -74,6 +77,7 @@ class _OptimisationContainer:
 
         self.is_constant_op = False
         self.is_side_effect_free_op = False
+        self.is_static = False  # attributes are never mutated
 
         self.may_raise_exceptions: typing.Set[
             typing.Type[Exception] | Exception
@@ -133,6 +137,9 @@ class _OptimisationContainer:
         # Create mutable wrapper around the target
         mutable = MutableFunction(self.target)
 
+        # Walk over the code and resolve cached globals
+        self._inline_load_globals(mutable)
+
         dirty = True
 
         # Walk over the entries as long as the optimisers are doing their stuff
@@ -143,8 +150,8 @@ class _OptimisationContainer:
 
             dirty = remove_local_var_assign_without_use(mutable) or dirty
 
-            # Walk over the code and resolve cached globals
-            dirty = self._inline_load_globals(mutable) or dirty
+            # Inlines access to static items
+            dirty = inline_static_attribute_access(mutable) or dirty
 
             # Inline invokes to builtins and other known is_constant_op-s with static args
             dirty = inline_constant_method_invokes(mutable) or dirty
@@ -159,8 +166,6 @@ class _OptimisationContainer:
 
             # Remove conditional jumps no longer required
             dirty = remove_branch_on_constant(mutable) or dirty
-
-            remove_nops(mutable)
 
             mutable.assemble_instructions_from_tree(
                 mutable.instructions[0].optimise_tree()
@@ -242,6 +247,9 @@ class _OptimisationContainer:
                     dirty = True
 
         return dirty
+
+
+_OptimisationContainer.get_for_target(typing).is_static = True
 
 
 class AbstractOptimisationWalker:
@@ -530,6 +538,16 @@ def guarantee_side_effect_free_call():
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
         container.is_side_effect_free_op = True
+
+        return target
+
+    return annotate
+
+
+def guarantee_static_attributes():
+    def annotate(target):
+        container = _OptimisationContainer.get_for_target(target)
+        container.is_static = True
 
         return target
 
