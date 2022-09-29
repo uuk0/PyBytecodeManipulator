@@ -170,6 +170,11 @@ def override(target_name: str, soft_override=False):
         this may result in a crash when multiple are mixing into
     """
 
+    def annotation(target):
+        return target
+
+    return annotation
+
 
 def inject_at(target_name: str, position: InjectionPosition.AbstractInjectionPosition, deduplicate=False):
     """
@@ -179,6 +184,11 @@ def inject_at(target_name: str, position: InjectionPosition.AbstractInjectionPos
     :param position: the position to inject at, might be 0 - inf
     :param deduplicate: when True, tries to remove duplicated code segments by jumping around
     """
+
+    def annotation(target):
+        return target
+
+    return annotation
 
 
 def exception_handle(target_name: str, exception_type: typing.Type[Exception], start: InjectionPosition.AbstractInjectionPosition = None, end: InjectionPosition.AbstractInjectionPosition = None):
@@ -190,6 +200,11 @@ def exception_handle(target_name: str, exception_type: typing.Type[Exception], s
     :param start: where the exception handle starts, by default HEAD
     :param end: where the exception handle ends, by default end of function
     """
+
+    def annotation(target):
+        return target
+
+    return annotation
 
 
 def inject_by_known_call(target_name: str, invoke_target: typing.Callable, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False):
@@ -208,6 +223,11 @@ def inject_by_known_call(target_name: str, invoke_target: typing.Callable, check
         otherwise, behind, making the result arrival via resolve_prepared_parameter(-1)
     """
 
+    def annotation(target):
+        return target
+
+    return annotation
+
 
 def inject_by_named_call(target_name: str, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False):
     """
@@ -224,6 +244,11 @@ def inject_by_named_call(target_name: str, invoke_target: str, checker: Injectio
     :param before: only affective if replace is False. If True, the target will be injected before the targeted call,
         otherwise, behind, making the result arrival via resolve_prepared_parameter(-1)
     """
+
+    def annotation(target):
+        return target
+
+    return annotation
 
 
 def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False):
@@ -242,6 +267,11 @@ def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_
     :param before: only affective if replace is False. If True, the target will be injected before the targeted call,
         otherwise, behind, making the result arrival via resolve_prepared_parameter(-1)
     """
+
+    def annotation(target):
+        return target
+
+    return annotation
 
 
 class Mixin:
