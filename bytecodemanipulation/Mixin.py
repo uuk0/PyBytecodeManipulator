@@ -53,7 +53,8 @@ class _MixinContainer:
 
 class InjectionPosition:
     class AbstractInjectionPosition(AbstractInstructionWalker, ABC):
-        def __init__(self):
+        def __init__(self, parent: "InjectionPosition.AbstractInjectionPosition" = None):
+            self.parent = parent
             self._positions: typing.List[Instruction] = []
 
         def get_positions(self, root: Instruction) -> typing.List[Instruction]:
@@ -67,48 +68,97 @@ class InjectionPosition:
         def mark(self, instruction: Instruction):
             self._positions.append(instruction)
 
+        @typing.final
+        def visit(self, instruction: Instruction) -> bool:
+            if self.parent is not None:
+                if not self.parent.visit(instruction):
+                    return False
+
+            return self.visit_instruction(instruction)
+
         def init(self):
             pass
 
-        def visit(self, instruction: Instruction):
+        def visit_instruction(self, instruction: Instruction) -> bool:
             raise NotImplementedError
 
     class _AtHeadInject(AbstractInjectionPosition):
-        def __init__(self):
-            super().__init__()
+        def __init__(self, parent: "InjectionPosition.AbstractInjectionPosition" = None):
+            super().__init__(parent=parent)
             self.has_met_instr = False
 
         def init(self):
             self.has_met_instr = False
 
-        def visit(self, instruction: Instruction):
+        def visit_instruction(self, instruction: Instruction) -> bool:
             if not self.has_met_instr:
                 self.mark(instruction)
                 self.has_met_instr = True
+                return True
+            return False
 
     HEAD = _AtHeadInject()
 
     class _AtFirstReturn(AbstractInjectionPosition):
-        def visit(self, instruction: Instruction):
+        def visit_instruction(self, instruction: Instruction) -> bool:
             if instruction.opcode == Opcodes.RETURN_VALUE and not self._positions:
                 self.mark(instruction)
+                return True
+            return False
 
     FIRST_RETURN = _AtFirstReturn()
 
     class _AtLastReturn(AbstractInjectionPosition):
-        def visit(self, instruction: Instruction):
+        def visit_instruction(self, instruction: Instruction) -> bool:
             if instruction.opcode == Opcodes.RETURN_VALUE:
                 self._positions.clear()
                 self.mark(instruction)
+                return True
+            return False
 
     LAST_RETURN = _AtLastReturn()
 
     class _AtReturn(AbstractInjectionPosition):
-        def visit(self, instruction: Instruction):
+        def visit_instruction(self, instruction: Instruction) -> bool:
             if instruction.opcode == Opcodes.RETURN_VALUE:
                 self.mark(instruction)
+                return True
+            return False
 
     ALL_RETURN = _AtReturn()
+
+    class CountedRanges(AbstractInjectionPosition):
+        def __init__(self, start: int = None, end: int = None, parent: "InjectionPosition.AbstractInjectionPosition" = None):
+            super().__init__(parent=parent)
+            self.ranges = []
+            self._counter = 0
+
+            if start is not None:
+                if end is not None:
+                    self.add_counted_range(start, end)
+                else:
+                    self.add_counted_range(start, -1)
+            elif end is not None:
+                self.add_counted_range(0, end)
+
+        def add_counted_range(self, start: int, end: int):
+            self.ranges.append((start, end))
+            return self
+
+        def init(self):
+            self.ranges.sort(key=lambda e: e[0])
+            self._counter = 0
+
+        def visit_instruction(self, instruction: Instruction) -> bool:
+            c = self._counter
+            self._counter += 1
+
+            for start, end in self.ranges:
+                if start <= c and (end == -1 or c <= end):
+                    self.mark(instruction)
+                    return True
+
+            return False
 
 
 def override(target_name: str, soft_override=False):
