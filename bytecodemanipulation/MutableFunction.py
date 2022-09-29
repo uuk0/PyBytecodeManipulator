@@ -122,12 +122,12 @@ class Instruction:
 
         if self.previous_instructions is None:
             if self.function is None:
-                raise ValueError(f"Instruction {self} is not bound!")
+                raise ValueError(f"Instruction {self} is not bound to a MutableFunction object, making retrieving the previous instruction list impossible!!")
 
             self.function.prepare_previous_instructions()
 
             if self.previous_instructions is None:
-                raise RuntimeError(f"Could not find previous instructions for {self}")
+                raise RuntimeError(f"Could not find previous instructions for {self}. This should NOT happen, as we asked the method which MUST yield results. (See MutableFunction.prepare_previous_instructions())")
 
         return self.previous_instructions
 
