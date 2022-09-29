@@ -1,4 +1,6 @@
 import inspect
+import math
+import os
 import types
 import typing
 import builtins
@@ -44,17 +46,20 @@ class _OptimisationContainer:
         self.children: typing.List["_OptimisationContainer"] = []
         self.optimisations: typing.List[AbstractOptimisationWalker] = []
 
+        # Global names that are constant (e.g. imports)
         self.lazy_global_name_cache: typing.Dict[str, typing.Callable[[], object]] = {}
         self.dereference_global_name_cache: typing.Dict[str, object] = {
             "typing": typing,
         }
         self.unsafe_global_writes_allowed: typing.Set[str] = set()
 
+        # Strict types for locals
         self.lazy_local_var_type: typing.Dict[
             str, typing.Callable[[], typing.Type]
         ] = {}
         self.dereference_local_var_type: typing.Dict[str, typing.Type | None] = {}
 
+        # Strict local attribute type
         self.lazy_local_var_attr_type: typing.Dict[
             typing.Tuple[str, str], typing.Callable[[], typing.Type]
         ] = {}
@@ -62,26 +67,43 @@ class _OptimisationContainer:
             typing.Tuple[str, str], typing.Type
         ] = {}
 
+        # Strict return type
         self.lazy_return_type: typing.Callable[[], typing.Type] | None = None
         self.dereference_return_type: typing.Type | None = None
 
+        # Strict return attribute type
         self.lazy_return_attr_type: typing.Dict[
             str, typing.Callable[[], typing.Type]
         ] = {}
         self.dereference_return_attr_type: typing.Dict[str, typing.Type] = {}
 
+        # for classes: attribute strict type
         self.lazy_attribute_type: typing.Dict[
             str, typing.Callable[[], typing.Type]
         ] = {}
         self.dereference_attribute_type: typing.Dict[str, typing.Type] = {}
 
+        # result is static based on parameters
         self.is_constant_op = False
-        self.is_side_effect_free_op = False
-        self.is_static = False  # attributes are never mutated
 
+        # invoking will not change the state of parameters or any other variable outside the scope
+        self.is_side_effect_free_op = False
+
+        # alternate function which can be invoked instead when the result is not needed, allows further optimisation
+        self.side_effect_alternative: typing.Callable = None
+
+        # attributes are never mutated
+        self.is_static = False
+
+        self.static_attributes: typing.Set[str] = set()
+
+        # Exceptions that can be raised from here
         self.may_raise_exceptions: typing.Set[
             typing.Type[Exception] | Exception
         ] | None = None
+
+    def is_attribute_static(self, name: str):
+        return self.is_static or name in self.static_attributes
 
     def _walk_children_and_copy_attributes(self):
         for value in self.target.__dict__.values():
@@ -250,6 +272,8 @@ class _OptimisationContainer:
 
 
 _OptimisationContainer.get_for_target(typing).is_static = True
+_OptimisationContainer.get_for_target(math).is_static = True
+_OptimisationContainer.get_for_target(os).is_static = True
 
 
 class AbstractOptimisationWalker:
@@ -544,10 +568,21 @@ def guarantee_side_effect_free_call():
     return annotate
 
 
-def guarantee_static_attributes():
+def guarantee_static_attributes(*attributes: str):
+    """
+    Marks attributes as static. If attributes (*...) is not empty, only the specified attributes are static,
+    otherwise, all attributes are static.
+
+    If guarantee_static_attributes is used without args, further calls with args will have no affect
+    """
+
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
-        container.is_static = True
+
+        if not attributes:
+            container.is_static = True
+        else:
+            container.static_attributes |= set(attributes)
 
         return target
 

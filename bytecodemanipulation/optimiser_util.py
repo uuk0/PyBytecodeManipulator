@@ -425,7 +425,7 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
             if source_instr.opcode == Opcodes.LOAD_CONST:
                 source: typing.Any = source_instr.arg_value
 
-                if hasattr(source, "_OPTIMISER_CONTAINER") and source._OPTIMISER_CONTAINER.is_static:
+                if hasattr(source, "_OPTIMISER_CONTAINER") and source._OPTIMISER_CONTAINER.is_attribute_static(instruction.arg_value):
                     attr_name = instruction.arg_value
                     source_instr.change_opcode(Opcodes.NOP)
                     instruction.change_opcode(Opcodes.LOAD_CONST)
