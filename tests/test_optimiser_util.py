@@ -65,6 +65,17 @@ class TestOptimiserUtil(TestCase):
 
         self.assertEqual(2, mutable.instructions[0].arg_value)
 
+    def test_inline_math_attr(self):
+        @cache_global_name("math", lambda: math)
+        def target():
+            return math.sin(2)
+
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        mutable = MutableFunction(target)
+
+        self.assertEqual(math.sin(2), mutable.instructions[0].arg_value)
+
     def test_inline_const_function_on_parent(self):
         container = _OptimisationContainer.get_for_target(
             Outer_test_inline_const_function_on_parent
