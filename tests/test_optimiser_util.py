@@ -186,4 +186,6 @@ class TestOptimiserUtil(TestCase):
         dis.dis(target)
 
         mutable = MutableFunction(target)
-        self.assertEqual(Instruction.create(Opcodes.LOAD_CONST, 0), mutable.instructions[0])
+        self.assertEqual(
+            Instruction.create(Opcodes.LOAD_CONST, 0), mutable.instructions[0]
+        )

@@ -231,8 +231,8 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                     )
 
                     if not callable(method) or not (
-                            type(value) in CONSTANT_BUILTIN_TYPES
-                            or (
+                        type(value) in CONSTANT_BUILTIN_TYPES
+                        or (
                             hasattr(method, "_OPTIMISER_CONTAINER")
                             and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
                         )
@@ -269,8 +269,8 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                     method = getattr(value, method)
 
                     if not callable(method) or not (
-                            type(value) in CONSTANT_BUILTIN_TYPES
-                            or (
+                        type(value) in CONSTANT_BUILTIN_TYPES
+                        or (
                             hasattr(method, "_OPTIMISER_CONTAINER")
                             and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
                         )
@@ -395,7 +395,11 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
             if source_instr.opcode == Opcodes.LOAD_CONST:
                 source: typing.Any = source_instr.arg_value
 
-                if hasattr(source, "_OPTIMISER_CONTAINER") and source._OPTIMISER_CONTAINER.is_attribute_static(instruction.arg_value):
+                if hasattr(
+                    source, "_OPTIMISER_CONTAINER"
+                ) and source._OPTIMISER_CONTAINER.is_attribute_static(
+                    instruction.arg_value
+                ):
                     attr_name = instruction.arg_value
                     source_instr.change_opcode(Opcodes.NOP)
                     instruction.change_opcode(Opcodes.LOAD_CONST)

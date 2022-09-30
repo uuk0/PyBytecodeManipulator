@@ -121,12 +121,16 @@ class Instruction:
 
         if self.previous_instructions is None:
             if self.function is None:
-                raise ValueError(f"Instruction {self} is not bound to a MutableFunction object, making retrieving the previous instruction list impossible!!")
+                raise ValueError(
+                    f"Instruction {self} is not bound to a MutableFunction object, making retrieving the previous instruction list impossible!!"
+                )
 
             self.function.prepare_previous_instructions()
 
             if self.previous_instructions is None:
-                raise RuntimeError(f"Could not find previous instructions for {self}. This should NOT happen, as we asked the method which MUST yield results. (See MutableFunction.prepare_previous_instructions())")
+                raise RuntimeError(
+                    f"Could not find previous instructions for {self}. This should NOT happen, as we asked the method which MUST yield results. (See MutableFunction.prepare_previous_instructions())"
+                )
 
         return self.previous_instructions
 
@@ -266,7 +270,9 @@ class Instruction:
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
 
-    def update_owner(self, function: "MutableFunction", offset: int, update_following=True):
+    def update_owner(
+        self, function: "MutableFunction", offset: int, update_following=True
+    ):
         previous_function = self.function
 
         self.function = function
@@ -488,7 +494,8 @@ class MutableFunction:
         self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
     def copy(self):
-        def _(): pass
+        def _():
+            pass
 
         instance = type(self)(_)
         instance.copy_from(self)

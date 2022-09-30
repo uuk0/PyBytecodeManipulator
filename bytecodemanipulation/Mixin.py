@@ -9,7 +9,8 @@ from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 
 
-class MixinInjectionNotSupportedException(Exception): pass
+class MixinInjectionNotSupportedException(Exception):
+    pass
 
 
 class _MixinContainer:
@@ -65,7 +66,9 @@ class _MixinContainer:
 
 class InjectionPosition:
     class AbstractInjectionPosition(AbstractInstructionWalker, ABC):
-        def __init__(self, parent: "InjectionPosition.AbstractInjectionPosition" = None):
+        def __init__(
+            self, parent: "InjectionPosition.AbstractInjectionPosition" = None
+        ):
             self.parent = parent
             self._positions: typing.List[Instruction] = []
 
@@ -95,7 +98,9 @@ class InjectionPosition:
             raise NotImplementedError
 
     class _AtHeadInject(AbstractInjectionPosition):
-        def __init__(self, parent: "InjectionPosition.AbstractInjectionPosition" = None):
+        def __init__(
+            self, parent: "InjectionPosition.AbstractInjectionPosition" = None
+        ):
             super().__init__(parent=parent)
             self.has_met_instr = False
 
@@ -140,7 +145,12 @@ class InjectionPosition:
     ALL_RETURN = _AtReturn()
 
     class CountedRanges(AbstractInjectionPosition):
-        def __init__(self, start: int = None, end: int = None, parent: "InjectionPosition.AbstractInjectionPosition" = None):
+        def __init__(
+            self,
+            start: int = None,
+            end: int = None,
+            parent: "InjectionPosition.AbstractInjectionPosition" = None,
+        ):
             super().__init__(parent=parent)
             self.ranges = []
             self._counter = 0
@@ -183,13 +193,20 @@ def override(target_name: str, soft_override=False):
     """
 
     def annotation(target):
-        _PREPARED_ANNOTATIONS.setdefault(target, []).append(Mixin._OverrideHandle(MutableFunction(target)))
+        _PREPARED_ANNOTATIONS.setdefault(target, []).append(
+            Mixin._OverrideHandle(MutableFunction(target))
+        )
         return target
 
     return annotation
 
 
-def inject_at(target_name: str, position: InjectionPosition.AbstractInjectionPosition, deduplicate=False, hard_deduplicate=False):
+def inject_at(
+    target_name: str,
+    position: InjectionPosition.AbstractInjectionPosition,
+    deduplicate=False,
+    hard_deduplicate=False,
+):
     """
     Injects the target at the specified position
 
@@ -206,7 +223,12 @@ def inject_at(target_name: str, position: InjectionPosition.AbstractInjectionPos
     return annotation
 
 
-def exception_handle(target_name: str, exception_type: typing.Type[Exception], start: InjectionPosition.AbstractInjectionPosition = None, end: InjectionPosition.AbstractInjectionPosition = None):
+def exception_handle(
+    target_name: str,
+    exception_type: typing.Type[Exception],
+    start: InjectionPosition.AbstractInjectionPosition = None,
+    end: InjectionPosition.AbstractInjectionPosition = None,
+):
     """
     Adds a new exception handle, overriding the existing exception handles for the type in the region.
 
@@ -222,7 +244,15 @@ def exception_handle(target_name: str, exception_type: typing.Type[Exception], s
     return annotation
 
 
-def inject_by_known_call(target_name: str, invoke_target: typing.Callable, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False, deduplicate=False, hard_deduplicate=False):
+def inject_by_known_call(
+    target_name: str,
+    invoke_target: typing.Callable,
+    checker: InjectionPosition.AbstractInjectionPosition,
+    replace=False,
+    before=False,
+    deduplicate=False,
+    hard_deduplicate=False,
+):
     """
     Injects the target at a function call, specified by exact function.
 
@@ -247,7 +277,15 @@ def inject_by_known_call(target_name: str, invoke_target: typing.Callable, check
     return annotation
 
 
-def inject_by_named_call(target_name: str, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False, deduplicate=False, hard_deduplicate=False):
+def inject_by_named_call(
+    target_name: str,
+    invoke_target: str,
+    checker: InjectionPosition.AbstractInjectionPosition,
+    replace=False,
+    before=False,
+    deduplicate=False,
+    hard_deduplicate=False,
+):
     """
     Injects the target at a function call, specified by exact function.
 
@@ -272,7 +310,16 @@ def inject_by_named_call(target_name: str, invoke_target: str, checker: Injectio
     return annotation
 
 
-def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False, deduplicate=False, hard_deduplicate=False):
+def inject_by_named_call_on_known_type(
+    target_name: str,
+    obj_type: type,
+    invoke_target: str,
+    checker: InjectionPosition.AbstractInjectionPosition,
+    replace=False,
+    before=False,
+    deduplicate=False,
+    hard_deduplicate=False,
+):
     """
     Injects the target at a function call, specified by exact function.
 
@@ -298,7 +345,9 @@ def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_
     return annotation
 
 
-_PREPARED_ANNOTATIONS: typing.Dict[str, typing.List["Mixin._MixinFunctionContainer"]] = {}
+_PREPARED_ANNOTATIONS: typing.Dict[
+    str, typing.List["Mixin._MixinFunctionContainer"]
+] = {}
 
 
 class Mixin:
@@ -363,7 +412,9 @@ class Mixin:
             raise MixinInjectionNotSupportedException("Not implemented!")
 
         @classmethod
-        def jump_to_exception_handler(cls, exception_type: Exception | typing.Type[Exception]):
+        def jump_to_exception_handler(
+            cls, exception_type: Exception | typing.Type[Exception]
+        ):
             raise MixinInjectionNotSupportedException("Not implemented!")
 
         @classmethod
@@ -461,7 +512,9 @@ class Mixin:
                 key = key.__name__
 
             if key not in self.__mixin_container.function_containers:
-                cont = self.__mixin_container.MixinFunctionContainer(getattr(self.__target_class, key))
+                cont = self.__mixin_container.MixinFunctionContainer(
+                    getattr(self.__target_class, key)
+                )
                 self.__mixin_container.function_containers[key] = cont
             else:
                 cont = self.__mixin_container.function_containers[key]
