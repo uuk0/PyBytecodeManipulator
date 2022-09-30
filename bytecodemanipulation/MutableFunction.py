@@ -1,3 +1,4 @@
+import copy
 import dis
 import types
 import typing
@@ -486,7 +487,41 @@ class MutableFunction:
 
         self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
+    def copy(self):
+        def _(): pass
+
+        instance = type(self)(_)
+        instance.copy_from(self)
+
+        return instance
+
+    def copy_from(self, mutable: "MutableFunction"):
+        # self.target = mutable.target
+        self.code_object = mutable.code_object
+
+        self.argument_count = mutable.argument_count
+        self.cell_variables = mutable.cell_variables.copy()
+        self.__raw_code = mutable.raw_code.copy()
+        self.constants = copy.deepcopy(mutable.constants)
+        self.filename = mutable.filename
+        self.first_line_number = mutable.first_line_number
+        self.code_flags = mutable.code_flags
+        self.free_variables = mutable.free_variables.copy()
+        self.keyword_only_argument_count = mutable.keyword_only_argument_count
+        self.line_table = copy.copy(mutable.line_table)
+        self.lnotab = mutable.lnotab
+        self.function_name = mutable.function_name
+        self.shared_names = mutable.shared_names.copy()
+        self.positional_only_argument_count = mutable.positional_only_argument_count
+        self.stack_size = mutable.stack_size
+        self.shared_variable_names = mutable.shared_variable_names.copy()
+
+        self.__instructions = None
+
     def create_code_obj(self) -> types.CodeType:
+        if self.__instructions is None:
+            self.get_instructions()
+
         self.assemble_fast(self.__instructions)
 
         return types.CodeType(

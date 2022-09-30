@@ -2,6 +2,8 @@ import importlib
 import typing
 from abc import ABC
 
+from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.util import AbstractInstructionWalker
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -17,7 +19,14 @@ class _MixinContainer:
             self.mixins: typing.List[Mixin._MixinFunctionContainer] = []
 
         def sort_and_apply(self):
-            pass
+            # todo: sort
+
+            mutable = MutableFunction(self.target)
+
+            for mixin in self.mixins:
+                mixin.apply_on(mutable)
+
+            mutable.reassign_to_function()
 
         def reset(self):
             pass
@@ -42,13 +51,16 @@ class _MixinContainer:
         ] = {}
 
     def sort_and_apply(self):
-        pass
+        for mixin in self.function_containers.values():
+            mixin.sort_and_apply()
 
     def reset(self):
-        pass
+        for mixin in self.function_containers.values():
+            mixin.reset()
 
     def run_optimiser(self):
-        pass
+        # todo: copy optimisations over!
+        _OptimisationContainer.get_for_target(self.target).run_optimisers()
 
 
 class InjectionPosition:
@@ -171,18 +183,21 @@ def override(target_name: str, soft_override=False):
     """
 
     def annotation(target):
+        _PREPARED_ANNOTATIONS.setdefault(target, []).append(Mixin._OverrideHandle(MutableFunction(target)))
         return target
 
     return annotation
 
 
-def inject_at(target_name: str, position: InjectionPosition.AbstractInjectionPosition, deduplicate=False):
+def inject_at(target_name: str, position: InjectionPosition.AbstractInjectionPosition, deduplicate=False, hard_deduplicate=False):
     """
     Injects the target at the specified position
 
     :param target_name: the function name
     :param position: the position to inject at, might be 0 - inf
     :param deduplicate: when True, tries to remove duplicated code segments by jumping around
+    :param hard_deduplicate: in version <= 3.10, it is possible to write small subroutines in bytecode via exception handling.
+        By setting this to True, this strategy is used. In versions >= 3.11, this is not supported and will be ignored
     """
 
     def annotation(target):
@@ -207,7 +222,7 @@ def exception_handle(target_name: str, exception_type: typing.Type[Exception], s
     return annotation
 
 
-def inject_by_known_call(target_name: str, invoke_target: typing.Callable, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False):
+def inject_by_known_call(target_name: str, invoke_target: typing.Callable, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False, deduplicate=False, hard_deduplicate=False):
     """
     Injects the target at a function call, specified by exact function.
 
@@ -221,6 +236,9 @@ def inject_by_known_call(target_name: str, invoke_target: typing.Callable, check
     :param replace: if True, replaces the function call, otherwise, injects around
     :param before: only affective if replace is False. If True, the target will be injected before the targeted call,
         otherwise, behind, making the result arrival via resolve_prepared_parameter(-1)
+    :param deduplicate: when True, tries to remove duplicated code segments by jumping around
+    :param hard_deduplicate: in version <= 3.10, it is possible to write small subroutines in bytecode via exception handling.
+        By setting this to True, this strategy is used. In versions >= 3.11, this is not supported and will be ignored
     """
 
     def annotation(target):
@@ -229,7 +247,7 @@ def inject_by_known_call(target_name: str, invoke_target: typing.Callable, check
     return annotation
 
 
-def inject_by_named_call(target_name: str, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False):
+def inject_by_named_call(target_name: str, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False, deduplicate=False, hard_deduplicate=False):
     """
     Injects the target at a function call, specified by exact function.
 
@@ -243,6 +261,9 @@ def inject_by_named_call(target_name: str, invoke_target: str, checker: Injectio
     :param replace: if True, replaces the function call, otherwise, injects around
     :param before: only affective if replace is False. If True, the target will be injected before the targeted call,
         otherwise, behind, making the result arrival via resolve_prepared_parameter(-1)
+    :param deduplicate: when True, tries to remove duplicated code segments by jumping around
+    :param hard_deduplicate: in version <= 3.10, it is possible to write small subroutines in bytecode via exception handling.
+        By setting this to True, this strategy is used. In versions >= 3.11, this is not supported and will be ignored
     """
 
     def annotation(target):
@@ -251,7 +272,7 @@ def inject_by_named_call(target_name: str, invoke_target: str, checker: Injectio
     return annotation
 
 
-def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False):
+def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_target: str, checker: InjectionPosition.AbstractInjectionPosition, replace=False, before=False, deduplicate=False, hard_deduplicate=False):
     """
     Injects the target at a function call, specified by exact function.
 
@@ -266,12 +287,18 @@ def inject_by_named_call_on_known_type(target_name: str, obj_type: type, invoke_
     :param replace: if True, replaces the function call, otherwise, injects around
     :param before: only affective if replace is False. If True, the target will be injected before the targeted call,
         otherwise, behind, making the result arrival via resolve_prepared_parameter(-1)
+    :param deduplicate: when True, tries to remove duplicated code segments by jumping around
+    :param hard_deduplicate: in version <= 3.10, it is possible to write small subroutines in bytecode via exception handling.
+        By setting this to True, this strategy is used. In versions >= 3.11, this is not supported and will be ignored
     """
 
     def annotation(target):
         return target
 
     return annotation
+
+
+_PREPARED_ANNOTATIONS: typing.Dict[str, typing.List["Mixin._MixinFunctionContainer"]] = {}
 
 
 class Mixin:
@@ -344,7 +371,15 @@ class Mixin:
             raise MixinInjectionNotSupportedException("Not implemented!")
 
     class _MixinFunctionContainer:
-        pass
+        def apply_on(self, mutable: MutableFunction):
+            raise NotImplementedError
+
+    class _OverrideHandle(_MixinFunctionContainer):
+        def __init__(self, override_with: MutableFunction):
+            self.override_with = override_with
+
+        def apply_on(self, mutable: MutableFunction):
+            mutable.copy_from(self.override_with)
 
     def __init__(
         self,
@@ -365,6 +400,7 @@ class Mixin:
         self.__priority = priority
         self.__optional = optional
         self.__apply_on_others = apply_on_others
+        self.__prepared_data = {}
 
         Mixin._INSTANCES.append(self)
 
@@ -378,6 +414,9 @@ class Mixin:
             )
 
         self.__mixin_class = cls
+        self.__prepared_data.update(_PREPARED_ANNOTATIONS)
+        _PREPARED_ANNOTATIONS.clear()
+        return self
 
     def _resolve(self) -> bool:
         self.__resolved = True
@@ -416,3 +455,24 @@ class Mixin:
             self.__mixin_class.MIXIN_CONTAINER
         ) = _MixinContainer.get_container_for_target(self.__target_class)
         container.mixins.append(self)
+
+        for key, value in self.__prepared_data.items():
+            if not isinstance(key, str):
+                key = key.__name__
+
+            if key not in self.__mixin_container.function_containers:
+                cont = self.__mixin_container.MixinFunctionContainer(getattr(self.__target_class, key))
+                self.__mixin_container.function_containers[key] = cont
+            else:
+                cont = self.__mixin_container.function_containers[key]
+
+            cont.mixins += value
+
+    def _apply(self):
+        if not self.__resolved:
+            self._resolve()
+
+        if self.__mixin_container is None:
+            self._bind_to_target()
+
+        self.__mixin_container.sort_and_apply()

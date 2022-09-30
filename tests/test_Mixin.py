@@ -1,5 +1,7 @@
 import unittest
-from bytecodemanipulation.Mixin import Mixin
+from unittest import TestCase
+
+from bytecodemanipulation.Mixin import *
 
 
 class TestMixinBasic(unittest.TestCase):
@@ -35,3 +37,22 @@ class TestMixinBasic(unittest.TestCase):
         @Mixin(Target)
         class TargetMixin(Mixin.Interface):
             pass
+
+
+class TestMixinApply(TestCase):
+    def test_func_replacement(self):
+        class XY:
+            def target(self):
+                return 0
+
+        self.assertEqual(XY.target(None), 0)
+
+        @Mixin(XY)
+        class XYMixin(Mixin.Interface):
+            @override("target")
+            def target(self):
+                return 1
+
+        XYMixin._apply()
+
+        self.assertEqual(XY.target(None), 1)
