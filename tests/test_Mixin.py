@@ -4,6 +4,9 @@ from unittest import TestCase
 from bytecodemanipulation.Mixin import *
 
 
+FLAG = False
+
+
 class TestMixinBasic(unittest.TestCase):
     def setUp(self) -> None:
         Mixin._reset()
@@ -56,3 +59,30 @@ class TestMixinApply(TestCase):
         XYMixin._apply()
 
         self.assertEqual(XY.target(None), 1)
+
+    def test_function_inject(self):
+        class XY:
+            def target(self):
+                return 2
+
+        @Mixin(XY)
+        class XYMixin(Mixin.Interface):
+            @inject_at("target", InjectionPosition.HEAD)
+            def target(self):
+                global FLAG
+                FLAG = True
+
+        global FLAG
+        FLAG = False
+
+        XY.target(None)
+
+        self.assertFalse(FLAG)
+
+        XYMixin._apply()
+
+        XY.target(None)
+
+        self.assertTrue(FLAG)
+
+        FLAG = False

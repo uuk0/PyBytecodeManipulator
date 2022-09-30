@@ -68,7 +68,7 @@ class MutableFunctionWithTree:
 
 
 def prefix_all_locals_with(
-    mutable: MutableFunction | MutableFunctionWithTree, prefix: str
+    mutable: MutableFunction | MutableFunctionWithTree, prefix: str, protected_locals: typing.List[str] = tuple(),
 ):
     if isinstance(mutable, MutableFunctionWithTree):
         mutable.mutable.assemble_instructions_from_tree(mutable.root)
@@ -77,7 +77,7 @@ def prefix_all_locals_with(
     mutable.shared_variable_names = [prefix + e for e in mutable.shared_variable_names]
 
     for instruction in mutable.instructions:
-        if instruction.has_local():
+        if instruction.has_local() and instruction.arg_value not in protected_locals:
             instruction.update_owner(mutable, instruction.offset)
 
 
@@ -194,6 +194,7 @@ def insert_method_into(
     body: MutableFunction | MutableFunctionWithTree,
     offset: typing.Union[Instruction, int],
     to_insert: MutableFunction | MutableFunctionWithTree,
+    protected_locals: typing.List[str] = tuple(),
 ):
     """
     Inserts the function AFTER the given offset / Instruction.
@@ -221,7 +222,7 @@ def insert_method_into(
     for instr in to_insert.instructions:
         instr.offset = -1
 
-    prefix_all_locals_with(to_insert, to_insert.function_name + ":")
+    prefix_all_locals_with(to_insert, to_insert.function_name + ":", protected_locals)
     replace_opcode_with_other(
         to_insert, Opcodes.RETURN_VALUE, Opcodes.INTERMEDIATE_INNER_RETURN
     )

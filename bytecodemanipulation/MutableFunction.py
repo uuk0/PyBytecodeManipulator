@@ -2,6 +2,8 @@ import copy
 import dis
 import types
 import typing
+
+from bytecodemanipulation.Opcodes import HAS_JUMP_BACKWARDS
 from bytecodemanipulation.Opcodes import (
     Opcodes,
     END_CONTROL_FLOW,
@@ -255,7 +257,10 @@ class Instruction:
         return self.opcode in HAS_JUMP_FORWARD
 
     def has_jump_backward(self):
-        return False
+        return self.opcode in HAS_JUMP_BACKWARDS
+
+    def has_cell_variable(self):
+        return self.opcode in HAS_CELL_VARIABLE
 
     def has_jump(self):
         return (
@@ -391,7 +396,7 @@ class Instruction:
     def trace_stack_position_use(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        yield from self._trace_stack_position(stack_position, set())
+        yield from self._trace_stack_position_use(stack_position + 1, set())
 
     def _trace_stack_position_use(
         self, stack_position: int, yielded: typing.Set["Instruction"]

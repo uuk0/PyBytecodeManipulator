@@ -2,7 +2,10 @@ import importlib
 import typing
 from abc import ABC
 
+from bytecodemanipulation.mixin_util import resolve_accesses
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.MutableFunctionHelpers import insert_method_into
+from bytecodemanipulation.MutableFunctionHelpers import MutableFunctionWithTree
 from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.util import AbstractInstructionWalker
 from bytecodemanipulation.MutableFunction import Instruction
@@ -17,7 +20,7 @@ class _MixinContainer:
     class MixinFunctionContainer:
         def __init__(self, target: typing.Callable):
             self.target = target
-            self.mixins: typing.List[Mixin._MixinFunctionContainer] = []
+            self.mixins: typing.List[Mixin._MixinHandle] = []
 
         def sort_and_apply(self):
             # todo: sort
@@ -193,7 +196,7 @@ def override(target_name: str, soft_override=False):
     """
 
     def annotation(target):
-        _PREPARED_ANNOTATIONS.setdefault(target, []).append(
+        _PREPARED_ANNOTATIONS.setdefault(target_name, []).append(
             Mixin._OverrideHandle(MutableFunction(target))
         )
         return target
@@ -218,6 +221,9 @@ def inject_at(
     """
 
     def annotation(target):
+        _PREPARED_ANNOTATIONS.setdefault(target_name, []).append(
+            Mixin._InjectAtHandle(position, MutableFunction(target))
+        )
         return target
 
     return annotation
@@ -346,7 +352,7 @@ def inject_by_named_call_on_known_type(
 
 
 _PREPARED_ANNOTATIONS: typing.Dict[
-    str, typing.List["Mixin._MixinFunctionContainer"]
+    str, typing.List["Mixin._MixinHandle"]
 ] = {}
 
 
@@ -388,7 +394,7 @@ class Mixin:
 
         @classmethod
         def resolve_local(cls, name: str) -> object:
-            raise MixinInjectionNotSupportedException("Not implemented!")
+            raise MixinInjectionNotSupportedException("Not implemented, should not happen!")
 
         @classmethod
         def resolve_exception_instance(cls) -> Exception:
@@ -400,7 +406,7 @@ class Mixin:
 
         @classmethod
         def resolve_cell_variable(cls, name: str) -> object:
-            raise MixinInjectionNotSupportedException("Not implemented!")
+            raise MixinInjectionNotSupportedException("Not implemented, should not happen!")
 
         @classmethod
         def return_outer(cls, value=None):
@@ -421,16 +427,36 @@ class Mixin:
         def override_function_call_result(cls, result: object):
             raise MixinInjectionNotSupportedException("Not implemented!")
 
-    class _MixinFunctionContainer:
+    class _MixinHandle:
         def apply_on(self, mutable: MutableFunction):
             raise NotImplementedError
 
-    class _OverrideHandle(_MixinFunctionContainer):
+    class _OverrideHandle(_MixinHandle):
         def __init__(self, override_with: MutableFunction):
             self.override_with = override_with
 
         def apply_on(self, mutable: MutableFunction):
+            resolve_accesses(mutable, self.override_with)
+
             mutable.copy_from(self.override_with)
+
+    class _InjectAtHandle(_MixinHandle):
+        def __init__(self, at: InjectionPosition.AbstractInjectionPosition, inject: MutableFunction):
+            self.at = at
+            self.inject = inject
+
+        def apply_on(self, mutable: MutableFunction):
+            protected_locals = resolve_accesses(mutable, self.inject)
+
+            tree = MutableFunctionWithTree(mutable)
+
+            for position_instr in self.at.get_positions(mutable.instructions[0])[:]:
+                if position_instr not in mutable.instructions:
+                    continue
+
+                insert_method_into(tree, position_instr.offset, self.inject, protected_locals=protected_locals)
+
+                mutable.assemble_instructions_from_tree(tree.root)
 
     def __init__(
         self,

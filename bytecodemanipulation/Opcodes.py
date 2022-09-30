@@ -177,5 +177,8 @@ HAS_CONST: typing.List[int] = []
 HAS_LOCAL: typing.List[int] = []
 HAS_JUMP_ABSOLUTE: typing.List[int] = []
 HAS_JUMP_FORWARD: typing.List[int] = []
+HAS_JUMP_BACKWARDS: typing.List[int] = []
 UNCONDITIONAL_JUMPS: typing.List[int] = []
+HAS_CELL_VARIABLE: typing.List[int] = []
+
 SIDE_EFFECT_FREE_LOADS: typing.List[int] = []

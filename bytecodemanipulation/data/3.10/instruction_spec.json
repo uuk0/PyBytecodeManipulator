@@ -64,5 +64,10 @@
     "LOAD_BUILD_CLASS",
     "LOAD_ASSERTION_ERROR",
     "DUP_TOP"
+  ],
+  "HAS_CELL_VARIABLE": [
+    "LOAD_DEREF",
+    "STORE_DEREF",
+    "DELETE_DEREF"
   ]
 }
