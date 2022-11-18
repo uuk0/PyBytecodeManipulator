@@ -47,7 +47,7 @@ class _OptimisationContainer:
 
         try:
             target._OPTIMISER_CONTAINER = container
-        except AttributeError:
+        except (AttributeError,  TypeError):
             cls._CUSTOM_TARGETS[target] = container
 
         return container

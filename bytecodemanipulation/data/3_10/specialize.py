@@ -1,5 +1,6 @@
 import typing
 
+from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Specialization import SpecializationContainer, register
 from bytecodemanipulation.MutableFunction import Instruction
 
@@ -75,4 +76,24 @@ def specialize_min(container: SpecializationContainer):
             norm_instr = arg.get_normalized_data_instr()
             if norm_instr and norm_instr != min_const and norm_instr.has_constant():
                 arg.discard()
+
+
+@register(range)
+def specialize_range_3rd_argument(container: SpecializationContainer):
+    args = container.get_arg_specifications()
+
+    if len(args) != 3: return
+
+    if args[2] and args[2].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST and args[2].get_normalized_data_instr().arg_value == 1:
+        args[2].discard()
+
+
+@register(range)
+def specialize_range_start_0(container: SpecializationContainer):
+    args = container.get_arg_specifications()
+
+    if len(args) != 2: return
+
+    if args[0] and args[0].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST and args[0].get_normalized_data_instr().arg_value == 0:
+        args[0].discard()
 
