@@ -168,11 +168,6 @@ class Instruction:
         return (
             self.opcode == other.opcode
             and (
-                self.arg == other.arg
-                if self.arg is not None and other.arg is not None
-                else True
-            )
-            and (
                 self.arg_value == other.arg_value
                 if self.arg_value is not None and other.arg_value is not None
                 else True
@@ -374,6 +369,9 @@ class Instruction:
         if visited is None:
             visited = {self}
 
+        if self.previous_instructions is None:
+            return
+
         for prev in self.previous_instructions:
             yield from prev.trace_variable_set(name, visited)
 
@@ -390,7 +388,11 @@ class Instruction:
             return target.trace_normalized_stack_position(0)
 
         if target.opcode == Opcodes.LOAD_FAST:
-            variable_set = next(target.trace_variable_set(typing.cast(str, target.arg_value)))
+            try:
+                variable_set = next(target.trace_variable_set(typing.cast(str, target.arg_value)))
+            except StopIteration:
+                return
+
             return variable_set.trace_normalized_stack_position(0)
 
         return target
@@ -500,6 +502,20 @@ class Instruction:
             return 1, 2, None
 
         raise RuntimeError(self)
+
+    def insert_after(self, *instructions: "Instruction" | typing.List["Instruction"]):
+        if not instructions: return self
+
+        if isinstance(instructions[0], (list, tuple)):
+            if len(instructions) > 1:
+                raise ValueError
+
+            instructions = instructions[0]
+
+        instructions[0].next_instruction = self.next_instruction
+        self.next_instruction = instructions[0]
+        instructions[0].insert_after(instructions[1:])
+        return self
 
 
 class MutableFunction:

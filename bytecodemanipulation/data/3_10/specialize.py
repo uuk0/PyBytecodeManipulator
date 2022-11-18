@@ -35,15 +35,16 @@ def specialize_min(container: SpecializationContainer):
     for arg in args:
         instr: Instruction = arg.get_normalized_data_instr()
 
-        if instr.has_constant():
-            if min_const is None or min_const.arg_value < instr.arg_value:
+        if instr and instr.has_constant():
+            if min_const is None or min_const.arg_value > instr.arg_value:
                 min_const = instr
 
     if min_const is not None:
         # todo: for non constants, do a clever try-eval-ahead with the type if arrival
 
         for arg in args:
-            if arg.get_normalized_data_instr() != min_const:
+            norm_instr = arg.get_normalized_data_instr()
+            if norm_instr and norm_instr != min_const and norm_instr.has_constant():
                 arg.discard()
 
         container.replace_with_variant(min)

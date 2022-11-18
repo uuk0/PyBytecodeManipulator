@@ -7,7 +7,6 @@ import builtins
 
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.optimiser_util import apply_specializations
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
 from bytecodemanipulation.optimiser_util import inline_static_attribute_access
@@ -37,6 +36,7 @@ class _OptimisationContainer:
 
     @classmethod
     def get_for_target(cls, target):
+
         if hasattr(target, "_OPTIMISER_CONTAINER"):
             return target._OPTIMISER_CONTAINER
 
@@ -159,6 +159,8 @@ class _OptimisationContainer:
         return self
 
     def run_optimisers(self):
+        from bytecodemanipulation.optimiser_util import apply_specializations
+
         if isinstance(self.target, type):
             self._walk_children_and_copy_attributes()
 
@@ -172,6 +174,7 @@ class _OptimisationContainer:
 
         # Create mutable wrapper around the target
         mutable = MutableFunction(self.target)
+        mutable.prepare_previous_instructions()
 
         # Walk over the code and resolve cached globals
         self._inline_load_globals(mutable)
@@ -206,9 +209,11 @@ class _OptimisationContainer:
             # Remove conditional jumps no longer required
             dirty = remove_branch_on_constant(mutable) or dirty
 
-            mutable.assemble_instructions_from_tree(
-                mutable.instructions[0].optimise_tree()
-            )
+            if dirty:
+                mutable.assemble_instructions_from_tree(
+                    mutable.instructions[0].optimise_tree()
+                )
+                mutable.prepare_previous_instructions()
 
             for optimiser in self.optimisations:
                 dirty = optimiser.apply(self, mutable) or dirty

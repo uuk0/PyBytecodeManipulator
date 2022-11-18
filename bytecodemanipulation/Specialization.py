@@ -27,7 +27,7 @@ class ArgDescriptor:
     def get_real_data_instr(self) -> Instruction:
         return self.real
 
-    def get_normalized_data_instr(self) -> Instruction:
+    def get_normalized_data_instr(self) -> Instruction | None:
         return self.normal
 
     def get_type_annotation(self) -> TypeAnnotation:
@@ -49,6 +49,9 @@ class SpecializationContainer:
 
         self.no_special = True
         self.result_arg: ArgDescriptor | None = None
+        self.replaced_call_target: typing.Callable | None = None
+        self.constant_value = tuple()
+        self.invoke_before: typing.Callable | None = None
 
     def set_arg_descriptors(self, descriptors: typing.List[ArgDescriptor]):
         for e in descriptors:
@@ -66,10 +69,19 @@ class SpecializationContainer:
         return self.return_type_annotation
 
     def replace_with_constant_value(self, value: object, side_effect: typing.Callable[[...], None] = None):
-        pass
+
+        if side_effect is None:
+            for arg in self.arg_descriptors:
+                arg.discard()
+
+        self.invoke_before = side_effect
+        self.constant_value = value,
+        return self
 
     def replace_with_variant(self, target: typing.Callable[[...], object]):
-        pass
+        self.replaced_call_target = target
+        self.no_special = False
+        return self
 
     def replace_with_raise_exception(self, exception: Exception, side_effect: typing.Callable[[...], None] = None):
         pass
@@ -93,6 +105,7 @@ class SpecializationContainer:
 
         self.no_special = False
         self.result_arg = arg
+        return self
 
     def apply(self):
         if self.no_special:
@@ -106,6 +119,34 @@ class SpecializationContainer:
             self._discard_args()
             self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.NOP)
             self.method_call_descriptor.call_method_instr.change_opcode(Opcodes.NOP)
+            return
+
+        if self.constant_value != tuple():
+            self._discard_args()
+            arg_count = sum(int(not arg.discarded) for arg in self.arg_descriptors)
+            self.method_call_descriptor.call_method_instr.change_arg(arg_count)
+
+            if self.invoke_before:
+                self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.LOAD_CONST)
+                self.method_call_descriptor.lookup_method_instr.change_arg_value(self.invoke_before)
+                self.method_call_descriptor.call_method_instr.change_arg(arg_count)
+
+                self.method_call_descriptor.call_method_instr.insert_after(Instruction(self.underlying_function, -1, opcode_or_name=Opcodes.POP_TOP), Instruction(self.underlying_function, -1, opcode_or_name=Opcodes.LOAD_CONST, arg_value=self.constant_value[0]))
+
+            else:
+                self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.NOP)
+                self.method_call_descriptor.call_method_instr.change_opcode(Opcodes.LOAD_CONST)
+                self.method_call_descriptor.call_method_instr.change_arg_value(self.constant_value[0])
+
+            return
+
+        self._discard_args()
+        arg_count = sum(int(not arg.discarded) for arg in self.arg_descriptors)
+        self.method_call_descriptor.call_method_instr.change_arg(arg_count)
+
+        if self.replaced_call_target is not None:
+            self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.LOAD_CONST)
+            self.method_call_descriptor.lookup_method_instr.change_arg_value(self.replaced_call_target)
 
     def _discard_args(self):
         for arg in self.arg_descriptors:

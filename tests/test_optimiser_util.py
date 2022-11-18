@@ -1,6 +1,7 @@
 import dis
 import math
 from unittest import TestCase
+from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.optimiser_util import *
 from bytecodemanipulation.Optimiser import (
     guarantee_constant_result,
@@ -189,3 +190,28 @@ class TestOptimiserUtil(TestCase):
         self.assertEqual(
             Instruction.create(Opcodes.LOAD_CONST, 0), mutable.instructions[0]
         )
+
+    def test_compress_min_call(self):
+        def target(x):
+            return min(x, 1, 2)
+
+        mutable = MutableFunction(target)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        dis.dis(target)
+
+        def compare(x):
+            return min(x, 1)
+
+        mutable = MutableFunction(compare)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(compare)
+
+        mutable = MutableFunction(target)
+        mutable2 = MutableFunction(compare)
+        self.assertEqual(mutable.instructions, mutable2.instructions)

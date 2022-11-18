@@ -401,6 +401,8 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
 
 
 def apply_specializations(mutable: MutableFunction) -> bool:
+    from bytecodemanipulation.Optimiser import _OptimisationContainer
+
     dirty = False
 
     for instruction in mutable.instructions:
@@ -410,10 +412,12 @@ def apply_specializations(mutable: MutableFunction) -> bool:
             safe_source = next(instruction.trace_stack_position(load_stack_pos))
 
             if source.opcode == Opcodes.LOAD_CONST:
-                if not (hasattr(source.arg_value, "_OPTIMISER_CONTAINER") and source.arg_value._OPTIMISER_CONTAINER.specializations):
+                container = _OptimisationContainer.get_for_target(source.arg_value)
+
+                if not container.specializations:
                     continue
 
-                target_func = source.opcode
+                target_func = source.arg_value
 
                 spec = SpecializationContainer()
                 spec.underlying_function = target_func
@@ -423,7 +427,7 @@ def apply_specializations(mutable: MutableFunction) -> bool:
                     for arg_id in range(instruction.arg-1, -1, -1)
                 ])
 
-                for special in source.arg_value._OPTIMISER_CONTAINER.specializations:
+                for special in container.specializations:
                     special(spec)
 
                     if spec.no_special:
