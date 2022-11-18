@@ -82,5 +82,5 @@ def resolve_accesses(inject_target: MutableFunction, injected: MutableFunction) 
                 instruction.change_opcode(instruction.opname.replace("FAST", "DEREF"))
                 instruction.change_arg_value(BOUND_CELL_VARIABLES[instruction.arg_value])
 
-    return BOUND_LOCALS
+    return list(BOUND_LOCALS.keys())
 

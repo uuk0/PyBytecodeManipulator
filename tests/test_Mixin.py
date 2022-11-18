@@ -60,9 +60,64 @@ class TestMixinApply(TestCase):
 
         self.assertEqual(XY.target(None), 1)
 
-    def test_function_inject(self):
+    def test_function_inject_at_head(self):
         class XY:
             def target(self):
+                return 2
+
+        @Mixin(XY)
+        class XYMixin(Mixin.Interface):
+            @inject_at("target", InjectionPosition.HEAD)
+            def target(self):
+                global FLAG
+                FLAG = True
+
+        global FLAG
+        FLAG = False
+
+        XY.target(None)
+
+        self.assertFalse(FLAG)
+
+        XYMixin._apply()
+
+        XY.target(None)
+
+        self.assertTrue(FLAG)
+
+        FLAG = False
+
+    def test_function_inject_at_return(self):
+        class XY:
+            def target(self):
+                return 2
+
+        @Mixin(XY)
+        class XYMixin(Mixin.Interface):
+            @inject_at("target", InjectionPosition.ALL_RETURN)
+            def target(self):
+                global FLAG
+                FLAG = True
+
+        global FLAG
+        FLAG = False
+
+        XY.target(None)
+
+        self.assertFalse(FLAG)
+
+        XYMixin._apply()
+
+        XY.target(None)
+
+        self.assertTrue(FLAG)
+
+        FLAG = False
+
+    def test_local_lookup_simple(self):
+        class XY:
+            def target(self):
+                a = 0
                 return 2
 
         @Mixin(XY)

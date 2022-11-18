@@ -74,10 +74,12 @@ def prefix_all_locals_with(
         mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
-    mutable.shared_variable_names = [prefix + e for e in mutable.shared_variable_names]
+    mutable.shared_variable_names = [prefix + e if e not in protected_locals else e for e in mutable.shared_variable_names]
+
+    print(mutable.shared_variable_names)
 
     for instruction in mutable.instructions:
-        if instruction.has_local() and instruction.arg_value not in protected_locals:
+        if instruction.has_local():
             instruction.update_owner(mutable, instruction.offset)
 
 
@@ -258,7 +260,11 @@ def insert_method_into(
             ),
         ),
     )
-    to_insert.decode_instructions()
+    MutableFunctionWithTree(to_insert).print_recursive()
+    # to_insert.decode_instructions()
+
+    for instr in to_insert.instructions:
+        instr.update_owner(body.mutable, -1, False)
 
     to_insert_tree = MutableFunctionWithTree(to_insert)
     to_insert_tree.print_recursive()
@@ -288,8 +294,10 @@ def insert_method_into(
             instruction.arg = body.mutable.allocate_shared_constant(
                 instruction.arg_value
             )
+
         elif instruction.has_name():
             instruction.arg = body.mutable.allocate_shared_name(instruction.arg_value)
+
         elif instruction.has_local():
             instruction.arg = body.mutable.allocate_shared_variable_name(
                 instruction.arg_value

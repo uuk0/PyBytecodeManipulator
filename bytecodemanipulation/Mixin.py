@@ -26,6 +26,7 @@ class _MixinContainer:
             # todo: sort
 
             mutable = MutableFunction(self.target)
+            mutable.update_instruction_offsets(mutable.get_instructions())
 
             for mixin in self.mixins:
                 mixin.apply_on(mutable)
@@ -122,7 +123,7 @@ class InjectionPosition:
     class _AtFirstReturn(AbstractInjectionPosition):
         def visit_instruction(self, instruction: Instruction) -> bool:
             if instruction.opcode == Opcodes.RETURN_VALUE and not self._positions:
-                self.mark(instruction)
+                self.mark(instruction.previous_instructions[0])
                 return True
             return False
 
@@ -132,7 +133,7 @@ class InjectionPosition:
         def visit_instruction(self, instruction: Instruction) -> bool:
             if instruction.opcode == Opcodes.RETURN_VALUE:
                 self._positions.clear()
-                self.mark(instruction)
+                self.mark(instruction.previous_instructions[0])
                 return True
             return False
 
@@ -141,7 +142,7 @@ class InjectionPosition:
     class _AtReturn(AbstractInjectionPosition):
         def visit_instruction(self, instruction: Instruction) -> bool:
             if instruction.opcode == Opcodes.RETURN_VALUE:
-                self.mark(instruction)
+                self.mark(instruction.previous_instructions[0])
                 return True
             return False
 
@@ -447,6 +448,9 @@ class Mixin:
 
         def apply_on(self, mutable: MutableFunction):
             protected_locals = resolve_accesses(mutable, self.inject)
+
+            if self.inject.shared_variable_names[0] in ("cls", "self"):
+                protected_locals.append(self.inject.shared_variable_names[0])
 
             tree = MutableFunctionWithTree(mutable)
 

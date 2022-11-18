@@ -3,6 +3,7 @@ import dis
 import types
 import typing
 
+from bytecodemanipulation.Opcodes import HAS_CELL_VARIABLE
 from bytecodemanipulation.Opcodes import HAS_JUMP_BACKWARDS
 from bytecodemanipulation.Opcodes import (
     Opcodes,
@@ -228,16 +229,20 @@ class Instruction:
         self.arg = arg
 
         if self.function is not None:
-            if self.opcode in HAS_NAME:
-                self.arg_value = self.function.shared_names[arg]
-            elif self.opcode in HAS_CONST:
-                self.arg_value = self.function.constants[arg]
-            elif self.opcode in HAS_LOCAL:
-                self.arg_value = self.function.shared_variable_names[arg]
-            elif self.opcode in HAS_JUMP_ABSOLUTE:
-                self.arg_value = self.function.instructions[arg]
-            elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
-                self.arg_value = self.function.instructions[arg + self.offset]
+            try:
+                if self.opcode in HAS_NAME:
+                    self.arg_value = self.function.shared_names[arg]
+                elif self.opcode in HAS_CONST:
+                    self.arg_value = self.function.constants[arg]
+                elif self.opcode in HAS_LOCAL:
+                    self.arg_value = self.function.shared_variable_names[arg]
+                elif self.opcode in HAS_JUMP_ABSOLUTE:
+                    self.arg_value = self.function.instructions[arg]
+                elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
+                    self.arg_value = self.function.instructions[arg + self.offset]
+            except:
+                print(self.opname, arg, self.function.shared_names, self.function.constants, self.function.shared_variable_names)
+                raise
         else:
             self.arg_value = None
 
