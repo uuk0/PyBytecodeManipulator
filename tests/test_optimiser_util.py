@@ -191,10 +191,7 @@ class TestOptimiserUtil(TestCase):
             Instruction.create(Opcodes.LOAD_CONST, 0), mutable.instructions[0]
         )
 
-    def test_compress_min_call(self):
-        def target(x):
-            return min(x, 1, 2)
-
+    def compare_optimized_results(self, target, ideal, opt_ideal=1):
         mutable = MutableFunction(target)
         BUILTIN_INLINE._inline_load_globals(mutable)
         mutable.reassign_to_function()
@@ -203,171 +200,28 @@ class TestOptimiserUtil(TestCase):
 
         dis.dis(target)
 
-        def compare(x):
-            return min(x, 1)
+        if opt_ideal > 0:
+            mutable = MutableFunction(ideal)
+            BUILTIN_INLINE._inline_load_globals(mutable)
+            mutable.reassign_to_function()
 
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
+        if opt_ideal > 1:
+            _OptimisationContainer.get_for_target(ideal).run_optimisers()
 
-        dis.dis(compare)
+        dis.dis(ideal)
 
         mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
+        mutable2 = MutableFunction(ideal)
         self.assertEqual(mutable.instructions, mutable2.instructions)
 
-    def test_compress_max_call(self):
-        def target(x):
-            return max(x, 1, 2)
+    def test_compress_min_max_call(self):
+        self.compare_optimized_results(lambda x: min(x, 1, 2), lambda x: min(x, 1))
+        self.compare_optimized_results(lambda x: max(x, 1, 2), lambda x: max(x, 2))
 
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
+    def test_small_range(self):
+        self.compare_optimized_results(lambda: range(1, 5, 1), lambda: range(1, 5))
+        self.compare_optimized_results(lambda: range(0, 3), lambda: range(3))
 
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        def compare(x):
-            return max(x, 2)
-
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        dis.dis(compare)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
-
-    def test_range_remove_3rd_if_1(self):
-        def target():
-            return range(1, 5, 1)
-
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        def compare():
-            return range(1, 5)
-
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        dis.dis(compare)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
-
-    def test_range_remove_1st(self):
-        def target():
-            return range(0, 3)
-
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        def compare():
-            return range(3)
-
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        dis.dis(compare)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
-
-    def test_small_range_empty(self):
-        def target():
-            return range(0, 0)
-
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        def compare():
-            return tuple()
-
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(compare).run_optimisers()
-
-        dis.dis(compare)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
-
-    def test_small_range_single(self):
-        def target():
-            return range(0, 1)
-
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        def compare():
-            return 0,
-
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(compare).run_optimisers()
-
-        dis.dis(compare)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
-
-    def test_small_range_double(self):
-        def target():
-            return range(0, 2)
-
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        def compare():
-            return 0, 1
-
-        mutable = MutableFunction(compare)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(compare).run_optimisers()
-
-        dis.dis(compare)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(compare)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
+        self.compare_optimized_results(lambda: range(0, 0), lambda: tuple(), opt_ideal=2)
+        self.compare_optimized_results(lambda: range(0, 1), lambda: (0,))
+        self.compare_optimized_results(lambda: range(0, 2), lambda: (0, 1))
