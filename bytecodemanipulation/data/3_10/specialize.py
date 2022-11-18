@@ -47,5 +47,32 @@ def specialize_min(container: SpecializationContainer):
             if norm_instr and norm_instr != min_const and norm_instr.has_constant():
                 arg.discard()
 
-        container.replace_with_variant(min)
+
+@register(max)
+def specialize_min(container: SpecializationContainer):
+    # remove when constants are mixed with no constant all but the smallest constant
+    args = container.get_arg_specifications()
+
+    if args[0].is_self:
+        self = args.pop(0)
+    else:
+        self = None
+
+    min_const: Instruction = None
+
+    # todo: catch compare exceptions
+    for arg in args:
+        instr: Instruction = arg.get_normalized_data_instr()
+
+        if instr and instr.has_constant():
+            if min_const is None or min_const.arg_value < instr.arg_value:
+                min_const = instr
+
+    if min_const is not None:
+        # todo: for non constants, do a clever try-eval-ahead with the type if arrival
+
+        for arg in args:
+            norm_instr = arg.get_normalized_data_instr()
+            if norm_instr and norm_instr != min_const and norm_instr.has_constant():
+                arg.discard()
 
