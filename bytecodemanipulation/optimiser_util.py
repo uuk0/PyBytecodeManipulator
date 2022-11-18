@@ -411,7 +411,7 @@ def apply_specializations(mutable: MutableFunction) -> bool:
             source = instruction.trace_normalized_stack_position(load_stack_pos)
             safe_source = next(instruction.trace_stack_position(load_stack_pos))
 
-            if source.opcode == Opcodes.LOAD_CONST:
+            if source and source.opcode == Opcodes.LOAD_CONST:
                 container = _OptimisationContainer.get_for_target(source.arg_value)
 
                 if not container.specializations:

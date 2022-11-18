@@ -154,9 +154,10 @@ class Instruction:
         assert isinstance(self.offset, int)
         assert isinstance(self.opcode, int)
         assert isinstance(self.arg, int) or self.arg is None
-        assert self != self.arg_value
+        if id(self) == id(self.arg_value):
+            return self.repr_safe() + "@self_arg_value"
 
-        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value if not isinstance(self.arg_value, Instruction) else self.arg_value.repr_safe()}, has_next={self.next_instruction is not None})"
+        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value.repr_safe() if self.arg_value is not None and isinstance(self.arg_value, Instruction) else self.arg_value}, has_next={self.next_instruction is not None})"
 
     def repr_safe(self):
         return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value=..., has_next={self.next_instruction is not None})"
@@ -168,7 +169,7 @@ class Instruction:
         return (
             self.opcode == other.opcode
             and (
-                self.arg_value == other.arg_value
+                (self.arg_value == other.arg_value) if not isinstance(self.arg_value, Instruction) else (id(self.arg_value) == id(other.arg_value))
                 if self.arg_value is not None and other.arg_value is not None
                 else True
             )
@@ -405,7 +406,10 @@ class Instruction:
         if self in yielded:
             return
 
-        pushed, popped, additional_pos = self.get_stack_affect()
+        if self.has_jump():
+            pushed, popped, additional_pos = 0, 0, None
+        else:
+            pushed, popped, additional_pos = self.get_stack_affect()
 
         if pushed > stack_position:
             yielded.add(self)
@@ -463,8 +467,12 @@ class Instruction:
                 yield from instr._trace_stack_position(additional_pos, yielded)
 
     def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
+        # pushed, popped, additional
         if self.opcode in (Opcodes.NOP,):
             return 0, 0, None
+
+        if self.opcode in (Opcodes.GET_ITER, Opcodes.FOR_ITER):
+            return 1, 1, None
 
         if self.opcode in (
             Opcodes.LOAD_CONST,
@@ -484,6 +492,11 @@ class Instruction:
         ):
             return 1, self.arg, None
 
+        if self.opcode in (
+            Opcodes.CALL_FUNCTION_KW,
+        ):
+            return 1, self.arg + 1, None
+
         if self.opcode == Opcodes.BUILD_MAP:
             return 1, self.arg * 2, None
 
@@ -492,14 +505,30 @@ class Instruction:
 
         if self.opcode in (
             Opcodes.COMPARE_OP,
+            Opcodes.IS_OP,
             Opcodes.LIST_EXTEND,
             Opcodes.LIST_APPEND,
             Opcodes.SET_ADD,
             Opcodes.SET_UPDATE,
             Opcodes.DICT_UPDATE,
             Opcodes.DICT_MERGE,
+            Opcodes.BINARY_FLOOR_DIVIDE,
+            Opcodes.BINARY_ADD,
+            Opcodes.BINARY_MULTIPLY,
         ):
             return 1, 2, None
+
+        if self.opcode in (
+            Opcodes.LOAD_ATTR,
+            Opcodes.LOAD_METHOD,
+            Opcodes.STORE_ATTR,
+        ):
+            return 2, 0, None
+
+        if self.opcode in (
+            Opcodes.POP_TOP,
+        ):
+            return 0, 1, None
 
         raise RuntimeError(self)
 
@@ -519,10 +548,13 @@ class Instruction:
 
 
 class MutableFunction:
-    def __init__(self, target: types.FunctionType | types.MethodType):
+    @classmethod
+    def create(cls, target):
         if isinstance(target, staticmethod):
-            target = target.__func__
+            return cls(target.__func__)
+        return cls(target)
 
+    def __init__(self, target: types.FunctionType | types.MethodType):
         self.target = target
         self.code_object: types.CodeType = target.__code__
 
@@ -637,7 +669,7 @@ class MutableFunction:
 
     def prepare_previous_instructions(self):
         for instruction in self.instructions:
-            if instruction.has_stop_flow():
+            if instruction.has_stop_flow() or instruction.has_unconditional_jump():
                 continue
 
             instruction.next_instruction.add_previous_instruction(instruction)
@@ -657,6 +689,7 @@ class MutableFunction:
         # 7. Profit! (Maybe use assemble_fast() here!
 
         instructions = self.assemble_linear_instructions(breaks_flow, root)
+
         self.update_instruction_offsets(instructions)
 
         self.insert_needed_jumps(instructions)
@@ -676,15 +709,35 @@ class MutableFunction:
             raise NotImplementedError
 
         # For a last time, walk over the instructions and tie them together
-        for i, instruction in enumerate(instructions):
+        for i, instruction in enumerate(instructions[:]):
+            # print(i, instruction.repr_safe())
+            #
+            # if isinstance(instruction.arg_value, Instruction):
+            #     print(i, "+", instruction.arg_value.repr_safe())
+
             if (
                 not instruction.has_stop_flow()
                 and not instruction.has_unconditional_jump()
             ):
                 try:
                     instruction.next_instruction = instructions[i + 1]
+                except IndexError:
+                    pass
+                # except IndexError:
+                #     if not instruction.has_stop_flow() and instruction.next_instruction in instructions and i == len(instructions) - 1:
+                #         print("error", instruction, instruction.next_instruction)
+                #         instr = Instruction(self, i+1, Opcodes.JUMP_ABSOLUTE, arg=instruction.next_instruction.offset, _decode_next=False)
+                #         instructions.append(instr)
+                #         instr._next_instruction = instruction.next_instruction
+                #         instruction.next_instruction.add_previous_instruction(instr)
+                #         instruction._next_instruction = instr
+                #         instr.add_previous_instruction(instruction)
+                #         print(instruction.next_instruction.previous_instructions)
+                #     else:
+                #         raise
                 except:
                     print(instruction)
+                    print(instruction.next_instruction)
                     raise
 
         self.assemble_fast(instructions)

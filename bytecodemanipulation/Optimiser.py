@@ -1,3 +1,4 @@
+import dis
 import inspect
 import math
 import os
@@ -8,6 +9,7 @@ import builtins
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
+from bytecodemanipulation.optimiser_util import inline_constant_binary_ops
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
 from bytecodemanipulation.optimiser_util import inline_static_attribute_access
 from bytecodemanipulation.optimiser_util import remove_branch_on_constant
@@ -173,7 +175,7 @@ class _OptimisationContainer:
         self._resolve_lazy_references()
 
         # Create mutable wrapper around the target
-        mutable = MutableFunction(self.target)
+        mutable = MutableFunction.create(self.target)
         mutable.prepare_previous_instructions()
 
         # Walk over the code and resolve cached globals
@@ -199,6 +201,8 @@ class _OptimisationContainer:
             dirty = self._resolve_constant_local_types(mutable) or dirty
             # self._resolve_constant_local_attr_types(mutable)
             # todo: use return type of known functions
+
+            dirty = inline_constant_binary_ops(mutable) or dirty
 
             # apply optimisation specialisations
             dirty = apply_specializations(mutable) or dirty
@@ -270,7 +274,10 @@ class _OptimisationContainer:
 
         for instruction in mutable.instructions:
             if instruction.opcode == Opcodes.LOAD_ATTR:
-                source = mutable.trace_stack_position(instruction.offset, 0)
+                try:
+                    source = next(instruction.trace_stack_position(0))
+                except StopIteration:
+                    continue
 
                 if source.opcode in (Opcodes.LOAD_FAST, Opcodes.LOAD_METHOD):
                     if source.arg_value not in self.dereference_local_var_type:
