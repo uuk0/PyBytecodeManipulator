@@ -434,7 +434,7 @@ def apply_specializations(mutable: MutableFunction) -> bool:
                         continue
 
                     spec.apply()
-                    # dirty = True
+                    dirty = True
                     break
 
     return dirty

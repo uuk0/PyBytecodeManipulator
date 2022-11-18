@@ -243,7 +243,7 @@ class TestOptimiserUtil(TestCase):
 
     def test_range_remove_3rd_if_1(self):
         def target():
-            return range(1, 2, 1)
+            return range(1, 5, 1)
 
         mutable = MutableFunction(target)
         BUILTIN_INLINE._inline_load_globals(mutable)
@@ -254,7 +254,7 @@ class TestOptimiserUtil(TestCase):
         dis.dis(target)
 
         def compare():
-            return range(1, 2)
+            return range(1, 5)
 
         mutable = MutableFunction(compare)
         BUILTIN_INLINE._inline_load_globals(mutable)
@@ -268,6 +268,85 @@ class TestOptimiserUtil(TestCase):
 
     def test_range_remove_1st(self):
         def target():
+            return range(0, 3)
+
+        mutable = MutableFunction(target)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        dis.dis(target)
+
+        def compare():
+            return range(3)
+
+        mutable = MutableFunction(compare)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(compare)
+
+        mutable = MutableFunction(target)
+        mutable2 = MutableFunction(compare)
+        self.assertEqual(mutable.instructions, mutable2.instructions)
+
+    def test_small_range_empty(self):
+        def target():
+            return range(0, 0)
+
+        mutable = MutableFunction(target)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        dis.dis(target)
+
+        def compare():
+            return tuple()
+
+        mutable = MutableFunction(compare)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(compare).run_optimisers()
+
+        dis.dis(compare)
+
+        mutable = MutableFunction(target)
+        mutable2 = MutableFunction(compare)
+        self.assertEqual(mutable.instructions, mutable2.instructions)
+
+    def test_small_range_single(self):
+        def target():
+            return range(0, 1)
+
+        mutable = MutableFunction(target)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        dis.dis(target)
+
+        def compare():
+            return 0,
+
+        mutable = MutableFunction(compare)
+        BUILTIN_INLINE._inline_load_globals(mutable)
+        mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(compare).run_optimisers()
+
+        dis.dis(compare)
+
+        mutable = MutableFunction(target)
+        mutable2 = MutableFunction(compare)
+        self.assertEqual(mutable.instructions, mutable2.instructions)
+
+    def test_small_range_double(self):
+        def target():
             return range(0, 2)
 
         mutable = MutableFunction(target)
@@ -279,11 +358,13 @@ class TestOptimiserUtil(TestCase):
         dis.dis(target)
 
         def compare():
-            return range(2)
+            return 0, 1
 
         mutable = MutableFunction(compare)
         BUILTIN_INLINE._inline_load_globals(mutable)
         mutable.reassign_to_function()
+
+        _OptimisationContainer.get_for_target(compare).run_optimisers()
 
         dis.dis(compare)
 

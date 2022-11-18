@@ -66,6 +66,26 @@ that exact method.
 TODO
 
 
+# Applied Optimisations
+
+- Constant Expression inlining
+- LOAD_GLOBAL for builtins (if enabled)
+- standard library inlining (if enabled)
+- specialization of methods based on arguments, e.g. constant arguments (when already resolved before, requires one of above options)
+- branch elimination when jumping on a constant (TODO: also if condition can be inferred ahead-of-time)
+
+
+# Currently Limitations
+
+- Line Numbers get mixed up, we need some way to assign meaningful line numbers
+- With python 3.11 (?), exception table exists, and this breaks our current concept of one big flow diagram,
+  as exception handling code might exist outside the default flow
+- During optimization, a lot of stuff is being recomputed each optimisation pass, we need to cache that drastically
+- Method inlining is not working properly and needs a lot more testing
+- If the exact type is known at optimisation time (e.g. object creation via class call, or type annotation), we can try to
+  inline method accesses for further optimisation
+
+
 ## Code Formatting
 
 We use the python formatting library "black" on our code
