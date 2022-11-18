@@ -1,4 +1,5 @@
 import typing
+import random
 
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Specialization import SpecializationContainer, register
@@ -79,6 +80,8 @@ def specialize_min(container: SpecializationContainer):
 
 
 @register(range)
+@register(random.randrange)
+@register(random.Random.randrange)
 def specialize_range_3rd_argument(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
@@ -89,6 +92,8 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
 
 
 @register(range)
+@register(random.randrange)
+@register(random.Random.randrange)
 def specialize_range_start_0(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
