@@ -24,6 +24,10 @@ setuptools.setup(
         "Development Status :: 2 - Pre-Alpha",
         "Programming Language :: Python :: Implementation :: CPython",
     ],
-    packages=["bytecodemanipulation"] + ["bytecodemanipulation."+e for e in setuptools.find_packages(where="bytecodemanipulation")],
+    packages=["bytecodemanipulation"]
+    + [
+        "bytecodemanipulation." + e
+        for e in setuptools.find_packages(where="bytecodemanipulation")
+    ],
     python_requires=">=3.10",
 )

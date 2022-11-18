@@ -1,10 +1,9 @@
-from bytecodemanipulation import (
-    CodeOptimiser,
-    Emulator,
-    InstructionMatchers,
-    MutableCodeObject,
-    OptimiserAnnotations,
-)
-from bytecodemanipulation.TransformationHelper import BytecodePatchHelper
-from bytecodemanipulation.Transformers import TransformationHandler
-from bytecodemanipulation.util import Opcodes
+import os
+
+
+try:
+    if os.environ["BYTECODEMANIPULATION_ENABLE_SELF_OPTIMISE"]:
+        import bytecodemanipulation.optimise_self
+except KeyError:
+    pass
+

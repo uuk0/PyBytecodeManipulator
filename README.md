@@ -15,8 +15,6 @@ at runtime!
 
 Supported python versions:
 
-- 3.8 and below: unsupported; will produce syntax errors due to using new features
-- 3.9 (WIP)
 - 3.10 (main development)
 - 3.11.0[b3] (forward porting; WIP; Currently not working)
 
@@ -65,50 +63,27 @@ that exact method.
 
 # Examples
 
-Replacing a code constant (in the whole function body):
-```python
-from bytecodemanipulation.Transformers import TransformationHandler
-
-handler = TransformationHandler()
+TODO
 
 
-def test():
-  return 0
+# Applied Optimisations
+
+- Constant Expression inlining
+- LOAD_GLOBAL for builtins (if enabled)
+- standard library inlining (if enabled)
+- specialization of methods based on arguments, e.g. constant arguments (when already resolved before, requires one of above options)
+- branch elimination when jumping on a constant (TODO: also if condition can be inferred ahead-of-time)
 
 
-handler.makeFunctionArrival("test", test)
+# Currently Limitations
 
-# Replaces the constant '0' from the return with a '1'
-handler.replace_method_constant("test", 0, 1)
-
-handler.applyTransforms()
-
-assert test() == 1
-```
-
-We can also select single constants, like the following:
-```python
-from bytecodemanipulation.Transformers import TransformationHandler
-from bytecodemanipulation.InstructionMatchers import CounterMatcher
-
-handler = TransformationHandler()
-
-
-def test():
-  print(0)
-  return 0
-
-
-handler.makeFunctionArrival("test", test)
-
-# Replaces the constant '0' from the return with a '1'
-handler.replace_method_constant("test", 0, 1, matcher=CounterMatcher(1, 1))
-
-handler.applyTransforms()
-
-# This will return 1, but print 0
-assert test() == 1
-```
+- Line Numbers get mixed up, we need some way to assign meaningful line numbers
+- With python 3.11 (?), exception table exists, and this breaks our current concept of one big flow diagram,
+  as exception handling code might exist outside the default flow
+- During optimization, a lot of stuff is being recomputed each optimisation pass, we need to cache that drastically
+- Method inlining is not working properly and needs a lot more testing
+- If the exact type is known at optimisation time (e.g. object creation via class call, or type annotation), we can try to
+  inline method accesses for further optimisation
 
 
 ## Code Formatting
