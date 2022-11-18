@@ -7,12 +7,14 @@ import builtins
 
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.optimiser_util import apply_specializations
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
 from bytecodemanipulation.optimiser_util import inline_static_attribute_access
 from bytecodemanipulation.optimiser_util import remove_branch_on_constant
 from bytecodemanipulation.optimiser_util import remove_local_var_assign_without_use
 from bytecodemanipulation.optimiser_util import remove_nops
+from bytecodemanipulation.Specialization import SpecializationContainer
 from bytecodemanipulation.util import _is_parent_of
 
 BUILTIN_CACHE = builtins.__dict__.copy()
@@ -31,13 +33,23 @@ class GlobalIsNeverAccessedException(Exception):
 
 
 class _OptimisationContainer:
+    _CUSTOM_TARGETS = {}
+
     @classmethod
     def get_for_target(cls, target):
         if hasattr(target, "_OPTIMISER_CONTAINER"):
             return target._OPTIMISER_CONTAINER
 
+        if target in cls._CUSTOM_TARGETS:
+            return cls._CUSTOM_TARGETS[target]
+
         container = cls(target)
-        target._OPTIMISER_CONTAINER = container
+
+        try:
+            target._OPTIMISER_CONTAINER = container
+        except AttributeError:
+            cls._CUSTOM_TARGETS[target] = container
+
         return container
 
     def __init__(self, target: types.FunctionType | types.MethodType | typing.Type):
@@ -101,6 +113,8 @@ class _OptimisationContainer:
         self.may_raise_exceptions: typing.Set[
             typing.Type[Exception] | Exception
         ] | None = None
+
+        self.specializations: typing.List[typing.Callable[[SpecializationContainer], None]] = []
 
     def is_attribute_static(self, name: str):
         return self.is_static or name in self.static_attributes
@@ -182,6 +196,9 @@ class _OptimisationContainer:
             dirty = self._resolve_constant_local_types(mutable) or dirty
             # self._resolve_constant_local_attr_types(mutable)
             # todo: use return type of known functions
+
+            # apply optimisation specialisations
+            dirty = apply_specializations(mutable) or dirty
 
             # Inline invokes to builtins and other known is_constant_op-s with static args
             dirty = inline_constant_method_invokes(mutable) or dirty

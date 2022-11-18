@@ -17,10 +17,8 @@ from bytecodemanipulation.Opcodes import (
     HAS_JUMP_FORWARD,
     UNCONDITIONAL_JUMPS,
 )
-import bytecodemanipulation.data
+import bytecodemanipulation.data_loader
 from bytecodemanipulation.util import AbstractInstructionWalker
-
-bytecodemanipulation.data.init()
 
 
 class LinearCodeConstraintViolationException(Exception):
@@ -362,11 +360,40 @@ class Instruction:
 
         return self
 
+    def trace_variable_set(self, name: str, visited: typing.Set[str] = None) -> typing.Iterator["Instruction"]:
+        if visited and self in visited:
+            return
+
+        if self.opcode == Opcodes.STORE_FAST and self.arg_value == name:
+            yield self
+            return
+
+        if self.opcode == Opcodes.DELETE_FAST:
+            return
+
+        if visited is None:
+            visited = {self}
+
+        for prev in self.previous_instructions:
+            yield from prev.trace_variable_set(name, visited)
+
     def trace_stack_position(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
         for instr in self.previous_instructions:
             yield from instr._trace_stack_position(stack_position, set())
+
+    def trace_normalized_stack_position(self, stack_position: int) -> typing.Optional["Instruction"]:
+        target = next(self.trace_stack_position(stack_position))
+
+        if target.opcode == Opcodes.DUP_TOP:
+            return target.trace_normalized_stack_position(0)
+
+        if target.opcode == Opcodes.LOAD_FAST:
+            variable_set = next(target.trace_variable_set(typing.cast(str, target.arg_value)))
+            return variable_set.trace_normalized_stack_position(0)
+
+        return target
 
     def _trace_stack_position(
         self, stack_position: int, yielded: typing.Set["Instruction"]
@@ -945,3 +972,6 @@ class MutableFunction:
             return self.shared_variable_names.index(variable_name)
         self.shared_variable_names.append(variable_name)
         return len(self.shared_variable_names) - 1
+
+
+bytecodemanipulation.data_loader.init()

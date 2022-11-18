@@ -1,3 +1,4 @@
+import importlib
 import json
 import logging
 import os
@@ -9,7 +10,7 @@ from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 
 local = os.path.dirname(__file__)
 
-version = f"{sys.version_info.major}.{sys.version_info.minor}"
+version = f"{sys.version_info.major}_{sys.version_info.minor}"
 folder = local + "/data/" + version
 
 
@@ -51,6 +52,8 @@ def load_builtin_spec():
     CONSTANT_BUILTIN_TYPES[:] = [
         getattr(builtins, key) for key in builtin_spec["const_builtin_types"]
     ]
+
+    importlib.import_module("bytecodemanipulation.data."+version+".specialize")
 
 
 def load_standard_library_annotations():

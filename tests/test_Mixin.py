@@ -114,7 +114,7 @@ class TestMixinApply(TestCase):
 
         FLAG = False
 
-    def test_local_lookup_simple(self):
+    def test_name_copy(self):
         class XY:
             def target(self):
                 a = 0

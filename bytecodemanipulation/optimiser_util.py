@@ -7,6 +7,9 @@ from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Opcodes import SIDE_EFFECT_FREE_LOADS
+from bytecodemanipulation.Specialization import ArgDescriptor
+from bytecodemanipulation.Specialization import MethodCallDescriptor
+from bytecodemanipulation.Specialization import SpecializationContainer
 
 OPCODE_TO_ATTR_SINGLE = {
     Opcodes.UNARY_POSITIVE: "__pos__",
@@ -190,18 +193,6 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
                             arg.change_opcode(Opcodes.NOP)
 
                         dirty = True
-
-                # inline typing.cast(<type>, <value>) cast to only represent <value>
-                elif function == typing.cast:
-                    type_loader = next(instruction.trace_stack_position(1))
-
-                    if type_loader.opcode in SIDE_EFFECT_FREE_LOADS:
-                        instruction.change_opcode(Opcodes.NOP)
-                        type_loader.change_opcode(Opcodes.NOP)
-                        target.change_opcode(Opcodes.NOP)
-                        dirty = True
-
-                    # todo: insert a POP_TOP for popping the second from top
 
     return dirty
 
@@ -405,6 +396,42 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(getattr(source, attr_name))
                     dirty = True
+
+    return dirty
+
+
+def apply_specializations(mutable: MutableFunction) -> bool:
+    dirty = False
+
+    for instruction in mutable.instructions:
+        if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
+            load_stack_pos = instruction.arg
+            source = instruction.trace_normalized_stack_position(load_stack_pos)
+            safe_source = next(instruction.trace_stack_position(load_stack_pos))
+
+            if source.opcode == Opcodes.LOAD_CONST:
+                if not (hasattr(source.arg_value, "_OPTIMISER_CONTAINER") and source.arg_value._OPTIMISER_CONTAINER.specializations):
+                    continue
+
+                target_func = source.opcode
+
+                spec = SpecializationContainer()
+                spec.underlying_function = target_func
+                spec.method_call_descriptor = MethodCallDescriptor(safe_source, instruction)
+                spec.set_arg_descriptors([
+                    ArgDescriptor(next(instruction.trace_stack_position(arg_id)), instruction.trace_normalized_stack_position(arg_id), arg_id)
+                    for arg_id in range(instruction.arg-1, -1, -1)
+                ])
+
+                for special in source.arg_value._OPTIMISER_CONTAINER.specializations:
+                    special(spec)
+
+                    if spec.no_special:
+                        continue
+
+                    spec.apply()
+                    # dirty = True
+                    break
 
     return dirty
 
