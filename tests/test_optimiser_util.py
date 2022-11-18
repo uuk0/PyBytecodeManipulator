@@ -28,55 +28,50 @@ class Outer_test_inline_const_function_on_parent:
 
 
 class TestOptimiserUtil(TestCase):
-    def test_inline_constant_method_invoke(self):
-        def target():
-            return max(1, 2)
-
+    def compare_optimized_results(self, target, ideal, opt_ideal=1):
         mutable = MutableFunction(target)
         BUILTIN_INLINE._inline_load_globals(mutable)
-        inline_constant_method_invokes(mutable)
-        remove_nops(mutable)
-
-        mutable.assemble_instructions()
         mutable.reassign_to_function()
 
-        self.assertEqual(2, mutable.instructions[0].arg_value)
+        _OptimisationContainer.get_for_target(target).run_optimisers()
+
+        print("target")
+        dis.dis(target)
+
+        if opt_ideal > 0:
+            mutable = MutableFunction(ideal)
+            BUILTIN_INLINE._inline_load_globals(mutable)
+            mutable.reassign_to_function()
+
+        if opt_ideal > 1:
+            _OptimisationContainer.get_for_target(ideal).run_optimisers()
+
+        print("compare")
+        dis.dis(ideal)
+
+        mutable = MutableFunction(target)
+        mutable2 = MutableFunction(ideal)
+        self.assertEqual(mutable.instructions, mutable2.instructions)
+
+    def test_inline_constant_method_invoke(self):
+        self.compare_optimized_results(lambda: max(1, 2), lambda: 2)
 
     def test_inline_binary_op(self):
-        def target():
-            return 1 + 1
-
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        inline_constant_method_invokes(mutable)
-        remove_nops(mutable)
-
-        mutable.assemble_instructions()
-        mutable.reassign_to_function()
-
-        self.assertEqual(2, mutable.instructions[0].arg_value)
+        self.compare_optimized_results(lambda: 1 + 1, lambda: 2)
 
     def test_inline_const_function(self):
         @cache_global_name("test_target", lambda: test_target)
         def target():
             return test_target(1, 1)
 
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        mutable = MutableFunction(target)
-
-        self.assertEqual(2, mutable.instructions[0].arg_value)
+        self.compare_optimized_results(target, lambda: 2)
 
     def test_inline_math_attr(self):
         @cache_global_name("math", lambda: math)
         def target():
             return math.sin(2)
 
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        mutable = MutableFunction(target)
-
-        self.assertEqual(math.sin(2), mutable.instructions[0].arg_value)
+        self.compare_optimized_results(target, eval(f"lambda: {math.sin(2)}"))
 
     def test_inline_const_function_on_parent(self):
         container = _OptimisationContainer.get_for_target(
@@ -94,12 +89,7 @@ class TestOptimiserUtil(TestCase):
                 return 0
             return 1
 
-        mutable = MutableFunction(target)
-        remove_branch_on_constant(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
-        mutable.reassign_to_function()
-
-        self.assertEqual(mutable.instructions[0].arg_value, 1)
+        self.compare_optimized_results(target, lambda: 1)
 
     def test_branch_remover_2(self):
         def target():
@@ -107,29 +97,13 @@ class TestOptimiserUtil(TestCase):
                 return 0
             return 1
 
-        dis.dis(target)
-
-        mutable = MutableFunction(target)
-        inline_constant_binary_ops(mutable)
-        remove_branch_on_constant(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
-        mutable.reassign_to_function()
-
-        dis.dis(target)
-
-        self.assertEqual(mutable.instructions[0].arg_value, 1)
+        self.compare_optimized_results(target, lambda: 1)
 
     def test_load_pop_pair_removal(self):
         def target():
             a = 10
 
-        mutable = MutableFunction(target)
-        remove_local_var_assign_without_use(mutable)
-        inline_const_value_pop_pairs(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
-        mutable.reassign_to_function()
-
-        self.assertEqual(mutable.instructions[0].arg_value, None)
+        self.compare_optimized_results(target, lambda: None)
 
     def test_remove_list_build(self):
         def target():
@@ -182,39 +156,7 @@ class TestOptimiserUtil(TestCase):
         def target():
             return typing.cast(int, 0)
 
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        dis.dis(target)
-
-        mutable = MutableFunction(target)
-        self.assertEqual(
-            Instruction.create(Opcodes.LOAD_CONST, 0), mutable.instructions[0]
-        )
-
-    def compare_optimized_results(self, target, ideal, opt_ideal=1):
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        print("target")
-        dis.dis(target)
-
-        if opt_ideal > 0:
-            mutable = MutableFunction(ideal)
-            BUILTIN_INLINE._inline_load_globals(mutable)
-            mutable.reassign_to_function()
-
-        if opt_ideal > 1:
-            _OptimisationContainer.get_for_target(ideal).run_optimisers()
-
-        print("compare")
-        dis.dis(ideal)
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(ideal)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
+        self.compare_optimized_results(target, lambda: 0)
 
     def test_spec_compress_min_max_call(self):
         self.compare_optimized_results(lambda x: min(x, 1, 2), lambda x: min(x, 1))
