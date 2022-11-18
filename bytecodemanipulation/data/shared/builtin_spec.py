@@ -189,6 +189,9 @@ def specialize_all(container: SpecializationContainer):
 
         create_primitive_arg.change_opcode(Opcodes.NOP)
         container.replace_with_constant_value(defined_result)
+    elif arg_count == 1:
+        create_primitive_arg.change_opcode(Opcodes.NOP)
+        container.replace_call_with_arg(args[0])
     elif arg_count != create_primitive_arg.arg:
         create_primitive_arg.change_arg(arg_count)
 
@@ -241,6 +244,9 @@ def specialize_any(container: SpecializationContainer):
 
         create_primitive_arg.change_opcode(Opcodes.NOP)
         container.replace_with_constant_value(defined_result)
+    elif arg_count == 1:
+        create_primitive_arg.change_opcode(Opcodes.NOP)
+        container.replace_call_with_arg(args[0])
     elif arg_count != create_primitive_arg.arg:
         create_primitive_arg.change_arg(arg_count)
 

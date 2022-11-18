@@ -233,10 +233,10 @@ class TestOptimiserUtil(TestCase):
         self.compare_optimized_results(lambda x: all((x, 0)), lambda x: False)
         self.compare_optimized_results(lambda x: all((x, 0, True)), lambda x: False)
 
-        self.compare_optimized_results(lambda x: all((x, True)), lambda x: all((x,)))
-        self.compare_optimized_results(lambda x: all((x, True, 1)), lambda x: all((x,)))
+        self.compare_optimized_results(lambda x: all((x, True)), lambda x: x)
+        self.compare_optimized_results(lambda x: all((x, True, 1)), lambda x: x)
 
     def test_spec_any(self):
         self.compare_optimized_results(lambda x: any((x, True)), lambda x: True)
-        self.compare_optimized_results(lambda x: any((x, False)), lambda x: any((x,)))
+        self.compare_optimized_results(lambda x: any((x, False)), lambda x: x)
         self.compare_optimized_results(lambda x: any((x, False, True, 0)), lambda x: True)
