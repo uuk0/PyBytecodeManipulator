@@ -194,7 +194,7 @@ class Instruction:
             else self.function.instructions[self.offset + 1]
         )
 
-        if self.opcode == Opcodes.NOP:
+        if self.opcode < dis.HAVE_ARGUMENT:
             self.arg = 0
             self.arg_value = None
 
@@ -379,8 +379,9 @@ class Instruction:
     def trace_stack_position(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
+        yielded = {self}
         for instr in self.previous_instructions:
-            yield from instr._trace_stack_position(stack_position, set())
+            yield from instr._trace_stack_position(stack_position, yielded)
 
     def trace_normalized_stack_position(self, stack_position: int) -> typing.Optional["Instruction"]:
         target = next(self.trace_stack_position(stack_position))
@@ -406,7 +407,7 @@ class Instruction:
         if self in yielded:
             return
 
-        if self.has_jump():
+        if self.has_unconditional_jump():
             pushed, popped, additional_pos = 0, 0, None
         else:
             pushed, popped, additional_pos = self.get_stack_affect()
@@ -423,6 +424,8 @@ class Instruction:
 
         stack_position -= pushed
         stack_position += popped
+
+        yielded.add(self)
 
         for instr in self.previous_instructions:
             yield from instr._trace_stack_position(stack_position, yielded)
@@ -472,7 +475,7 @@ class Instruction:
             return 0, 0, None
 
         if self.opcode in (Opcodes.GET_ITER, Opcodes.FOR_ITER):
-            return 1, 1, None
+            return 1, 0, None
 
         if self.opcode in (
             Opcodes.LOAD_CONST,
@@ -657,6 +660,9 @@ class MutableFunction:
             else:
                 arg += extra * 256
                 extra = 0
+
+                if opcode == Opcodes.FOR_ITER:
+                    arg += 1
 
                 self.__instructions.append(
                     Instruction(self, i // 2, opcode, arg=arg, _decode_next=False)
@@ -875,6 +881,7 @@ class MutableFunction:
             if (
                 instruction.next_instruction is not None
                 and instruction.offset + 1 != instruction.next_instruction.offset
+                and not instruction.has_unconditional_jump()
             ):
                 # todo: do we want to dynamic use assemble_instructions_from_tree()?
                 raise LinearCodeConstraintViolationException(
@@ -938,6 +945,9 @@ class MutableFunction:
         self.__raw_code.clear()
         for i, instruction in enumerate(self.__instructions):
             arg = instruction.get_arg()
+
+            if instruction.opcode == Opcodes.FOR_ITER:
+                arg -= 1
 
             if arg > 255:
                 extend = arg // 256
