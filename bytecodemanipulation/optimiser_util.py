@@ -153,15 +153,12 @@ def remove_local_var_assign_without_use(mutable: MutableFunction) -> bool:
             last_loads_of_local[instruction.arg] = instruction.offset
 
     for instruction in mutable.instructions:
-        print(instruction)
         if (
             instruction.opcode in (Opcodes.STORE_FAST, Opcodes.DELETE_FAST)
             and last_loads_of_local[instruction.arg] < instruction.offset
         ):
-            print(1)
             instruction.change_opcode(Opcodes.POP_TOP)
             dirty = True
-            print(instruction)
 
     return dirty
 

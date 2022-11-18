@@ -533,6 +533,9 @@ class Instruction:
         ):
             return 0, 1, None
 
+        if self.opcode == Opcodes.UNPACK_SEQUENCE:
+            return self.arg, 1, None
+
         raise RuntimeError(self)
 
     def insert_after(self, *instructions: "Instruction" | typing.List["Instruction"]):

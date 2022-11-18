@@ -11,6 +11,3 @@ class TestIssue2(unittest.TestCase):
         def target(t):
             for x in (0, 1):
                 pass
-
-
-
