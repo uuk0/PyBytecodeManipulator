@@ -7,6 +7,7 @@ from bytecodemanipulation.MutableFunction import Instruction
 
 
 ASSERT_TYPE_CASTS = False
+DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK = True
 
 
 @register(typing.cast)
@@ -140,3 +141,107 @@ def specialize_small_range(container: SpecializationContainer):
         container.replace_with_constant_value((start,))
     elif start + 2 == end:
         container.replace_with_constant_value((start, start + 1))
+
+
+@register(all)
+def specialize_all(container: SpecializationContainer):
+    args = container.get_arg_specifications()
+
+    if len(args) != 1: return
+
+    create_primitive_arg = args[0].get_normalized_data_instr()
+
+    if create_primitive_arg is None: return
+
+    # todo: can we specialize more?
+    if create_primitive_arg.opcode not in (Opcodes.BUILD_LIST, Opcodes.BUILD_TUPLE, Opcodes.BUILD_SET):
+        return
+
+    primitive_creation_args = [
+        (
+            create_primitive_arg.trace_normalized_stack_position(i),
+            next(create_primitive_arg.trace_stack_position(i)),
+        )
+        for i in range(create_primitive_arg.arg)
+    ]
+
+    defined_result = None
+    arg_count = len(primitive_creation_args)
+
+    for normal, real in primitive_creation_args:
+        if normal:
+            if normal.opcode != Opcodes.LOAD_CONST: continue
+
+            if not normal.arg_value:
+                if DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK:
+                    defined_result = False
+                    break
+            else:
+                real.change_opcode(Opcodes.NOP)
+                arg_count -= 1
+
+    if arg_count == 0:
+        defined_result = True
+
+    if defined_result is not None:
+        for _, real in primitive_creation_args:
+            real.change_opcode(Opcodes.NOP)
+
+        create_primitive_arg.change_opcode(Opcodes.NOP)
+        container.replace_with_constant_value(defined_result)
+    elif arg_count != create_primitive_arg.arg:
+        create_primitive_arg.change_arg(arg_count)
+
+        container.no_special = False
+
+
+@register(any)
+def specialize_any(container: SpecializationContainer):
+    args = container.get_arg_specifications()
+
+    if len(args) != 1: return
+
+    create_primitive_arg = args[0].get_normalized_data_instr()
+
+    if create_primitive_arg is None: return
+
+    # todo: can we specialize more?
+    if create_primitive_arg.opcode not in (Opcodes.BUILD_LIST, Opcodes.BUILD_TUPLE, Opcodes.BUILD_SET):
+        return
+
+    primitive_creation_args = [
+        (
+            create_primitive_arg.trace_normalized_stack_position(i),
+            next(create_primitive_arg.trace_stack_position(i)),
+        )
+        for i in range(create_primitive_arg.arg)
+    ]
+
+    defined_result = None
+    arg_count = len(primitive_creation_args)
+
+    for normal, real in primitive_creation_args:
+        if normal:
+            if normal.opcode != Opcodes.LOAD_CONST: continue
+
+            if normal.arg_value:
+                if DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK:
+                    defined_result = True
+                    break
+            else:
+                real.change_opcode(Opcodes.NOP)
+                arg_count -= 1
+
+    if arg_count == 0:
+        defined_result = False
+
+    if defined_result is not None:
+        for _, real in primitive_creation_args:
+            real.change_opcode(Opcodes.NOP)
+
+        create_primitive_arg.change_opcode(Opcodes.NOP)
+        container.replace_with_constant_value(defined_result)
+    elif arg_count != create_primitive_arg.arg:
+        create_primitive_arg.change_arg(arg_count)
+
+        container.no_special = False
