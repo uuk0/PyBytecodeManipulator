@@ -10,7 +10,7 @@ from bytecodemanipulation.Optimiser import (
     _OptimisationContainer,
     BUILTIN_CACHE,
 )
-
+from tests.test_issues import compare_optimized_results
 
 root = os.path.dirname(__file__)
 
@@ -86,7 +86,7 @@ class JsonTestEntry:
                 obj.reassign_to_function()
 
             print("running", prefix + ":" + self.name)
-            test.compare_optimized_results(target, compare, opt_ideal=self.opt_mode, msg=prefix + ":" + self.name)
+            compare_optimized_results(test, target, compare, opt_ideal=self.opt_mode, msg=prefix + ":" + self.name)
 
         for child in self.children:
             child.run_tests(test, prefix + ":" + self.name if prefix else self.name)
@@ -109,32 +109,6 @@ class Outer_test_inline_const_function_on_parent:
 
 
 class TestOptimiserUtil(TestCase):
-    def compare_optimized_results(self, target, ideal, opt_ideal=1, msg=...):
-        mutable = MutableFunction(target)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-        _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        if opt_ideal > 0:
-            mutable = MutableFunction(ideal)
-            BUILTIN_INLINE._inline_load_globals(mutable)
-            mutable.reassign_to_function()
-
-        if opt_ideal > 1:
-            _OptimisationContainer.get_for_target(ideal).run_optimisers()
-
-        mutable = MutableFunction(target)
-        mutable2 = MutableFunction(ideal)
-
-        if mutable.instructions != mutable2.instructions:
-            print("target")
-            dis.dis(target)
-            print("compare")
-            dis.dis(ideal)
-
-        self.assertEqual(mutable.instructions, mutable2.instructions, msg=msg)
-
     def test_builtins(self):
         test = JsonTestEntry.from_file("data/test_builtins.json")
         test.run_tests(self)
@@ -144,21 +118,21 @@ class TestOptimiserUtil(TestCase):
         test.run_tests(self)
 
     def test_inline_binary_op(self):
-        self.compare_optimized_results(lambda: 1 + 1, lambda: 2)
+        compare_optimized_results(self, lambda: 1 + 1, lambda: 2)
 
     def test_inline_const_function(self):
         @cache_global_name("test_target", lambda: test_target)
         def target():
             return test_target(1, 1)
 
-        self.compare_optimized_results(target, lambda: 2)
+        compare_optimized_results(self, target, lambda: 2)
 
     def test_inline_math_attr(self):
         @cache_global_name("math", lambda: math)
         def target():
             return math.sin(2)
 
-        self.compare_optimized_results(target, eval(f"lambda: {math.sin(2)}"))
+        compare_optimized_results(self, target, eval(f"lambda: {math.sin(2)}"))
 
     def test_inline_const_function_on_parent(self):
         container = _OptimisationContainer.get_for_target(
@@ -176,7 +150,7 @@ class TestOptimiserUtil(TestCase):
                 return 0
             return 1
 
-        self.compare_optimized_results(target, lambda: 1)
+        compare_optimized_results(self, target, lambda: 1)
 
     def test_branch_remover_2(self):
         def target():
@@ -184,13 +158,13 @@ class TestOptimiserUtil(TestCase):
                 return 0
             return 1
 
-        self.compare_optimized_results(target, lambda: 1)
+        compare_optimized_results(self, target, lambda: 1)
 
     def test_load_pop_pair_removal(self):
         def target():
             a = 10
 
-        self.compare_optimized_results(target, lambda: None)
+        compare_optimized_results(self, target, lambda: None)
 
     def test_remove_list_build(self):
         def target():

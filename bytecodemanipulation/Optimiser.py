@@ -161,7 +161,7 @@ class _OptimisationContainer:
         return self
 
     def run_optimisers(self):
-        print(self.target)
+        # print(self.target)
         from bytecodemanipulation.optimiser_util import apply_specializations
 
         if isinstance(self.target, type):
@@ -226,6 +226,8 @@ class _OptimisationContainer:
         mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
 
         mutable.reassign_to_function()
+
+        print(mutable)
 
     def _resolve_lazy_references(self):
         for key, lazy in self.lazy_global_name_cache.items():

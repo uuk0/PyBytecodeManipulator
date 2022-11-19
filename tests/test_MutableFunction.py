@@ -11,8 +11,8 @@ class TestMutableFunction(TestCase):
         mut = MutableFunction(target)
         self.assertEqual(
             [
-                Instruction.create("LOAD_CONST", None),
-                Instruction.create("RETURN_VALUE"),
+                Instruction(None, 0, "LOAD_CONST", None),
+                Instruction(None, 1, "RETURN_VALUE"),
             ],
             mut.instructions,
         )
@@ -24,12 +24,12 @@ class TestMutableFunction(TestCase):
         mut = MutableFunction(target)
         mut.decode_instructions()
         mut.assemble_fast(mut.instructions)
-        mut.raw_code = mut.raw_code
+        # mut.raw_code = mut.raw_code
 
         self.assertEqual(
             [
-                Instruction.create("LOAD_CONST", None),
-                Instruction.create("RETURN_VALUE"),
+                Instruction(None, 0, "LOAD_CONST", None),
+                Instruction(None, 1, "RETURN_VALUE"),
             ],
             mut.instructions,
         )

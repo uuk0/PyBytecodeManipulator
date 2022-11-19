@@ -168,8 +168,22 @@ class Instruction:
 
         return (
             self.opcode == other.opcode
+            and (self.offset == other.offset or self.offset is None or other.offset is None)
             and (
                 (self.arg_value == other.arg_value) if not isinstance(self.arg_value, Instruction) else (id(self.arg_value) == id(other.arg_value))
+                if self.arg_value is not None and other.arg_value is not None
+                else True
+            )
+        )
+
+    def lossy_eq(self, other):
+        if not isinstance(other, Instruction):
+            return False
+
+        return (
+            self.opcode == other.opcode
+            and (
+                (self.arg_value == other.arg_value) if not isinstance(self.arg_value, Instruction) else self.arg_value.lossy_eq(other.arg_value)
                 if self.arg_value is not None and other.arg_value is not None
                 else True
             )
@@ -213,6 +227,9 @@ class Instruction:
             elif self.opcode in HAS_JUMP_ABSOLUTE:
                 assert isinstance(value, Instruction), value
                 self.arg = value.offset
+            elif self.opcode == Opcodes.FOR_ITER:
+                assert isinstance(value, Instruction), value
+                self.arg = value.offset - self.offset
             elif self.opcode in HAS_JUMP_FORWARD:
                 assert isinstance(value, Instruction), value
                 self.arg = value.offset - self.offset
@@ -232,6 +249,8 @@ class Instruction:
                     self.arg_value = self.function.shared_variable_names[arg]
                 elif self.opcode in HAS_JUMP_ABSOLUTE:
                     self.arg_value = self.function.instructions[arg]
+                elif self.opcode == Opcodes.FOR_ITER:
+                    self.arg_value = self.function.instructions[arg + self.offset]
                 elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
                     self.arg_value = self.function.instructions[arg + self.offset]
             except:
@@ -352,7 +371,10 @@ class Instruction:
             or self.has_jump_backward()
         ) and self.arg_value is not None:
             assert isinstance(self.arg_value, Instruction)
-            self.arg_value = self.arg_value.optimise_tree(visited)
+            self.change_arg_value(self.arg_value.optimise_tree(visited))
+
+            if self.opcode == Opcodes.FOR_ITER:
+                pass
 
         return self
 
@@ -427,8 +449,12 @@ class Instruction:
 
         yielded.add(self)
 
-        for instr in self.previous_instructions:
-            yield from instr._trace_stack_position(stack_position, yielded)
+        for instr in self.previous_instructions or tuple():
+            try:
+                yield from instr._trace_stack_position(stack_position, yielded)
+            except:
+                print(self, instr)
+                raise
 
         if additional_pos:
             for instr in self.previous_instructions:
@@ -797,20 +823,20 @@ class MutableFunction:
 
     def update_jump_args(self, instructions):
         # Update the raw arg for jumps
-        for instruction in instructions:
+        for i, instruction in enumerate(instructions):
             if instruction.next_instruction is None:
                 continue
 
+            instruction.update_owner(self, i)
+
             if instruction.has_jump_absolute():
-                instruction.arg = instruction.next_instruction.offset
+                instruction.change_arg_value(instruction.arg_value)
+            elif instruction.offset == Opcodes.FOR_ITER:
+                instruction.change_arg_value(instruction.arg_value)
             elif instruction.has_jump_forward():
-                instruction.arg = (
-                    instruction.next_instruction.offset - instruction.offset
-                )
+                instruction.change_arg_value(instruction.arg_value)
             elif instruction.has_jump_backward():
-                instruction.arg = (
-                    instruction.offset - instruction.next_instruction.offset
-                )
+                instruction.change_arg_value(instruction.arg_value)
 
     def insert_needed_jumps(self, instructions):
         # Check for unconditional jumps required
