@@ -1,0 +1,15 @@
+{
+  "name": "typing",
+  "items": [
+    {
+      "name": "cast",
+      "items": [
+        {
+          "name": "eliminate",
+          "code": "typing.cast(int, 0)",
+          "compare": "0"
+        }
+      ]
+    }
+  ]
+}

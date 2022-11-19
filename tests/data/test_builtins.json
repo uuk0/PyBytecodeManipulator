@@ -1,0 +1,116 @@
+{
+  "name": "builtins",
+  "items": [
+    {
+      "name": "max",
+      "items": [
+        {
+          "name": "inline_constant",
+          "code": "max(1, 2)",
+          "compare": "2"
+        },
+        {
+          "name": "eliminate_constant",
+          "code": "max(x, 1, 2)",
+          "compare": "max(x, 2)"
+        }
+      ]
+    },
+    {
+      "name": "min",
+      "items": [
+        {
+          "name": "inline_constant",
+          "code": "min(1, 2)",
+          "compare": "1"
+        },
+        {
+          "name": "eliminate_constant",
+          "code": "min(x, 1, 2)",
+          "compare": "min(x, 1)"
+        }
+      ]
+    },
+    {
+      "name": "range",
+      "items": [
+        {
+          "name": "range_with_1_step",
+          "code": "range(1, 5, 1)",
+          "compare": "range(1, 5)"
+        },
+        {
+          "name": "range_with_first_0",
+          "code": "range(0, 5)",
+          "compare": "range(5)"
+        },
+        {
+          "name": "range_empty",
+          "code": "range(0)",
+          "compare": "tuple()",
+          "opt_mode": 2
+        },
+        {
+          "name": "range_single",
+          "code": "range(1)",
+          "compare": "(0,)"
+        },
+        {
+          "name": "range_double",
+          "code": "range(2)",
+          "compare": "(0, 1)"
+        }
+      ]
+    },
+    {
+      "name": "all",
+      "items": [
+        {
+          "name": "all_with_single_false",
+          "code": "all([x, False])",
+          "compare": "False"
+        },
+        {
+          "name": "all_with_single_false_tuple",
+          "code": "all((x, False))",
+          "compare": "False"
+        },
+        {
+          "name": "all_with_single_0",
+          "code": "all((x, 0))",
+          "compare": "False"
+        },
+        {
+          "name": "eliminate_true",
+          "code": "all([x, True])",
+          "compare": "x"
+        },
+        {
+          "name": "all_with_single_false_and_true",
+          "code": "all([x, False, True])",
+          "compare": "False"
+        }
+      ]
+    },
+    {
+      "name": "any",
+      "items": [
+        {
+          "name": "any_with_single_true",
+          "code": "any([x, True])",
+          "compare": "True"
+        },
+        {
+          "name": "any_with_single_false",
+          "code": "any([x, False])",
+          "compare": "x"
+        },
+        {
+          "name": "any_with_single_true_and_false",
+          "code": "any([x, True, False])",
+          "compare": "True"
+        }
+      ]
+    }
+  ]
+}

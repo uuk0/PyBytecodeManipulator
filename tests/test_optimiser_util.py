@@ -1,7 +1,8 @@
 import dis
+import json
 import math
+import os.path
 from unittest import TestCase
-from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.optimiser_util import *
 from bytecodemanipulation.Optimiser import (
     guarantee_constant_result,
@@ -9,6 +10,86 @@ from bytecodemanipulation.Optimiser import (
     _OptimisationContainer,
     BUILTIN_CACHE,
 )
+
+
+root = os.path.dirname(__file__)
+
+
+class JsonTestEntry:
+    @classmethod
+    def from_file(cls, file: str) -> "JsonTestEntry":
+        if not os.path.isfile(file):
+            file = root + "/" + file
+
+        with open(file) as f:
+            return cls.from_data(json.load(f))
+
+    @classmethod
+    def from_data(cls, data: dict) -> "JsonTestEntry":
+        obj = cls(data["name"])
+
+        if "code" in data:
+            if isinstance(data["code"], str):
+                obj.code = data["code"]
+            else:
+                obj.code = [
+                    Instruction(None, None, e["op"], e.setdefault("arg", None), e.setdefault("rarg", 0))
+                    for e in data["code"]
+                ]
+
+            if isinstance(data["compare"], str):
+                obj.compare = data["compare"]
+            else:
+                obj.compare = [
+                    Instruction(None, None, e["op"], e.setdefault("arg", None), e.setdefault("rarg", 0))
+                    for e in data["compare"]
+                ]
+
+        obj.opt_mode = data.setdefault("opt_mode", 1)
+
+        if "items" in data:
+            for item in data["items"]:
+                item.setdefault("opt_mode", data["opt_mode"])
+                obj.add_child(cls.from_data(item))
+
+        return obj
+
+    def __init__(self, name: str):
+        self.name = name
+        self.code: str | typing.List[Instruction] | None = None
+        self.compare: str | typing.List[Instruction] | None = None
+        self.children: typing.List[JsonTestEntry] = []
+        self.opt_mode = 1
+
+    def add_child(self, child: "JsonTestEntry"):
+        self.children.append(child)
+        return self
+
+    def run_tests(self, test: "TestOptimiserUtil", prefix: str = ""):
+        if self.code:
+            if isinstance(self.code, str):
+                target = eval("lambda: "+self.code)
+            else:
+                target = lambda: None
+
+                obj = MutableFunction(target)
+                obj.assemble_fast(self.code)
+                obj.reassign_to_function()
+
+            if isinstance(self.compare, str):
+                compare = eval("lambda: "+self.compare)
+            else:
+                compare = lambda: None
+
+                obj = MutableFunction(compare)
+                obj.assemble_fast(self.code)
+                obj.reassign_to_function()
+
+            print("running", prefix + ":" + self.name)
+            test.compare_optimized_results(target, compare, opt_ideal=self.opt_mode, msg=prefix + ":" + self.name)
+
+        for child in self.children:
+            child.run_tests(test, prefix + ":" + self.name if prefix else self.name)
 
 
 BUILTIN_INLINE = _OptimisationContainer(None)
@@ -28,15 +109,12 @@ class Outer_test_inline_const_function_on_parent:
 
 
 class TestOptimiserUtil(TestCase):
-    def compare_optimized_results(self, target, ideal, opt_ideal=1):
+    def compare_optimized_results(self, target, ideal, opt_ideal=1, msg=...):
         mutable = MutableFunction(target)
         BUILTIN_INLINE._inline_load_globals(mutable)
         mutable.reassign_to_function()
 
         _OptimisationContainer.get_for_target(target).run_optimisers()
-
-        print("target")
-        dis.dis(target)
 
         if opt_ideal > 0:
             mutable = MutableFunction(ideal)
@@ -46,15 +124,24 @@ class TestOptimiserUtil(TestCase):
         if opt_ideal > 1:
             _OptimisationContainer.get_for_target(ideal).run_optimisers()
 
-        print("compare")
-        dis.dis(ideal)
-
         mutable = MutableFunction(target)
         mutable2 = MutableFunction(ideal)
-        self.assertEqual(mutable.instructions, mutable2.instructions)
 
-    def test_inline_constant_method_invoke(self):
-        self.compare_optimized_results(lambda: max(1, 2), lambda: 2)
+        if mutable.instructions != mutable2.instructions:
+            print("target")
+            dis.dis(target)
+            print("compare")
+            dis.dis(ideal)
+
+        self.assertEqual(mutable.instructions, mutable2.instructions, msg=msg)
+
+    def test_builtins(self):
+        test = JsonTestEntry.from_file("data/test_builtins.json")
+        test.run_tests(self)
+
+    def test_typing(self):
+        test = JsonTestEntry.from_file("data/test_typing.json")
+        test.run_tests(self)
 
     def test_inline_binary_op(self):
         self.compare_optimized_results(lambda: 1 + 1, lambda: 2)
@@ -151,34 +238,3 @@ class TestOptimiserUtil(TestCase):
         dis.dis(target)
 
         self.assertEqual(mutable.instructions[0].arg_value, None)
-
-    def test_inline_static_attribute_access_typing(self):
-        def target():
-            return typing.cast(int, 0)
-
-        self.compare_optimized_results(target, lambda: 0)
-
-    def test_spec_compress_min_max_call(self):
-        self.compare_optimized_results(lambda x: min(x, 1, 2), lambda x: min(x, 1))
-        self.compare_optimized_results(lambda x: max(x, 1, 2), lambda x: max(x, 2))
-
-    def test_spec_small_range(self):
-        self.compare_optimized_results(lambda: range(1, 5, 1), lambda: range(1, 5))
-        self.compare_optimized_results(lambda: range(0, 3), lambda: range(3))
-
-        self.compare_optimized_results(lambda: range(0, 0), lambda: tuple(), opt_ideal=2)
-        self.compare_optimized_results(lambda: range(0, 1), lambda: (0,))
-        self.compare_optimized_results(lambda: range(0, 2), lambda: (0, 1))
-
-    def test_spec_all(self):
-        self.compare_optimized_results(lambda x: all((x, False)), lambda x: False)
-        self.compare_optimized_results(lambda x: all((x, 0)), lambda x: False)
-        self.compare_optimized_results(lambda x: all((x, 0, True)), lambda x: False)
-
-        self.compare_optimized_results(lambda x: all((x, True)), lambda x: x)
-        self.compare_optimized_results(lambda x: all((x, True, 1)), lambda x: x)
-
-    def test_spec_any(self):
-        self.compare_optimized_results(lambda x: any((x, True)), lambda x: True)
-        self.compare_optimized_results(lambda x: any((x, False)), lambda x: x)
-        self.compare_optimized_results(lambda x: any((x, False, True, 0)), lambda x: True)
