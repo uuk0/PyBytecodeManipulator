@@ -91,6 +91,13 @@ class TestIssue3(unittest.TestCase):
         def target(t):
             x(typing.cast(int, 2), 0)
 
+
+class TestIssue4(unittest.TestCase):
+    def test_1(self):
+        @apply_now()
+        def target():
+            c(x, typing.cast, typing.cast(y, z.p))
+
     """
     Currently testing:
     

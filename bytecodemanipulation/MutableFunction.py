@@ -550,6 +550,10 @@ class Instruction:
         if self.opcode in (
             Opcodes.LOAD_ATTR,
             Opcodes.LOAD_METHOD,
+        ):
+            return 1, 1, None
+
+        if self.opcode in (
             Opcodes.STORE_ATTR,
         ):
             return 2, 0, None
