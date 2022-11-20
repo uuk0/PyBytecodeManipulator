@@ -333,6 +333,12 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
 
     for instruction in mutable.instructions:
         if instruction.has_jump() and not instruction.has_unconditional_jump():
+            if instruction.previous_instructions is None:
+                if instruction.offset == 0 and instruction.opcode == Opcodes.SETUP_FINALLY:
+                    continue
+
+                raise RuntimeError
+
             source = next(instruction.trace_stack_position(0))
 
             if source.opcode == Opcodes.LOAD_CONST:

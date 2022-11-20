@@ -100,7 +100,7 @@ class TestIssue4(unittest.TestCase):
 
 
 class TestIssue5(unittest.TestCase):
-    def test(self):
+    def test_1(self):
         @apply_now()
         def target():
             try:

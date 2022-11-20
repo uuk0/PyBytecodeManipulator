@@ -400,7 +400,7 @@ class Instruction:
     ) -> typing.Iterator["Instruction"]:
         yielded = {self}
         for instr in self.previous_instructions:
-            yield from instr._trace_stack_position(stack_position, yielded)
+            yield from instr._trace_stack_position(stack_position, yielded, self)
 
     def trace_normalized_stack_position(self, stack_position: int) -> typing.Optional["Instruction"]:
         target = next(self.trace_stack_position(stack_position))
