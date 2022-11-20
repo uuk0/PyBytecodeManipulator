@@ -11,8 +11,10 @@ assignees: ''
 A clear and concise description of what the bug is.
 
 **Minimal Code Example**
+```python
 A code example using the least amount of code,
 annotations and other stuff, but still reproducing the crash
+```
 
 **Crash Log**
 The crash log of the library
