@@ -18,4 +18,7 @@ annotations and other stuff, but still reproducing the crash
 The crash log of the library
 
 **Python Version**
-For example 3.10.0
+For example 3.10.7
+
+**Platform**
+For example Windows 11
