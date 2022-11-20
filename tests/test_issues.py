@@ -1,10 +1,15 @@
 import dis
+import types
+import typing
 import unittest
 
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.Optimiser import apply_now
 from bytecodemanipulation.Optimiser import BUILTIN_CACHE
+from bytecodemanipulation.Optimiser import guarantee_builtin_names_are_protected
+from bytecodemanipulation.Optimiser import guarantee_module_import
 
 BUILTIN_INLINE = _OptimisationContainer(None)
 BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
@@ -79,40 +84,18 @@ class TestIssue2(unittest.TestCase):
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
 
+
+class TestIssue3(unittest.TestCase):
+    def test_1(self):
+        @apply_now()
+        def target(t):
+            x(typing.cast(int, 2), 0)
+
     """
     Currently testing:
     
     def test(self):
         @apply_now()
         def target(t):
-            if t.__instructions is not None:
-                t.__instructions.clear()
-            else:
-                t.__instructions = []
-
-            extra: int = 0
-            for i in range(0, len(t.__raw_code), 2):
-                opcode, arg = t.__raw_code[i: i + 2]
-
-                if opcode == Opcodes.EXTENDED_ARG:
-                    extra = extra * 256 + arg
-                    t.__instructions.append(
-                        Instruction(t, i // 2, "NOP", _decode_next=False)
-                    )
-
-                else:
-                    arg += extra * 256
-                    extra = 0
-
-                    if opcode == Opcodes.FOR_ITER:
-                        arg += 1
-
-                    t.__instructions.append(
-                        Instruction(t, i // 2, opcode, arg=arg, _decode_next=False)
-                    )
-
-            for i, instruction in enumerate(t.instructions):
-                instruction.update_owner(t, i)
-
-            t.prepare_previous_instructions()"""
+            pass"""
 

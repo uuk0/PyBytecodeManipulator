@@ -453,7 +453,7 @@ class Instruction:
             try:
                 yield from instr._trace_stack_position(stack_position, yielded)
             except:
-                print(self, instr)
+                # print(self, instr)
                 raise
 
         if additional_pos:
@@ -710,6 +710,8 @@ class MutableFunction:
             instruction.next_instruction.add_previous_instruction(instruction)
 
             if instruction.has_jump():
+                print(instruction.arg_value, typing.cast, typing.cast(Instruction, instruction.arg_value))
+
                 typing.cast(
                     Instruction, instruction.arg_value
                 ).add_previous_instruction(instruction)

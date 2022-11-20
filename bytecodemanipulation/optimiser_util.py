@@ -71,10 +71,10 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
             # Inline CALL_XX (constant expr) - POP pairs
             if source.opcode == Opcodes.CALL_FUNCTION:
-                func_invoke = next(instruction.trace_stack_position(source.arg))
+                func_resolve = next(source.trace_stack_position(source.arg))
 
-                if func_invoke.opcode == Opcodes.LOAD_CONST:
-                    function = func_invoke.arg_value
+                if func_resolve.opcode == Opcodes.LOAD_CONST:
+                    function = func_resolve.arg_value
 
                     if function in CONSTANT_BUILTINS or (
                         hasattr(function, "_OPTIMISER_CONTAINER")
@@ -84,12 +84,12 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
                     ):
                         instruction.change_opcode(Opcodes.NOP)
 
-                        if func_invoke.arg == 0:
-                            func_invoke.change_opcode(Opcodes.NOP)
+                        if func_resolve.arg == 0:
+                            func_resolve.change_opcode(Opcodes.NOP)
                             continue
-                        pops = func_invoke.arg
+                        pops = func_resolve.arg
 
-                        func_invoke.change_opcode(Opcodes.POP_TOP)
+                        func_resolve.change_opcode(Opcodes.POP_TOP)
                         pops -= 1
 
                         if not pops:
@@ -97,8 +97,8 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
                         for _ in range(pops):
                             nop = Instruction.create(Opcodes.NOP)
-                            nop.next_instruction = func_invoke.next_instruction
-                            func_invoke.next_instruction = nop
+                            nop.next_instruction = func_resolve.next_instruction
+                            func_resolve.next_instruction = nop
 
                         mutable.assemble_instructions_from_tree(
                             mutable.instructions[0].optimise_tree()

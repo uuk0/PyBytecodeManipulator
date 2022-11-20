@@ -39,6 +39,9 @@ class ArgDescriptor:
         if self.parent:
             self.parent.no_special = False
 
+    def __repr__(self):
+        return f"ArgDescriptor({self.real}, {self.normal}, {self.arg_id}, {self.discarded})"
+
 
 class SpecializationContainer:
     def __init__(self):

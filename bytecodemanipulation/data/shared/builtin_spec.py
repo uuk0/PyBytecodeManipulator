@@ -12,6 +12,7 @@ DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK = True
 
 @register(typing.cast)
 def specialize_typing_cast(container: SpecializationContainer):
+    print( container.get_arg_specifications())
     # typing.cast(<type>, <obj>) -> <obj>
     data_type, value = container.get_arg_specifications()
 
