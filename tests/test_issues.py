@@ -3,6 +3,8 @@ import types
 import typing
 import unittest
 
+from bytecodemanipulation import Emulator
+
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -125,11 +127,12 @@ class TestIssue6(unittest.TestCase):
     def test_1(self):
         apply_now()(MutableFunction.assemble_instructions_from_tree)
 
-        dis.dis(MutableFunction.assemble_instructions_from_tree)
+        # dis.dis(MutableFunction.assemble_instructions_from_tree)
 
-        # @apply_now()
-        # def target(t):
-        #     x(typing.cast(int, 2), 0)
+        def target(t):
+            x(typing.cast(int, 2), 0)
+
+        Emulator.run_code(apply_now(), target)
 
     """
     Currently testing:

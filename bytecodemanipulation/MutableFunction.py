@@ -624,6 +624,9 @@ class MutableFunction:
 
         self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
+    def __repr__(self):
+        return f"MutableFunction({self.target})"
+
     def copy(self):
         def _():
             pass
