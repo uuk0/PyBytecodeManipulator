@@ -3,6 +3,7 @@ import types
 import typing
 import unittest
 
+from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Optimiser import _OptimisationContainer
@@ -42,6 +43,9 @@ def compare_optimized_results(case: unittest.TestCase, target, ideal, opt_ideal=
         )
 
     if not eq:
+        mutable.dump_info("./tests/target.json")
+        mutable.dump_info("./tests/ideal.json")
+
         print("target")
         dis.dis(target)
         print("compare")
@@ -107,6 +111,25 @@ class TestIssue5(unittest.TestCase):
                 pass
             except:
                 pass
+
+
+class TestIssue6(unittest.TestCase):
+    def setUp(self) -> None:
+        self.old = MutableFunction(MutableFunction.assemble_instructions_from_tree)
+
+    def tearDown(self) -> None:
+        instance = MutableFunction(MutableFunction.assemble_instructions_from_tree)
+        instance.copy_from(self.old)
+        instance.reassign_to_function()
+
+    def test_1(self):
+        apply_now()(MutableFunction.assemble_instructions_from_tree)
+
+        dis.dis(MutableFunction.assemble_instructions_from_tree)
+
+        # @apply_now()
+        # def target(t):
+        #     x(typing.cast(int, 2), 0)
 
     """
     Currently testing:

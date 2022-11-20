@@ -118,6 +118,8 @@ class _OptimisationContainer:
 
         self.specializations: typing.List[typing.Callable[[SpecializationContainer], None]] = []
 
+        self.is_optimized = False
+
     def is_attribute_static(self, name: str):
         return self.is_static or name in self.static_attributes
 
@@ -161,7 +163,13 @@ class _OptimisationContainer:
         return self
 
     def run_optimisers(self):
-        print(self.target)
+        if self.is_optimized:
+            print("opt skipped", self.target)
+            return
+
+        self.is_optimized = True
+
+        print("opt", self.target)
         from bytecodemanipulation.optimiser_util import apply_specializations
 
         if isinstance(self.target, type):

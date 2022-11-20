@@ -2,6 +2,7 @@ import copy
 import dis
 import types
 import typing
+import simplejson
 
 from bytecodemanipulation.Opcodes import HAS_CELL_VARIABLE
 from bytecodemanipulation.Opcodes import HAS_JUMP_BACKWARDS
@@ -1098,6 +1099,23 @@ class MutableFunction:
             return self.shared_variable_names.index(variable_name)
         self.shared_variable_names.append(variable_name)
         return len(self.shared_variable_names) - 1
+
+    def dump_info(self, file: str):
+        data = {
+            "instructions": [
+                {
+                    "opcode": instr.opcode,
+                    "opname": instr.opname,
+                    "arg": instr.arg,
+                    "arg_value": repr(instr.arg_value),
+                    "offset": instr.offset,
+                }
+                for instr in self.instructions
+            ]
+        }
+
+        with open(file, mode="w") as f:
+            simplejson.dump(data, f, indent="  ")
 
 
 bytecodemanipulation.data_loader.init()

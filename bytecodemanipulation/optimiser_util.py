@@ -303,7 +303,7 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
 
             if all(instr.opcode == Opcodes.LOAD_CONST for instr in args):
                 instruction.change_opcode(Opcodes.LOAD_CONST)
-                instruction.change_arg_value(slice(e.arg_value for e in args))
+                instruction.change_arg_value(slice(*(e.arg_value for e in args)))
 
                 for arg in args:
                     arg.change_opcode(Opcodes.NOP)
