@@ -249,7 +249,7 @@ class Instruction:
                     self.arg_value = self.function.shared_variable_names[arg]
                 elif self.opcode in HAS_JUMP_ABSOLUTE:
                     self.arg_value = self.function.instructions[arg]
-                elif self.opcode == Opcodes.FOR_ITER:
+                elif self.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                     self.arg_value = self.function.instructions[arg + self.offset]
                 elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
                     self.arg_value = self.function.instructions[arg + self.offset]
@@ -373,9 +373,6 @@ class Instruction:
             assert isinstance(self.arg_value, Instruction)
             self.change_arg_value(self.arg_value.optimise_tree(visited))
 
-            if self.opcode == Opcodes.FOR_ITER:
-                pass
-
         return self
 
     def trace_variable_set(self, name: str, visited: typing.Set[str] = None) -> typing.Iterator["Instruction"]:
@@ -422,7 +419,7 @@ class Instruction:
         return target
 
     def _trace_stack_position(
-        self, stack_position: int, yielded: typing.Set["Instruction"]
+        self, stack_position: int, yielded: typing.Set["Instruction"], previous_instr: "Instruction" = None
     ) -> typing.Iterator["Instruction"]:
         assert stack_position >= 0
 
@@ -431,6 +428,8 @@ class Instruction:
 
         if self.has_unconditional_jump():
             pushed, popped, additional_pos = 0, 0, None
+        elif self.opcode == Opcodes.SETUP_FINALLY and previous_instr == self.arg_value:
+            pushed, popped, additional_pos = 3, 0, None
         else:
             pushed, popped, additional_pos = self.get_stack_affect()
 
@@ -440,7 +439,7 @@ class Instruction:
 
             if additional_pos:
                 for instr in self.previous_instructions:
-                    yield from instr._trace_stack_position(additional_pos, yielded)
+                    yield from instr._trace_stack_position(additional_pos, yielded, self)
 
             return
 
@@ -451,14 +450,14 @@ class Instruction:
 
         for instr in self.previous_instructions or tuple():
             try:
-                yield from instr._trace_stack_position(stack_position, yielded)
+                yield from instr._trace_stack_position(stack_position, yielded, self)
             except:
                 # print(self, instr)
                 raise
 
         if additional_pos:
             for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(additional_pos, yielded)
+                yield from instr._trace_stack_position(additional_pos, yielded, self)
 
     def trace_stack_position_use(
         self, stack_position: int
@@ -497,8 +496,11 @@ class Instruction:
 
     def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
         # pushed, popped, additional
-        if self.opcode in (Opcodes.NOP,):
+        if self.opcode in (Opcodes.NOP, Opcodes.POP_BLOCK, Opcodes.POP_EXCEPT, Opcodes.SETUP_FINALLY):
             return 0, 0, None
+
+        if self.opcode == Opcodes.DUP_TOP:
+            return 2, 1, None
 
         if self.opcode in (Opcodes.GET_ITER, Opcodes.FOR_ITER):
             return 1, 0, None
@@ -535,6 +537,7 @@ class Instruction:
         if self.opcode in (
             Opcodes.COMPARE_OP,
             Opcodes.IS_OP,
+            Opcodes.BINARY_SUBSCR,
             Opcodes.LIST_EXTEND,
             Opcodes.LIST_APPEND,
             Opcodes.SET_ADD,
@@ -560,11 +563,15 @@ class Instruction:
 
         if self.opcode in (
             Opcodes.POP_TOP,
+            Opcodes.POP_JUMP_IF_TRUE,
         ):
             return 0, 1, None
 
         if self.opcode == Opcodes.UNPACK_SEQUENCE:
             return self.arg, 1, None
+
+        if self.opcode == Opcodes.JUMP_IF_NOT_EXC_MATCH:
+            return 0, 2, None
 
         raise RuntimeError(self)
 
@@ -694,7 +701,7 @@ class MutableFunction:
                 arg += extra * 256
                 extra = 0
 
-                if opcode == Opcodes.FOR_ITER:
+                if opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                     arg += 1
 
                 self.__instructions.append(
@@ -714,7 +721,7 @@ class MutableFunction:
             instruction.next_instruction.add_previous_instruction(instruction)
 
             if instruction.has_jump():
-                print(instruction.arg_value, typing.cast, typing.cast(Instruction, instruction.arg_value))
+                # print(instruction.arg_value, typing.cast, typing.cast(Instruction, instruction.arg_value))
 
                 typing.cast(
                     Instruction, instruction.arg_value
@@ -837,7 +844,7 @@ class MutableFunction:
 
             if instruction.has_jump_absolute():
                 instruction.change_arg_value(instruction.arg_value)
-            elif instruction.offset == Opcodes.FOR_ITER:
+            elif instruction.offset in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                 instruction.change_arg_value(instruction.arg_value)
             elif instruction.has_jump_forward():
                 instruction.change_arg_value(instruction.arg_value)
@@ -981,7 +988,7 @@ class MutableFunction:
         for i, instruction in enumerate(self.__instructions):
             arg = instruction.get_arg()
 
-            if instruction.opcode == Opcodes.FOR_ITER:
+            if instruction.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                 arg -= 1
 
             if arg > 255:
@@ -1036,6 +1043,9 @@ class MutableFunction:
                         [Opcodes.EXTENDED_ARG, iarg]
                     )
                     offset += 1
+
+            if not (0 <= arg <= 255 and 0 <= instruction.opcode <= 255):
+                print("error", instruction)
 
             self.__raw_code += bytes([instruction.opcode, arg])
 

@@ -98,6 +98,16 @@ class TestIssue4(unittest.TestCase):
         def target():
             c(x, typing.cast, typing.cast(y, z.p))
 
+
+class TestIssue5(unittest.TestCase):
+    def test(self):
+        @apply_now()
+        def target():
+            try:
+                pass
+            except:
+                pass
+
     """
     Currently testing:
     
