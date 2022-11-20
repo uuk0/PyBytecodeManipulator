@@ -538,6 +538,7 @@ class Instruction:
             Opcodes.COMPARE_OP,
             Opcodes.IS_OP,
             Opcodes.BINARY_SUBSCR,
+            Opcodes.CONTAINS_OP,
             Opcodes.LIST_EXTEND,
             Opcodes.LIST_APPEND,
             Opcodes.SET_ADD,
@@ -564,6 +565,7 @@ class Instruction:
         if self.opcode in (
             Opcodes.POP_TOP,
             Opcodes.POP_JUMP_IF_TRUE,
+            Opcodes.STORE_FAST,
         ):
             return 0, 1, None
 
