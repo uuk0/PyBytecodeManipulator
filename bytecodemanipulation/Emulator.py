@@ -136,6 +136,12 @@ def load_global(func: MutableFunction, instr: Instruction, stack: list, local: l
     return instr.next_instruction, func
 
 
+@execution(Opcodes.STORE_GLOBAL)
+def store_global(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
+    func.target.__globals__[instr.arg_value] = stack.pop(-1)
+    return instr.next_instruction, func
+
+
 @execution(Opcodes.LOAD_METHOD)
 @execution(Opcodes.LOAD_ATTR)
 def load_attr(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
@@ -222,7 +228,7 @@ def return_value(func: MutableFunction, instr: Instruction, stack: list, local: 
 
 
 @execution(Opcodes.YIELD_VALUE)
-def yield_from(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
+def yield_from(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list):
     value = stack.pop(-1)
     stack.append(None)
     raise YieldValue(value, instr.next_instruction, func)

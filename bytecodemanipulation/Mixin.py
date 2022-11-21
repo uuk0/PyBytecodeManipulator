@@ -1,6 +1,9 @@
 import importlib
+import os
 import typing
 from abc import ABC
+
+from bytecodemanipulation import Emulator
 
 from bytecodemanipulation.mixin_util import resolve_accesses
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -14,6 +17,10 @@ from bytecodemanipulation.Opcodes import Opcodes
 
 class MixinInjectionNotSupportedException(Exception):
     pass
+
+
+def _invoke_emulator(*args):
+    return Emulator.run_code(100, *args)
 
 
 class _MixinContainer:
@@ -31,7 +38,19 @@ class _MixinContainer:
             for mixin in self.mixins:
                 mixin.apply_on(mutable)
 
-            mutable.reassign_to_function()
+            try:
+                state = os.environ["DEBUG_MIXINS"]
+            except KeyError:
+                state = False
+
+            if state:
+                target = MutableFunction(self.target)
+                override_target = MutableFunction(_invoke_emulator)
+                override_target.constants[override_target.constants.index(100)] = mutable
+                target.copy_from(override_target)
+                target.reassign_to_function()
+            else:
+                mutable.reassign_to_function()
 
         def reset(self):
             pass
