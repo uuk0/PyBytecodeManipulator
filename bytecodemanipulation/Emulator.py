@@ -1,6 +1,7 @@
 import builtins
 import importlib
 import typing
+from inspect import CO_GENERATOR
 
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -9,6 +10,56 @@ from bytecodemanipulation.Opcodes import Opcodes
 
 class UnknownOpcodeError(Exception): pass
 class FinalReturn(Exception): pass
+class YieldValue(Exception): pass
+
+
+class EmulatorGeneratorContainer:
+    def __init__(self, mutable: MutableFunction, args: typing.Sized = tuple()):
+        self.mutable = mutable
+        self.instruction = mutable.instructions[0]
+        self.args = args
+
+        if len(self.args) != self.mutable.argument_count:
+            raise ValueError()
+
+        self.stack = []
+        self.local_variables = [None] * len(self.mutable.shared_variable_names)
+        self.local_variables[:len(self.args)] = self.args
+        self.exception_handle_stack = []
+
+        self.instruction = self.mutable.instructions[0]
+        self.continue_stack = []
+
+        if not isinstance(self.mutable, MutableFunction):
+            self.mutable = MutableFunction(self.mutable)
+
+    def run(self):
+        print("yield-calling", self.mutable)
+
+        while True:
+            print("run", self.instruction)
+            print(self.stack)
+            print(self.local_variables)
+            target = OPCODE_FUNCS[self.instruction.opcode]
+
+            if target is None:
+                raise UnknownOpcodeError(self.instruction)
+
+            try:
+                self.instruction, self.mutable = target(self.mutable, self.instruction, self.stack, self.local_variables, self.continue_stack, self.exception_handle_stack)
+            except FinalReturn as e:
+                raise StopIteration
+            except YieldValue as e:
+                if len(e.args) > 1:
+                    self.instruction, self.mutable = e.args[1:]
+
+                return e.args[0]
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.run()
 
 
 def run_code(mutable: MutableFunction | typing.Callable, *args):
@@ -38,7 +89,12 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
         try:
             instruction, mutable = target(mutable, instruction, stack, local_variables, continue_stack, exception_handle_stack)
         except FinalReturn as e:
+            if len(e.args) > 1:
+                instruction, mutable = e.args[1:]
+
             return e.args[0]
+        except YieldValue:
+            raise RuntimeError("YIELD outside GENERATOR")
 
 
 OPCODE_FUNCS: typing.List[typing.Callable | None] = [None] * 256
@@ -53,6 +109,7 @@ def execution(opcode: int):
 
 
 @execution(Opcodes.NOP)
+@execution(Opcodes.GEN_START)
 def nop(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
     return instr.next_instruction, func
 
@@ -65,7 +122,7 @@ def pop_top(func: MutableFunction, instr: Instruction, stack: list, local: list,
 
 @execution(Opcodes.JUMP_ABSOLUTE)
 @execution(Opcodes.JUMP_FORWARD)
-def nop(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
+def jump_unconditional(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
     return instr.arg_value, func
 
 
@@ -132,6 +189,10 @@ def call_method_instr(func: MutableFunction, instr: Instruction, stack: list, lo
         stack.append(target(*args))
         return instr.next_instruction, func
 
+    if mutable.code_flags & CO_GENERATOR:
+        stack.append(EmulatorGeneratorContainer(mutable, args))
+        return instr.next_instruction, func
+
     call_stack.append((func, stack[:], local[:], instr.next_instruction, exception_handle_stack))
 
     stack.clear()
@@ -150,11 +211,33 @@ def return_value(func: MutableFunction, instr: Instruction, stack: list, local: 
     print("returning", func)
     print(return_obj)
 
+    if len(call_stack) == 0:
+        raise FinalReturn(return_obj)
+
     func, stack[:], local[:], next_instr, exception_handle_stack[:] = call_stack.pop(-1)
 
     stack.append(return_obj)
 
     return next_instr, func
+
+
+@execution(Opcodes.YIELD_VALUE)
+def yield_from(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
+    value = stack.pop(-1)
+    stack.append(None)
+    raise YieldValue(value, instr.next_instruction, func)
+
+
+@execution(Opcodes.YIELD_FROM)
+def yield_from(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
+    tos = stack[-1]
+
+    try:
+        raise YieldValue(next(tos))
+    except StopIteration:
+        stack.pop(-1)
+        stack.append(None)
+        return instr.next_instruction, func
 
 
 @execution(Opcodes.POP_JUMP_IF_TRUE)
@@ -266,6 +349,7 @@ def import_name(func: MutableFunction, instr: Instruction, stack: list, local: l
 
 
 @execution(Opcodes.GET_ITER)
+@execution(Opcodes.GET_YIELD_FROM_ITER)
 def get_iter(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
     stack.append(iter(stack.pop(-1)))
     return instr.next_instruction, func
@@ -288,6 +372,12 @@ def for_iter(func: MutableFunction, instr: Instruction, stack: list, local: list
 @execution(Opcodes.BUILD_TUPLE)
 def build_tuple(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
     stack.append(tuple(reversed([stack.pop(-1) for _ in range(instr.arg)])))
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.BUILD_SET)
+def build_set(func: MutableFunction, instr: Instruction, stack: list, local: list, call_stack: list, exception_handle_stack: list) -> typing.Tuple[Instruction, MutableFunction]:
+    stack.append(set([stack.pop(-1) for _ in range(instr.arg)]))
     return instr.next_instruction, func
 
 

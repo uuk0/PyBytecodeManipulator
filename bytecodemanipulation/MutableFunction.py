@@ -413,7 +413,7 @@ class Instruction:
             try:
                 variable_set = next(target.trace_variable_set(typing.cast(str, target.arg_value)))
             except StopIteration:
-                return
+                return target
 
             return variable_set.trace_normalized_stack_position(0)
 
