@@ -166,9 +166,9 @@ def remove_local_var_assign_without_use(mutable: MutableFunction) -> bool:
 def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
     dirty = False
 
-    for instruction in mutable.instructions:
-        if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
-            target = next(instruction.trace_stack_position(instruction.arg))
+    for instr in mutable.instructions:
+        if instr.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
+            target = next(instr.trace_stack_position(instr.arg))
 
             if target.opcode == Opcodes.LOAD_CONST:
                 function: typing.Callable = target.arg_value
@@ -178,15 +178,15 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
                     and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op
                 ):
                     args = [
-                        next(instruction.trace_stack_position(i))
-                        for i in range(instruction.arg - 1, -1, -1)
+                        next(instr.trace_stack_position(i))
+                        for i in range(instr.arg - 1, -1, -1)
                     ]
 
                     if all(instr.opcode == Opcodes.LOAD_CONST for instr in args):
                         result = function(*(e.arg_value for e in args))
 
-                        instruction.change_opcode(Opcodes.LOAD_CONST)
-                        instruction.change_arg_value(result)
+                        instr.change_opcode(Opcodes.LOAD_CONST)
+                        instr.change_arg_value(result)
                         target.change_opcode(Opcodes.NOP)
 
                         for arg in args:

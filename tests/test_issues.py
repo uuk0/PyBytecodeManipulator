@@ -124,15 +124,15 @@ class TestIssue6(unittest.TestCase):
         instance.copy_from(self.old)
         instance.reassign_to_function()
 
-    def test_1(self):
-        apply_now()(MutableFunction.assemble_instructions_from_tree)
-
-        # dis.dis(MutableFunction.assemble_instructions_from_tree)
-
-        def target(t):
-            x(typing.cast(int, 2), 0)
-
-        Emulator.run_code(apply_now(), target)
+    # def test_1(self):
+    #     apply_now()(MutableFunction.assemble_instructions_from_tree)
+    #
+    #     dis.dis(Instruction.trace_stack_position)
+    #
+    #     def target(t):
+    #         x(typing.cast(int, 2), 0)
+    #
+    #     Emulator.run_code(apply_now(), target)
 
     """
     Currently testing:
