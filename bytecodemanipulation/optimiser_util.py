@@ -60,14 +60,27 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
     for instruction in mutable.instructions:
         if instruction.opcode == Opcodes.POP_TOP:
-            source = next(instruction.trace_stack_position(0))
+            try:
+                print("search")
+                source = next(instruction.trace_stack_position(0))
+            except StopIteration:
+                # source = next(instruction.trace_stack_position(0))
+
+                print("---")
+
+                for instr in mutable.instructions:
+                    print(instr)
+
+                print("---")
+                print(instruction)
+                print(instruction.get_priorities_previous())
+                raise
 
             # Inline LOAD_XX - POP pairs
             if source.opcode in SIDE_EFFECT_FREE_LOADS:
                 instruction.change_opcode(Opcodes.NOP)
                 source.change_opcode(Opcodes.NOP)
-                dirty = True
-                continue
+                return True
 
             # Inline CALL_XX (constant expr) - POP pairs
             if source.opcode == Opcodes.CALL_FUNCTION:

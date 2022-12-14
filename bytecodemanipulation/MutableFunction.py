@@ -399,9 +399,24 @@ class Instruction:
     def trace_stack_position(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        yielded = {self}
-        for instr in self.previous_instructions:
-            yield from instr._trace_stack_position(stack_position, yielded, self)
+        for instr in self.get_priorities_previous():
+            yield from instr._trace_stack_position(stack_position, set(), self)
+
+    def get_priorities_previous(self) -> typing.List["Instruction"]:
+        if not self.previous_instructions: return []
+
+        real_previous = [instr for instr in self.previous_instructions if instr.next_instruction == self]
+        unreal_previous = [instr for instr in self.previous_instructions if instr.next_instruction != self]
+        highest = None
+
+        for e in real_previous:
+            if e.offset == self.offset - 1 or e.opcode == Opcodes.SETUP_FINALLY:
+                highest = e
+
+        if not highest:
+            return real_previous + unreal_previous
+
+        return [highest] + [e for e in real_previous if e != highest] + unreal_previous
 
     def trace_normalized_stack_position(self, stack_position: int) -> typing.Optional["Instruction"]:
         target = next(self.trace_stack_position(stack_position))
@@ -434,12 +449,16 @@ class Instruction:
         else:
             pushed, popped, additional_pos = self.get_stack_affect()
 
+        print(self, stack_position, (pushed, popped, additional_pos), self.arg_value, previous_instr)
+
         if pushed > stack_position:
             yielded.add(self)
+            print("hit")
             yield self
+            print("cont")
 
             if additional_pos:
-                for instr in self.previous_instructions:
+                for instr in self.get_priorities_previous():
                     yield from instr._trace_stack_position(additional_pos, yielded, self)
 
             return
@@ -449,7 +468,7 @@ class Instruction:
 
         yielded.add(self)
 
-        for instr in self.previous_instructions or tuple():
+        for instr in self.get_priorities_previous():
             try:
                 yield from instr._trace_stack_position(stack_position, yielded, self)
             except:
@@ -457,7 +476,7 @@ class Instruction:
                 raise
 
         if additional_pos:
-            for instr in self.previous_instructions:
+            for instr in self.get_priorities_previous():
                 yield from instr._trace_stack_position(additional_pos, yielded, self)
 
     def trace_stack_position_use(
@@ -548,7 +567,14 @@ class Instruction:
             Opcodes.DICT_MERGE,
             Opcodes.BINARY_FLOOR_DIVIDE,
             Opcodes.BINARY_ADD,
+            Opcodes.BINARY_SUBTRACT,
             Opcodes.BINARY_MULTIPLY,
+            Opcodes.BINARY_TRUE_DIVIDE,
+            Opcodes.BINARY_FLOOR_DIVIDE,
+            Opcodes.BINARY_MODULO,
+            Opcodes.BINARY_XOR,
+            Opcodes.BINARY_AND,
+            Opcodes.BINARY_OR,
         ):
             return 1, 2, None
 
@@ -566,6 +592,7 @@ class Instruction:
         if self.opcode in (
             Opcodes.POP_TOP,
             Opcodes.POP_JUMP_IF_TRUE,
+            Opcodes.POP_JUMP_IF_FALSE,
             Opcodes.STORE_FAST,
         ):
             return 0, 1, None
@@ -575,6 +602,9 @@ class Instruction:
 
         if self.opcode == Opcodes.JUMP_IF_NOT_EXC_MATCH:
             return 0, 2, None
+
+        if self.opcode == Opcodes.MAKE_FUNCTION:
+            return 1, 2 + self.arg.bit_count(), None
 
         raise RuntimeError(self)
 
@@ -598,10 +628,13 @@ class MutableFunction:
     def create(cls, target):
         if isinstance(target, staticmethod):
             return cls(target.__func__)
+        elif isinstance(target, classmethod):
+            return cls(target.__func__)
         return cls(target)
 
     def __init__(self, target: types.FunctionType | types.MethodType):
         self.target = target
+
         self.code_object: types.CodeType = target.__code__
 
         self.argument_count = self.code_object.co_argcount
@@ -720,6 +753,10 @@ class MutableFunction:
         self.prepare_previous_instructions()
 
     def prepare_previous_instructions(self):
+        for instruction in self.instructions:
+            if instruction.previous_instructions:
+                instruction.previous_instructions.clear()
+
         for instruction in self.instructions:
             if instruction.has_stop_flow() or instruction.has_unconditional_jump():
                 continue

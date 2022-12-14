@@ -1,5 +1,13 @@
 
-# Version 0.1.10 [upcoming]
+# Version 0.2.1
+- added a few more opcodes
+- fixed potential issue when the system does not detect children of classes correctly, when only the class is annotated
+
+# Version 0.2.0
+- rewritten the whole system
+- now a lot more stable, and allows better bytecode manipulation at low level
+
+# Version 0.1.- [never released]
 - made some instruction configs .json config able
 - emulator will crash now with a good exception message when a jump goes out of bounds
 - @name_is_static() annotation will now forward the matcher argument correctly

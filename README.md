@@ -90,3 +90,11 @@ TODO
 
 We use the python formatting library "black" on our code
 
+# TODO's
+
+- abstract opcode affect away into a .json file describing all opcodes
+- create a json file for defining certain bytecode sequences
+- write more library-specific optimisations
+- write generating bytecode system for emulator, constructing a function pointing to the
+.json file for exception printing, and optimizing wherever possible
+

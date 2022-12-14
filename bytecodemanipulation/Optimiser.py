@@ -20,6 +20,8 @@ from bytecodemanipulation.util import _is_parent_of
 
 BUILTIN_CACHE = builtins.__dict__.copy()
 
+DISABLE_OPTIMISATION_APPLY = os.environ.setdefault("DISABLE_OPTIMISATION_APPLY", "")
+
 
 class ValueIsNotArrivalException(Exception):
     pass
@@ -34,7 +36,13 @@ class GlobalIsNeverAccessedException(Exception):
 
 
 class _OptimisationContainer:
-    _CUSTOM_TARGETS = {}
+    _CUSTOM_TARGETS: typing.Dict[typing.Hashable, "_OptimisationContainer"] = {}
+    _CONTAINERS: typing.List["_OptimisationContainer"] = []
+
+    @classmethod
+    def apply_all(cls):
+        for target in cls._CONTAINERS:
+            target.run_optimisers(False)
 
     @classmethod
     def get_for_target(cls, target):
@@ -46,6 +54,8 @@ class _OptimisationContainer:
             return cls._CUSTOM_TARGETS[target]
 
         container = cls(target)
+
+        cls._CONTAINERS.append(container)
 
         try:
             target._OPTIMISER_CONTAINER = container
@@ -120,6 +130,18 @@ class _OptimisationContainer:
 
         self.is_optimized = False
 
+        # Add the children to self
+        if isinstance(self.target, type):
+            for key, e in self.target.__dict__.items():
+                if isinstance(e, (type(guarantee_builtin_names_are_protected), staticmethod, classmethod, type)):
+                    if isinstance(e, (staticmethod, classmethod)):
+                        func = e.__func__
+                    else:
+                        func = e
+
+                    if func.__qualname__.startswith(self.target.__qualname__+".") and func.__module__ == self.target.__module__:
+                        self.children.append(self.get_for_target(e))
+
     def is_attribute_static(self, name: str):
         return self.is_static or name in self.static_attributes
 
@@ -162,26 +184,32 @@ class _OptimisationContainer:
         self.optimisations.append(optimiser)
         return self
 
-    def run_optimisers(self):
+    def run_optimisers(self, warn=True):
         if self.is_optimized:
-            print("opt skipped", self.target)
+            if warn and not DISABLE_OPTIMISATION_APPLY:
+                print("opt skipped", self.target)
+
             return
 
         self.is_optimized = True
 
+        if DISABLE_OPTIMISATION_APPLY:
+            return
+
         print("opt", self.target)
         from bytecodemanipulation.optimiser_util import apply_specializations
 
-        if isinstance(self.target, type):
+        if self.children:
             self._walk_children_and_copy_attributes()
 
             for child in self.children:
                 child.run_optimisers()
 
-            return
-
         # resolve the lazy types
         self._resolve_lazy_references()
+
+        if not hasattr(self.target, "__code__") and not isinstance(self.target, (classmethod, staticmethod)):
+            return
 
         # Create mutable wrapper around the target
         mutable = MutableFunction.create(self.target)
@@ -190,46 +218,56 @@ class _OptimisationContainer:
         # Walk over the code and resolve cached globals
         self._inline_load_globals(mutable)
 
-        dirty = True
-
         # Walk over the entries as long as the optimisers are doing their stuff
-        while dirty:
+        while True:
+            mutable.assemble_instructions_from_tree(
+                mutable.instructions[0].optimise_tree()
+            )
+            mutable.prepare_previous_instructions()
+
             dirty = False
+            for optimiser in self.optimisations:
+                dirty = optimiser.apply(self, mutable) or dirty
 
-            dirty = inline_const_value_pop_pairs(mutable) or dirty
+            if dirty:
+                continue
 
-            dirty = remove_local_var_assign_without_use(mutable) or dirty
+            if inline_const_value_pop_pairs(mutable):
+                continue
+
+            if remove_local_var_assign_without_use(mutable):
+                continue
 
             # Inlines access to static items
-            dirty = inline_static_attribute_access(mutable) or dirty
+            if inline_static_attribute_access(mutable):
+                continue
 
             # Inline invokes to builtins and other known is_constant_op-s with static args
-            dirty = inline_constant_method_invokes(mutable) or dirty
+            if inline_constant_method_invokes(mutable):
+                continue
 
             # Resolve known constant types
-            dirty = self._resolve_constant_local_types(mutable) or dirty
+            if self._resolve_constant_local_types(mutable):
+                continue
             # self._resolve_constant_local_attr_types(mutable)
             # todo: use return type of known functions
 
-            dirty = inline_constant_binary_ops(mutable) or dirty
+            if inline_constant_binary_ops(mutable):
+                continue
 
             # apply optimisation specialisations
-            dirty = apply_specializations(mutable) or dirty
+            if apply_specializations(mutable):
+                continue
 
             # Inline invokes to builtins and other known is_constant_op-s with static args
-            dirty = inline_constant_method_invokes(mutable) or dirty
+            if inline_constant_method_invokes(mutable):
+                continue
 
             # Remove conditional jumps no longer required
-            dirty = remove_branch_on_constant(mutable) or dirty
+            if remove_branch_on_constant(mutable):
+                continue
 
-            if dirty:
-                mutable.assemble_instructions_from_tree(
-                    mutable.instructions[0].optimise_tree()
-                )
-                mutable.prepare_previous_instructions()
-
-            for optimiser in self.optimisations:
-                dirty = optimiser.apply(self, mutable) or dirty
+            break
 
         mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
 

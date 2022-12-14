@@ -1,4 +1,5 @@
 import dis
+import random
 import types
 import typing
 import unittest
@@ -112,6 +113,14 @@ class TestIssue5(unittest.TestCase):
             try:
                 pass
             except:
+                pass
+
+    def test_2(self):
+        @apply_now()
+        def target():
+            try:
+                pass
+            except TypeError:
                 pass
 
 
