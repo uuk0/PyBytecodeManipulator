@@ -345,7 +345,7 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
     dirty = False
 
     for instruction in mutable.instructions:
-        if instruction.has_jump() and not instruction.has_unconditional_jump():
+        if instruction.has_jump() and not instruction.has_unconditional_jump() and instruction.opcode not in (Opcodes.SETUP_FINALLY, Opcodes.SETUP_WITH):
             if instruction.previous_instructions is None:
                 if instruction.offset == 0 and instruction.opcode == Opcodes.SETUP_FINALLY:
                     continue

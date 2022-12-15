@@ -688,6 +688,8 @@ def apply_now():
     """
 
     def annotate(target):
+        dis.dis(target)
+
         container = _OptimisationContainer.get_for_target(target)
         container.run_optimisers()
 

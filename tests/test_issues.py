@@ -1,9 +1,12 @@
 import dis
 import math
 import random
+import traceback
 import types
 import typing
 import unittest
+
+import asyncio
 
 from bytecodemanipulation import Emulator
 
@@ -14,6 +17,7 @@ from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.Optimiser import apply_now
 from bytecodemanipulation.Optimiser import BUILTIN_CACHE
 from bytecodemanipulation.Optimiser import cache_global_name
+from bytecodemanipulation.Optimiser import guarantee_builtin_names_are_protected
 
 BUILTIN_INLINE = _OptimisationContainer(None)
 BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
@@ -122,6 +126,14 @@ class TestIssue5(unittest.TestCase):
                 pass
             except TypeError:
                 pass
+
+    def test_3(self):
+        @apply_now()
+        async def target():
+            try:
+                pass
+            except TypeError:
+                raise
 
 
 class TestIssueTODO(unittest.TestCase):

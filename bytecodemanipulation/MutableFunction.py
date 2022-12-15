@@ -535,7 +535,7 @@ class Instruction:
 
     def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
         # pushed, popped, additional
-        if self.opcode in (Opcodes.NOP, Opcodes.POP_BLOCK, Opcodes.POP_EXCEPT, Opcodes.SETUP_FINALLY):
+        if self.opcode in (Opcodes.NOP, Opcodes.POP_BLOCK, Opcodes.POP_EXCEPT, Opcodes.SETUP_FINALLY, Opcodes.GEN_START):
             return 0, 0, None
 
         if self.opcode == Opcodes.DUP_TOP:
