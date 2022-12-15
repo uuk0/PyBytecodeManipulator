@@ -61,7 +61,7 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
     for instruction in mutable.instructions:
         if instruction.opcode == Opcodes.POP_TOP:
             try:
-                print("search")
+                # print("search")
                 source = next(instruction.trace_stack_position(0))
             except StopIteration:
                 # source = next(instruction.trace_stack_position(0))
@@ -414,6 +414,14 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
                     source_instr.change_opcode(Opcodes.NOP)
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(getattr(source, attr_name))
+
+                    print(instruction)
+
+                    use = next(instruction.trace_stack_position_use(0))
+
+                    if use.opcode == Opcodes.CALL_METHOD:
+                        use.change_opcode(Opcodes.CALL_FUNCTION)
+
                     dirty = True
 
     return dirty

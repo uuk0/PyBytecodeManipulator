@@ -446,16 +446,24 @@ class Instruction:
             pushed, popped, additional_pos = 0, 0, None
         elif self.opcode == Opcodes.SETUP_FINALLY and previous_instr == self.arg_value:
             pushed, popped, additional_pos = 3, 0, None
+        elif self.opcode in (
+            Opcodes.JUMP_IF_TRUE_OR_POP,
+            Opcodes.JUMP_IF_FALSE_OR_POP,
+        ):
+            if self.arg_value == previous_instr:
+                pushed, popped, additional_pos = 0, 0, None
+            else:
+                pushed, popped, additional_pos = 0, 1, None
         else:
             pushed, popped, additional_pos = self.get_stack_affect()
 
-        print(self, stack_position, (pushed, popped, additional_pos), self.arg_value, previous_instr)
+        # print(self, stack_position, (pushed, popped, additional_pos), self.arg_value, previous_instr)
 
         if pushed > stack_position:
             yielded.add(self)
-            print("hit")
+            # print("hit")
             yield self
-            print("cont")
+            # print("cont")
 
             if additional_pos:
                 for instr in self.get_priorities_previous():
@@ -482,7 +490,13 @@ class Instruction:
     def trace_stack_position_use(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        yield from self._trace_stack_position_use(stack_position + 1, set())
+        print(self, 0)
+
+        if not self.has_stop_flow():
+            yield from self.next_instruction._trace_stack_position_use(stack_position, set())
+
+        if self.has_jump():
+            yield from typing.cast(Instruction, self.arg_value)._trace_stack_position_use(stack_position, set())
 
     def _trace_stack_position_use(
         self, stack_position: int, yielded: typing.Set["Instruction"]
@@ -492,6 +506,8 @@ class Instruction:
         if self in yielded:
             return
 
+        print(self, stack_position)
+
         pushed, popped, additional_pos = self.get_stack_affect()
 
         if popped > stack_position:
@@ -499,20 +515,23 @@ class Instruction:
             yield self
 
             if additional_pos:
-                for instr in self.previous_instructions:
-                    yield from instr._trace_stack_position(additional_pos, yielded)
+                yield from self.next_instruction._trace_stack_position_use(additional_pos, yielded)
 
             return
 
         stack_position -= popped
         stack_position += pushed
 
-        for instr in self.previous_instructions:
-            yield from instr._trace_stack_position(stack_position, yielded)
+        print(stack_position)
+
+        if not self.has_stop_flow():
+            yield from self.next_instruction._trace_stack_position_use(stack_position, yielded)
+
+        if self.has_jump():
+            yield from typing.cast(Instruction, self.arg_value)._trace_stack_position_use(stack_position, yielded)
 
         if additional_pos:
-            for instr in self.previous_instructions:
-                yield from instr._trace_stack_position(additional_pos, yielded)
+            yield from self.next_instruction._trace_stack_position_use(additional_pos, yielded)
 
     def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
         # pushed, popped, additional
@@ -530,29 +549,48 @@ class Instruction:
             Opcodes.LOAD_GLOBAL,
             Opcodes.LOAD_FAST,
             Opcodes.LOAD_DEREF,
+            Opcodes.LOAD_CLOSURE,
         ):
             return 1, 0, None
 
         if self.opcode in (
-            Opcodes.CALL_FUNCTION,
-            Opcodes.CALL_METHOD,
             Opcodes.BUILD_TUPLE,
             Opcodes.BUILD_LIST,
             Opcodes.BUILD_SET,
             Opcodes.BUILD_SLICE,
+            Opcodes.BUILD_STRING,
         ):
             return 1, self.arg, None
 
         if self.opcode in (
+            Opcodes.ROT_TWO,
+        ):
+            return 2, 2, None
+
+        if self.opcode in (
+            Opcodes.FORMAT_VALUE,
+        ):
+            return 1, (2 if (self.arg & 0x04) == 0x04 else 1), None
+
+        if self.opcode in (
+            Opcodes.CALL_FUNCTION,
+            Opcodes.CALL_METHOD,
             Opcodes.CALL_FUNCTION_KW,
         ):
             return 1, self.arg + 1, None
 
+        if self.opcode in (
+            Opcodes.CALL_FUNCTION_EX,
+        ):
+            count = 2
+
+            if self.arg & 0x01:
+                count += 1
+
+            return 1, count, None
+
         if self.opcode == Opcodes.BUILD_MAP:
             return 1, self.arg * 2, None
-
-        if self.opcode == Opcodes.RETURN_VALUE:
-            raise ValueError(self)
 
         if self.opcode in (
             Opcodes.COMPARE_OP,
@@ -575,12 +613,19 @@ class Instruction:
             Opcodes.BINARY_XOR,
             Opcodes.BINARY_AND,
             Opcodes.BINARY_OR,
+            Opcodes.BINARY_POWER,
+            Opcodes.INPLACE_SUBTRACT,
+            Opcodes.IMPORT_NAME,
         ):
             return 1, 2, None
 
         if self.opcode in (
             Opcodes.LOAD_ATTR,
             Opcodes.LOAD_METHOD,
+            Opcodes.GET_AWAITABLE,
+            Opcodes.LIST_TO_TUPLE,
+            Opcodes.IMPORT_FROM,
+            Opcodes.UNARY_NEGATIVE,
         ):
             return 1, 1, None
 
@@ -594,6 +639,10 @@ class Instruction:
             Opcodes.POP_JUMP_IF_TRUE,
             Opcodes.POP_JUMP_IF_FALSE,
             Opcodes.STORE_FAST,
+            Opcodes.STORE_DEREF,
+            Opcodes.YIELD_VALUE,
+            Opcodes.YIELD_FROM,
+            Opcodes.RETURN_VALUE,
         ):
             return 0, 1, None
 
@@ -619,7 +668,10 @@ class Instruction:
 
         instructions[0].next_instruction = self.next_instruction
         self.next_instruction = instructions[0]
-        instructions[0].insert_after(instructions[1:])
+
+        if len(instructions) > 1:
+            instructions[0].insert_after(instructions[1:])
+
         return self
 
 
@@ -801,11 +853,6 @@ class MutableFunction:
 
         # For a last time, walk over the instructions and tie them together
         for i, instruction in enumerate(instructions[:]):
-            # print(i, instruction.repr_safe())
-            #
-            # if isinstance(instruction.arg_value, Instruction):
-            #     print(i, "+", instruction.arg_value.repr_safe())
-
             if (
                 not instruction.has_stop_flow()
                 and not instruction.has_unconditional_jump()
@@ -813,19 +860,7 @@ class MutableFunction:
                 try:
                     instruction.next_instruction = instructions[i + 1]
                 except IndexError:
-                    pass
-                # except IndexError:
-                #     if not instruction.has_stop_flow() and instruction.next_instruction in instructions and i == len(instructions) - 1:
-                #         print("error", instruction, instruction.next_instruction)
-                #         instr = Instruction(self, i+1, Opcodes.JUMP_ABSOLUTE, arg=instruction.next_instruction.offset, _decode_next=False)
-                #         instructions.append(instr)
-                #         instr._next_instruction = instruction.next_instruction
-                #         instruction.next_instruction.add_previous_instruction(instr)
-                #         instruction._next_instruction = instr
-                #         instr.add_previous_instruction(instruction)
-                #         print(instruction.next_instruction.previous_instructions)
-                #     else:
-                #         raise
+                    instruction.next_instruction = None
                 except:
                     print(instruction)
                     print(instruction.next_instruction)
@@ -899,6 +934,19 @@ class MutableFunction:
         for instruction in instructions[:]:
             if instruction.has_stop_flow():
                 continue
+
+            # FOR_ITER can only jump FORWARD, so insert a new jump absolute to jump there
+            # TODO: insert the JUMP somewhere else than here!
+            if instruction.opcode == Opcodes.FOR_ITER:
+                jump = Instruction(
+                    self,
+                    -1,
+                    "JUMP_ABSOLUTE",
+                    instruction.next_instruction,
+                )
+                jump.change_arg_value(instruction.arg_value)
+                instruction.change_arg_value(jump)
+                instructions.append(jump)
 
             if (
                 instruction.next_instruction is not None

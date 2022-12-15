@@ -1,4 +1,5 @@
 import dis
+import math
 import random
 import types
 import typing
@@ -12,8 +13,7 @@ from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.Optimiser import apply_now
 from bytecodemanipulation.Optimiser import BUILTIN_CACHE
-from bytecodemanipulation.Optimiser import guarantee_builtin_names_are_protected
-from bytecodemanipulation.Optimiser import guarantee_module_import
+from bytecodemanipulation.Optimiser import cache_global_name
 
 BUILTIN_INLINE = _OptimisationContainer(None)
 BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
@@ -124,7 +124,7 @@ class TestIssue5(unittest.TestCase):
                 pass
 
 
-class TestIssue6(unittest.TestCase):
+class TestIssueTODO(unittest.TestCase):
     def setUp(self) -> None:
         self.old = MutableFunction(MutableFunction.assemble_instructions_from_tree)
 
@@ -143,11 +143,16 @@ class TestIssue6(unittest.TestCase):
     #
     #     Emulator.run_code(apply_now(), target)
 
-    """
-    Currently testing:
-    
-    def test(self):
+
+class TestIssue6(unittest.TestCase):
+    def test_1(self):
         @apply_now()
-        def target(t):
-            pass"""
+        @cache_global_name("math", lambda: math)
+        def rotate_point(a, b):
+            return math.cos(a) - math.sin(b)
+
+        dis.dis(rotate_point)
+
+        self.assertEqual(Emulator.run_code(rotate_point, 1, 2), math.cos(1) - math.sin(2))
+        self.assertEqual(rotate_point(1, 2), math.cos(1) - math.sin(2))
 

@@ -276,23 +276,32 @@ class _OptimisationContainer:
         # print(mutable)
 
     def _resolve_lazy_references(self):
-        for key, lazy in self.lazy_global_name_cache.items():
-            if key not in self.dereference_global_name_cache:
-                self.dereference_global_name_cache[key] = lazy()
-        for key, lazy in self.lazy_local_var_type.items():
-            if key not in self.dereference_local_var_type:
-                self.dereference_local_var_type[key] = lazy()
-        for key, lazy in self.lazy_local_var_attr_type.items():
-            if key not in self.dereference_local_var_attr_type:
-                self.dereference_local_var_attr_type[key] = lazy()
-        if self.dereference_return_type is None and self.lazy_return_type is not None:
-            self.dereference_return_type = self.lazy_return_type()
-        for key, lazy in self.lazy_return_attr_type.items():
-            if key not in self.dereference_return_attr_type:
-                self.dereference_return_attr_type[key] = lazy()
-        for key, lazy in self.lazy_attribute_type.items():
-            if key not in self.dereference_attribute_type:
-                self.dereference_attribute_type[key] = lazy()
+        try:
+            for key, lazy in self.lazy_global_name_cache.items():
+                if key not in self.dereference_global_name_cache:
+                    self.dereference_global_name_cache[key] = lazy()
+
+            for key, lazy in self.lazy_local_var_type.items():
+                if key not in self.dereference_local_var_type:
+                    self.dereference_local_var_type[key] = lazy()
+
+            for key, lazy in self.lazy_local_var_attr_type.items():
+                if key not in self.dereference_local_var_attr_type:
+                    self.dereference_local_var_attr_type[key] = lazy()
+
+            if self.dereference_return_type is None and self.lazy_return_type is not None:
+                self.dereference_return_type = self.lazy_return_type()
+
+            for key, lazy in self.lazy_return_attr_type.items():
+                if key not in self.dereference_return_attr_type:
+                    self.dereference_return_attr_type[key] = lazy()
+
+            for key, lazy in self.lazy_attribute_type.items():
+                if key not in self.dereference_attribute_type:
+                    self.dereference_attribute_type[key] = lazy()
+        except:
+            print(self.target)
+            raise
 
     def _inline_load_globals(self, mutable: MutableFunction) -> bool:
         dirty = False
@@ -391,6 +400,12 @@ def cache_global_name(
 
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
+
+        nonlocal accessor
+
+        if accessor is None:
+            accessor = lambda: target.__globals__.get(name)
+
         container.lazy_global_name_cache[name] = accessor
 
         if ignore_unsafe_writes:
