@@ -506,7 +506,7 @@ class Instruction:
         if self in yielded:
             return
 
-        print(self, stack_position)
+        yielded.add(self)
 
         pushed, popped, additional_pos = self.get_stack_affect()
 
@@ -522,8 +522,6 @@ class Instruction:
         stack_position -= popped
         stack_position += pushed
 
-        print(stack_position)
-
         if not self.has_stop_flow():
             yield from self.next_instruction._trace_stack_position_use(stack_position, yielded)
 
@@ -535,7 +533,7 @@ class Instruction:
 
     def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
         # pushed, popped, additional
-        if self.opcode in (Opcodes.NOP, Opcodes.POP_BLOCK, Opcodes.POP_EXCEPT, Opcodes.SETUP_FINALLY, Opcodes.GEN_START):
+        if self.opcode in (Opcodes.NOP, Opcodes.POP_BLOCK, Opcodes.POP_EXCEPT, Opcodes.SETUP_FINALLY, Opcodes.GEN_START, Opcodes.JUMP_ABSOLUTE):
             return 0, 0, None
 
         if self.opcode == Opcodes.DUP_TOP:

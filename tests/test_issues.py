@@ -135,6 +135,16 @@ class TestIssue5(unittest.TestCase):
             except TypeError:
                 raise
 
+    # def test_4(self):
+    #     @apply_now()
+    #     async def target():
+    #         try:
+    #             pass
+    #         except TypeError:
+    #             raise
+    #         except ValueError:
+    #             pass
+
 
 class TestIssueTODO(unittest.TestCase):
     def setUp(self) -> None:
