@@ -95,11 +95,14 @@ class SpecializationContainer:
         return self
 
     def replace_with_raise_exception(
-        self, exception: Exception, side_effect: typing.Callable[[...], None] = None
+        self, exception: Exception, side_effect: typing.Callable[[...], None] = None, arg: int = None
     ):
+        if self.replace_raised_exception:
+            return
+
         assert side_effect is None, "not implemented!"
 
-        warnings.warn(exception.args[0])
+        warnings.warn(exception.args[0] + (f" [AT ARG {arg}]" if arg is not None else ""))
         self.replace_raised_exception = exception
 
         for arg in self.arg_descriptors:
@@ -108,6 +111,13 @@ class SpecializationContainer:
         self.no_special = False
 
         return self
+
+    def replace_with_raise_exception_if(self, predicate: typing.Callable[[], bool] | bool, construct: typing.Callable[[], Exception] | Exception, side_effect: typing.Callable[[...], None] = None, arg: int = None):
+        if predicate() if callable(predicate) else predicate:
+            if isinstance(construct, Exception):
+                self.replace_with_raise_exception(construct, side_effect, arg=arg)
+            else:
+                self.replace_with_raise_exception(construct(), side_effect, arg=arg)
 
     def replace_call_with_opcodes(self, opcodes: typing.List[Instruction]):
         """

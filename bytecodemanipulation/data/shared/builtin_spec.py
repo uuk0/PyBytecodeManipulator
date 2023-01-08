@@ -86,6 +86,12 @@ def create_empty_tuple(container: SpecializationContainer):
         container.replace_with_constant_value(tuple())
 
 
+def _check_int(c) -> bool:
+    if isinstance(c, int): return True
+    if isinstance(c, float): return int(c) == c
+    return False
+
+
 @register(range)
 @register(random.randrange)
 @register(random.Random.randrange)
@@ -93,13 +99,17 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
     args = container.get_arg_specifications()
     sources = [arg.get_normalized_data_instr() for arg in args]
 
-    # Argument length checks
-    if len(sources) == 1:
-        pass
-    elif len(sources) == 2:
-        pass
-    elif len(sources) == 3:
-        pass
+    # Argument length checks and type checks
+    if len(sources) in (1, 2, 3):
+        if sources[0].opcode == Opcodes.LOAD_CONST:
+            container.replace_with_raise_exception_if(not _check_int(sources[0].arg_value), lambda: TypeError(f"'{type(sources[0].arg_value).__name__}' object cannot be interpreted as an integer"), arg=0)
+
+        if len(sources) > 1 and sources[1].opcode == Opcodes.LOAD_CONST:
+            container.replace_with_raise_exception_if(not _check_int(sources[1].arg_value), lambda: TypeError(f"'{type(sources[1].arg_value).__name__}' object cannot be interpreted as an integer"), arg=1)
+
+        if len(sources) > 2 and sources[2].opcode == Opcodes.LOAD_CONST:
+            container.replace_with_raise_exception_if(not _check_int(sources[2].arg_value), lambda: TypeError(f"'{type(sources[2].arg_value).__name__}' object cannot be interpreted as an integer"), arg=2)
+
     elif len(sources) == 0:
         if container.method_call_descriptor.lookup_method_instr.arg_value == range:
             container.replace_with_raise_exception(TypeError("range expected at least 1 argument, got 0"))

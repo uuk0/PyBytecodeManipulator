@@ -170,6 +170,38 @@ class TestOptimiserUtil(TestCase):
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
 
+    def test_range_arg_type_issue(self):
+        def target():
+            range(1.5)
+
+        def compare():
+            raise TypeError("'float' object cannot be interpreted as an integer")
+
+        try:
+            target()
+        except TypeError as e:
+            self.assertEqual("'float' object cannot be interpreted as an integer", e.args[0])
+        else:
+            self.assertTrue(False, "should not be reached!")
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
+
+    def test_range_arg_type_issue_2(self):
+        def target():
+            range("")
+
+        def compare():
+            raise TypeError("'str' object cannot be interpreted as an integer")
+
+        try:
+            target()
+        except TypeError as e:
+            self.assertEqual("'str' object cannot be interpreted as an integer", e.args[0])
+        else:
+            self.assertTrue(False, "should not be reached!")
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
+
     def test_inline_binary_op(self):
         compare_optimized_results(self, lambda: 1 + 1, lambda: 2)
 
