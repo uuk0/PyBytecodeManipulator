@@ -5,6 +5,7 @@ import os
 import types
 import typing
 import builtins
+import random
 
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -45,7 +46,7 @@ class _OptimisationContainer:
             target.run_optimisers(False)
 
     @classmethod
-    def get_for_target(cls, target):
+    def get_for_target(cls, target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType):
 
         if hasattr(target, "_OPTIMISER_CONTAINER"):
             return target._OPTIMISER_CONTAINER
@@ -64,7 +65,7 @@ class _OptimisationContainer:
 
         return container
 
-    def __init__(self, target: types.FunctionType | types.MethodType | typing.Type):
+    def __init__(self, target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType):
         self.target = target
         self.parents: typing.List["_OptimisationContainer"] = []
         self.children: typing.List["_OptimisationContainer"] = []
@@ -377,6 +378,7 @@ class _OptimisationContainer:
 
 
 _OptimisationContainer.get_for_target(typing).is_static = True
+_OptimisationContainer.get_for_target(random).is_static = True
 _OptimisationContainer.get_for_target(math).is_static = True
 _OptimisationContainer.get_for_target(os).is_static = True
 

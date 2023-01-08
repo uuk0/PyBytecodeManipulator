@@ -1,4 +1,5 @@
 import typing
+import warnings
 
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -57,6 +58,7 @@ class SpecializationContainer:
         self.no_special = True
         self.result_arg: ArgDescriptor | None = None
         self.replaced_call_target: typing.Callable | None = None
+        self.replace_raised_exception: Exception | None = None
         self.constant_value = tuple()
         self.invoke_before: typing.Callable | None = None
 
@@ -95,7 +97,17 @@ class SpecializationContainer:
     def replace_with_raise_exception(
         self, exception: Exception, side_effect: typing.Callable[[...], None] = None
     ):
-        pass
+        assert side_effect is None, "not implemented!"
+
+        warnings.warn(exception.args[0])
+        self.replace_raised_exception = exception
+
+        for arg in self.arg_descriptors:
+            arg.discard()
+
+        self.no_special = False
+
+        return self
 
     def replace_call_with_opcodes(self, opcodes: typing.List[Instruction]):
         """
@@ -175,12 +187,20 @@ class SpecializationContainer:
         arg_count = sum(int(not arg.discarded) for arg in self.arg_descriptors)
         self.method_call_descriptor.call_method_instr.change_arg(arg_count)
 
-        if self.replaced_call_target is not None:
+        if self.replace_raised_exception:
             self.method_call_descriptor.lookup_method_instr.change_opcode(
-                Opcodes.LOAD_CONST
+                Opcodes.LOAD_CONST,
+                self.replace_raised_exception,
             )
-            self.method_call_descriptor.lookup_method_instr.change_arg_value(
-                self.replaced_call_target
+            self.method_call_descriptor.call_method_instr.change_opcode(
+                Opcodes.RAISE_VARARGS,
+            )
+            self.method_call_descriptor.call_method_instr.change_arg(1)
+
+        elif self.replaced_call_target is not None:
+            self.method_call_descriptor.lookup_method_instr.change_opcode(
+                Opcodes.LOAD_CONST,
+                self.replaced_call_target,
             )
 
     def _discard_args(self):

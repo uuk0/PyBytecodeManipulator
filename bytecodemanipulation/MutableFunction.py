@@ -183,14 +183,14 @@ class Instruction:
             )
         )
 
-    def lossy_eq(self, other):
+    def lossy_eq(self, other: "Instruction") -> bool:
         if not isinstance(other, Instruction):
             return False
 
         return self.opcode == other.opcode and (
-            (self.arg_value == other.arg_value)
+            ((self.arg_value == other.arg_value)
             if not isinstance(self.arg_value, Instruction)
-            else self.arg_value.lossy_eq(other.arg_value)
+            else self.arg_value.lossy_eq(other.arg_value))
             if self.arg_value is not None and other.arg_value is not None
             else True
         )
@@ -201,7 +201,7 @@ class Instruction:
     def get_arg(self):
         return 0 if self.arg is None else self.arg
 
-    def change_opcode(self, opcode: int | str):
+    def change_opcode(self, opcode: int | str, arg_value=None):
         self.opcode, self.opname = self._pair_instruction(opcode)
         # todo: what happens with the arg?
 
@@ -217,6 +217,9 @@ class Instruction:
         if self.opcode < dis.HAVE_ARGUMENT:
             self.arg = 0
             self.arg_value = None
+
+        if arg_value:
+            self.change_arg_value(arg_value)
 
     def change_arg_value(self, value: object):
         self.arg_value = value

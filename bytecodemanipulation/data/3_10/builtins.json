@@ -7,7 +7,8 @@
     "float",
     "tuple",
     "complex",
-    "abs"
+    "abs",
+    "TypeError"
   ],
   "const_builtin_types": [
     "int",

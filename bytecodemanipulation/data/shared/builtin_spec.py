@@ -91,14 +91,41 @@ def create_empty_tuple(container: SpecializationContainer):
 @register(random.Random.randrange)
 def specialize_range_3rd_argument(container: SpecializationContainer):
     args = container.get_arg_specifications()
+    sources = [arg.get_normalized_data_instr() for arg in args]
+
+    # Argument length checks
+    if len(sources) == 1:
+        pass
+    elif len(sources) == 2:
+        pass
+    elif len(sources) == 3:
+        pass
+    elif len(sources) == 0:
+        if container.method_call_descriptor.lookup_method_instr.arg_value == range:
+            container.replace_with_raise_exception(TypeError("range expected at least 1 argument, got 0"))
+        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.randrange:
+            container.replace_with_raise_exception(TypeError("Random.randrange() missing 1 required positional argument: 'start'"))
+        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.Random.randrange:
+            pass
+        else:
+            raise NotImplementedError
+    else:
+        if container.method_call_descriptor.lookup_method_instr.arg_value == range:
+            container.replace_with_raise_exception(TypeError(f"range expected at most 3 arguments, got {len(sources)}"))
+        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.randrange:
+            container.replace_with_raise_exception(TypeError(f"Random.randrange() takes from 2 to 4 positional arguments but {len(sources)} were given"))
+        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.Random.randrange:
+            container.replace_with_raise_exception(TypeError(f"Random.randrange() takes from 2 to 4 positional arguments but {len(sources)} were given"))
+        else:
+            raise NotImplementedError
 
     if len(args) != 3:
         return
 
     if (
         args[2]
-        and args[2].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST
-        and args[2].get_normalized_data_instr().arg_value == 1
+        and sources[2].opcode == Opcodes.LOAD_CONST
+        and sources[2].arg_value == 1
     ):
         args[2].discard()
 

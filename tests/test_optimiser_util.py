@@ -2,7 +2,9 @@ import dis
 import json
 import math
 import os.path
+import random
 from unittest import TestCase
+import bytecodemanipulation.MutableFunction
 from bytecodemanipulation.optimiser_util import *
 from bytecodemanipulation.Optimiser import (
     guarantee_constant_result,
@@ -134,6 +136,39 @@ class TestOptimiserUtil(TestCase):
     def test_typing(self):
         test = JsonTestEntry.from_file("data/test_typing.json")
         test.run_tests(self)
+
+    def test_range_arg_count_issue(self):
+        def target():
+            range()
+
+        def compare():
+            raise TypeError("range expected at least 1 argument, got 0")
+
+        try:
+            target()
+        except TypeError as e:
+            self.assertEqual("range expected at least 1 argument, got 0", e.args[0])
+        else:
+            self.assertTrue(False, "should not be reached!")
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
+
+    def test_random_randrange_arg_count_issue(self):
+        @cache_global_name("random")
+        def target():
+            random.randrange()
+
+        def compare():
+            raise TypeError("Random.randrange() missing 1 required positional argument: 'start'")
+
+        try:
+            target()
+        except TypeError as e:
+            self.assertEqual("Random.randrange() missing 1 required positional argument: 'start'", e.args[0])
+        else:
+            self.assertTrue(False, "should not be reached!")
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
 
     def test_inline_binary_op(self):
         compare_optimized_results(self, lambda: 1 + 1, lambda: 2)

@@ -1,5 +1,6 @@
 import dis
 import math
+import os
 import random
 import traceback
 import types
@@ -51,8 +52,9 @@ def compare_optimized_results(
         )
 
     if not eq:
-        mutable.dump_info("./tests/target.json")
-        mutable.dump_info("./tests/ideal.json")
+        local = os.path.dirname(__file__)
+        mutable.dump_info(local+"/target.json")
+        mutable.dump_info(local+"/ideal.json")
 
         print("target")
         dis.dis(target)
@@ -66,10 +68,17 @@ def compare_optimized_results(
     )
 
     for a, b in zip(mutable.instructions, mutable2.instructions):
-        case.assertTrue(
-            a.lossy_eq(b),
-            msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}",
-        )
+        if isinstance(a.arg_value, Exception):
+            case.assertTrue(
+                isinstance(b.arg_value, Exception)
+                and a.arg_value.args == b.arg_value.args,
+                msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}",
+            )
+        else:
+            case.assertTrue(
+                a.lossy_eq(b),
+                msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}",
+            )
 
 
 class TestIssue2(unittest.TestCase):
