@@ -23,7 +23,9 @@ BUILTIN_INLINE = _OptimisationContainer(None)
 BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
 
 
-def compare_optimized_results(case: unittest.TestCase, target, ideal, opt_ideal=1, msg=...):
+def compare_optimized_results(
+    case: unittest.TestCase, target, ideal, opt_ideal=1, msg=...
+):
     mutable = MutableFunction(target)
     BUILTIN_INLINE._inline_load_globals(mutable)
     mutable.reassign_to_function()
@@ -45,8 +47,7 @@ def compare_optimized_results(case: unittest.TestCase, target, ideal, opt_ideal=
 
     if eq:
         eq = all(
-            a.lossy_eq(b)
-            for a, b in zip(mutable.instructions, mutable2.instructions)
+            a.lossy_eq(b) for a, b in zip(mutable.instructions, mutable2.instructions)
         )
 
     if not eq:
@@ -58,16 +59,23 @@ def compare_optimized_results(case: unittest.TestCase, target, ideal, opt_ideal=
         print("compare")
         dis.dis(ideal)
 
-    case.assertEqual(len(mutable.instructions), len(mutable2.instructions), msg=(msg if msg is not ... else "...") + ": Instruction count !=")
+    case.assertEqual(
+        len(mutable.instructions),
+        len(mutable2.instructions),
+        msg=(msg if msg is not ... else "...") + ": Instruction count !=",
+    )
 
     for a, b in zip(mutable.instructions, mutable2.instructions):
-        case.assertTrue(a.lossy_eq(b), msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}")
+        case.assertTrue(
+            a.lossy_eq(b),
+            msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}",
+        )
 
 
 class TestIssue2(unittest.TestCase):
     def test_1(self):
         @apply_now()
-        def target(t):
+        def target():
             for x in (0, 1):
                 pass
 
@@ -83,6 +91,7 @@ class TestIssue2(unittest.TestCase):
         8 LOAD_CONST None
         9 RETURN_VALUE
         """
+
         @apply_now()
         def target(t):
             extra: int = 0
@@ -100,14 +109,17 @@ class TestIssue3(unittest.TestCase):
     def test_1(self):
         @apply_now()
         def target(t):
-            x(typing.cast(int, 2), 0)
+            print(typing.cast(int, 2), 0)
 
 
 class TestIssue4(unittest.TestCase):
     def test_1(self):
         @apply_now()
         def target():
-            c(x, typing.cast, typing.cast(y, z.p))
+            x = 0
+            y = 0
+            z = None
+            print(x, typing.cast, typing.cast(y, z.p))
 
 
 class TestIssue5(unittest.TestCase):
@@ -175,6 +187,7 @@ class TestIssue6(unittest.TestCase):
 
         dis.dis(rotate_point)
 
-        self.assertEqual(Emulator.run_code(rotate_point, 1, 2), math.cos(1) - math.sin(2))
+        self.assertEqual(
+            Emulator.run_code(rotate_point, 1, 2), math.cos(1) - math.sin(2)
+        )
         self.assertEqual(rotate_point(1, 2), math.cos(1) - math.sin(2))
-

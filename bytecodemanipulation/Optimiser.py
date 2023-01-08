@@ -59,7 +59,7 @@ class _OptimisationContainer:
 
         try:
             target._OPTIMISER_CONTAINER = container
-        except (AttributeError,  TypeError):
+        except (AttributeError, TypeError):
             cls._CUSTOM_TARGETS[target] = container
 
         return container
@@ -126,20 +126,33 @@ class _OptimisationContainer:
             typing.Type[Exception] | Exception
         ] | None = None
 
-        self.specializations: typing.List[typing.Callable[[SpecializationContainer], None]] = []
+        self.specializations: typing.List[
+            typing.Callable[[SpecializationContainer], None]
+        ] = []
 
         self.is_optimized = False
 
         # Add the children to self
         if isinstance(self.target, type):
             for key, e in self.target.__dict__.items():
-                if isinstance(e, (type(guarantee_builtin_names_are_protected), staticmethod, classmethod, type)):
+                if isinstance(
+                    e,
+                    (
+                        type(guarantee_builtin_names_are_protected),
+                        staticmethod,
+                        classmethod,
+                        type,
+                    ),
+                ):
                     if isinstance(e, (staticmethod, classmethod)):
                         func = e.__func__
                     else:
                         func = e
 
-                    if func.__qualname__.startswith(self.target.__qualname__+".") and func.__module__ == self.target.__module__:
+                    if (
+                        func.__qualname__.startswith(self.target.__qualname__ + ".")
+                        and func.__module__ == self.target.__module__
+                    ):
                         self.children.append(self.get_for_target(e))
 
     def is_attribute_static(self, name: str):
@@ -208,7 +221,9 @@ class _OptimisationContainer:
         # resolve the lazy types
         self._resolve_lazy_references()
 
-        if not hasattr(self.target, "__code__") and not isinstance(self.target, (classmethod, staticmethod)):
+        if not hasattr(self.target, "__code__") and not isinstance(
+            self.target, (classmethod, staticmethod)
+        ):
             return
 
         # Create mutable wrapper around the target
@@ -289,7 +304,10 @@ class _OptimisationContainer:
                 if key not in self.dereference_local_var_attr_type:
                     self.dereference_local_var_attr_type[key] = lazy()
 
-            if self.dereference_return_type is None and self.lazy_return_type is not None:
+            if (
+                self.dereference_return_type is None
+                and self.lazy_return_type is not None
+            ):
                 self.dereference_return_type = self.lazy_return_type()
 
             for key, lazy in self.lazy_return_attr_type.items():

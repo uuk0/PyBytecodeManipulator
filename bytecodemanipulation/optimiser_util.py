@@ -345,9 +345,16 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
     dirty = False
 
     for instruction in mutable.instructions:
-        if instruction.has_jump() and not instruction.has_unconditional_jump() and instruction.opcode not in (Opcodes.SETUP_FINALLY, Opcodes.SETUP_WITH):
+        if (
+            instruction.has_jump()
+            and not instruction.has_unconditional_jump()
+            and instruction.opcode not in (Opcodes.SETUP_FINALLY, Opcodes.SETUP_WITH)
+        ):
             if instruction.previous_instructions is None:
-                if instruction.offset == 0 and instruction.opcode == Opcodes.SETUP_FINALLY:
+                if (
+                    instruction.offset == 0
+                    and instruction.opcode == Opcodes.SETUP_FINALLY
+                ):
                     continue
 
                 raise RuntimeError
@@ -448,11 +455,19 @@ def apply_specializations(mutable: MutableFunction) -> bool:
 
                 spec = SpecializationContainer()
                 spec.underlying_function = target_func
-                spec.method_call_descriptor = MethodCallDescriptor(safe_source, instruction)
-                spec.set_arg_descriptors([
-                    ArgDescriptor(next(instruction.trace_stack_position(arg_id)), instruction.trace_normalized_stack_position(arg_id), arg_id)
-                    for arg_id in range(instruction.arg-1, -1, -1)
-                ])
+                spec.method_call_descriptor = MethodCallDescriptor(
+                    safe_source, instruction
+                )
+                spec.set_arg_descriptors(
+                    [
+                        ArgDescriptor(
+                            next(instruction.trace_stack_position(arg_id)),
+                            instruction.trace_normalized_stack_position(arg_id),
+                            arg_id,
+                        )
+                        for arg_id in range(instruction.arg - 1, -1, -1)
+                    ]
+                )
 
                 for special in container.specializations:
                     special(spec)

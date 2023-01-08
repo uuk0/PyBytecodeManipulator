@@ -169,9 +169,15 @@ class Instruction:
 
         return (
             self.opcode == other.opcode
-            and (self.offset == other.offset or self.offset is None or other.offset is None)
             and (
-                (self.arg_value == other.arg_value) if not isinstance(self.arg_value, Instruction) else (id(self.arg_value) == id(other.arg_value))
+                self.offset == other.offset
+                or self.offset is None
+                or other.offset is None
+            )
+            and (
+                (self.arg_value == other.arg_value)
+                if not isinstance(self.arg_value, Instruction)
+                else (id(self.arg_value) == id(other.arg_value))
                 if self.arg_value is not None and other.arg_value is not None
                 else True
             )
@@ -181,13 +187,12 @@ class Instruction:
         if not isinstance(other, Instruction):
             return False
 
-        return (
-            self.opcode == other.opcode
-            and (
-                (self.arg_value == other.arg_value) if not isinstance(self.arg_value, Instruction) else self.arg_value.lossy_eq(other.arg_value)
-                if self.arg_value is not None and other.arg_value is not None
-                else True
-            )
+        return self.opcode == other.opcode and (
+            (self.arg_value == other.arg_value)
+            if not isinstance(self.arg_value, Instruction)
+            else self.arg_value.lossy_eq(other.arg_value)
+            if self.arg_value is not None and other.arg_value is not None
+            else True
         )
 
     def __hash__(self):
@@ -255,7 +260,13 @@ class Instruction:
                 elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
                     self.arg_value = self.function.instructions[arg + self.offset]
             except:
-                print(self.opname, arg, self.function.shared_names, self.function.constants, self.function.shared_variable_names)
+                print(
+                    self.opname,
+                    arg,
+                    self.function.shared_names,
+                    self.function.constants,
+                    self.function.shared_variable_names,
+                )
                 raise
         else:
             self.arg_value = None
@@ -376,7 +387,9 @@ class Instruction:
 
         return self
 
-    def trace_variable_set(self, name: str, visited: typing.Set[str] = None) -> typing.Iterator["Instruction"]:
+    def trace_variable_set(
+        self, name: str, visited: typing.Set[str] = None
+    ) -> typing.Iterator["Instruction"]:
         if visited and self in visited:
             return
 
@@ -403,10 +416,19 @@ class Instruction:
             yield from instr._trace_stack_position(stack_position, set(), self)
 
     def get_priorities_previous(self) -> typing.List["Instruction"]:
-        if not self.previous_instructions: return []
+        if not self.previous_instructions:
+            return []
 
-        real_previous = [instr for instr in self.previous_instructions if instr.next_instruction == self]
-        unreal_previous = [instr for instr in self.previous_instructions if instr.next_instruction != self]
+        real_previous = [
+            instr
+            for instr in self.previous_instructions
+            if instr.next_instruction == self
+        ]
+        unreal_previous = [
+            instr
+            for instr in self.previous_instructions
+            if instr.next_instruction != self
+        ]
         highest = None
 
         for e in real_previous:
@@ -418,7 +440,9 @@ class Instruction:
 
         return [highest] + [e for e in real_previous if e != highest] + unreal_previous
 
-    def trace_normalized_stack_position(self, stack_position: int) -> typing.Optional["Instruction"]:
+    def trace_normalized_stack_position(
+        self, stack_position: int
+    ) -> typing.Optional["Instruction"]:
         target = next(self.trace_stack_position(stack_position))
 
         if target.opcode == Opcodes.DUP_TOP:
@@ -426,7 +450,9 @@ class Instruction:
 
         if target.opcode == Opcodes.LOAD_FAST:
             try:
-                variable_set = next(target.trace_variable_set(typing.cast(str, target.arg_value)))
+                variable_set = next(
+                    target.trace_variable_set(typing.cast(str, target.arg_value))
+                )
             except StopIteration:
                 return target
 
@@ -435,7 +461,10 @@ class Instruction:
         return target
 
     def _trace_stack_position(
-        self, stack_position: int, yielded: typing.Set["Instruction"], previous_instr: "Instruction" = None
+        self,
+        stack_position: int,
+        yielded: typing.Set["Instruction"],
+        previous_instr: "Instruction" = None,
     ) -> typing.Iterator["Instruction"]:
         assert stack_position >= 0
 
@@ -467,7 +496,9 @@ class Instruction:
 
             if additional_pos:
                 for instr in self.get_priorities_previous():
-                    yield from instr._trace_stack_position(additional_pos, yielded, self)
+                    yield from instr._trace_stack_position(
+                        additional_pos, yielded, self
+                    )
 
             return
 
@@ -493,10 +524,14 @@ class Instruction:
         print(self, 0)
 
         if not self.has_stop_flow():
-            yield from self.next_instruction._trace_stack_position_use(stack_position, set())
+            yield from self.next_instruction._trace_stack_position_use(
+                stack_position, set()
+            )
 
         if self.has_jump():
-            yield from typing.cast(Instruction, self.arg_value)._trace_stack_position_use(stack_position, set())
+            yield from typing.cast(
+                Instruction, self.arg_value
+            )._trace_stack_position_use(stack_position, set())
 
     def _trace_stack_position_use(
         self, stack_position: int, yielded: typing.Set["Instruction"]
@@ -515,7 +550,9 @@ class Instruction:
             yield self
 
             if additional_pos:
-                yield from self.next_instruction._trace_stack_position_use(additional_pos, yielded)
+                yield from self.next_instruction._trace_stack_position_use(
+                    additional_pos, yielded
+                )
 
             return
 
@@ -523,17 +560,30 @@ class Instruction:
         stack_position += pushed
 
         if not self.has_stop_flow():
-            yield from self.next_instruction._trace_stack_position_use(stack_position, yielded)
+            yield from self.next_instruction._trace_stack_position_use(
+                stack_position, yielded
+            )
 
         if self.has_jump():
-            yield from typing.cast(Instruction, self.arg_value)._trace_stack_position_use(stack_position, yielded)
+            yield from typing.cast(
+                Instruction, self.arg_value
+            )._trace_stack_position_use(stack_position, yielded)
 
         if additional_pos:
-            yield from self.next_instruction._trace_stack_position_use(additional_pos, yielded)
+            yield from self.next_instruction._trace_stack_position_use(
+                additional_pos, yielded
+            )
 
     def get_stack_affect(self) -> typing.Tuple[int, int, int | None]:
         # pushed, popped, additional
-        if self.opcode in (Opcodes.NOP, Opcodes.POP_BLOCK, Opcodes.POP_EXCEPT, Opcodes.SETUP_FINALLY, Opcodes.GEN_START, Opcodes.JUMP_ABSOLUTE):
+        if self.opcode in (
+            Opcodes.NOP,
+            Opcodes.POP_BLOCK,
+            Opcodes.POP_EXCEPT,
+            Opcodes.SETUP_FINALLY,
+            Opcodes.GEN_START,
+            Opcodes.JUMP_ABSOLUTE,
+        ):
             return 0, 0, None
 
         if self.opcode == Opcodes.DUP_TOP:
@@ -560,14 +610,10 @@ class Instruction:
         ):
             return 1, self.arg, None
 
-        if self.opcode in (
-            Opcodes.ROT_TWO,
-        ):
+        if self.opcode in (Opcodes.ROT_TWO,):
             return 2, 2, None
 
-        if self.opcode in (
-            Opcodes.FORMAT_VALUE,
-        ):
+        if self.opcode in (Opcodes.FORMAT_VALUE,):
             return 1, (2 if (self.arg & 0x04) == 0x04 else 1), None
 
         if self.opcode in (
@@ -577,9 +623,7 @@ class Instruction:
         ):
             return 1, self.arg + 1, None
 
-        if self.opcode in (
-            Opcodes.CALL_FUNCTION_EX,
-        ):
+        if self.opcode in (Opcodes.CALL_FUNCTION_EX,):
             count = 2
 
             if self.arg & 0x01:
@@ -627,9 +671,7 @@ class Instruction:
         ):
             return 1, 1, None
 
-        if self.opcode in (
-            Opcodes.STORE_ATTR,
-        ):
+        if self.opcode in (Opcodes.STORE_ATTR,):
             return 2, 0, None
 
         if self.opcode in (
@@ -656,7 +698,8 @@ class Instruction:
         raise RuntimeError(self)
 
     def insert_after(self, *instructions: "Instruction" | typing.List["Instruction"]):
-        if not instructions: return self
+        if not instructions:
+            return self
 
         if isinstance(instructions[0], (list, tuple)):
             if len(instructions) > 1:

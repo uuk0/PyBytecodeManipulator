@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="bytecodemanipulation",
-    version="0.2.0",
+    version="0.2.2",
     author="uuk",
     author_email="uuk1301@gmail.com",
     description="High level python bytecode manipulation",
@@ -29,5 +29,13 @@ setuptools.setup(
         "bytecodemanipulation." + e
         for e in setuptools.find_packages(where="bytecodemanipulation")
     ],
+    package_data={
+        "bytecodemanipulation": [
+            "data/3_10/builtins.json",
+            "data/3_10/instruction_spec.json",
+            "data/3_10/opcodes.json",
+            "data/3_10/standard_library.json",
+        ]
+    },
     python_requires=">=3.10",
 )

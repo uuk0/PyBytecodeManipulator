@@ -46,7 +46,9 @@ class _MixinContainer:
             if state:
                 target = MutableFunction(self.target)
                 override_target = MutableFunction(_invoke_emulator)
-                override_target.constants[override_target.constants.index(100)] = mutable
+                override_target.constants[
+                    override_target.constants.index(100)
+                ] = mutable
                 target.copy_from(override_target)
                 target.reassign_to_function()
             else:
@@ -371,9 +373,7 @@ def inject_by_named_call_on_known_type(
     return annotation
 
 
-_PREPARED_ANNOTATIONS: typing.Dict[
-    str, typing.List["Mixin._MixinHandle"]
-] = {}
+_PREPARED_ANNOTATIONS: typing.Dict[str, typing.List["Mixin._MixinHandle"]] = {}
 
 
 class Mixin:
@@ -414,7 +414,9 @@ class Mixin:
 
         @classmethod
         def resolve_local(cls, name: str) -> object:
-            raise MixinInjectionNotSupportedException("Not implemented, should not happen!")
+            raise MixinInjectionNotSupportedException(
+                "Not implemented, should not happen!"
+            )
 
         @classmethod
         def resolve_exception_instance(cls) -> Exception:
@@ -426,7 +428,9 @@ class Mixin:
 
         @classmethod
         def resolve_cell_variable(cls, name: str) -> object:
-            raise MixinInjectionNotSupportedException("Not implemented, should not happen!")
+            raise MixinInjectionNotSupportedException(
+                "Not implemented, should not happen!"
+            )
 
         @classmethod
         def return_outer(cls, value=None):
@@ -461,7 +465,11 @@ class Mixin:
             mutable.copy_from(self.override_with)
 
     class _InjectAtHandle(_MixinHandle):
-        def __init__(self, at: InjectionPosition.AbstractInjectionPosition, inject: MutableFunction):
+        def __init__(
+            self,
+            at: InjectionPosition.AbstractInjectionPosition,
+            inject: MutableFunction,
+        ):
             self.at = at
             self.inject = inject
 
@@ -477,7 +485,12 @@ class Mixin:
                 if position_instr not in mutable.instructions:
                     continue
 
-                insert_method_into(tree, position_instr.offset, self.inject, protected_locals=protected_locals)
+                insert_method_into(
+                    tree,
+                    position_instr.offset,
+                    self.inject,
+                    protected_locals=protected_locals,
+                )
 
                 mutable.assemble_instructions_from_tree(tree.root)
 

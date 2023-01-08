@@ -68,13 +68,18 @@ class MutableFunctionWithTree:
 
 
 def prefix_all_locals_with(
-    mutable: MutableFunction | MutableFunctionWithTree, prefix: str, protected_locals: typing.List[str] = tuple(),
+    mutable: MutableFunction | MutableFunctionWithTree,
+    prefix: str,
+    protected_locals: typing.List[str] = tuple(),
 ):
     if isinstance(mutable, MutableFunctionWithTree):
         mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
-    mutable.shared_variable_names = [prefix + e if e not in protected_locals else e for e in mutable.shared_variable_names]
+    mutable.shared_variable_names = [
+        prefix + e if e not in protected_locals else e
+        for e in mutable.shared_variable_names
+    ]
 
     print(mutable.shared_variable_names)
 

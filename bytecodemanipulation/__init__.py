@@ -6,4 +6,3 @@ try:
         import bytecodemanipulation.optimise_self
 except KeyError:
     pass
-

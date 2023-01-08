@@ -92,9 +92,14 @@ def create_empty_tuple(container: SpecializationContainer):
 def specialize_range_3rd_argument(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
-    if len(args) != 3: return
+    if len(args) != 3:
+        return
 
-    if args[2] and args[2].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST and args[2].get_normalized_data_instr().arg_value == 1:
+    if (
+        args[2]
+        and args[2].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST
+        and args[2].get_normalized_data_instr().arg_value == 1
+    ):
         args[2].discard()
 
 
@@ -104,9 +109,14 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
 def specialize_range_start_0(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
-    if len(args) != 2: return
+    if len(args) != 2:
+        return
 
-    if args[0] and args[0].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST and args[0].get_normalized_data_instr().arg_value == 0:
+    if (
+        args[0]
+        and args[0].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST
+        and args[0].get_normalized_data_instr().arg_value == 0
+    ):
         args[0].discard()
 
 
@@ -147,14 +157,20 @@ def specialize_small_range(container: SpecializationContainer):
 def specialize_all(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
-    if len(args) != 1: return
+    if len(args) != 1:
+        return
 
     create_primitive_arg = args[0].get_normalized_data_instr()
 
-    if create_primitive_arg is None: return
+    if create_primitive_arg is None:
+        return
 
     # todo: can we specialize more?
-    if create_primitive_arg.opcode not in (Opcodes.BUILD_LIST, Opcodes.BUILD_TUPLE, Opcodes.BUILD_SET):
+    if create_primitive_arg.opcode not in (
+        Opcodes.BUILD_LIST,
+        Opcodes.BUILD_TUPLE,
+        Opcodes.BUILD_SET,
+    ):
         return
 
     primitive_creation_args = [
@@ -170,7 +186,8 @@ def specialize_all(container: SpecializationContainer):
 
     for normal, real in primitive_creation_args:
         if normal:
-            if normal.opcode != Opcodes.LOAD_CONST: continue
+            if normal.opcode != Opcodes.LOAD_CONST:
+                continue
 
             if not normal.arg_value:
                 if DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK:
@@ -202,14 +219,20 @@ def specialize_all(container: SpecializationContainer):
 def specialize_any(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
-    if len(args) != 1: return
+    if len(args) != 1:
+        return
 
     create_primitive_arg = args[0].get_normalized_data_instr()
 
-    if create_primitive_arg is None: return
+    if create_primitive_arg is None:
+        return
 
     # todo: can we specialize more?
-    if create_primitive_arg.opcode not in (Opcodes.BUILD_LIST, Opcodes.BUILD_TUPLE, Opcodes.BUILD_SET):
+    if create_primitive_arg.opcode not in (
+        Opcodes.BUILD_LIST,
+        Opcodes.BUILD_TUPLE,
+        Opcodes.BUILD_SET,
+    ):
         return
 
     primitive_creation_args = [
@@ -225,7 +248,8 @@ def specialize_any(container: SpecializationContainer):
 
     for normal, real in primitive_creation_args:
         if normal:
-            if normal.opcode != Opcodes.LOAD_CONST: continue
+            if normal.opcode != Opcodes.LOAD_CONST:
+                continue
 
             if normal.arg_value:
                 if DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK:

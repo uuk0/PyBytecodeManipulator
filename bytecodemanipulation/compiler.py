@@ -69,7 +69,7 @@ def parse(file: str, module_name: str) -> ModuleType:
     @bytecode:guarantee_not_empty[file]
     @bytecode:guarantee_not_empty[module_name]
     """
-    with open(file, 'rb') as f:
+    with open(file, "rb") as f:
         data = f.read()
 
         f.seek(0)
@@ -96,4 +96,3 @@ def parse(file: str, module_name: str) -> ModuleType:
 
 if __name__ == "__main__":
     parse(__file__, "__main__")
-

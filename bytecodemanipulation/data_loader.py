@@ -53,7 +53,7 @@ def load_builtin_spec():
         getattr(builtins, key) for key in builtin_spec["const_builtin_types"]
     ]
 
-    importlib.import_module("bytecodemanipulation.data."+version+".specialize")
+    importlib.import_module("bytecodemanipulation.data." + version + ".specialize")
 
 
 def load_standard_library_annotations():

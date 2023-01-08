@@ -10,7 +10,11 @@ class TypeAnnotation:
 
 
 class MethodCallDescriptor:
-    def __init__(self, lookup_method_instr: Instruction = None, call_method_instr: Instruction = None):
+    def __init__(
+        self,
+        lookup_method_instr: Instruction = None,
+        call_method_instr: Instruction = None,
+    ):
         self.lookup_method_instr: Instruction = lookup_method_instr
         self.call_method_instr: Instruction = call_method_instr
 
@@ -71,14 +75,16 @@ class SpecializationContainer:
     def get_return_type(self) -> TypeAnnotation:
         return self.return_type_annotation
 
-    def replace_with_constant_value(self, value: object, side_effect: typing.Callable[[...], None] = None):
+    def replace_with_constant_value(
+        self, value: object, side_effect: typing.Callable[[...], None] = None
+    ):
 
         if side_effect is None:
             for arg in self.arg_descriptors:
                 arg.discard()
 
         self.invoke_before = side_effect
-        self.constant_value = value,
+        self.constant_value = (value,)
         return self
 
     def replace_with_variant(self, target: typing.Callable[[...], object]):
@@ -86,7 +92,9 @@ class SpecializationContainer:
         self.no_special = False
         return self
 
-    def replace_with_raise_exception(self, exception: Exception, side_effect: typing.Callable[[...], None] = None):
+    def replace_with_raise_exception(
+        self, exception: Exception, side_effect: typing.Callable[[...], None] = None
+    ):
         pass
 
     def replace_call_with_opcodes(self, opcodes: typing.List[Instruction]):
@@ -130,16 +138,36 @@ class SpecializationContainer:
             self.method_call_descriptor.call_method_instr.change_arg(arg_count)
 
             if self.invoke_before:
-                self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.LOAD_CONST)
-                self.method_call_descriptor.lookup_method_instr.change_arg_value(self.invoke_before)
+                self.method_call_descriptor.lookup_method_instr.change_opcode(
+                    Opcodes.LOAD_CONST
+                )
+                self.method_call_descriptor.lookup_method_instr.change_arg_value(
+                    self.invoke_before
+                )
                 self.method_call_descriptor.call_method_instr.change_arg(arg_count)
 
-                self.method_call_descriptor.call_method_instr.insert_after(Instruction(self.underlying_function, -1, opcode_or_name=Opcodes.POP_TOP), Instruction(self.underlying_function, -1, opcode_or_name=Opcodes.LOAD_CONST, arg_value=self.constant_value[0]))
+                self.method_call_descriptor.call_method_instr.insert_after(
+                    Instruction(
+                        self.underlying_function, -1, opcode_or_name=Opcodes.POP_TOP
+                    ),
+                    Instruction(
+                        self.underlying_function,
+                        -1,
+                        opcode_or_name=Opcodes.LOAD_CONST,
+                        arg_value=self.constant_value[0],
+                    ),
+                )
 
             else:
-                self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.NOP)
-                self.method_call_descriptor.call_method_instr.change_opcode(Opcodes.LOAD_CONST)
-                self.method_call_descriptor.call_method_instr.change_arg_value(self.constant_value[0])
+                self.method_call_descriptor.lookup_method_instr.change_opcode(
+                    Opcodes.NOP
+                )
+                self.method_call_descriptor.call_method_instr.change_opcode(
+                    Opcodes.LOAD_CONST
+                )
+                self.method_call_descriptor.call_method_instr.change_arg_value(
+                    self.constant_value[0]
+                )
 
             return
 
@@ -148,8 +176,12 @@ class SpecializationContainer:
         self.method_call_descriptor.call_method_instr.change_arg(arg_count)
 
         if self.replaced_call_target is not None:
-            self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.LOAD_CONST)
-            self.method_call_descriptor.lookup_method_instr.change_arg_value(self.replaced_call_target)
+            self.method_call_descriptor.lookup_method_instr.change_opcode(
+                Opcodes.LOAD_CONST
+            )
+            self.method_call_descriptor.lookup_method_instr.change_arg_value(
+                self.replaced_call_target
+            )
 
     def _discard_args(self):
         for arg in self.arg_descriptors:
@@ -167,4 +199,3 @@ def register(target: typing.Callable):
         return special
 
     return annotation
-

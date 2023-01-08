@@ -33,7 +33,13 @@ class JsonTestEntry:
                 obj.code = data["code"]
             else:
                 obj.code = [
-                    Instruction(None, None, e["op"], e.setdefault("arg", None), e.setdefault("rarg", 0))
+                    Instruction(
+                        None,
+                        None,
+                        e["op"],
+                        e.setdefault("arg", None),
+                        e.setdefault("rarg", 0),
+                    )
                     for e in data["code"]
                 ]
 
@@ -41,7 +47,13 @@ class JsonTestEntry:
                 obj.compare = data["compare"]
             else:
                 obj.compare = [
-                    Instruction(None, None, e["op"], e.setdefault("arg", None), e.setdefault("rarg", 0))
+                    Instruction(
+                        None,
+                        None,
+                        e["op"],
+                        e.setdefault("arg", None),
+                        e.setdefault("rarg", 0),
+                    )
                     for e in data["compare"]
                 ]
 
@@ -68,7 +80,7 @@ class JsonTestEntry:
     def run_tests(self, test: "TestOptimiserUtil", prefix: str = ""):
         if self.code:
             if isinstance(self.code, str):
-                target = eval("lambda: "+self.code)
+                target = eval("lambda: " + self.code)
             else:
                 target = lambda: None
 
@@ -77,7 +89,7 @@ class JsonTestEntry:
                 obj.reassign_to_function()
 
             if isinstance(self.compare, str):
-                compare = eval("lambda: "+self.compare)
+                compare = eval("lambda: " + self.compare)
             else:
                 compare = lambda: None
 
@@ -86,7 +98,13 @@ class JsonTestEntry:
                 obj.reassign_to_function()
 
             print("running", prefix + ":" + self.name)
-            compare_optimized_results(test, target, compare, opt_ideal=self.opt_mode, msg=prefix + ":" + self.name)
+            compare_optimized_results(
+                test,
+                target,
+                compare,
+                opt_ideal=self.opt_mode,
+                msg=prefix + ":" + self.name,
+            )
 
         for child in self.children:
             child.run_tests(test, prefix + ":" + self.name if prefix else self.name)
