@@ -2,6 +2,8 @@
 # Version 0.2.1
 - added a few more opcodes
 - fixed potential issue when the system does not detect children of classes correctly, when only the class is annotated
+- added specialization system; functions can now declare 'specializations', which are applied at optimisation time
+- started writing an assembly parser; In the future, this will be used for providing inline assembly code
 
 # Version 0.2.0
 - rewritten the whole system
