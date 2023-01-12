@@ -72,7 +72,7 @@ TODO
 - LOAD_GLOBAL for builtins (if enabled)
 - standard library inlining (if enabled)
 - specialization of methods based on arguments, e.g. constant arguments (when already resolved before, requires one of above options)
-- branch elimination when jumping on a constant (TODO: also if condition can be inferred ahead-of-time)
+- branch elimination when jumping on a constant (TODO: also if condition can be inferred ahead-of-time, see specialization)
 
 
 # Currently Limitations
@@ -84,6 +84,8 @@ TODO
 - Method inlining is not working properly and needs a lot more testing
 - If the exact type is known at optimisation time (e.g. object creation via class call, or type annotation), we can try to
   inline method accesses for further optimisation
+- Python 3.12 will likely break how certain operations are stored in instructions, combing opcodes-without-args into a single
+  parent instruction, using the arg to switch between modes
 
 
 ## Code Formatting

@@ -2,11 +2,15 @@ import dis
 import inspect
 import math
 import os
+import re
+import string
+import struct
 import types
 import typing
 import builtins
 import random
 
+from bytecodemanipulation.MutableFunctionHelpers import Guarantees
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
@@ -155,6 +159,15 @@ class _OptimisationContainer:
                         and func.__module__ == self.target.__module__
                     ):
                         self.children.append(self.get_for_target(e))
+
+        self.guarantees: typing.List[Guarantees.AbstractGuarantee] | None = None
+
+    def add_guarantee(self, guarantee: Guarantees.AbstractGuarantee):
+        if self.guarantees is None:
+            self.guarantees = []
+
+        self.guarantees.append(guarantee)
+        return self
 
     def is_attribute_static(self, name: str):
         return self.is_static or name in self.static_attributes
@@ -379,6 +392,9 @@ class _OptimisationContainer:
 
 _OptimisationContainer.get_for_target(typing).is_static = True
 _OptimisationContainer.get_for_target(random).is_static = True
+_OptimisationContainer.get_for_target(string).is_static = True
+_OptimisationContainer.get_for_target(re).is_static = True
+_OptimisationContainer.get_for_target(struct).is_static = True
 _OptimisationContainer.get_for_target(math).is_static = True
 _OptimisationContainer.get_for_target(os).is_static = True
 
@@ -561,6 +577,7 @@ def guarantee_exact_return_type(
         container.lazy_return_type = (
             lazy_data_type if lazy_data_type is not None else lambda: data_type
         )
+        container.add_guarantee(Guarantees.ReturnType(data_type or lazy_data_type))
 
         return target
 
@@ -660,6 +677,7 @@ def guarantee_constant_result():
     def annotate(target):
         container = _OptimisationContainer.get_for_target(target)
         container.is_constant_op = True
+        container.add_guarantee(Guarantees.RESULT_IS_CONSTANT)
 
         return target
 

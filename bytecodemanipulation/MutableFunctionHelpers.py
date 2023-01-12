@@ -5,6 +5,65 @@ from bytecodemanipulation.Opcodes import Opcodes, HAS_GLOBAL
 from bytecodemanipulation.Opcodes import UNCONDITIONAL_JUMPS
 
 
+class Guarantees:
+    class AbstractGuarantee:
+        pass
+
+    RESULT_IS_CONSTANT = AbstractGuarantee()
+    NO_DISCARD = AbstractGuarantee()
+
+    class ArgIsNotMutated(AbstractGuarantee):
+        def __init__(self, arg_index: int, arg_name: str):
+            self.arg_index = arg_index
+            self.arg_name = arg_name
+
+    class ReturnType(AbstractGuarantee):
+        def __init__(self, data_type: type, may_subclass=False):
+            self.data_type = data_type
+            self.may_subclass = may_subclass
+
+
+class MethodInvocationInfo:
+    def __init__(self, call_instruction: Instruction):
+        self.call_instruction = call_instruction
+
+        if call_instruction.opcode == Opcodes.CALL_FUNCTION:
+            self.arg_loads = [
+                next(call_instruction.trace_stack_position(i))
+                for i in range(call_instruction.arg - 1, -1, -1)
+            ]
+            self.function_load = call_instruction.trace_normalized_stack_position(call_instruction.arg)
+        else:
+            raise NotImplementedError(call_instruction)
+
+        self._guarantees: typing.List[Guarantees.AbstractGuarantee] = None
+
+    def get_guarantees(self) -> typing.List[Guarantees.AbstractGuarantee]:
+        if self._guarantees:
+            return self._guarantees
+
+        if self.function_load.opcode != Opcodes.LOAD_CONST:
+            return []
+
+        from bytecodemanipulation.Optimiser import _OptimisationContainer
+
+        function_target = self.function_load.arg_value
+        optimisation_container = _OptimisationContainer.get_for_target(function_target)
+
+        self._guarantees = []
+        if optimisation_container.guarantees:
+            self._guarantees += optimisation_container.guarantees
+
+        return self._guarantees
+
+    def is_argument_mutated(self, name_or_index: str | int) -> bool:
+        for guarantee in self.get_guarantees():
+            if isinstance(guarantee, Guarantees.ArgIsNotMutated) and (guarantee.arg_index == name_or_index or guarantee.arg_name == name_or_index):
+                return False
+
+        return True
+
+
 class MutableFunctionWithTree:
     def __init__(self, mutable: MutableFunction, root: Instruction = None):
         self.mutable = mutable
