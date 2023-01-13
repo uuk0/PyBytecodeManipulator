@@ -4,12 +4,13 @@
 Python Assembly is an Code Format representing python bytecode, with some meta-instructions
 for cross-version support.
 
-## Meta Instructions
+## Meta Instructions (dynamically decide what to use)
 
 * LOAD \<expression> [-> \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> [(\<expression>)]: stores TOS or value of 'expression' in the local or global variable
+* CALL <call target> (<args>) [-> <target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values), and stores it at TOS or 'target'
 
-## Python-Pure Instructions
+## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
 * LOAD_GLOBAL \<name or index> [-> \<target>]: pushes the global variable on the stack or stores it at 'target'
 * STORE_GLOBAL \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the global variable
@@ -29,3 +30,6 @@ Expressions can be added as certain parameters to instructions to use instead of
   - \<access>[\<index or expression>]: value by [] operator
 - OP instruction
 - A string literal with " as quotes, and \\" for escaping
+- A signed integer
+
+TODO: float, list / tuple / set / map construction

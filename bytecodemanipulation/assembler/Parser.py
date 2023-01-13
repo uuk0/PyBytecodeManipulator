@@ -63,7 +63,7 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
         return type(self) == type(other) and self.name_token == other.name_token
 
     def __repr__(self):
-        return f"{self.PREFIX}{self.name_token}"
+        return f"{self.PREFIX}{self.name_token.text}"
 
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(self.name_token)
@@ -201,7 +201,7 @@ class Parser(AbstractParser):
             else Lexer(tokens_or_str).lex()
         )
 
-    def parse(self) -> AbstractExpression:
+    def parse(self) -> CompoundExpression:
         root = CompoundExpression()
 
         while True:
@@ -584,6 +584,173 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         return [
             Instruction(function, -1, "LOAD_CONST", self.value.value if isinstance(self.value, ConstantAccessExpression) else function.target.__globals__.get(self.value.name_token.text))
         ] + (self.target.emit_bytecodes(function) if self.target else [])
+
+
+@Parser.register
+class CallAssembly(AbstractAssemblyInstruction):
+    # CALL <call target> (<args>) [-> <target>]
+    NAME = "CALL"
+
+    class IArg:
+        __slots__ = ("source",)
+
+        def __init__(self, source: "AbstractAccessExpression"):
+            self.source = source
+
+        def __repr__(self):
+            return f"{type(self).__name__}({self.source})"
+
+        def __eq__(self, other):
+            return type(self) == type(other) and self.source == other.source
+
+        def copy(self):
+            return type(self)(self.source.copy())
+
+    class Arg(IArg):
+        pass
+
+    class StarArg(IArg):
+        pass
+
+    class KwArg(IArg):
+        __slots__ = ("key", "source")
+
+        def __init__(self, key: IdentifierToken | str, source: "AbstractAccessExpression"):
+            self.key = key if isinstance(key, IdentifierToken) else IdentifierToken(key)
+            super().__init__(source)
+
+        def __repr__(self):
+            return f"{type(self).__name__}({self.key.text} = {self.source})"
+
+        def __eq__(self, other):
+            return type(self) == type(other) and self.source == other.source and self.key == other.key
+
+        def copy(self):
+            return type(self)(self.key, self.source.copy())
+
+    class KwArgStar(IArg):
+        pass
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "CallAssembly":
+        call_target = parser.try_parse_data_source(include_bracket=False)
+
+        args: typing.List[CallAssembly.IArg] = []
+
+        parser.consume(SpecialToken("("))
+
+        has_seen_keyword_arg = False
+
+        while not (bracket := parser.try_consume(SpecialToken(")"))):
+            if isinstance(parser[0], IdentifierToken) and parser[1] == SpecialToken("="):
+                key = parser.consume(IdentifierToken)
+                parser.consume(SpecialToken("="))
+                expr = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+                args.append(CallAssembly.KwArg(key, expr))
+
+                has_seen_keyword_arg = True
+
+            elif parser[0] == SpecialToken("*"):
+                if parser[1] == SpecialToken("*"):
+                    parser.consume(SpecialToken("*"))
+                    parser.consume(SpecialToken("*"))
+                    expr = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+                    args.append(CallAssembly.KwArgStar(expr))
+                    has_seen_keyword_arg = True
+
+                elif not has_seen_keyword_arg:
+                    expr = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+                    args.append(CallAssembly.StarArg(expr))
+
+                else:
+                    raise SyntaxError("*<arg> only allowed before keyword arguments!")
+
+            elif not has_seen_keyword_arg:
+                expr = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+                args.append(CallAssembly.Arg(expr))
+
+            else:
+                raise SyntaxError("pure <arg> only allowed before keyword arguments!")
+
+            if not parser.try_consume(SpecialToken(",")):
+                break
+
+        if bracket is None and not parser.try_consume(SpecialToken(")")):
+            raise SyntaxError(f"expected closing bracket, got {parser.try_inspect()}")
+
+        if parser.try_consume_multi(
+            [
+                SpecialToken("-"),
+                SpecialToken(">"),
+            ]
+        ):
+            target = parser.try_consume_access_token()
+        else:
+            target = None
+
+        return cls(call_target, args, target)
+
+    def __init__(self, call_target: AbstractAccessExpression, args: typing.List["CallAssembly.IArg"], target: AbstractAccessExpression | None = None):
+        self.call_target = call_target
+        self.args = args
+        self.target = target
+
+    def copy(self) -> "CallAssembly":
+        return CallAssembly(self.call_target.copy(), [arg.copy() for arg in self.args], self.target.copy() if self.target else None)
+
+    def __repr__(self):
+        return f"CALL({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.call_target == other.call_target and self.args == other.args and self.target == other.target
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        bytecode = self.call_target.emit_bytecodes(function)
+
+        has_seen_star = False
+        has_seen_star_star = False
+        has_seen_kw_arg = False
+
+        for arg in self.args:
+            if isinstance(arg, CallAssembly.KwArg):
+                has_seen_kw_arg = True
+            elif isinstance(arg, CallAssembly.KwArgStar):
+                has_seen_star_star = True
+            elif isinstance(arg, CallAssembly.StarArg):
+                has_seen_star = True
+
+        if not has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
+            for arg in self.args:
+                bytecode += arg.source.emit_bytecodes(function)
+
+            bytecode += [
+                Instruction(function, -1, "CALL_FUNCTION", len(self.args)),
+            ]
+
+        elif has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
+            kw_arg_keys = []
+
+            for arg in reversed(self.args):
+                bytecode += arg.source.emit_bytecodes(function)
+
+                if isinstance(arg, CallAssembly.KwArg):
+                    kw_arg_keys.append(arg.key.text)
+
+                kw_const = tuple(reversed(kw_arg_keys))
+
+                bytecode += [
+                    Instruction(function, -1, "LOAD_CONST", kw_const),
+                    Instruction(function, -1, "CALL_FUNCTION_KW", len(self.args)),
+                ]
+
+        else:
+            raise NotImplementedError
+
+        if self.target:
+            bytecode += self.target.emit_store_bytecodes(function)
+
+        return bytecode
 
 
 @Parser.register
