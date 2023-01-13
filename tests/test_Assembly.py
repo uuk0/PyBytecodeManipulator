@@ -6,10 +6,56 @@ from code_parser.lexers.common import IdentifierToken
 
 class TestParser(TestCase):
     def test_load_global(self):
-        expr = Parser("LOAD_GLOBAL test").parse()
+        expr = Parser("LOAD_GLOBAL test\nLOAD_GLOBAL 10\nLOAD_GLOBAL @test\nLOAD_GLOBAL @10").parse()
 
         self.assertEqual(
-            CompoundExpression([LoadGlobalAssembly(IdentifierToken("test"))]),
+            CompoundExpression([
+                LoadGlobalAssembly(IdentifierToken("test")),
+                LoadGlobalAssembly(IntegerToken("10")),
+                LoadGlobalAssembly(IdentifierToken("test")),
+                LoadGlobalAssembly(IntegerToken("10")),
+            ]),
+            expr
+        )
+
+    def test_store_global(self):
+        expr = Parser("STORE_GLOBAL test\nSTORE_GLOBAL @test\nSTORE_GLOBAL test (@test)\nSTORE_GLOBAL test ($test)\nSTORE_GLOBAL test (%)").parse()
+
+        self.assertEqual(
+            CompoundExpression([
+                StoreGlobalAssembly(IdentifierToken("test")),
+                StoreGlobalAssembly(IdentifierToken("test")),
+                StoreGlobalAssembly(IdentifierToken("test"), GlobalAccessExpression(IdentifierToken("test"))),
+                StoreGlobalAssembly(IdentifierToken("test"), LocalAccessExpression(IdentifierToken("test"))),
+                StoreGlobalAssembly(IdentifierToken("test"), TopOfStackAccessExpression()),
+            ]),
+            expr
+        )
+
+    def test_load_fast(self):
+        expr = Parser("LOAD_FAST test\nLOAD_FAST 10\nLOAD_FAST $test\nLOAD_FAST $10").parse()
+
+        self.assertEqual(
+            CompoundExpression([
+                LoadFastAssembly(IdentifierToken("test")),
+                LoadFastAssembly(IntegerToken("10")),
+                LoadFastAssembly(IdentifierToken("test")),
+                LoadFastAssembly(IntegerToken("10")),
+            ]),
+            expr
+        )
+
+    def test_store_fast(self):
+        expr = Parser("STORE_FAST test\nSTORE_FAST $test\nSTORE_FAST test (@test)\nSTORE_FAST test ($test)\nSTORE_FAST test (%)").parse()
+
+        self.assertEqual(
+            CompoundExpression([
+                StoreFastAssembly(IdentifierToken("test")),
+                StoreFastAssembly(IdentifierToken("test")),
+                StoreFastAssembly(IdentifierToken("test"), GlobalAccessExpression(IdentifierToken("test"))),
+                StoreFastAssembly(IdentifierToken("test"), LocalAccessExpression(IdentifierToken("test"))),
+                StoreFastAssembly(IdentifierToken("test"), TopOfStackAccessExpression()),
+            ]),
             expr
         )
 
@@ -26,12 +72,36 @@ class TestParser(TestCase):
             expr
         )
 
+    def test_store(self):
+        expr = Parser("STORE @test\nSTORE $test\nSTORE @global[10]\nSTORE $local[20]").parse()
+
+        self.assertEqual(
+            CompoundExpression([
+                StoreAssembly(GlobalAccessExpression(IdentifierToken("test"))),
+                StoreAssembly(LocalAccessExpression(IdentifierToken("test"))),
+                StoreAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), IntegerToken("10"))),
+                StoreAssembly(SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), IntegerToken("20"))),
+            ]),
+            expr
+        )
+
+        expr = Parser("STORE @test ($test)\nSTORE $test (@global)\nSTORE @global[10] ($local[10])").parse()
+
+        self.assertEqual(
+            CompoundExpression([
+                StoreAssembly(GlobalAccessExpression(IdentifierToken("test")), LocalAccessExpression(IdentifierToken("test"))),
+                StoreAssembly(LocalAccessExpression(IdentifierToken("test")), GlobalAccessExpression(IdentifierToken("global"))),
+                StoreAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), IntegerToken("10")), SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), IntegerToken("10"))),
+            ]),
+            expr
+        )
+
     def test_pop(self):
         expr = Parser("POP\nPOP 10").parse()
 
         self.assertEqual(
             CompoundExpression([
-                PopElementAssembly(IntegerToken("0")),
+                PopElementAssembly(IntegerToken("1")),
                 PopElementAssembly(IntegerToken("10")),
             ]),
             expr

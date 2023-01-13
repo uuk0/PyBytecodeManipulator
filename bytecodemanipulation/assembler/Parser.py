@@ -39,10 +39,18 @@ class AbstractAssemblyInstruction(AbstractExpression, ABC):
         raise NotImplementedError
 
 
-class AbstractAccessExpression(AbstractExpression, ABC):
+class AbstractSourceExpression(AbstractExpression, ABC):
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        raise NotImplementedError
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        raise NotImplementedError
+
+
+class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
 
-    def __init__(self, name_token: IdentifierToken):
+    def __init__(self, name_token: IdentifierToken | IntegerToken):
         self.name_token = name_token
 
     def __eq__(self, other):
@@ -54,16 +62,28 @@ class AbstractAccessExpression(AbstractExpression, ABC):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(self.name_token)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        raise NotImplementedError
-
 
 class GlobalAccessExpression(AbstractAccessExpression):
     PREFIX = "@"
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
         return [
-            Instruction(function, -1, "LOAD_GLOBAL", self.name_token.text)
+            Instruction(function, -1, "LOAD_GLOBAL", value)
+        ]
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
+        return [
+            Instruction(function, -1, "STORE_GLOBAL", value)
         ]
 
 
@@ -71,13 +91,50 @@ class LocalAccessExpression(AbstractAccessExpression):
     PREFIX = "$"
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
         return [
-            Instruction(function, -1, "LOAD_FAST", self.name_token.text)
+            Instruction(function, -1, "LOAD_FAST", value)
+        ]
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
+        return [
+            Instruction(function, -1, "STORE_FAST", value)
         ]
 
 
+class TopOfStackAccessExpression(AbstractAccessExpression):
+    PREFIX = "%"
+
+    def __init__(self):
+        pass
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __repr__(self):
+        return f"%"
+
+    def copy(self) -> "AbstractAccessExpression":
+        return type(self)()
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return []
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return []
+
+
 class SubscriptionAccessExpression(AbstractAccessExpression):
-    def __init__(self, base_expr: "AbstractAccessExpression", index_expr: AbstractExpression | IntegerToken):
+    def __init__(self, base_expr: "AbstractAccessExpression", index_expr: AbstractAccessExpression | IntegerToken):
         self.base_expr = base_expr
         self.index_expr = index_expr
 
@@ -91,8 +148,13 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         return type(self)(self.base_expr.copy(), self.index_expr.copy())
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return self.base_expr.emit_bytecodes(function) + self.index_expr.emit_bytecodes(function) + [
+        return self.base_expr.emit_bytecodes(function) + (self.index_expr.emit_bytecodes(function) if isinstance(self.index_expr, AbstractAccessExpression) else [Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))]) + [
             Instruction(function, -1, Opcodes.BINARY_SUBSCR)
+        ]
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return self.base_expr.emit_bytecodes(function) + (self.index_expr.emit_bytecodes(function) if isinstance(self.index_expr, AbstractAccessExpression) else [Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))]) + [
+            Instruction(function, -1, Opcodes.STORE_SUBSCR)
         ]
 
 
@@ -145,32 +207,59 @@ class Parser(AbstractParser):
 
         return root
 
-    def try_consume_access_token(self) -> AbstractAccessExpression | None:
+    def try_consume_access_token(self, allow_tos=True, allow_primitives=False) -> AbstractAccessExpression | None:
         start_token = self.try_inspect()
 
         if start_token is None:
             return
+
+        if allow_primitives:
+            if isinstance(start_token, IntegerToken):
+                # todo: implement ConstantValueAccessExpression
+                pass
 
         if not isinstance(start_token, SpecialToken):
             return
 
         if start_token.text == "@":
             self.consume(SpecialToken("@"))
-            expr = GlobalAccessExpression(self.consume(IdentifierToken))
+            expr = GlobalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
 
         elif start_token.text == "$":
             self.consume(SpecialToken("$"))
-            expr = LocalAccessExpression(self.consume(IdentifierToken))
+            expr = LocalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
+
+        elif start_token.text == "%" and allow_tos:
+            self.consume(SpecialToken("%"))
+            expr = TopOfStackAccessExpression()
 
         else:
             return
 
         if self.try_consume(SpecialToken("[")):
-            index = self.consume(IntegerToken)  # todo: consume expression
+            # Consume either an Integer or a expression
+            if not (index := self.try_parse_data_source(allow_primitives=True, allow_tos=allow_tos, include_bracket=False)):
+                index = self.consume(IntegerToken)
+
             self.consume(SpecialToken("]"))
             return SubscriptionAccessExpression(expr, index)
 
         return expr
+
+    def try_parse_data_source(self, allow_tos=True, allow_primitives=False, include_bracket=True) -> AbstractSourceExpression | None:
+        self.save()
+
+        if include_bracket and not (bracket := self.try_consume(SpecialToken("("))):
+            self.rollback()
+            return
+
+        if access := self.try_consume_access_token(allow_tos=allow_tos, allow_primitives=allow_primitives):
+            self.discard_save()
+            if include_bracket:
+                self.consume(SpecialToken(")"))
+            return access
+
+        self.rollback()
 
 
 @Parser.register
@@ -180,7 +269,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadAssembly":
-        access = parser.try_consume_access_token()
+        access = parser.try_consume_access_token(allow_tos=False)
 
         if access is None:
             raise SyntaxError
@@ -204,6 +293,39 @@ class LoadAssembly(AbstractAssemblyInstruction):
 
 
 @Parser.register
+class StoreAssembly(AbstractAssemblyInstruction):
+    # STORE <access> [(expression)]
+    NAME = "STORE"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "StoreAssembly":
+        access = parser.try_consume_access_token(allow_tos=False)
+
+        if access is None:
+            raise SyntaxError
+
+        source = parser.try_parse_data_source()
+
+        return cls(access, source)
+
+    def __init__(self, access_token: AbstractAccessExpression, source: AbstractSourceExpression | None = None):
+        self.access_token = access_token
+        self.source = source
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.access_token == other.access_token and self.source == other.source
+
+    def __repr__(self):
+        return f"STORE({self.access_token}, {self.source})"
+
+    def copy(self) -> "StoreAssembly":
+        return StoreAssembly(self.access_token, self.source.copy() if self.source else None)
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return ([] if self.source is None else self.source.emit_bytecodes(function)) + self.access_token.emit_store_bytecodes(function)
+
+
+@Parser.register
 class LoadGlobalAssembly(AbstractAssemblyInstruction):
     # LOAD_GLOBAL <name>
     NAME = "LOAD_GLOBAL"
@@ -211,11 +333,11 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
-        name = parser.consume(IdentifierToken)
+        name = parser.consume([IdentifierToken, IntegerToken])
 
         return cls(name)
 
-    def __init__(self, name_token: IdentifierToken):
+    def __init__(self, name_token: IdentifierToken | IntegerToken):
         self.name_token = name_token
 
     def __eq__(self, other):
@@ -228,8 +350,51 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
         return LoadGlobalAssembly(self.name_token)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
         return [
-            Instruction(function, -1, "LOAD_GLOBAL", self.name_token.text)
+            Instruction(function, -1, "LOAD_GLOBAL", value)
+        ]
+
+
+@Parser.register
+class StoreGlobalAssembly(AbstractAssemblyInstruction):
+    # STORE_GLOBAL <name> [<source>]
+    NAME = "STORE_GLOBAL"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "StoreGlobalAssembly":
+        parser.try_consume(SpecialToken("@"))
+        name = parser.consume([IdentifierToken, IntegerToken])
+
+        source = parser.try_parse_data_source()
+
+        return cls(name, source)
+
+    def __init__(self, name_token: IdentifierToken, source: AbstractSourceExpression | None = None):
+        self.name_token = name_token
+        self.source = source
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.name_token == other.name_token and self.source == other.source
+
+    def __repr__(self):
+        return f"STORE_GLOBAL({self.name_token}, source={self.source or 'TOS'})"
+
+    def copy(self) -> "StoreGlobalAssembly":
+        return StoreGlobalAssembly(self.name, self.source.copy() if self.source else None)
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
+        return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
+            Instruction(function, -1, "STORE_GLOBAL", value)
         ]
 
 
@@ -240,16 +405,16 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadFastAssembly":
-        parser.try_consume(SpecialToken("@"))
-        name = parser.consume(IdentifierToken)
+        parser.try_consume(SpecialToken("$"))
+        name = parser.consume([IdentifierToken, IntegerToken])
 
         return cls(name)
 
-    def __init__(self, name_token: IdentifierToken):
+    def __init__(self, name_token: IdentifierToken | IntegerToken):
         self.name_token = name_token
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name_token == other.access_token
+        return type(self) == type(other) and self.name_token == other.name_token
 
     def __repr__(self):
         return f"LOAD_GLOBAL({self.name_token})"
@@ -258,36 +423,78 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
         return LoadFastAssembly(self.name_token)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
         return [
-            Instruction(function, -1, "LOAD_FAST", self.name_token.text)
+            Instruction(function, -1, "LOAD_FAST", value)
+        ]
+
+
+@Parser.register
+class StoreFastAssembly(AbstractAssemblyInstruction):
+    # STORE_FAST <name> [<source>]
+    NAME = "STORE_FAST"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "StoreFastAssembly":
+        parser.try_consume(SpecialToken("$"))
+        name = parser.consume([IdentifierToken, IntegerToken])
+
+        source = parser.try_parse_data_source()
+
+        return cls(name, source)
+
+    def __init__(self, name_token: IdentifierToken, source: AbstractSourceExpression | None = None):
+        self.name_token = name_token
+        self.source = source
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.name_token == other.name_token and self.source == other.source
+
+    def __repr__(self):
+        return f"STORE_FAST({self.name_token}, source={self.source or 'TOS'})"
+
+    def copy(self) -> "StoreFastAssembly":
+        return StoreFastAssembly(self.name, self.source.copy() if self.source else None)
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
+        return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
+            Instruction(function, -1, "STORE_FAST", value)
         ]
 
 
 @Parser.register
 class PopElementAssembly(AbstractAssemblyInstruction):
-    # POP [<index>]
+    # POP [<count>]
     NAME = "POP"
 
     @classmethod
     def consume(cls, parser: "Parser") -> "PopElementAssembly":
-        index = parser.try_consume(IntegerToken)
-        return cls(index if index is not None else IntegerToken("0"))
+        count = parser.try_consume(IntegerToken)
+        return cls(count if count is not None else IntegerToken("1"))
 
-    def __init__(self, index: IntegerToken):
-        self.index = index
+    def __init__(self, count: IntegerToken):
+        self.count = count
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.index == other.index
+        return type(self) == type(other) and self.count == other.count
 
     def __repr__(self):
-        return f"POP({self.index})"
+        return f"POP(#{self.count})"
 
     def copy(self) -> "PopElementAssembly":
-        return PopElementAssembly(self.index)
+        return PopElementAssembly(self.count)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        assert self.index.text == "0", "currently not supported!"
-
         return [
             Instruction(function, -1, "POP_TOP", self.name_token.text)
+            for _ in range(int(self.count.text))
         ]

@@ -14,7 +14,7 @@ from code_parser.lexers.common import (
 )
 
 
-SPECIAL_CHARS = "@$+-~/%?;[]{}"
+SPECIAL_CHARS = "@$+-~/%?;[]{}()"
 
 
 class SpecialToken(AbstractToken):
@@ -54,6 +54,21 @@ class Lexer(AbstractLexer):
 
         if char in SPECIAL_CHARS:
             return SpecialToken(self.consume(char))
+
+        if char == "\"":
+            self.consume(char)
+            text = ""
+
+            escape_count = 0
+            while (c := self.try_inspect()) and (c != "\"" or escape_count % 2 == 1):
+                if c == "\\":
+                    escape_count += 1
+                else:
+                    escape_count = 0
+                text += c
+                self.consume(c)
+            self.consume("\"")
+            return StringLiteralToken(text, "\"")
 
         if char in string.whitespace:
             self.consume_while(string.whitespace)
