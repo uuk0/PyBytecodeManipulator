@@ -6,16 +6,16 @@ for cross-version support.
 
 ## Meta Instructions
 
-* LOAD @\<global name or index> | $\<local name or index>: Pushes the global or local variable to the stack
-* STORE @\<global name or index> | $\<local name or index> [(\<expression>)]: stores TOS or value of 'expression' in the local or global variable
+* LOAD \<expression>: Pushes the global or local variable to the stack
+* STORE \<expression> [(\<expression>)]: stores TOS or value of 'expression' in the local or global variable
 
 ## Python-Pure Instructions
 
-* LOAD_GLOBAL \<name or index>: pushes the global variable on the stack
+* LOAD_GLOBAL \<name or index> [-> \<target>]: pushes the global variable on the stack or stores it at 'target'
 * STORE_GLOBAL \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the global variable
-* LOAD_FAST \<name or index>: pushes the local variable on the stack
+* LOAD_FAST \<name or index> [-> \<target>]: pushes the local variable on the stack or stores it at 'target'
 * STORE_FAST \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the local variable
-* LOAD_CONST \<value> | @<const global source> [-> <target>]: loads the constant onto TOS or into 'target'
+* LOAD_CONST \<value> | @\<const global source> [-> \<target>]: loads the constant onto TOS or into 'target'
 * POP [<count = 1>]: Pops 'count' elements from the stack and discards them
 
 ## Expressions

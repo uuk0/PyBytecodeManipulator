@@ -361,7 +361,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class LoadGlobalAssembly(AbstractAssemblyInstruction):
-    # LOAD_GLOBAL <name>
+    # LOAD_GLOBAL <name> [-> <target>]
     NAME = "LOAD_GLOBAL"
 
     @classmethod
@@ -369,19 +369,30 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
         parser.try_consume(SpecialToken("@"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
-        return cls(name)
+        if parser.try_consume_multi(
+            [
+                SpecialToken("-"),
+                SpecialToken(">"),
+            ]
+        ):
+            target = parser.try_consume_access_token()
+        else:
+            target = None
 
-    def __init__(self, name_token: IdentifierToken | IntegerToken):
-        self.name_token = name_token
+        return cls(name, target)
+
+    def __init__(self, name_token: IdentifierToken | IntegerToken | str | int, target: AbstractAccessExpression | None = None):
+        self.name_token = name_token if not isinstance(name_token, (str, int)) else (IdentifierToken(name_token) if isinstance(name_token, str) else IntegerToken(str(name_token)))
+        self.target = target
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name_token == other.name_token
+        return type(self) == type(other) and self.name_token == other.name_token and self.target == other.target
 
     def __repr__(self):
-        return f"LOAD_GLOBAL({self.name_token})"
+        return f"LOAD_GLOBAL({self.name_token}{', ' + repr(self.target) if self.target else ''})"
 
     def copy(self) -> "LoadGlobalAssembly":
-        return LoadGlobalAssembly(self.name_token)
+        return LoadGlobalAssembly(self.name_token, self.target)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         value = self.name_token.text
@@ -391,7 +402,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
 
         return [
             Instruction(function, -1, "LOAD_GLOBAL", value)
-        ]
+        ] + (self.target.emit_bytecodes(function) if self.target else [])
 
 
 @Parser.register
@@ -408,8 +419,8 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
 
         return cls(name, source)
 
-    def __init__(self, name_token: IdentifierToken, source: AbstractSourceExpression | None = None):
-        self.name_token = name_token
+    def __init__(self, name_token: IdentifierToken | IntegerToken | str | int, source: AbstractSourceExpression | None = None):
+        self.name_token = name_token if not isinstance(name_token, (str, int)) else (IdentifierToken(name_token) if isinstance(name_token, str) else IntegerToken(str(name_token)))
         self.source = source
 
     def __eq__(self, other):
@@ -434,7 +445,7 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class LoadFastAssembly(AbstractAssemblyInstruction):
-    # LOAD_FAST <name>
+    # LOAD_FAST <name> [-> <target>]
     NAME = "LOAD_FAST"
 
     @classmethod
@@ -442,19 +453,30 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
         parser.try_consume(SpecialToken("$"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
-        return cls(name)
+        if parser.try_consume_multi(
+                [
+                    SpecialToken("-"),
+                    SpecialToken(">"),
+                ]
+        ):
+            target = parser.try_consume_access_token()
+        else:
+            target = None
 
-    def __init__(self, name_token: IdentifierToken | IntegerToken):
-        self.name_token = name_token
+        return cls(name, target)
+
+    def __init__(self, name_token: IdentifierToken | IntegerToken | str | int, target: AbstractAccessExpression | None = None):
+        self.name_token = name_token if not isinstance(name_token, (str, int)) else (IdentifierToken(name_token) if isinstance(name_token, str) else IntegerToken(str(name_token)))
+        self.target = target
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name_token == other.name_token
+        return type(self) == type(other) and self.name_token == other.name_token and self.target == other.target
 
     def __repr__(self):
-        return f"LOAD_GLOBAL({self.name_token})"
+        return f"LOAD_GLOBAL({self.name_token}{', ' + repr(self.target) if self.target else ''})"
 
     def copy(self) -> "LoadFastAssembly":
-        return LoadFastAssembly(self.name_token)
+        return LoadFastAssembly(self.name_token, self.target)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         value = self.name_token.text
@@ -464,7 +486,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
 
         return [
             Instruction(function, -1, "LOAD_FAST", value)
-        ]
+        ] + (self.target.emit_bytecodes(function) if self.target else [])
 
 
 @Parser.register
@@ -481,8 +503,8 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
 
         return cls(name, source)
 
-    def __init__(self, name_token: IdentifierToken, source: AbstractSourceExpression | None = None):
-        self.name_token = name_token
+    def __init__(self, name_token: IdentifierToken | IntegerToken | str | int, source: AbstractSourceExpression | None = None):
+        self.name_token = name_token if not isinstance(name_token, (str, int)) else (IdentifierToken(name_token) if isinstance(name_token, str) else IntegerToken(str(name_token)))
         self.source = source
 
     def __eq__(self, other):
@@ -529,8 +551,8 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
         return cls(value, target)
 
-    def __init__(self, value: ConstantAccessExpression | GlobalAccessExpression, target: AbstractAccessExpression | None = None):
-        self.value = value
+    def __init__(self, value: ConstantAccessExpression | GlobalAccessExpression | typing.Any, target: AbstractAccessExpression | None = None):
+        self.value = value if isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)) else ConstantAccessExpression(value)
         self.target = target
 
     def __eq__(self, other):

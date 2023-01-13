@@ -6,14 +6,15 @@ from code_parser.lexers.common import IdentifierToken
 
 class TestParser(TestCase):
     def test_load_global(self):
-        expr = Parser("LOAD_GLOBAL test\nLOAD_GLOBAL 10\nLOAD_GLOBAL @test\nLOAD_GLOBAL @10").parse()
+        expr = Parser("LOAD_GLOBAL test\nLOAD_GLOBAL 10\nLOAD_GLOBAL @test\nLOAD_GLOBAL @10\nLOAD_GLOBAL @hello -> $test").parse()
 
         self.assertEqual(
             CompoundExpression([
-                LoadGlobalAssembly(IdentifierToken("test")),
-                LoadGlobalAssembly(IntegerToken("10")),
-                LoadGlobalAssembly(IdentifierToken("test")),
-                LoadGlobalAssembly(IntegerToken("10")),
+                LoadGlobalAssembly("test"),
+                LoadGlobalAssembly(10),
+                LoadGlobalAssembly("test"),
+                LoadGlobalAssembly(10),
+                LoadGlobalAssembly("hello", LocalAccessExpression("test"))
             ]),
             expr
         )
@@ -33,14 +34,15 @@ class TestParser(TestCase):
         )
 
     def test_load_fast(self):
-        expr = Parser("LOAD_FAST test\nLOAD_FAST 10\nLOAD_FAST $test\nLOAD_FAST $10").parse()
+        expr = Parser("LOAD_FAST test\nLOAD_FAST 10\nLOAD_FAST $test\nLOAD_FAST $10\nLOAD_FAST test -> @test").parse()
 
         self.assertEqual(
             CompoundExpression([
-                LoadFastAssembly(IdentifierToken("test")),
-                LoadFastAssembly(IntegerToken("10")),
-                LoadFastAssembly(IdentifierToken("test")),
-                LoadFastAssembly(IntegerToken("10")),
+                LoadFastAssembly("test"),
+                LoadFastAssembly(10),
+                LoadFastAssembly("test"),
+                LoadFastAssembly(10),
+                LoadFastAssembly("test", GlobalAccessExpression("test")),
             ]),
             expr
         )
@@ -50,11 +52,11 @@ class TestParser(TestCase):
 
         self.assertEqual(
             CompoundExpression([
-                StoreFastAssembly(IdentifierToken("test")),
-                StoreFastAssembly(IdentifierToken("test")),
-                StoreFastAssembly(IdentifierToken("test"), GlobalAccessExpression("test")),
-                StoreFastAssembly(IdentifierToken("test"), LocalAccessExpression("test")),
-                StoreFastAssembly(IdentifierToken("test"), TopOfStackAccessExpression()),
+                StoreFastAssembly("test"),
+                StoreFastAssembly("test"),
+                StoreFastAssembly("test", GlobalAccessExpression("test")),
+                StoreFastAssembly("test", LocalAccessExpression("test")),
+                StoreFastAssembly("test", TopOfStackAccessExpression()),
             ]),
             expr
         )
@@ -64,9 +66,9 @@ class TestParser(TestCase):
 
         self.assertEqual(
             CompoundExpression([
-                LoadConstAssembly(ConstantAccessExpression(10)),
-                LoadConstAssembly(ConstantAccessExpression("Hello World!")),
-                LoadConstAssembly(ConstantAccessExpression(10), GlobalAccessExpression("test")),
+                LoadConstAssembly(10),
+                LoadConstAssembly("Hello World!"),
+                LoadConstAssembly(10, GlobalAccessExpression("test")),
                 LoadConstAssembly(GlobalAccessExpression("global")),
                 LoadConstAssembly(GlobalAccessExpression("global"), LocalAccessExpression("test")),
             ]),
@@ -78,8 +80,8 @@ class TestParser(TestCase):
 
         self.assertEqual(
             CompoundExpression([
-                LoadAssembly(GlobalAccessExpression(IdentifierToken("test"))),
-                LoadAssembly(LocalAccessExpression(IdentifierToken("test"))),
+                LoadAssembly(GlobalAccessExpression("test")),
+                LoadAssembly(LocalAccessExpression("test")),
                 LoadAssembly(SubscriptionAccessExpression(GlobalAccessExpression("global"), ConstantAccessExpression(10))),
                 LoadAssembly(SubscriptionAccessExpression(LocalAccessExpression("local"), ConstantAccessExpression(20))),
                 LoadAssembly(ConstantAccessExpression("hello")),
