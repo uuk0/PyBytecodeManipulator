@@ -507,14 +507,14 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class LoadConstAssembly(AbstractAssemblyInstruction):
-    # LOAD_CONST <expression>
+    # LOAD_CONST <expression> | @<global const source> [-> <target>]
     NAME = "LOAD_CONST"
 
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadConstAssembly":
         value = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
 
-        if not isinstance(value, ConstantAccessExpression):
+        if not isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)):
             raise SyntaxError(value)
 
         if parser.try_consume_multi(
@@ -529,7 +529,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
         return cls(value, target)
 
-    def __init__(self, value: ConstantAccessExpression, target: AbstractAccessExpression | None = None):
+    def __init__(self, value: ConstantAccessExpression | GlobalAccessExpression, target: AbstractAccessExpression | None = None):
         self.value = value
         self.target = target
 
@@ -537,14 +537,14 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         return type(self) == type(other) and self.value == other.value and self.target == other.target
 
     def __repr__(self):
-        return f"LOAD_CONST({self.value.value}{', ' + repr(self.target) if self.target else ''})"
+        return f"LOAD_CONST({self.value.value if not isinstance(self.value, GlobalAccessExpression) else self.target}{', ' + repr(self.target) if self.target else ''})"
 
     def copy(self) -> "LoadConstAssembly":
         return LoadConstAssembly(self.value, self.target)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return [
-            Instruction(function, -1, "LOAD_CONST", self.value.value)
+            Instruction(function, -1, "LOAD_CONST", self.value.value if isinstance(self.value, ConstantAccessExpression) else function.target.__globals__.get(self.value.name_token.text))
         ] + (self.target.emit_bytecodes(function) if self.target else [])
 
 
