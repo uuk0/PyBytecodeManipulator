@@ -291,6 +291,8 @@ class Parser(AbstractParser):
             if integer := self.try_consume(IntegerToken):
                 return ConstantAccessExpression(int(integer.text))
 
+        print(self.try_inspect())
+
         self.rollback()
 
 
@@ -500,6 +502,38 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
 
         return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
             Instruction(function, -1, "STORE_FAST", value)
+        ]
+
+
+@Parser.register
+class LoadConstAssembly(AbstractAssemblyInstruction):
+    # LOAD_CONST <expression>
+    NAME = "LOAD_CONST"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "LoadConstAssembly":
+        value = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        if not isinstance(value, ConstantAccessExpression):
+            raise SyntaxError(value)
+
+        return cls(value)
+
+    def __init__(self, value: ConstantAccessExpression):
+        self.value = value
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.value == other.value
+
+    def __repr__(self):
+        return f"LOAD_CONST({self.value.value})"
+
+    def copy(self) -> "LoadConstAssembly":
+        return LoadConstAssembly(self.value)
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return [
+            Instruction(function, -1, "LOAD_CONST", self.value.value)
         ]
 
 

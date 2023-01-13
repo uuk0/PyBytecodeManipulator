@@ -59,6 +59,17 @@ class TestParser(TestCase):
             expr
         )
 
+    def test_load_const(self):
+        expr = Parser("LOAD_CONST 10\nLOAD_CONST \"Hello World!\"").parse()
+
+        self.assertEqual(
+            CompoundExpression([
+                LoadConstAssembly(ConstantAccessExpression(10)),
+                LoadConstAssembly(ConstantAccessExpression("Hello World!")),
+            ]),
+            expr
+        )
+
     def test_load(self):
         expr = Parser("LOAD @test\nLOAD $test\nLOAD @global[10]\nLOAD $local[20]\nLOAD \"hello\"").parse()
 
