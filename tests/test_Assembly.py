@@ -60,14 +60,15 @@ class TestParser(TestCase):
         )
 
     def test_load(self):
-        expr = Parser("LOAD @test\nLOAD $test\nLOAD @global[10]\nLOAD $local[20]").parse()
+        expr = Parser("LOAD @test\nLOAD $test\nLOAD @global[10]\nLOAD $local[20]\nLOAD \"hello\"").parse()
 
         self.assertEqual(
             CompoundExpression([
                 LoadAssembly(GlobalAccessExpression(IdentifierToken("test"))),
                 LoadAssembly(LocalAccessExpression(IdentifierToken("test"))),
-                LoadAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), IntegerToken("10"))),
-                LoadAssembly(SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), IntegerToken("20"))),
+                LoadAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), ConstantAccessExpression(10))),
+                LoadAssembly(SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), ConstantAccessExpression(20))),
+                LoadAssembly(ConstantAccessExpression("hello")),
             ]),
             expr
         )

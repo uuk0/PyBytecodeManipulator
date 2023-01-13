@@ -1,3 +1,4 @@
+import copy
 import typing
 from abc import ABC
 
@@ -5,7 +6,7 @@ from bytecodemanipulation.Opcodes import Opcodes
 
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 
-from bytecodemanipulation.assembler.Lexer import Lexer, SpecialToken
+from bytecodemanipulation.assembler.Lexer import Lexer, SpecialToken, StringLiteralToken
 from code_parser.lexers.common import AbstractToken, CommentToken, IdentifierToken, BinaryOperatorToken, IntegerToken, FloatToken, BracketToken
 from code_parser.parsers.common import AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression
 
@@ -133,6 +134,28 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
         return []
 
 
+class ConstantAccessExpression(AbstractAccessExpression):
+    def __init__(self, value):
+        self.value = value
+
+    def __eq__(self, other):
+        return type(self) == type(other) or self.value == other.value
+
+    def __repr__(self):
+        return f"CONSTANT({self.value})"
+
+    def copy(self) -> "AbstractAccessExpression":
+        return type(self)(copy.deepcopy(self.value))
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return [
+            Instruction(function, -1, "LOAD_CONST", self.value)
+        ]
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        raise SyntaxError("Cannot assign to a constant")
+
+
 class SubscriptionAccessExpression(AbstractAccessExpression):
     def __init__(self, base_expr: "AbstractAccessExpression", index_expr: AbstractAccessExpression | IntegerToken):
         self.base_expr = base_expr
@@ -214,9 +237,11 @@ class Parser(AbstractParser):
             return
 
         if allow_primitives:
-            if isinstance(start_token, IntegerToken):
-                # todo: implement ConstantValueAccessExpression
-                pass
+            if string := self.try_consume(StringLiteralToken):
+                return ConstantAccessExpression(string.text)
+
+            if integer := self.try_consume(IntegerToken):
+                return ConstantAccessExpression(int(integer.text))
 
         if not isinstance(start_token, SpecialToken):
             return
@@ -259,6 +284,13 @@ class Parser(AbstractParser):
                 self.consume(SpecialToken(")"))
             return access
 
+        if allow_primitives:
+            if string := self.try_consume(StringLiteralToken):
+                return ConstantAccessExpression(string.text)
+
+            if integer := self.try_consume(IntegerToken):
+                return ConstantAccessExpression(int(integer.text))
+
         self.rollback()
 
 
@@ -269,10 +301,10 @@ class LoadAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadAssembly":
-        access = parser.try_consume_access_token(allow_tos=False)
+        access = parser.try_consume_access_token(allow_tos=False, allow_primitives=True)
 
         if access is None:
-            raise SyntaxError
+            raise SyntaxError(parser.try_inspect())
 
         return cls(access)
 

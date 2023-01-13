@@ -27,3 +27,4 @@ Expressions can be added as certain parameters to instructions to use instead of
   - %: top of stack (in most cases the default when not provided)
   - \<access>[\<index or expression>]: value by [] operator
 - OP instruction
+- A string literal with " as quotes, and \\" for escaping
