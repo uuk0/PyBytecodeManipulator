@@ -15,7 +15,7 @@ for cross-version support.
 * STORE_GLOBAL \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the global variable
 * LOAD_FAST \<name or index>: pushes the local variable on the stack
 * STORE_FAST \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the local variable
-* LOAD_CONST \<value>
+* LOAD_CONST \<value> [-> <target>]
 * POP [<count = 1>]: Pops 'count' elements from the stack and discards them
 
 ## Expressions

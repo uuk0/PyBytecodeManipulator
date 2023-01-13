@@ -51,8 +51,8 @@ class AbstractSourceExpression(AbstractExpression, ABC):
 class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
 
-    def __init__(self, name_token: IdentifierToken | IntegerToken):
-        self.name_token = name_token
+    def __init__(self, name_token: IdentifierToken | IntegerToken | str):
+        self.name_token = name_token if not isinstance(name_token, str) else IdentifierToken(name_token)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.name_token == other.name_token
@@ -264,7 +264,7 @@ class Parser(AbstractParser):
         if self.try_consume(SpecialToken("[")):
             # Consume either an Integer or a expression
             if not (index := self.try_parse_data_source(allow_primitives=True, allow_tos=allow_tos, include_bracket=False)):
-                index = self.consume(IntegerToken)
+                raise SyntaxError(self.try_inspect())
 
             self.consume(SpecialToken("]"))
             return SubscriptionAccessExpression(expr, index)
@@ -517,24 +517,35 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         if not isinstance(value, ConstantAccessExpression):
             raise SyntaxError(value)
 
-        return cls(value)
+        if parser.try_consume_multi(
+            [
+                SpecialToken("-"),
+                SpecialToken(">"),
+            ]
+        ):
+            target = parser.try_consume_access_token()
+        else:
+            target = None
 
-    def __init__(self, value: ConstantAccessExpression):
+        return cls(value, target)
+
+    def __init__(self, value: ConstantAccessExpression, target: AbstractAccessExpression | None = None):
         self.value = value
+        self.target = target
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.value == other.value
+        return type(self) == type(other) and self.value == other.value and self.target == other.target
 
     def __repr__(self):
-        return f"LOAD_CONST({self.value.value})"
+        return f"LOAD_CONST({self.value.value}{', ' + repr(self.target) if self.target else ''})"
 
     def copy(self) -> "LoadConstAssembly":
-        return LoadConstAssembly(self.value)
+        return LoadConstAssembly(self.value, self.target)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return [
             Instruction(function, -1, "LOAD_CONST", self.value.value)
-        ]
+        ] + (self.target.emit_bytecodes(function) if self.target else [])
 
 
 @Parser.register

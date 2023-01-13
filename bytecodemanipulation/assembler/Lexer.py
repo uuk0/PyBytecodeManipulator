@@ -14,7 +14,7 @@ from code_parser.lexers.common import (
 )
 
 
-SPECIAL_CHARS = "@$+-~/%?;[]{}()"
+SPECIAL_CHARS = "@$+-~/%?;[]{}()<>"
 
 
 class SpecialToken(AbstractToken):

@@ -52,20 +52,21 @@ class TestParser(TestCase):
             CompoundExpression([
                 StoreFastAssembly(IdentifierToken("test")),
                 StoreFastAssembly(IdentifierToken("test")),
-                StoreFastAssembly(IdentifierToken("test"), GlobalAccessExpression(IdentifierToken("test"))),
-                StoreFastAssembly(IdentifierToken("test"), LocalAccessExpression(IdentifierToken("test"))),
+                StoreFastAssembly(IdentifierToken("test"), GlobalAccessExpression("test")),
+                StoreFastAssembly(IdentifierToken("test"), LocalAccessExpression("test")),
                 StoreFastAssembly(IdentifierToken("test"), TopOfStackAccessExpression()),
             ]),
             expr
         )
 
     def test_load_const(self):
-        expr = Parser("LOAD_CONST 10\nLOAD_CONST \"Hello World!\"").parse()
+        expr = Parser("LOAD_CONST 10\nLOAD_CONST \"Hello World!\"\nLOAD_CONST 10 -> @test").parse()
 
         self.assertEqual(
             CompoundExpression([
                 LoadConstAssembly(ConstantAccessExpression(10)),
                 LoadConstAssembly(ConstantAccessExpression("Hello World!")),
+                LoadConstAssembly(ConstantAccessExpression(10), GlobalAccessExpression("test"))
             ]),
             expr
         )
@@ -77,8 +78,8 @@ class TestParser(TestCase):
             CompoundExpression([
                 LoadAssembly(GlobalAccessExpression(IdentifierToken("test"))),
                 LoadAssembly(LocalAccessExpression(IdentifierToken("test"))),
-                LoadAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), ConstantAccessExpression(10))),
-                LoadAssembly(SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), ConstantAccessExpression(20))),
+                LoadAssembly(SubscriptionAccessExpression(GlobalAccessExpression("global"), ConstantAccessExpression(10))),
+                LoadAssembly(SubscriptionAccessExpression(LocalAccessExpression("local"), ConstantAccessExpression(20))),
                 LoadAssembly(ConstantAccessExpression("hello")),
             ]),
             expr
@@ -89,10 +90,10 @@ class TestParser(TestCase):
 
         self.assertEqual(
             CompoundExpression([
-                StoreAssembly(GlobalAccessExpression(IdentifierToken("test"))),
-                StoreAssembly(LocalAccessExpression(IdentifierToken("test"))),
-                StoreAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), IntegerToken("10"))),
-                StoreAssembly(SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), IntegerToken("20"))),
+                StoreAssembly(GlobalAccessExpression("test")),
+                StoreAssembly(LocalAccessExpression("test")),
+                StoreAssembly(SubscriptionAccessExpression(GlobalAccessExpression("global"), IntegerToken("10"))),
+                StoreAssembly(SubscriptionAccessExpression(LocalAccessExpression("local"), IntegerToken("20"))),
             ]),
             expr
         )
@@ -101,9 +102,9 @@ class TestParser(TestCase):
 
         self.assertEqual(
             CompoundExpression([
-                StoreAssembly(GlobalAccessExpression(IdentifierToken("test")), LocalAccessExpression(IdentifierToken("test"))),
-                StoreAssembly(LocalAccessExpression(IdentifierToken("test")), GlobalAccessExpression(IdentifierToken("global"))),
-                StoreAssembly(SubscriptionAccessExpression(GlobalAccessExpression(IdentifierToken("global")), IntegerToken("10")), SubscriptionAccessExpression(LocalAccessExpression(IdentifierToken("local")), IntegerToken("10"))),
+                StoreAssembly(GlobalAccessExpression("test"), LocalAccessExpression("test")),
+                StoreAssembly(LocalAccessExpression("test"), GlobalAccessExpression("global")),
+                StoreAssembly(SubscriptionAccessExpression(GlobalAccessExpression("global"), IntegerToken("10")), SubscriptionAccessExpression(LocalAccessExpression("local"), IntegerToken("10"))),
             ]),
             expr
         )
