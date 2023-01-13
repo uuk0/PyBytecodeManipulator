@@ -1,7 +1,12 @@
 from unittest import TestCase
-from bytecodemanipulation.assembler.Parser import *
-from code_parser.parsers.common import IdentifierExpression
-from code_parser.lexers.common import IdentifierToken
+
+try:
+    from bytecodemanipulation.assembler.Parser import *
+    from code_parser.parsers.common import IdentifierExpression
+    from code_parser.lexers.common import IdentifierToken
+except ImportError:
+    from bytecodemanipulation.assembler.util.parser import IdentifierExpression
+    from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 
 
 class TestParser(TestCase):

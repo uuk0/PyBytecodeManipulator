@@ -1,17 +1,31 @@
 import string
 import typing
 
-from code_parser.lexers.common import (
-    AbstractLexer,
-    IntegerToken,
-    FloatToken,
-    BinaryOperatorToken,
-    BracketToken,
-    IdentifierToken,
-    StringLiteralToken,
-    CommentToken,
-    AbstractToken,
-)
+try:
+    from code_parser.lexers.common import (
+        AbstractLexer,
+        IntegerToken,
+        FloatToken,
+        BinaryOperatorToken,
+        BracketToken,
+        IdentifierToken,
+        StringLiteralToken,
+        CommentToken,
+        AbstractToken,
+    )
+
+except ImportError:
+    from bytecodemanipulation.assembler.util.tokenizer import (
+        AbstractLexer,
+        IntegerToken,
+        FloatToken,
+        BinaryOperatorToken,
+        BracketToken,
+        IdentifierToken,
+        StringLiteralToken,
+        CommentToken,
+        AbstractToken,
+    )
 
 
 SPECIAL_CHARS = "@$+-~/%?;[]{}()<>"

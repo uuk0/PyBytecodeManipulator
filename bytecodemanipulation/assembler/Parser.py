@@ -7,8 +7,13 @@ from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 
 from bytecodemanipulation.assembler.Lexer import Lexer, SpecialToken, StringLiteralToken
-from code_parser.lexers.common import AbstractToken, CommentToken, IdentifierToken, BinaryOperatorToken, IntegerToken, FloatToken, BracketToken
-from code_parser.parsers.common import AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression
+
+try:
+    from code_parser.lexers.common import AbstractToken, CommentToken, IdentifierToken, BinaryOperatorToken, IntegerToken, FloatToken, BracketToken
+    from code_parser.parsers.common import AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression
+except ImportError:
+    from bytecodemanipulation.assembler.util.tokenizer import (AbstractToken, CommentToken, IdentifierToken, BinaryOperatorToken, IntegerToken, FloatToken, BracketToken)
+    from bytecodemanipulation.assembler.util.parser import (AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression)
 
 
 class CompoundExpression(AbstractExpression):
