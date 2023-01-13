@@ -308,22 +308,33 @@ class LoadAssembly(AbstractAssemblyInstruction):
         if access is None:
             raise SyntaxError(parser.try_inspect())
 
-        return cls(access)
+        if parser.try_consume_multi(
+            [
+                SpecialToken("-"),
+                SpecialToken(">"),
+            ]
+        ):
+            target = parser.try_consume_access_token()
+        else:
+            target = None
 
-    def __init__(self, access_token: AbstractAccessExpression):
+        return cls(access, target)
+
+    def __init__(self, access_token: AbstractAccessExpression, target: AbstractAccessExpression | None = None):
         self.access_token = access_token
+        self.target = target
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.access_token == other.access_token
+        return type(self) == type(other) and self.access_token == other.access_token and self.target == other.target
 
     def __repr__(self):
-        return f"LOAD({self.access_token})"
+        return f"LOAD({self.access_token}{', ' + repr(self.target) if self.target else ''})"
 
     def copy(self) -> "LoadAssembly":
-        return LoadAssembly(self.access_token)
+        return LoadAssembly(self.access_token, self.target)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return self.access_token.emit_bytecodes(function)
+        return self.access_token.emit_bytecodes(function) + (self.target.emit_bytecodes(function) if self.target else [])
 
 
 @Parser.register

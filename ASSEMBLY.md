@@ -6,7 +6,7 @@ for cross-version support.
 
 ## Meta Instructions
 
-* LOAD \<expression>: Pushes the global or local variable to the stack
+* LOAD \<expression> [-> \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> [(\<expression>)]: stores TOS or value of 'expression' in the local or global variable
 
 ## Python-Pure Instructions
