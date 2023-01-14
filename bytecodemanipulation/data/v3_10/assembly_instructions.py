@@ -106,7 +106,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "@": Opcodes.BINARY_MATRIX_MULTIPLY,
 
         "is": (Opcodes.IS_OP, 0),
+        "nis": (Opcodes.IS_OP, 1),
         "in": (Opcodes.CONTAINS_OP, 0),
+        "nin": (Opcodes.CONTAINS_OP, 1),
 
         "<": (Opcodes.COMPARE_OP, 0),
         "<=": (Opcodes.COMPARE_OP, 1),
@@ -114,7 +116,21 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "!=": (Opcodes.COMPARE_OP, 3),
         ">": (Opcodes.COMPARE_OP, 4),
         ">=": (Opcodes.COMPARE_OP, 5),
+
+        # todo: is there a better way?
+        "xor": (Opcodes.COMPARE_OP, 3),
+        "xnor": (Opcodes.COMPARE_OP, 2),
     }
+
+    # todo: parse and implement
+    SINGLE_OPS: typing.Dict[str, typing.Tuple[int, int] | int] = {
+        "-": Opcodes.UNARY_NEGATIVE,
+        "+": Opcodes.UNARY_POSITIVE,
+        "~": Opcodes.UNARY_INVERT,
+        "not": Opcodes.UNARY_NOT,
+    }
+
+    # todo: and, or, nand, nor, inplace variants
 
     class IOperation(abc.ABC):
         def copy(self):
@@ -180,33 +196,37 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         else:
             first, second = parser[0], None
 
-        if not isinstance(first, SpecialToken):
-            first = None
+        if isinstance(first, IdentifierToken) and first.text in cls.BINARY_OPS:
+            OP_NAME = first.text
+            parser.consume(first)
+        else:
+            if not isinstance(first, SpecialToken):
+                first = None
 
-        if not isinstance(second, SpecialToken):
-            second = None
+            if not isinstance(second, SpecialToken):
+                second = None
 
-        if first is None:
-            print("lhs is None")
-            parser.rollback()
-            return
-
-        OP_NAME = None
-
-        if second:
-            key = first.text + second.text
-
-            if key in cls.BINARY_OPS:
-                OP_NAME = key
-                parser.consume(first)
-                parser.consume(second)
-
-        if OP_NAME is None:
-            if first.text in cls.BINARY_OPS:
-                OP_NAME = first.text
-                parser.consume(first)
-            else:
+            if first is None:
+                print("lhs is None")
+                parser.rollback()
                 return
+
+            OP_NAME = None
+
+            if second:
+                key = first.text + second.text
+
+                if key in cls.BINARY_OPS:
+                    OP_NAME = key
+                    parser.consume(first)
+                    parser.consume(second)
+
+            if OP_NAME is None:
+                if first.text in cls.BINARY_OPS:
+                    OP_NAME = first.text
+                    parser.consume(first)
+                else:
+                    return
 
         rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
 
