@@ -50,7 +50,10 @@ class _OptimisationContainer:
             target.run_optimisers(False)
 
     @classmethod
-    def get_for_target(cls, target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType):
+    def get_for_target(
+        cls,
+        target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType,
+    ):
 
         if hasattr(target, "_OPTIMISER_CONTAINER"):
             return target._OPTIMISER_CONTAINER
@@ -69,7 +72,10 @@ class _OptimisationContainer:
 
         return container
 
-    def __init__(self, target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType):
+    def __init__(
+        self,
+        target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType,
+    ):
         self.target = target
         self.parents: typing.List["_OptimisationContainer"] = []
         self.children: typing.List["_OptimisationContainer"] = []

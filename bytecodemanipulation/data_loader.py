@@ -79,8 +79,8 @@ ASSEMBLY_MODULE = {}
 
 
 def load_assembly_instructions():
-    if os.path.exists(folder+"/assembly_instructions.py"):
-        exec(open(folder+"/assembly_instructions.py").read(), ASSEMBLY_MODULE)
+    if os.path.exists(folder + "/assembly_instructions.py"):
+        exec(open(folder + "/assembly_instructions.py").read(), ASSEMBLY_MODULE)
 
 
 def init():

@@ -53,8 +53,8 @@ def compare_optimized_results(
 
     if not eq:
         local = os.path.dirname(__file__)
-        mutable.dump_info(local+"/target.json")
-        mutable.dump_info(local+"/ideal.json")
+        mutable.dump_info(local + "/target.json")
+        mutable.dump_info(local + "/ideal.json")
 
         print("target")
         dis.dis(target)

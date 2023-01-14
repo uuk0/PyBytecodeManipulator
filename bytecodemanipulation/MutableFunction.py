@@ -188,9 +188,11 @@ class Instruction:
             return False
 
         return self.opcode == other.opcode and (
-            ((self.arg_value == other.arg_value)
-            if not isinstance(self.arg_value, Instruction)
-            else self.arg_value.lossy_eq(other.arg_value))
+            (
+                (self.arg_value == other.arg_value)
+                if not isinstance(self.arg_value, Instruction)
+                else self.arg_value.lossy_eq(other.arg_value)
+            )
             if self.arg_value is not None and other.arg_value is not None
             else True
         )

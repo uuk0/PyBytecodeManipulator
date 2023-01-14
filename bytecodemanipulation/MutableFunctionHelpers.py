@@ -32,7 +32,9 @@ class MethodInvocationInfo:
                 next(call_instruction.trace_stack_position(i))
                 for i in range(call_instruction.arg - 1, -1, -1)
             ]
-            self.function_load = call_instruction.trace_normalized_stack_position(call_instruction.arg)
+            self.function_load = call_instruction.trace_normalized_stack_position(
+                call_instruction.arg
+            )
         else:
             raise NotImplementedError(call_instruction)
 
@@ -58,7 +60,10 @@ class MethodInvocationInfo:
 
     def is_argument_mutated(self, name_or_index: str | int) -> bool:
         for guarantee in self.get_guarantees():
-            if isinstance(guarantee, Guarantees.ArgIsNotMutated) and (guarantee.arg_index == name_or_index or guarantee.arg_name == name_or_index):
+            if isinstance(guarantee, Guarantees.ArgIsNotMutated) and (
+                guarantee.arg_index == name_or_index
+                or guarantee.arg_name == name_or_index
+            ):
                 return False
 
         return True

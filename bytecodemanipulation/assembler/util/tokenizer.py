@@ -74,7 +74,11 @@ class StringLiteralToken(AbstractToken):
         self.quotes = quotes
 
     def __eq__(self, other):
-        return type(other) == type(self) and self.text == other.text and self.quotes == other.quotes
+        return (
+            type(other) == type(self)
+            and self.text == other.text
+            and self.quotes == other.quotes
+        )
 
     def __repr__(self):
         return f"{type(self).__name__}({repr(self.text)}, {self.quotes})"
@@ -92,6 +96,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
     Contains handling code for a linear tokenizer,
     and functions for collecting text easily.
     """
+
     INCLUDE_LINE_INFO = True
 
     def __init__(self, text: str):
@@ -206,7 +211,9 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
         return text
 
-    def consume_until(self, predicate: typing.Callable[[str, str], bool] | str, include=True):
+    def consume_until(
+        self, predicate: typing.Callable[[str, str], bool] | str, include=True
+    ):
         """
         Consumes chars while predicate(text, char) returns False
 
@@ -253,7 +260,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                 continue
 
             if self.INCLUDE_LINE_INFO:
-                partial = self.text[old_cursor - skipped:self.cursor]
+                partial = self.text[old_cursor - skipped : self.cursor]
 
                 if "\n" in partial:
                     self.old_line_number += partial.count("\n")

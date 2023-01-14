@@ -159,12 +159,17 @@ class TestOptimiserUtil(TestCase):
             random.randrange()
 
         def compare():
-            raise TypeError("Random.randrange() missing 1 required positional argument: 'start'")
+            raise TypeError(
+                "Random.randrange() missing 1 required positional argument: 'start'"
+            )
 
         try:
             target()
         except TypeError as e:
-            self.assertEqual("Random.randrange() missing 1 required positional argument: 'start'", e.args[0])
+            self.assertEqual(
+                "Random.randrange() missing 1 required positional argument: 'start'",
+                e.args[0],
+            )
         else:
             self.assertTrue(False, "should not be reached!")
 
@@ -180,7 +185,9 @@ class TestOptimiserUtil(TestCase):
         try:
             target()
         except TypeError as e:
-            self.assertEqual("'float' object cannot be interpreted as an integer", e.args[0])
+            self.assertEqual(
+                "'float' object cannot be interpreted as an integer", e.args[0]
+            )
         else:
             self.assertTrue(False, "should not be reached!")
 
@@ -196,7 +203,9 @@ class TestOptimiserUtil(TestCase):
         try:
             target()
         except TypeError as e:
-            self.assertEqual("'str' object cannot be interpreted as an integer", e.args[0])
+            self.assertEqual(
+                "'str' object cannot be interpreted as an integer", e.args[0]
+            )
         else:
             self.assertTrue(False, "should not be reached!")
 

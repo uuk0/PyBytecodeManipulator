@@ -87,8 +87,10 @@ def create_empty_tuple(container: SpecializationContainer):
 
 
 def _check_int(c) -> bool:
-    if isinstance(c, int): return True
-    if isinstance(c, float): return int(c) == c
+    if isinstance(c, int):
+        return True
+    if isinstance(c, float):
+        return int(c) == c
     return False
 
 
@@ -102,30 +104,76 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
     # Argument length checks and type checks
     if len(sources) in (1, 2, 3):
         if sources[0].opcode == Opcodes.LOAD_CONST:
-            container.replace_with_raise_exception_if(not _check_int(sources[0].arg_value), lambda: TypeError(f"'{type(sources[0].arg_value).__name__}' object cannot be interpreted as an integer"), arg=0)
+            container.replace_with_raise_exception_if(
+                not _check_int(sources[0].arg_value),
+                lambda: TypeError(
+                    f"'{type(sources[0].arg_value).__name__}' object cannot be interpreted as an integer"
+                ),
+                arg=0,
+            )
 
         if len(sources) > 1 and sources[1].opcode == Opcodes.LOAD_CONST:
-            container.replace_with_raise_exception_if(not _check_int(sources[1].arg_value), lambda: TypeError(f"'{type(sources[1].arg_value).__name__}' object cannot be interpreted as an integer"), arg=1)
+            container.replace_with_raise_exception_if(
+                not _check_int(sources[1].arg_value),
+                lambda: TypeError(
+                    f"'{type(sources[1].arg_value).__name__}' object cannot be interpreted as an integer"
+                ),
+                arg=1,
+            )
 
         if len(sources) > 2 and sources[2].opcode == Opcodes.LOAD_CONST:
-            container.replace_with_raise_exception_if(not _check_int(sources[2].arg_value), lambda: TypeError(f"'{type(sources[2].arg_value).__name__}' object cannot be interpreted as an integer"), arg=2)
+            container.replace_with_raise_exception_if(
+                not _check_int(sources[2].arg_value),
+                lambda: TypeError(
+                    f"'{type(sources[2].arg_value).__name__}' object cannot be interpreted as an integer"
+                ),
+                arg=2,
+            )
 
     elif len(sources) == 0:
         if container.method_call_descriptor.lookup_method_instr.arg_value == range:
-            container.replace_with_raise_exception(TypeError("range expected at least 1 argument, got 0"))
-        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.randrange:
-            container.replace_with_raise_exception(TypeError("Random.randrange() missing 1 required positional argument: 'start'"))
-        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.Random.randrange:
+            container.replace_with_raise_exception(
+                TypeError("range expected at least 1 argument, got 0")
+            )
+        elif (
+            container.method_call_descriptor.lookup_method_instr.arg_value
+            == random.randrange
+        ):
+            container.replace_with_raise_exception(
+                TypeError(
+                    "Random.randrange() missing 1 required positional argument: 'start'"
+                )
+            )
+        elif (
+            container.method_call_descriptor.lookup_method_instr.arg_value
+            == random.Random.randrange
+        ):
             pass
         else:
             raise NotImplementedError
     else:
         if container.method_call_descriptor.lookup_method_instr.arg_value == range:
-            container.replace_with_raise_exception(TypeError(f"range expected at most 3 arguments, got {len(sources)}"))
-        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.randrange:
-            container.replace_with_raise_exception(TypeError(f"Random.randrange() takes from 2 to 4 positional arguments but {len(sources)} were given"))
-        elif container.method_call_descriptor.lookup_method_instr.arg_value == random.Random.randrange:
-            container.replace_with_raise_exception(TypeError(f"Random.randrange() takes from 2 to 4 positional arguments but {len(sources)} were given"))
+            container.replace_with_raise_exception(
+                TypeError(f"range expected at most 3 arguments, got {len(sources)}")
+            )
+        elif (
+            container.method_call_descriptor.lookup_method_instr.arg_value
+            == random.randrange
+        ):
+            container.replace_with_raise_exception(
+                TypeError(
+                    f"Random.randrange() takes from 2 to 4 positional arguments but {len(sources)} were given"
+                )
+            )
+        elif (
+            container.method_call_descriptor.lookup_method_instr.arg_value
+            == random.Random.randrange
+        ):
+            container.replace_with_raise_exception(
+                TypeError(
+                    f"Random.randrange() takes from 2 to 4 positional arguments but {len(sources)} were given"
+                )
+            )
         else:
             raise NotImplementedError
 

@@ -9,18 +9,54 @@ from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.assembler.Lexer import Lexer, SpecialToken, StringLiteralToken
 
 try:
-    from code_parser.lexers.common import AbstractToken, CommentToken, IdentifierToken, BinaryOperatorToken, IntegerToken, FloatToken, BracketToken
-    from code_parser.parsers.common import AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression
+    from code_parser.lexers.common import (
+        AbstractToken,
+        CommentToken,
+        IdentifierToken,
+        BinaryOperatorToken,
+        IntegerToken,
+        FloatToken,
+        BracketToken,
+    )
+    from code_parser.parsers.common import (
+        AbstractParser,
+        AbstractExpression,
+        NumericExpression,
+        BracketExpression,
+        BinaryExpression,
+        IdentifierExpression,
+    )
 except ImportError:
-    from bytecodemanipulation.assembler.util.tokenizer import (AbstractToken, CommentToken, IdentifierToken, BinaryOperatorToken, IntegerToken, FloatToken, BracketToken)
-    from bytecodemanipulation.assembler.util.parser import (AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression)
+    from bytecodemanipulation.assembler.util.tokenizer import (
+        AbstractToken,
+        CommentToken,
+        IdentifierToken,
+        BinaryOperatorToken,
+        IntegerToken,
+        FloatToken,
+        BracketToken,
+    )
+    from bytecodemanipulation.assembler.util.parser import (
+        AbstractParser,
+        AbstractExpression,
+        NumericExpression,
+        BracketExpression,
+        BinaryExpression,
+        IdentifierExpression,
+    )
 
 
 class IAssemblyStructureVisitable(ABC):
-    def visit_parts(self, visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any]):
+    def visit_parts(
+        self,
+        visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any],
+    ):
         raise NotImplementedError
 
-    def visit_assembly_instructions(self, visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any]):
+    def visit_assembly_instructions(
+        self,
+        visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any],
+    ):
         raise NotImplementedError
 
 
@@ -44,22 +80,21 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return sum((child.emit_bytecodes(function) for child in self.children), [])
 
-    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
         return visitor(
-            self,
-            tuple([
-                child.visit_parts(visitor)
-                for child in self.children
-            ])
+            self, tuple([child.visit_parts(visitor) for child in self.children])
         )
 
-    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+    def visit_assembly_instructions(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
         return visitor(
             self,
-            tuple([
-                child.visit_assemby_instructions(visitor)
-                for child in self.children
-            ])
+            tuple(
+                [child.visit_assemby_instructions(visitor) for child in self.children]
+            ),
         )
 
 
@@ -73,10 +108,14 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         raise NotImplementedError
 
-    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]) -> tuple:
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ) -> tuple:
         return visitor(self, tuple())
 
-    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+    def visit_assembly_instructions(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
         return visitor(self, tuple())
 
 
@@ -84,13 +123,19 @@ class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         raise NotImplementedError
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
         raise NotImplementedError
 
-    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
         return visitor(self, tuple())
 
-    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+    def visit_assembly_instructions(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
         pass
 
 
@@ -98,7 +143,11 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
 
     def __init__(self, name_token: IdentifierToken | IntegerToken | str):
-        self.name_token = name_token if not isinstance(name_token, str) else IdentifierToken(name_token)
+        self.name_token = (
+            name_token
+            if not isinstance(name_token, str)
+            else IdentifierToken(name_token)
+        )
 
     def __eq__(self, other):
         return type(self) == type(other) and self.name_token == other.name_token
@@ -119,19 +168,17 @@ class GlobalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [
-            Instruction(function, -1, "LOAD_GLOBAL", value)
-        ]
+        return [Instruction(function, -1, "LOAD_GLOBAL", value)]
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
             value = int(value)
 
-        return [
-            Instruction(function, -1, "STORE_GLOBAL", value)
-        ]
+        return [Instruction(function, -1, "STORE_GLOBAL", value)]
 
 
 class LocalAccessExpression(AbstractAccessExpression):
@@ -143,19 +190,17 @@ class LocalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [
-            Instruction(function, -1, "LOAD_FAST", value)
-        ]
+        return [Instruction(function, -1, "LOAD_FAST", value)]
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
             value = int(value)
 
-        return [
-            Instruction(function, -1, "STORE_FAST", value)
-        ]
+        return [Instruction(function, -1, "STORE_FAST", value)]
 
 
 class TopOfStackAccessExpression(AbstractAccessExpression):
@@ -176,7 +221,9 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return []
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
         return []
 
 
@@ -194,21 +241,29 @@ class ConstantAccessExpression(AbstractAccessExpression):
         return type(self)(copy.deepcopy(self.value))
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return [
-            Instruction(function, -1, "LOAD_CONST", self.value)
-        ]
+        return [Instruction(function, -1, "LOAD_CONST", self.value)]
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
         raise SyntaxError("Cannot assign to a constant")
 
 
 class SubscriptionAccessExpression(AbstractAccessExpression):
-    def __init__(self, base_expr: "AbstractAccessExpression", index_expr: AbstractAccessExpression | IntegerToken):
+    def __init__(
+        self,
+        base_expr: "AbstractAccessExpression",
+        index_expr: AbstractAccessExpression | IntegerToken,
+    ):
         self.base_expr = base_expr
         self.index_expr = index_expr
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.base_expr == other.base_expr and self.index_expr == self.index_expr
+        return (
+            type(self) == type(other)
+            and self.base_expr == other.base_expr
+            and self.index_expr == self.index_expr
+        )
 
     def __repr__(self):
         return f"{self.base_expr}[{self.index_expr}]"
@@ -217,26 +272,59 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         return type(self)(self.base_expr.copy(), self.index_expr.copy())
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return self.base_expr.emit_bytecodes(function) + (self.index_expr.emit_bytecodes(function) if isinstance(self.index_expr, AbstractAccessExpression) else [Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))]) + [
-            Instruction(function, -1, Opcodes.BINARY_SUBSCR)
-        ]
+        return (
+            self.base_expr.emit_bytecodes(function)
+            + (
+                self.index_expr.emit_bytecodes(function)
+                if isinstance(self.index_expr, AbstractAccessExpression)
+                else [
+                    Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))
+                ]
+            )
+            + [Instruction(function, -1, Opcodes.BINARY_SUBSCR)]
+        )
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return self.base_expr.emit_bytecodes(function) + (self.index_expr.emit_bytecodes(function) if isinstance(self.index_expr, AbstractAccessExpression) else [Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))]) + [
-            Instruction(function, -1, Opcodes.STORE_SUBSCR)
-        ]
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
+        return (
+            self.base_expr.emit_bytecodes(function)
+            + (
+                self.index_expr.emit_bytecodes(function)
+                if isinstance(self.index_expr, AbstractAccessExpression)
+                else [
+                    Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))
+                ]
+            )
+            + [Instruction(function, -1, Opcodes.STORE_SUBSCR)]
+        )
 
-    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
-        return visitor(self, (self.base_expr.visit_parts(visitor), self.index_expr.visit_parts(visitor)))
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
+        return visitor(
+            self,
+            (self.base_expr.visit_parts(visitor), self.index_expr.visit_parts(visitor)),
+        )
 
 
 class AttributeAccessExpression(AbstractAccessExpression):
-    def __init__(self, root: AbstractAccessExpression, name_token: IdentifierToken | str):
+    def __init__(
+        self, root: AbstractAccessExpression, name_token: IdentifierToken | str
+    ):
         self.root = root
-        self.name_token = name_token if isinstance(name_token, IdentifierToken) else IdentifierToken(name_token)
+        self.name_token = (
+            name_token
+            if isinstance(name_token, IdentifierToken)
+            else IdentifierToken(name_token)
+        )
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.root == other.root and self.name_token == other.name_token
+        return (
+            type(self) == type(other)
+            and self.root == other.root
+            and self.name_token == other.name_token
+        )
 
     def __repr__(self):
         return f"{self.root}.{self.name_token.text}"
@@ -245,12 +333,20 @@ class AttributeAccessExpression(AbstractAccessExpression):
         return AttributeAccessExpression(self.root.copy(), self.name_token)
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return self.root.emit_bytecodes(function) + [Instruction(function, -1, "LOAD_ATTR", self.name_token.text)]
+        return self.root.emit_bytecodes(function) + [
+            Instruction(function, -1, "LOAD_ATTR", self.name_token.text)
+        ]
 
-    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
-        return self.root.emit_bytecodes(function) + [Instruction(function, -1, "STORE_ATTR", self.name_token.text)]
+    def emit_store_bytecodes(
+        self, function: MutableFunction
+    ) -> typing.List[Instruction]:
+        return self.root.emit_bytecodes(function) + [
+            Instruction(function, -1, "STORE_ATTR", self.name_token.text)
+        ]
 
-    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
         return visitor(self, (self.root.visit_parts(visitor),))
 
 
@@ -274,9 +370,14 @@ class Parser(AbstractParser):
 
     def parse_body(self) -> CompoundExpression:
         self.consume(SpecialToken("{"))
-        return self.parse_while_predicate(lambda: not self.try_consume(SpecialToken("}")), eof_error="Expected '}', got EOF")
+        return self.parse_while_predicate(
+            lambda: not self.try_consume(SpecialToken("}")),
+            eof_error="Expected '}', got EOF",
+        )
 
-    def parse_while_predicate(self, predicate: typing.Callable[[], bool], eof_error: str = None) -> CompoundExpression:
+    def parse_while_predicate(
+        self, predicate: typing.Callable[[], bool], eof_error: str = None
+    ) -> CompoundExpression:
         root = CompoundExpression()
 
         while predicate():
@@ -306,14 +407,18 @@ class Parser(AbstractParser):
 
             print(self[-1].line, self[-1], expr.line)
 
-            raise SyntaxError(f"Expected <newline> or ';' after assembly instruction, got {self.try_inspect()}")
+            raise SyntaxError(
+                f"Expected <newline> or ';' after assembly instruction, got {self.try_inspect()}"
+            )
 
         if eof_error and not predicate():
             raise SystemError(eof_error)
 
         return root
 
-    def try_consume_access_token(self, allow_tos=True, allow_primitives=False, allow_op=True) -> AbstractAccessExpression | None:
+    def try_consume_access_token(
+        self, allow_tos=True, allow_primitives=False, allow_op=True
+    ) -> AbstractAccessExpression | None:
         start_token = self.try_inspect()
 
         if start_token is None:
@@ -355,7 +460,14 @@ class Parser(AbstractParser):
 
         if self.try_consume(SpecialToken("[")):
             # Consume either an Integer or a expression
-            if not (index := self.try_parse_data_source(allow_primitives=True, allow_tos=allow_tos, include_bracket=False, allow_op=allow_op)):
+            if not (
+                index := self.try_parse_data_source(
+                    allow_primitives=True,
+                    allow_tos=allow_tos,
+                    include_bracket=False,
+                    allow_op=allow_op,
+                )
+            ):
                 raise SyntaxError(self.try_inspect())
 
             while self.try_consume(SpecialToken(".")):
@@ -366,14 +478,22 @@ class Parser(AbstractParser):
 
         return expr
 
-    def try_parse_data_source(self, allow_tos=True, allow_primitives=False, include_bracket=True, allow_op=True) -> AbstractSourceExpression | None:
+    def try_parse_data_source(
+        self,
+        allow_tos=True,
+        allow_primitives=False,
+        include_bracket=True,
+        allow_op=True,
+    ) -> AbstractSourceExpression | None:
         self.save()
 
         if include_bracket and not self.try_consume(SpecialToken("(")):
             self.rollback()
             return
 
-        if access := self.try_consume_access_token(allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op):
+        if access := self.try_consume_access_token(
+            allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op
+        ):
             self.discard_save()
             if include_bracket:
                 self.consume(SpecialToken(")"))
@@ -389,4 +509,3 @@ class Parser(AbstractParser):
         print(self.try_inspect())
 
         self.rollback()
-

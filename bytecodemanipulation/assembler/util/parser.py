@@ -200,7 +200,9 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         super().__init__()
         self.tokens = tokens
 
-    def __getitem__(self, item: int | slice) -> AbstractToken | typing.List[AbstractToken] | None:
+    def __getitem__(
+        self, item: int | slice
+    ) -> AbstractToken | typing.List[AbstractToken] | None:
         if isinstance(item, int):
             index = self.cursor + item
 
@@ -214,7 +216,12 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
             stop = (self.cursor + item.stop) if item.stop else None
             step = item.step
 
-            if start < 0 or start >= len(self.tokens) or stop < 0 or stop >= len(self.tokens):
+            if (
+                start < 0
+                or start >= len(self.tokens)
+                or stop < 0
+                or stop >= len(self.tokens)
+            ):
                 return
 
             return self.tokens[start:stop:step]
@@ -290,7 +297,8 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
 
     def try_consume(
         self,
-        expected: AbstractToken | typing.Type[AbstractToken]
+        expected: AbstractToken
+        | typing.Type[AbstractToken]
         | typing.List[typing.Type[AbstractToken] | AbstractToken],
     ) -> AbstractToken | None:
         token: AbstractToken = self.try_inspect()
@@ -321,7 +329,14 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
 
         return token
 
-    def try_consume_multi(self, elements: typing.List[AbstractToken | typing.Type[AbstractToken] | typing.List[typing.Type[AbstractToken] | AbstractToken]]) -> typing.List[AbstractToken] | None:
+    def try_consume_multi(
+        self,
+        elements: typing.List[
+            AbstractToken
+            | typing.Type[AbstractToken]
+            | typing.List[typing.Type[AbstractToken] | AbstractToken]
+        ],
+    ) -> typing.List[AbstractToken] | None:
         self.save()
         parsed = []
 

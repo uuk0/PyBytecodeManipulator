@@ -46,12 +46,16 @@ class Lexer(AbstractLexer):
         self.had_newline = False
 
         if char == "#":
-            token = CommentToken(self.consume_until("\n", include=False).removesuffix("\r"))
+            token = CommentToken(
+                self.consume_until("\n", include=False).removesuffix("\r")
+            )
             return token
 
         # todo: special tokens
 
-        if char in string.digits or (char == "-" and self.try_inspect_multi(2)[1] in string.digits):
+        if char in string.digits or (
+            char == "-" and self.try_inspect_multi(2)[1] in string.digits
+        ):
             text = ""
             if self.try_consume("-"):
                 text += "."
@@ -69,24 +73,23 @@ class Lexer(AbstractLexer):
         if char in SPECIAL_CHARS:
             return SpecialToken(self.consume(char))
 
-        if char == "\"":
+        if char == '"':
             self.consume(char)
             text = ""
 
             escape_count = 0
-            while (c := self.try_inspect()) and (c != "\"" or escape_count % 2 == 1):
+            while (c := self.try_inspect()) and (c != '"' or escape_count % 2 == 1):
                 if c == "\\":
                     escape_count += 1
                 else:
                     escape_count = 0
                 text += c
                 self.consume(c)
-            self.consume("\"")
-            return StringLiteralToken(text, "\"")
+            self.consume('"')
+            return StringLiteralToken(text, '"')
 
         if char in string.whitespace:
             self.consume_while(string.whitespace)
             return
 
         raise SyntaxError(repr(char))
-
