@@ -19,6 +19,10 @@ for cross-version support.
 * LOAD_CONST \<value> | @\<const global source> [-> \<target>]: loads the constant onto TOS or into 'target'
 * POP [<count = 1>]: Pops 'count' elements from the stack and discards them
 
+## Python opcodes not having a corresponding assembly instruction
+
+* CALL_FUNCTION and related: automatically accessed via CALL
+
 ## Expressions
 
 Expressions can be added as certain parameters to instructions to use instead of TOS
@@ -31,5 +35,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - OP instruction
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer
+- \<expression>.\<name>: access an attribute of the expression
 
 TODO: float, list / tuple / set / map construction

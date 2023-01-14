@@ -186,6 +186,27 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         ]
 
 
+class AttributeAccessExpression(AbstractAccessExpression):
+    def __init__(self, root: AbstractAccessExpression, name_token: IdentifierToken | str):
+        self.root = root
+        self.name_token = name_token if isinstance(name_token, IdentifierToken) else IdentifierToken(name_token)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.root == other.root and self.name_token == other.name_token
+
+    def __repr__(self):
+        return f"{self.root}.{self.name_token.text}"
+
+    def copy(self) -> "AttributeAccessExpression":
+        return AttributeAccessExpression(self.root.copy(), self.name_token)
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return self.root.emit_bytecodes(function) + [Instruction(function, -1, "LOAD_ATTR", self.name_token.text)]
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return self.root.emit_bytecodes(function) + [Instruction(function, -1, "STORE_ATTR", self.name_token.text)]
+
+
 class Parser(AbstractParser):
     INSTRUCTIONS: typing.Dict[str, typing.Type[AbstractAssemblyInstruction]] = {}
 
@@ -266,10 +287,16 @@ class Parser(AbstractParser):
         else:
             return
 
+        while self.try_consume(SpecialToken(".")):
+            expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
+
         if self.try_consume(SpecialToken("[")):
             # Consume either an Integer or a expression
             if not (index := self.try_parse_data_source(allow_primitives=True, allow_tos=allow_tos, include_bracket=False)):
                 raise SyntaxError(self.try_inspect())
+
+            while self.try_consume(SpecialToken(".")):
+                expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
 
             self.consume(SpecialToken("]"))
             return SubscriptionAccessExpression(expr, index)
@@ -715,8 +742,10 @@ class CallAssembly(AbstractAssemblyInstruction):
         for arg in self.args:
             if isinstance(arg, CallAssembly.KwArg):
                 has_seen_kw_arg = True
+
             elif isinstance(arg, CallAssembly.KwArgStar):
                 has_seen_star_star = True
+
             elif isinstance(arg, CallAssembly.StarArg):
                 has_seen_star = True
 
