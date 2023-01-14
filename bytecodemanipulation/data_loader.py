@@ -11,7 +11,10 @@ from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 local = os.path.dirname(__file__)
 
 version = f"{sys.version_info.major}_{sys.version_info.minor}"
-folder = local + "/data/" + version
+folder = local + "/data/v" + version
+
+
+INIT_ASSEMBLY = True
 
 
 def load_opcode_data():
@@ -53,7 +56,7 @@ def load_builtin_spec():
         getattr(builtins, key) for key in builtin_spec["const_builtin_types"]
     ]
 
-    importlib.import_module("bytecodemanipulation.data." + version + ".specialize")
+    importlib.import_module("bytecodemanipulation.data.v" + version + ".specialize")
 
 
 def load_standard_library_annotations():
@@ -72,9 +75,20 @@ def load_standard_library_annotations():
             CONSTANT_BUILTINS.append(attr)
 
 
+ASSEMBLY_MODULE = {}
+
+
+def load_assembly_instructions():
+    if os.path.exists(folder+"/assembly_instructions.py"):
+        exec(open(folder+"/assembly_instructions.py").read(), ASSEMBLY_MODULE)
+
+
 def init():
     load_opcode_data()
     init_maps()
     load_instruction_spec()
     load_builtin_spec()
     load_standard_library_annotations()
+
+    if INIT_ASSEMBLY:
+        load_assembly_instructions()

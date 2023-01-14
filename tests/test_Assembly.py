@@ -1,12 +1,26 @@
+import typing
 from unittest import TestCase
 
+
+from bytecodemanipulation import data_loader
+data_loader.INIT_ASSEMBLY = False
+from bytecodemanipulation.assembler.Parser import *
+
 try:
-    from bytecodemanipulation.assembler.Parser import *
     from code_parser.parsers.common import IdentifierExpression
     from code_parser.lexers.common import IdentifierToken
 except ImportError:
     from bytecodemanipulation.assembler.util.parser import IdentifierExpression
     from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
+
+data_loader.load_assembly_instructions()
+
+
+if typing.TYPE_CHECKING:
+    from bytecodemanipulation.data.v3_10.assembly_instructions import *
+
+
+globals().update(data_loader.ASSEMBLY_MODULE)
 
 
 class TestParser(TestCase):
