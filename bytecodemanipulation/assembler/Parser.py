@@ -227,9 +227,9 @@ class Parser(AbstractParser):
 
     def parse_body(self) -> CompoundExpression:
         self.consume(SpecialToken("{"))
-        return self.parse_while_predicate(lambda: not self.consume(SpecialToken("}")))
+        return self.parse_while_predicate(lambda: not self.consume(SpecialToken("}")), eof_error="Expected '}', got EOF")
 
-    def parse_while_predicate(self, predicate: typing.Callable[[], bool]) -> CompoundExpression:
+    def parse_while_predicate(self, predicate: typing.Callable[[], bool], eof_error: str = None) -> CompoundExpression:
         root = CompoundExpression()
 
         while predicate():
@@ -260,6 +260,9 @@ class Parser(AbstractParser):
             print(self[-1].line, self[-1], expr.line)
 
             raise SyntaxError(f"Expected <newline> or ';' after assembly instruction, got {self.try_inspect()}")
+
+        if eof_error and not predicate():
+            raise SystemError(eof_error)
 
         return root
 
