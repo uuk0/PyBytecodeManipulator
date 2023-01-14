@@ -212,3 +212,27 @@ IF OP ($a == $b) {
             ]),
             expr,
         )
+
+    def test_while_expr(self):
+        expr = Parser("""
+WHILE @global {
+}
+
+WHILE $local {
+    STORE @global
+}
+
+WHILE OP ($a == $b) {
+    STORE @global
+}
+
+""").parse()
+
+        self.assertEqualList(
+            CompoundExpression([
+                WHILEAssembly(GlobalAccessExpression("global"), CompoundExpression([])),
+                WHILEAssembly(LocalAccessExpression("local"), CompoundExpression([StoreAssembly(GlobalAccessExpression("global"))])),
+                WHILEAssembly(OpAssembly(OpAssembly.BinaryOperation(LocalAccessExpression("a"), "==", LocalAccessExpression("b"))), CompoundExpression([StoreAssembly(GlobalAccessExpression("global"))])),
+            ]),
+            expr,
+        )

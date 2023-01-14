@@ -259,11 +259,47 @@ class IFAssembly(AbstractAssemblyInstruction):
         return type(self) == type(other) and self.source == other.source and self.body == other.body
 
     def __repr__(self):
-        return f"IF({self.source}) -> {self.body}"
+        return f"IF({self.source}) -> {{{self.body}}}"
 
     def emit_bytecodes(self, function: MutableFunction):
         end = Instruction(function, -1, "NOP")
         return self.source.emit_bytecodes(function) + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)] + self.body.emit_bytecodes(function) + [end]
+
+
+@Parser.register
+class WHILEAssembly(AbstractAssemblyInstruction):
+    # WHILE <expression> '{' <body> '}'
+    NAME = "WHILE"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "IFAssembly":
+        return cls(parser.try_parse_data_source(allow_primitives=True, include_bracket=False), parser.parse_body())
+
+    def __init__(self, source: AbstractSourceExpression, body: CompoundExpression):
+        self.source = source
+        self.body = body
+
+    def copy(self):
+        return type(self)(self.source.copy(), self.body.copy())
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.source == other.source and self.body == other.body
+
+    def __repr__(self):
+        return f"WHILE({self.source}) -> {{{self.body}}}"
+
+    def emit_bytecodes(self, function: MutableFunction):
+        end = Instruction(function, -1, "NOP")
+
+        CONDITION = self.source.emit_bytecodes(function)
+
+        HEAD = Instruction(function, -1, "POP_JUMP_IF_FALSE", end)
+
+        BODY = self.body.emit_bytecodes(function)
+
+        JUMP_BACK = Instruction(function, -1, "JUMP_ABSOLUTE", CONDITION[0])
+
+        return CONDITION + [HEAD] + BODY + [JUMP_BACK, end]
 
 
 @Parser.register

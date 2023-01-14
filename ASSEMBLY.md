@@ -11,7 +11,8 @@ for cross-version support.
 * CALL \<call target> '(' \<args> ')' [-> \<target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target'
 * OP (\<lhs> \<binary operator> \<rhs>) [-> \<target>]: uses the given operator
   * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@
-* IF \<access> '{' \<body> '}'
+* IF \<expression> '{' \<body> '}'
+* WHILE \<expression> '{' \<body> '}'
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
