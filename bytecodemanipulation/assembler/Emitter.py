@@ -18,7 +18,7 @@ def apply_inline_assemblies(target: MutableFunction):
     for instr in target.instructions[:]:
         if instr.opcode == Opcodes.LOAD_GLOBAL:
             try:
-                value = target.target.__globals__.get(instr.argval)
+                value = target.target.__globals__.get(instr.arg_value)
             except KeyError:
                 continue
 
@@ -31,7 +31,7 @@ def apply_inline_assemblies(target: MutableFunction):
 
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
-                invoke.change_opcode(Opcodes.NOP)
+                invoke.change_opcode(Opcodes.LOAD_CONST, None)
 
             elif value == assembly_targets.label:
                 invoke = next(instr.trace_stack_position_use(0))
@@ -40,6 +40,7 @@ def apply_inline_assemblies(target: MutableFunction):
 
                 labels.add(arg.arg_value)
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
+                invoke.insert_after(Instruction(target, -1, Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
 
@@ -52,7 +53,9 @@ def apply_inline_assemblies(target: MutableFunction):
         labels.update(asm.collect_label_info())
 
     for (_, instr), asm in zip(insertion_points, assemblies):
-        instr.insert_after(asm.create_bytecode(target, labels))
+        bytecode = asm.create_bytecode(target, labels)
+        if bytecode:
+            instr.insert_after(bytecode)
 
     label_targets: typing.Dict[str, Instruction] = {}
 

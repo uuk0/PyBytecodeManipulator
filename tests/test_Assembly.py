@@ -6,6 +6,8 @@ from bytecodemanipulation import data_loader
 
 data_loader.INIT_ASSEMBLY = False
 from bytecodemanipulation.assembler.Parser import *
+from bytecodemanipulation.assembler.target import assembly, label
+from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
 
 try:
     from code_parser.parsers.common import IdentifierExpression
@@ -19,6 +21,9 @@ data_loader.load_assembly_instructions()
 
 if typing.TYPE_CHECKING:
     from bytecodemanipulation.data.v3_10.assembly_instructions import *
+
+from bytecodemanipulation.optimiser_util import remove_nops, inline_const_value_pop_pairs
+from tests.test_issues import compare_optimized_results
 
 
 globals().update(data_loader.ASSEMBLY_MODULE)
@@ -438,3 +443,36 @@ WHILE OP ($a == $b) {
             ),
             expr,
         )
+
+
+class TestInlineAssembly(TestCase):
+    def test_empty(self):
+        def target():
+            assembly("")
+
+        mutable = MutableFunction(target)
+
+        apply_inline_assemblies(mutable)
+        inline_const_value_pop_pairs(mutable)
+        remove_nops(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: None, opt_ideal=2)
+
+    def test_simple(self):
+        def target():
+            assembly("LOAD @print; POP")
+
+        mutable = MutableFunction(target)
+
+        apply_inline_assemblies(mutable)
+        inline_const_value_pop_pairs(mutable)
+        remove_nops(mutable)
+        mutable.reassign_to_function()
+
+        def compare():
+            print
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
+
+

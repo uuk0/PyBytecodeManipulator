@@ -83,7 +83,7 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         return self
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return sum((child.emit_bytecodes(function) for child in self.children), [])
+        return sum((child.emit_bytecodes(function, labels) for child in self.children), [])
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -98,7 +98,7 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         return visitor(
             self,
             tuple(
-                [child.visit_assemby_instructions(visitor) for child in self.children]
+                [child.visit_assembly_instructions(visitor) for child in self.children]
             ),
         )
 
@@ -284,9 +284,9 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return (
-            self.base_expr.emit_bytecodes(function)
+            self.base_expr.emit_bytecodes(function, labels)
             + (
-                self.index_expr.emit_bytecodes(function)
+                self.index_expr.emit_bytecodes(function, labels)
                 if isinstance(self.index_expr, AbstractAccessExpression)
                 else [
                     Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))
@@ -299,9 +299,9 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         return (
-            self.base_expr.emit_bytecodes(function)
+            self.base_expr.emit_bytecodes(function, labels)
             + (
-                self.index_expr.emit_bytecodes(function)
+                self.index_expr.emit_bytecodes(function, labels)
                 if isinstance(self.index_expr, AbstractAccessExpression)
                 else [
                     Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))
@@ -344,14 +344,14 @@ class AttributeAccessExpression(AbstractAccessExpression):
         return AttributeAccessExpression(self.root.copy(), self.name_token)
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.root.emit_bytecodes(function) + [
+        return self.root.emit_bytecodes(function, labels) + [
             Instruction(function, -1, "LOAD_ATTR", self.name_token.text)
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
-        return self.root.emit_bytecodes(function) + [
+        return self.root.emit_bytecodes(function, labels) + [
             Instruction(function, -1, "STORE_ATTR", self.name_token.text)
         ]
 

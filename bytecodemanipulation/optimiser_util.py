@@ -195,7 +195,7 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
                         for i in range(instr.arg - 1, -1, -1)
                     ]
 
-                    if all(instr.opcode == Opcodes.LOAD_CONST for instr in args):
+                    if all(ins.opcode == Opcodes.LOAD_CONST for ins in args):
                         result = function(*(e.arg_value for e in args))
 
                         instr.change_opcode(Opcodes.LOAD_CONST)

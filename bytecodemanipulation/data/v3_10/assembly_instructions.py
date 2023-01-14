@@ -69,8 +69,8 @@ class LoadAssembly(AbstractAssemblyInstruction):
         return LoadAssembly(self.access_token, self.target)
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.access_token.emit_bytecodes(function) + (
-            self.target.emit_bytecodes(function) if self.target else []
+        return self.access_token.emit_bytecodes(function, labels) + (
+            self.target.emit_bytecodes(function, labels) if self.target else []
         )
 
     def visit_parts(
@@ -126,7 +126,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return (
-            [] if self.source is None else self.source.emit_bytecodes(function)
+            [] if self.source is None else self.source.emit_bytecodes(function, labels)
         ) + self.access_token.emit_store_bytecodes(function)
 
     def visit_parts(
@@ -236,8 +236,8 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
                 opcode, arg = opcode_info
 
             return (
-                self.lhs.emit_bytecodes(function)
-                + self.rhs.emit_bytecodes(function)
+                self.lhs.emit_bytecodes(function, labels)
+                + self.rhs.emit_bytecodes(function, labels)
                 + [Instruction(function, -1, opcode, arg=arg)]
             )
 
@@ -346,8 +346,8 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         return f"OP({self.operation}{', ' + repr(self.target) if self.target else ''})"
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.operation.emit_bytecodes(function) + (
-            [] if self.target is None else self.target.emit_bytecodes(function)
+        return self.operation.emit_bytecodes(function, labels) + (
+            [] if self.target is None else self.target.emit_bytecodes(function, labels)
         )
 
     def emit_store_bytecodes(
@@ -396,9 +396,9 @@ class IFAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(self, function: MutableFunction):
         end = Instruction(function, -1, "NOP")
         return (
-            self.source.emit_bytecodes(function)
+            self.source.emit_bytecodes(function, labels)
             + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)]
-            + self.body.emit_bytecodes(function)
+            + self.body.emit_bytecodes(function, labels)
             + [end]
         )
 
@@ -447,11 +447,11 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(self, function: MutableFunction):
         end = Instruction(function, -1, "NOP")
 
-        CONDITION = self.source.emit_bytecodes(function)
+        CONDITION = self.source.emit_bytecodes(function, labels)
 
         HEAD = Instruction(function, -1, "POP_JUMP_IF_FALSE", end)
 
-        BODY = self.body.emit_bytecodes(function)
+        BODY = self.body.emit_bytecodes(function, labels)
 
         JUMP_BACK = Instruction(function, -1, "JUMP_ABSOLUTE", CONDITION[0])
 
@@ -528,7 +528,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
             value = int(value)
 
         return [Instruction(function, -1, "LOAD_GLOBAL", value)] + (
-            self.target.emit_bytecodes(function) if self.target else []
+            self.target.emit_bytecodes(function, labels) if self.target else []
         )
 
     def visit_parts(
@@ -590,7 +590,7 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         if value.isdigit():
             value = int(value)
 
-        return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
+        return ([] if self.source is None else self.source.emit_bytecodes(function, labels)) + [
             Instruction(function, -1, "STORE_GLOBAL", value)
         ]
 
@@ -660,7 +660,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
             value = int(value)
 
         return [Instruction(function, -1, "LOAD_FAST", value)] + (
-            self.target.emit_bytecodes(function) if self.target else []
+            self.target.emit_bytecodes(function, labels) if self.target else []
         )
 
     def visit_parts(
@@ -720,7 +720,7 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
         if value.isdigit():
             value = int(value)
 
-        return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
+        return ([] if self.source is None else self.source.emit_bytecodes(function, labels)) + [
             Instruction(function, -1, "STORE_FAST", value)
         ]
 
@@ -793,7 +793,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
                 if isinstance(self.value, ConstantAccessExpression)
                 else function.target.__globals__.get(self.value.name_token.text),
             )
-        ] + (self.target.emit_bytecodes(function) if self.target else [])
+        ] + (self.target.emit_bytecodes(function, labels) if self.target else [])
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -982,7 +982,7 @@ class CallAssembly(AbstractAssemblyInstruction):
         )
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        bytecode = self.call_target.emit_bytecodes(function)
+        bytecode = self.call_target.emit_bytecodes(function, labels)
 
         has_seen_star = False
         has_seen_star_star = False
@@ -1000,7 +1000,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
         if not has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
             for arg in self.args:
-                bytecode += arg.source.emit_bytecodes(function)
+                bytecode += arg.source.emit_bytecodes(function, labels)
 
             bytecode += [
                 Instruction(function, -1, "CALL_FUNCTION", len(self.args)),
@@ -1010,7 +1010,7 @@ class CallAssembly(AbstractAssemblyInstruction):
             kw_arg_keys = []
 
             for arg in reversed(self.args):
-                bytecode += arg.source.emit_bytecodes(function)
+                bytecode += arg.source.emit_bytecodes(function, labels)
 
                 if isinstance(arg, CallAssembly.KwArg):
                     kw_arg_keys.append(arg.key.text)
@@ -1027,7 +1027,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
             i = -1
             for i, arg in enumerate(self.args):
-                bytecode += arg.source.emit_bytecodes(function)
+                bytecode += arg.source.emit_bytecodes(function, labels)
 
                 if isinstance(arg, CallAssembly.Arg):
                     bytecode += [Instruction(function, -1, "LIST_APPEND")]
@@ -1047,14 +1047,14 @@ class CallAssembly(AbstractAssemblyInstruction):
                     if isinstance(arg, CallAssembly.KwArg):
                         bytecode += (
                             [Instruction(function, -1, "LOAD_CONST", arg.key.text)]
-                            + arg.source.emit_bytecodes(function)
+                            + arg.source.emit_bytecodes(function, labels)
                             + [
                                 Instruction(function, -1, "BUILD_MAP", arg=1),
                                 Instruction(function, -1, "DICT_MERGE", arg=1),
                             ]
                         )
                     else:
-                        bytecode += arg.source.emit_bytecodes(function) + [
+                        bytecode += arg.source.emit_bytecodes(function, labels) + [
                             Instruction(function, -1, "DICT_MERGE", arg=1)
                         ]
 
@@ -1097,6 +1097,6 @@ class PopElementAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return [
-            Instruction(function, -1, "POP_TOP", self.name_token.text)
+            Instruction(function, -1, "POP_TOP", self.count)
             for _ in range(int(self.count.text))
         ]
