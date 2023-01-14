@@ -134,6 +134,7 @@ CALL $print[@test] (@test, @hello) -> %
 CALL @test (key=@value) -> @result
 CALL @test ($direct, key=@value) -> @result
 CALL @test ($direct.test, key=@value) -> @result
+CALL @test.x (*$x, @b, *%)
 """).parse()
 
         self.assertEqualList(
@@ -145,6 +146,7 @@ CALL @test ($direct.test, key=@value) -> @result
                 CallAssembly(GlobalAccessExpression("test"), [CallAssembly.KwArg("key", GlobalAccessExpression("value"))], GlobalAccessExpression("result")),
                 CallAssembly(GlobalAccessExpression("test"), [CallAssembly.Arg(LocalAccessExpression("direct")), CallAssembly.KwArg("key", GlobalAccessExpression("value"))], GlobalAccessExpression("result")),
                 CallAssembly(GlobalAccessExpression("test"), [CallAssembly.Arg(AttributeAccessExpression(LocalAccessExpression("direct"), "test")), CallAssembly.KwArg("key", GlobalAccessExpression("value"))], GlobalAccessExpression("result")),
+                CallAssembly(AttributeAccessExpression(GlobalAccessExpression("test"), "x"), [CallAssembly.StarArg(LocalAccessExpression("x")), CallAssembly.Arg(GlobalAccessExpression("b")), CallAssembly.StarArg(TopOfStackAccessExpression())]),
             ]),
             expr,
         )

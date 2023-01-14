@@ -678,7 +678,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
                 has_seen_keyword_arg = True
 
-            elif parser[0] == SpecialToken("*"):
+            elif parser[0].text == "*":
                 if parser[1] == SpecialToken("*"):
                     parser.consume(SpecialToken("*"))
                     parser.consume(SpecialToken("*"))
@@ -687,6 +687,7 @@ class CallAssembly(AbstractAssemblyInstruction):
                     has_seen_keyword_arg = True
 
                 elif not has_seen_keyword_arg:
+                    parser.consume(SpecialToken("*"))
                     expr = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
                     args.append(CallAssembly.StarArg(expr))
 
@@ -704,7 +705,7 @@ class CallAssembly(AbstractAssemblyInstruction):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            raise SyntaxError(f"expected closing bracket, got {parser.try_inspect()}")
+            raise SyntaxError(f"expected closing bracket, got {parser[0]}")
 
         if parser.try_consume_multi(
             [
@@ -772,6 +773,22 @@ class CallAssembly(AbstractAssemblyInstruction):
                     Instruction(function, -1, "LOAD_CONST", kw_const),
                     Instruction(function, -1, "CALL_FUNCTION_KW", len(self.args)),
                 ]
+
+        elif not has_seen_kw_arg and has_seen_star and not has_seen_star_star:
+            bytecode += [Instruction(function, -1, "BUILD_LIST")]
+
+            for arg in self.args:
+                bytecode += arg.source.emit_bytecodes(function)
+
+                if isinstance(arg, CallAssembly.Arg):
+                    bytecode += [Instruction(function, -1, "LIST_APPEND")]
+                else:
+                    bytecode += [Instruction(function, -1, "LIST_EXTEND")]
+
+            bytecode += [
+                Instruction(function, -1, "LIST_TO_TUPLE"),
+                Instruction(function, -1, "CALL_FUNCTION_EX"),
+            ]
 
         else:
             raise NotImplementedError
