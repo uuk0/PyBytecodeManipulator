@@ -16,7 +16,15 @@ except ImportError:
     from bytecodemanipulation.assembler.util.parser import (AbstractParser, AbstractExpression, NumericExpression, BracketExpression, BinaryExpression, IdentifierExpression)
 
 
-class CompoundExpression(AbstractExpression):
+class IAssemblyStructureVisitable(ABC):
+    def visit_parts(self, visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any]):
+        raise NotImplementedError
+
+    def visit_assembly_instructions(self, visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any]):
+        raise NotImplementedError
+
+
+class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
     def __init__(self, children: typing.List[AbstractExpression] = None):
         self.children = children or []
 
@@ -36,8 +44,26 @@ class CompoundExpression(AbstractExpression):
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return sum((child.emit_bytecodes(function) for child in self.children), [])
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(
+            self,
+            tuple([
+                child.visit_parts(visitor)
+                for child in self.children
+            ])
+        )
 
-class AbstractAssemblyInstruction(AbstractExpression, ABC):
+    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(
+            self,
+            tuple([
+                child.visit_assemby_instructions(visitor)
+                for child in self.children
+            ])
+        )
+
+
+class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitable, ABC):
     NAME: str | None = None
 
     @classmethod
@@ -47,13 +73,25 @@ class AbstractAssemblyInstruction(AbstractExpression, ABC):
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         raise NotImplementedError
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]) -> tuple:
+        return visitor(self, tuple())
 
-class AbstractSourceExpression(AbstractExpression, ABC):
+    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, tuple())
+
+
+class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, ABC):
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         raise NotImplementedError
 
     def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         raise NotImplementedError
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, tuple())
+
+    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        pass
 
 
 class AbstractAccessExpression(AbstractSourceExpression, ABC):
@@ -188,6 +226,9 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
             Instruction(function, -1, Opcodes.STORE_SUBSCR)
         ]
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.base_expr.visit_parts(visitor), self.index_expr.visit_parts(visitor)))
+
 
 class AttributeAccessExpression(AbstractAccessExpression):
     def __init__(self, root: AbstractAccessExpression, name_token: IdentifierToken | str):
@@ -208,6 +249,9 @@ class AttributeAccessExpression(AbstractAccessExpression):
 
     def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function) + [Instruction(function, -1, "STORE_ATTR", self.name_token.text)]
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.root.visit_parts(visitor),))
 
 
 class Parser(AbstractParser):

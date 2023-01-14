@@ -3,7 +3,7 @@ import typing
 
 from bytecodemanipulation.Opcodes import Opcodes
 
-from bytecodemanipulation.assembler.Parser import Parser, AbstractAssemblyInstruction, AbstractAccessExpression, AbstractSourceExpression, ConstantAccessExpression, GlobalAccessExpression, LocalAccessExpression, CompoundExpression
+from bytecodemanipulation.assembler.Parser import Parser, AbstractAssemblyInstruction, AbstractAccessExpression, AbstractSourceExpression, ConstantAccessExpression, GlobalAccessExpression, LocalAccessExpression, CompoundExpression, AbstractExpression, IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Lexer import SpecialToken, IdentifierToken, IntegerToken
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 
@@ -48,6 +48,9 @@ class LoadAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return self.access_token.emit_bytecodes(function) + (self.target.emit_bytecodes(function) if self.target else [])
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.access_token.visit_parts(visitor), self.target.visit_parts(visitor) if self.target is not None else None))
+
 
 @Parser.register
 class StoreAssembly(AbstractAssemblyInstruction):
@@ -80,6 +83,9 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return ([] if self.source is None else self.source.emit_bytecodes(function)) + self.access_token.emit_store_bytecodes(function)
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.access_token.visit_parts(visitor), self.source.visit_parts(visitor) if self.source is not None else None))
 
 
 @Parser.register
@@ -132,7 +138,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
     # todo: and, or, nand, nor, inplace variants
 
-    class IOperation(abc.ABC):
+    class IOperation(IAssemblyStructureVisitable, abc.ABC):
         def copy(self):
             raise NotImplementedError
 
@@ -169,6 +175,12 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
                 opcode, arg = opcode_info
 
             return self.lhs.emit_bytecodes(function) + self.rhs.emit_bytecodes(function) + [Instruction(function, -1, opcode, arg=arg)]
+
+        def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+            return visitor(self, (self.lhs.visit_parts(visitor), self.rhs.visit_parts(visitor)))
+
+        def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+            pass
 
     @classmethod
     def consume(cls, parser: "Parser") -> "OpAssembly":
@@ -258,6 +270,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         raise RuntimeError("cannot assign to an operator!")
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.operation.visit_parts(visitor), self.target.visit_parts(visitor)))
+
 
 @Parser.register
 class IFAssembly(AbstractAssemblyInstruction):
@@ -285,6 +300,12 @@ class IFAssembly(AbstractAssemblyInstruction):
         end = Instruction(function, -1, "NOP")
         return self.source.emit_bytecodes(function) + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)] + self.body.emit_bytecodes(function) + [end]
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.source.visit_parts(visitor), self.body.visit_parts(visitor)))
+
+    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.body.visit_assembly_instructions(visitor),))
+
 
 @Parser.register
 class WHILEAssembly(AbstractAssemblyInstruction):
@@ -292,7 +313,7 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     NAME = "WHILE"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "IFAssembly":
+    def consume(cls, parser: "Parser") -> "WHILEAssembly":
         return cls(parser.try_parse_data_source(allow_primitives=True, include_bracket=False), parser.parse_body())
 
     def __init__(self, source: AbstractSourceExpression, body: CompoundExpression):
@@ -320,6 +341,12 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         JUMP_BACK = Instruction(function, -1, "JUMP_ABSOLUTE", CONDITION[0])
 
         return CONDITION + [HEAD] + BODY + [JUMP_BACK, end]
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.source.visit_parts(visitor), self.body.visit_parts(visitor)))
+
+    def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.body.visit_assembly_instructions(visitor),))
 
 
 @Parser.register
@@ -367,6 +394,9 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
             Instruction(function, -1, "LOAD_GLOBAL", value)
         ] + (self.target.emit_bytecodes(function) if self.target else [])
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.target.visit_parts(visitor) if self.target else None,))
+
 
 @Parser.register
 class StoreGlobalAssembly(AbstractAssemblyInstruction):
@@ -404,6 +434,9 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
             Instruction(function, -1, "STORE_GLOBAL", value)
         ]
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.source.visit_parts(visitor) if self.target else None,))
 
 
 @Parser.register
@@ -451,6 +484,9 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
             Instruction(function, -1, "LOAD_FAST", value)
         ] + (self.target.emit_bytecodes(function) if self.target else [])
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.target.visit_parts(visitor) if self.target else None,))
+
 
 @Parser.register
 class StoreFastAssembly(AbstractAssemblyInstruction):
@@ -488,6 +524,9 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
         return ([] if self.source is None else self.source.emit_bytecodes(function)) + [
             Instruction(function, -1, "STORE_FAST", value)
         ]
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.source.visit_parts(visitor) if self.target else None,))
 
 
 @Parser.register
@@ -532,13 +571,16 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
             Instruction(function, -1, "LOAD_CONST", self.value.value if isinstance(self.value, ConstantAccessExpression) else function.target.__globals__.get(self.value.name_token.text))
         ] + (self.target.emit_bytecodes(function) if self.target else [])
 
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.value.visit_parts(visitor), self.target.visit_parts(visitor) if self.target else None))
+
 
 @Parser.register
 class CallAssembly(AbstractAssemblyInstruction):
     # CALL <call target> (<args>) [-> <target>]
     NAME = "CALL"
 
-    class IArg:
+    class IArg(IAssemblyStructureVisitable, abc.ABC):
         __slots__ = ("source",)
 
         def __init__(self, source: "AbstractAccessExpression"):
@@ -552,6 +594,12 @@ class CallAssembly(AbstractAssemblyInstruction):
 
         def copy(self):
             return type(self)(self.source.copy())
+
+        def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+            return visitor(self, (self.source.visit_parts(visitor),))
+
+        def visit_assembly_instructions(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+            pass
 
     class Arg(IArg):
         pass
@@ -643,6 +691,9 @@ class CallAssembly(AbstractAssemblyInstruction):
         self.call_target = call_target
         self.args = args
         self.target = target
+
+    def visit_parts(self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]):
+        return visitor(self, (self.call_target.visit_parts(visitor), [arg.visit_parts(visitor) for arg in self.args], self.target.visit_parts(visitor) if self.target else None))
 
     def copy(self) -> "CallAssembly":
         return CallAssembly(self.call_target.copy(), [arg.copy() for arg in self.args], self.target.copy() if self.target else None)
