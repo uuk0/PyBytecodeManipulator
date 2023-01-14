@@ -223,9 +223,16 @@ class Parser(AbstractParser):
         )
 
     def parse(self) -> CompoundExpression:
+        return self.parse_while_predicate(lambda: not self.is_empty())
+
+    def parse_body(self) -> CompoundExpression:
+        self.consume(SpecialToken("{"))
+        return self.parse_while_predicate(lambda: not self.consume(SpecialToken("}")))
+
+    def parse_while_predicate(self, predicate: typing.Callable[[], bool]) -> CompoundExpression:
         root = CompoundExpression()
 
-        while True:
+        while predicate():
             self.try_consume(CommentToken)
 
             if not (instr_token := self.try_consume(IdentifierToken)):
