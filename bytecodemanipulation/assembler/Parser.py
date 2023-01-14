@@ -33,6 +33,9 @@ class CompoundExpression(AbstractExpression):
         self.children.append(expr)
         return self
 
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return sum((child.emit_bytecodes(function) for child in self.children), [])
+
 
 class AbstractAssemblyInstruction(AbstractExpression, ABC):
     NAME: str | None = None
@@ -227,7 +230,7 @@ class Parser(AbstractParser):
 
     def parse_body(self) -> CompoundExpression:
         self.consume(SpecialToken("{"))
-        return self.parse_while_predicate(lambda: not self.consume(SpecialToken("}")), eof_error="Expected '}', got EOF")
+        return self.parse_while_predicate(lambda: not self.try_consume(SpecialToken("}")), eof_error="Expected '}', got EOF")
 
     def parse_while_predicate(self, predicate: typing.Callable[[], bool], eof_error: str = None) -> CompoundExpression:
         root = CompoundExpression()

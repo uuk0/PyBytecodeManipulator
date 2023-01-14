@@ -189,3 +189,20 @@ OP @lhs[$local.attr] ** @rhs""").parse()
             expr
         )
 
+    def test_if_expr(self):
+        expr = Parser("""
+IF @global {
+}
+
+IF $local {
+    STORE @global
+}
+""").parse()
+
+        self.assertEqualList(
+            CompoundExpression([
+                IFAssembly(GlobalAccessExpression("global"), CompoundExpression([])),
+                IFAssembly(LocalAccessExpression("local"), CompoundExpression([StoreAssembly(GlobalAccessExpression("global"))])),
+            ]),
+            expr,
+        )

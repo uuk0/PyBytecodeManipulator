@@ -3,7 +3,7 @@ import typing
 
 from bytecodemanipulation.Opcodes import Opcodes
 
-from bytecodemanipulation.assembler.Parser import Parser, AbstractAssemblyInstruction, AbstractAccessExpression, AbstractSourceExpression, ConstantAccessExpression, GlobalAccessExpression, LocalAccessExpression
+from bytecodemanipulation.assembler.Parser import Parser, AbstractAssemblyInstruction, AbstractAccessExpression, AbstractSourceExpression, ConstantAccessExpression, GlobalAccessExpression, LocalAccessExpression, CompoundExpression
 from bytecodemanipulation.assembler.Lexer import SpecialToken, IdentifierToken, IntegerToken
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 
@@ -224,6 +224,33 @@ class OpAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return self.operation.emit_bytecodes(function) + ([] if self.target is None else self.target.emit_bytecodes(function))
+
+
+@Parser.register
+class IFAssembly(AbstractAssemblyInstruction):
+    # IF <expression> '{' <body> '}'
+    NAME = "IF"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "IFAssembly":
+        return cls(parser.try_parse_data_source(allow_primitives=True, include_bracket=False), parser.parse_body())
+
+    def __init__(self, source: AbstractSourceExpression, body: CompoundExpression):
+        self.source = source
+        self.body = body
+
+    def copy(self):
+        return type(self)(self.source.copy(), self.body.copy())
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.source == other.source and self.body == other.body
+
+    def __repr__(self):
+        return f"IF({self.source}) -> {self.body}"
+
+    def emit_bytecodes(self, function: MutableFunction):
+        end = Instruction(function, -1, "NOP")
+        return self.source.emit_bytecodes(function) + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)] + self.body.emit_bytecodes(function) + [end]
 
 
 @Parser.register
