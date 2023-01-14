@@ -68,7 +68,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadAssembly":
         return LoadAssembly(self.access_token, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return self.access_token.emit_bytecodes(function) + (
             self.target.emit_bytecodes(function) if self.target else []
         )
@@ -124,7 +124,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
             self.access_token, self.source.copy() if self.source else None
         )
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return (
             [] if self.source is None else self.source.emit_bytecodes(function)
         ) + self.access_token.emit_store_bytecodes(function)
@@ -193,7 +193,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def copy(self):
             raise NotImplementedError
 
-        def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
             raise NotImplementedError
 
         def __eq__(self, other):
@@ -227,7 +227,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def copy(self):
             return type(self)(self.lhs.copy(), self.operator, self.rhs.copy())
 
-        def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
             opcode_info = OpAssembly.BINARY_OPS[self.operator]
 
             if isinstance(opcode_info, int):
@@ -345,7 +345,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def __repr__(self):
         return f"OP({self.operation}{', ' + repr(self.target) if self.target else ''})"
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return self.operation.emit_bytecodes(function) + (
             [] if self.target is None else self.target.emit_bytecodes(function)
         )
@@ -521,7 +521,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadGlobalAssembly":
         return LoadGlobalAssembly(self.name_token, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -584,7 +584,7 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
             self.name, self.source.copy() if self.source else None
         )
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -653,7 +653,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadFastAssembly":
         return LoadFastAssembly(self.name_token, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -714,7 +714,7 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "StoreFastAssembly":
         return StoreFastAssembly(self.name, self.source.copy() if self.source else None)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -783,7 +783,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadConstAssembly":
         return LoadConstAssembly(self.value, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return [
             Instruction(
                 function,
@@ -981,7 +981,7 @@ class CallAssembly(AbstractAssemblyInstruction):
             and self.target == other.target
         )
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         bytecode = self.call_target.emit_bytecodes(function)
 
         has_seen_star = False
@@ -1095,7 +1095,7 @@ class PopElementAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "PopElementAssembly":
         return PopElementAssembly(self.count)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return [
             Instruction(function, -1, "POP_TOP", self.name_token.text)
             for _ in range(int(self.count.text))

@@ -14,3 +14,11 @@ def _is_parent_of(obj, possible_parent: typing.Type) -> bool:
 class AbstractInstructionWalker:
     def visit(self, instruction):
         raise NotImplementedError
+
+
+class LambdaInstructionWalker(AbstractInstructionWalker):
+    def __init__(self, target):
+        self.target = target
+
+    def visit(self, instruction):
+        self.target(instruction)

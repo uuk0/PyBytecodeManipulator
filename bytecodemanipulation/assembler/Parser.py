@@ -46,6 +46,11 @@ except ImportError:
     )
 
 
+class JumpToLabel:
+    def __init__(self, name: str):
+        self.name = name
+
+
 class IAssemblyStructureVisitable(ABC):
     def visit_parts(
         self,
@@ -77,7 +82,7 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         self.children.append(expr)
         return self
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return sum((child.emit_bytecodes(function) for child in self.children), [])
 
     def visit_parts(
@@ -97,6 +102,12 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
             ),
         )
 
+    def collect_label_info(self) -> typing.Set[str]:
+        return set(self.visit_assembly_instructions(lambda asm, prev: sum(prev, tuple()) + ((asm.name_token.text,) if isinstance(asm, LabelAssembly) else tuple())))
+
+    def create_bytecode(self, target: MutableFunction, labels: typing.Set[str]):
+        return self.emit_bytecodes(target, labels)
+
 
 class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitable, ABC):
     NAME: str | None = None
@@ -105,7 +116,7 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
         raise NotImplementedError
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         raise NotImplementedError
 
     def visit_parts(
@@ -120,11 +131,11 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
 
 
 class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, ABC):
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         raise NotImplementedError
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         raise NotImplementedError
 
@@ -162,7 +173,7 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
 class GlobalAccessExpression(AbstractAccessExpression):
     PREFIX = "@"
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -171,7 +182,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
         return [Instruction(function, -1, "LOAD_GLOBAL", value)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
@@ -184,7 +195,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
 class LocalAccessExpression(AbstractAccessExpression):
     PREFIX = "$"
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -193,7 +204,7 @@ class LocalAccessExpression(AbstractAccessExpression):
         return [Instruction(function, -1, "LOAD_FAST", value)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
@@ -218,11 +229,11 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)()
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return []
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         return []
 
@@ -240,11 +251,11 @@ class ConstantAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(copy.deepcopy(self.value))
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return [Instruction(function, -1, "LOAD_CONST", self.value)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         raise SyntaxError("Cannot assign to a constant")
 
@@ -271,7 +282,7 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(self.base_expr.copy(), self.index_expr.copy())
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return (
             self.base_expr.emit_bytecodes(function)
             + (
@@ -285,7 +296,7 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         )
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         return (
             self.base_expr.emit_bytecodes(function)
@@ -332,13 +343,13 @@ class AttributeAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AttributeAccessExpression":
         return AttributeAccessExpression(self.root.copy(), self.name_token)
 
-    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function) + [
             Instruction(function, -1, "LOAD_ATTR", self.name_token.text)
         ]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction
+        self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function) + [
             Instruction(function, -1, "STORE_ATTR", self.name_token.text)
@@ -509,3 +520,24 @@ class Parser(AbstractParser):
         print(self.try_inspect())
 
         self.rollback()
+
+
+@Parser.register
+class LabelAssembly(AbstractAssemblyInstruction):
+    # LABEL <name>
+    NAME = "LABEL"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
+        pass
+
+    def __init__(self, name_token: IdentifierToken | str):
+        self.name_token = name_token if isinstance(name_token, IdentifierToken) else IdentifierToken(name_token)
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        return [
+            Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.name_token.text)
+        ]
+
+    def copy(self) -> "LabelAssembly":
+        return type(self)(self.name_token)

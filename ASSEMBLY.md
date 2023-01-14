@@ -6,6 +6,8 @@ for cross-version support.
 
 ## Meta Instructions (dynamically decide what to use)
 
+* LABEL \<name>: an bytecode label, can be used for jumps
+
 * LOAD \<expression> [-> \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> ['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
 * CALL \<call target> '(' \<args> ')' [-> \<target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target'
