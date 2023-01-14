@@ -104,6 +104,16 @@ class OpAssembly(AbstractAssemblyInstruction):
         ">>": Opcodes.BINARY_RSHIFT,
         "<<": Opcodes.BINARY_LSHIFT,
         "@": Opcodes.BINARY_MATRIX_MULTIPLY,
+
+        "is": (Opcodes.IS_OP, 0),
+        "in": (Opcodes.CONTAINS_OP, 0),
+
+        "<": (Opcodes.COMPARE_OP, 0),
+        "<=": (Opcodes.COMPARE_OP, 1),
+        "==": (Opcodes.COMPARE_OP, 2),
+        "!=": (Opcodes.COMPARE_OP, 3),
+        ">": (Opcodes.COMPARE_OP, 4),
+        ">=": (Opcodes.COMPARE_OP, 5),
     }
 
     class IOperation(abc.ABC):
