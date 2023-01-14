@@ -774,24 +774,41 @@ class CallAssembly(AbstractAssemblyInstruction):
                     Instruction(function, -1, "CALL_FUNCTION_KW", len(self.args)),
                 ]
 
-        elif not has_seen_kw_arg and has_seen_star and not has_seen_star_star:
+        else:
             bytecode += [Instruction(function, -1, "BUILD_LIST")]
 
-            for arg in self.args:
+            i = -1
+            for i, arg in enumerate(self.args):
                 bytecode += arg.source.emit_bytecodes(function)
 
                 if isinstance(arg, CallAssembly.Arg):
                     bytecode += [Instruction(function, -1, "LIST_APPEND")]
-                else:
+                elif isinstance(arg, CallAssembly.StarArg):
                     bytecode += [Instruction(function, -1, "LIST_EXTEND")]
+                else:
+                    break
 
             bytecode += [
                 Instruction(function, -1, "LIST_TO_TUPLE"),
-                Instruction(function, -1, "CALL_FUNCTION_EX"),
             ]
 
-        else:
-            raise NotImplementedError
+            if has_seen_kw_arg or has_seen_star_star:
+                bytecode += [Instruction(function, -1, "BUILD_MAP", arg=0)]
+
+                for arg in self.args[i+1:]:
+                    if isinstance(arg, CallAssembly.KwArg):
+                        bytecode += [
+                                        Instruction(function, -1, "LOAD_CONST", arg.key.text)
+                                    ] + arg.source.emit_bytecodes(function) + [
+                            Instruction(function, -1, "BUILD_MAP", arg=1),
+                            Instruction(function, -1, "DICT_MERGE", arg=1),
+                        ]
+                    else:
+                        bytecode += arg.source.emit_bytecodes(function) + [Instruction(function, -1, "DICT_MERGE", arg=1)]
+
+            bytecode += [
+                Instruction(function, -1, "CALL_FUNCTION_EX", arg=int(has_seen_kw_arg or has_seen_star_star)),
+            ]
 
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function)
