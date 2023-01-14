@@ -35,7 +35,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - $\<local name>: local variable
   - %: top of stack (in most cases the default when not provided)
   - \<access>[\<index or expression>]: value by [] operator
-- OP instruction
+- OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer
 - \<expression>.\<name>: access an attribute of the expression

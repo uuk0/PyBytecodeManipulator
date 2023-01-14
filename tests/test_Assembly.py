@@ -197,12 +197,18 @@ IF @global {
 IF $local {
     STORE @global
 }
+
+IF OP ($a == $b) {
+    STORE @global
+}
+
 """).parse()
 
         self.assertEqualList(
             CompoundExpression([
                 IFAssembly(GlobalAccessExpression("global"), CompoundExpression([])),
                 IFAssembly(LocalAccessExpression("local"), CompoundExpression([StoreAssembly(GlobalAccessExpression("global"))])),
+                IFAssembly(OpAssembly(OpAssembly.BinaryOperation(LocalAccessExpression("a"), "==", LocalAccessExpression("b"))), CompoundExpression([StoreAssembly(GlobalAccessExpression("global"))])),
             ]),
             expr,
         )

@@ -269,7 +269,7 @@ class Parser(AbstractParser):
 
         return root
 
-    def try_consume_access_token(self, allow_tos=True, allow_primitives=False) -> AbstractAccessExpression | None:
+    def try_consume_access_token(self, allow_tos=True, allow_primitives=False, allow_op=True) -> AbstractAccessExpression | None:
         start_token = self.try_inspect()
 
         if start_token is None:
@@ -282,7 +282,7 @@ class Parser(AbstractParser):
             if integer := self.try_consume(IntegerToken):
                 return ConstantAccessExpression(int(integer.text))
 
-        if not isinstance(start_token, SpecialToken):
+        if not isinstance(start_token, (SpecialToken, IdentifierToken)):
             return
 
         if start_token.text == "@":
@@ -297,6 +297,12 @@ class Parser(AbstractParser):
             self.consume(SpecialToken("%"))
             expr = TopOfStackAccessExpression()
 
+        elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS:
+            self.consume(start_token)
+            self.consume(SpecialToken("("))
+            expr = self.INSTRUCTIONS["OP"].consume(self)
+            self.consume(SpecialToken(")"))
+
         else:
             return
 
@@ -305,7 +311,7 @@ class Parser(AbstractParser):
 
         if self.try_consume(SpecialToken("[")):
             # Consume either an Integer or a expression
-            if not (index := self.try_parse_data_source(allow_primitives=True, allow_tos=allow_tos, include_bracket=False)):
+            if not (index := self.try_parse_data_source(allow_primitives=True, allow_tos=allow_tos, include_bracket=False, allow_op=allow_op)):
                 raise SyntaxError(self.try_inspect())
 
             while self.try_consume(SpecialToken(".")):
@@ -316,14 +322,14 @@ class Parser(AbstractParser):
 
         return expr
 
-    def try_parse_data_source(self, allow_tos=True, allow_primitives=False, include_bracket=True) -> AbstractSourceExpression | None:
+    def try_parse_data_source(self, allow_tos=True, allow_primitives=False, include_bracket=True, allow_op=True) -> AbstractSourceExpression | None:
         self.save()
 
-        if include_bracket and not (bracket := self.try_consume(SpecialToken("("))):
+        if include_bracket and not self.try_consume(SpecialToken("(")):
             self.rollback()
             return
 
-        if access := self.try_consume_access_token(allow_tos=allow_tos, allow_primitives=allow_primitives):
+        if access := self.try_consume_access_token(allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op):
             self.discard_save()
             if include_bracket:
                 self.consume(SpecialToken(")"))

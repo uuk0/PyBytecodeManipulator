@@ -83,7 +83,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
 
 @Parser.register
-class OpAssembly(AbstractAssemblyInstruction):
+class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
     - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@ <expr>
@@ -234,6 +234,9 @@ class OpAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return self.operation.emit_bytecodes(function) + ([] if self.target is None else self.target.emit_bytecodes(function))
+
+    def emit_store_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        raise RuntimeError("cannot assign to an operator!")
 
 
 @Parser.register
