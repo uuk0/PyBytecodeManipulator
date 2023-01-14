@@ -7,8 +7,10 @@ for cross-version support.
 ## Meta Instructions (dynamically decide what to use)
 
 * LOAD \<expression> [-> \<target>]: Pushes the global or local variable to the stack
-* STORE \<expression> [(\<expression>)]: stores TOS or value of 'expression' in the local or global variable
-* CALL <call target> (<args>) [-> <target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target'
+* STORE \<expression> ['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
+* CALL \<call target> '(' \<args> ')' [-> \<target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target'
+* OP (\<lhs> \<binary operator> \<rhs>) [-> \<target>]: uses the given operator
+  * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 

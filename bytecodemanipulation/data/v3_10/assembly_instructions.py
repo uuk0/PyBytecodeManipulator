@@ -1,4 +1,7 @@
+import abc
 import typing
+
+from bytecodemanipulation.Opcodes import Opcodes
 
 from bytecodemanipulation.assembler.Parser import Parser, AbstractAssemblyInstruction, AbstractAccessExpression, AbstractSourceExpression, ConstantAccessExpression, GlobalAccessExpression, LocalAccessExpression
 from bytecodemanipulation.assembler.Lexer import SpecialToken, IdentifierToken, IntegerToken
@@ -77,6 +80,150 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
         return ([] if self.source is None else self.source.emit_bytecodes(function)) + self.access_token.emit_store_bytecodes(function)
+
+
+@Parser.register
+class OpAssembly(AbstractAssemblyInstruction):
+    """
+    OP ... [-> <target>]
+    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@ <expr>
+    """
+    NAME = "OP"
+
+    BINARY_OPS: typing.Dict[str, typing.Tuple[int, int] | int] = {
+        "+": Opcodes.BINARY_ADD,
+        "-": Opcodes.BINARY_SUBTRACT,
+        "*": Opcodes.BINARY_MULTIPLY,
+        "/": Opcodes.BINARY_TRUE_DIVIDE,
+        "//": Opcodes.BINARY_FLOOR_DIVIDE,
+        "**": Opcodes.BINARY_MULTIPLY,
+        "%": Opcodes.BINARY_MODULO,
+        "&": Opcodes.BINARY_AND,
+        "|": Opcodes.BINARY_OR,
+        "^": Opcodes.BINARY_XOR,
+        ">>": Opcodes.BINARY_RSHIFT,
+        "<<": Opcodes.BINARY_LSHIFT,
+        "@": Opcodes.BINARY_MATRIX_MULTIPLY,
+    }
+
+    class IOperation(abc.ABC):
+        def copy(self):
+            raise NotImplementedError
+
+        def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+            raise NotImplementedError
+
+        def __eq__(self, other):
+            raise NotImplementedError
+
+        def __repr__(self):
+            raise NotImplementedError
+
+    class BinaryOperation(IOperation):
+        def __init__(self, lhs: AbstractAccessExpression, operator: str, rhs: AbstractAccessExpression):
+            self.lhs = lhs
+            self.operator = operator
+            self.rhs = rhs
+
+        def __eq__(self, other):
+            return type(self) == type(other) and self.lhs == other.lhs and self.operator == other.operator and self.rhs == other.rhs
+
+        def __repr__(self):
+            return f"{self.lhs} {self.operator} {self.rhs}"
+
+        def copy(self):
+            return type(self)(self.lhs.copy(), self.operator, self.rhs.copy())
+
+        def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+            opcode_info = OpAssembly.BINARY_OPS[self.operator]
+
+            if isinstance(opcode_info, int):
+                opcode, arg = opcode_info, 0
+            else:
+                opcode, arg = opcode_info
+
+            return self.lhs.emit_bytecodes(function) + self.rhs.emit_bytecodes(function) + [Instruction(function, -1, opcode, arg=arg)]
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "OpAssembly":
+        if expr := cls.try_consume_binary(parser):
+            return cls(expr, cls.try_consume_arrow(parser))
+
+        raise SyntaxError
+
+    @classmethod
+    def try_consume_arrow(cls, parser: "Parser") -> AbstractAccessExpression | None:
+        if parser.try_consume(SpecialToken("-")):
+            parser.consume(SpecialToken(">"))
+            return parser.try_consume_access_token()
+
+    @classmethod
+    def try_consume_binary(cls, parser: "Parser") -> typing.Optional[IOperation]:
+        parser.save()
+
+        lhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        part = parser[0:2]
+
+        if part:
+            first, second = part
+        else:
+            first, second = parser[0], None
+
+        if not isinstance(first, SpecialToken):
+            first = None
+
+        if not isinstance(second, SpecialToken):
+            second = None
+
+        if first is None:
+            print("lhs is None")
+            parser.rollback()
+            return
+
+        OP_NAME = None
+
+        if second:
+            key = first.text + second.text
+
+            if key in cls.BINARY_OPS:
+                OP_NAME = key
+                parser.consume(first)
+                parser.consume(second)
+
+        if OP_NAME is None:
+            if first.text in cls.BINARY_OPS:
+                OP_NAME = first.text
+                parser.consume(first)
+            else:
+                return
+
+        rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        if rhs is None:
+            print("rhs is None")
+            parser.rollback()
+            return
+
+        parser.discard_save()
+
+        return OpAssembly.BinaryOperation(lhs, OP_NAME, rhs)
+
+    def __init__(self, operation: IOperation, target: AbstractAccessExpression | None = None):
+        self.operation = operation
+        self.target = target
+
+    def copy(self) -> "OpAssembly":
+        return OpAssembly(self.operation.copy(), self.target.copy() if self.target else None)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.operation == other.operation and self.target == other.target
+
+    def __repr__(self):
+        return f"OP({self.operation}{', ' + repr(self.target) if self.target else ''})"
+
+    def emit_bytecodes(self, function: MutableFunction) -> typing.List[Instruction]:
+        return self.operation.emit_bytecodes(function) + ([] if self.target is None else self.target.emit_bytecodes(function))
 
 
 @Parser.register

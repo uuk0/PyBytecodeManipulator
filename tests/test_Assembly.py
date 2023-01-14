@@ -165,6 +165,19 @@ CALL @test.x (*$x, @b, *%)
             expr,
         )
 
+    def test_binary_operator(self):
+        expr = Parser("""
+OP @lhs + @rhs -> @result
+OP @lhs[$local.attr] ** @rhs""").parse()
+
+        self.assertEqualList(
+            CompoundExpression([
+                OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("lhs"), "+", GlobalAccessExpression("rhs")), GlobalAccessExpression("result")),
+                OpAssembly(OpAssembly.BinaryOperation(SubscriptionAccessExpression(GlobalAccessExpression("lhs"), AttributeAccessExpression(LocalAccessExpression("local"), "attr")), "**", GlobalAccessExpression("rhs"))),
+            ]),
+            expr,
+        )
+
     def test_pop(self):
         expr = Parser("POP\nPOP 10").parse()
 

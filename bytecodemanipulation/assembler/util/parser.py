@@ -210,9 +210,9 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
             return self.tokens[index]
 
         elif isinstance(item, slice):
-            start = self.cursor + slice.start
-            stop = self.cursor + slice.stop
-            step = slice.step
+            start = self.cursor + item.start
+            stop = (self.cursor + item.stop) if item.stop else None
+            step = item.step
 
             if start < 0 or start >= len(self.tokens) or stop < 0 or stop >= len(self.tokens):
                 return
