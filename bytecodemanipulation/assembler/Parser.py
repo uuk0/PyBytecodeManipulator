@@ -125,8 +125,11 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         return self.emit_bytecodes(target, labels)
 
     def get_stack_effect_stats(self) -> typing.Tuple[int, int]:
-        def visit(element: IAssemblyStructureVisitable, children) -> typing.Tuple[int, int]:
-            return element._get_stack_effect_stats(children)
+        def visit(element: IAssemblyStructureVisitable, children) -> typing.Tuple[int, int] | None:
+            try:
+                return element._get_stack_effect_stats(children)
+            except StopIteration:
+                return
 
         return self.visit_parts(visit)
 

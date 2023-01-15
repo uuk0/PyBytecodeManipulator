@@ -352,6 +352,19 @@ OP @lhs[$local.attr] ** @rhs"""
             expr,
         )
 
+    def test_return(self):
+        expr = Parser("RETURN\nRETURN @global").parse()
+
+        self.assertEqualList(
+            CompoundExpression(
+                [
+                    ReturnAssembly(),
+                    ReturnAssembly(GlobalAccessExpression("global")),
+                ]
+            ),
+            expr,
+        )
+
     def test_if_expr(self):
         expr = Parser(
             """

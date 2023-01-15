@@ -1140,3 +1140,33 @@ class PopElementAssembly(AbstractAssemblyInstruction):
 
     def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
         return -1, 0
+
+
+@Parser.register
+class ReturnAssembly(AbstractAssemblyInstruction):
+    # RETURN [<expr>]
+    NAME = "RETURN"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "ReturnAssembly":
+        return cls(parser.try_parse_data_source(allow_primitives=False, allow_op=True, include_bracket=False))
+
+    def __init__(self, expr: AbstractSourceExpression = None):
+        self.expr = expr
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.expr == other.expr
+
+    def __repr__(self):
+        return f"RETURN({self.expr})"
+
+    def copy(self) -> "ReturnAssembly":
+        return ReturnAssembly(self.expr.copy())
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        return (self.expr.emit_bytecodes(function, labels) if self.expr else []) + [
+            Instruction(function, -1, "RETURN_VALUE")
+        ]
+
+    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+        raise StopIteration

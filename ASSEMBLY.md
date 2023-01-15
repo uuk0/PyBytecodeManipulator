@@ -24,6 +24,7 @@ for cross-version support.
 * STORE_FAST \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the local variable
 * LOAD_CONST \<value> | @\<const global source> [-> \<target>]: loads the constant onto TOS or into 'target'
 * POP [<count = 1>]: Pops 'count' elements from the stack and discards them
+* RETURN_VALUE [<expression>]: Returns the value from TOS or from 'expression'
 
 ## Python opcodes not having a corresponding assembly instruction
 
