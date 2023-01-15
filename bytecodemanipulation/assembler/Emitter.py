@@ -52,8 +52,18 @@ def apply_inline_assemblies(target: MutableFunction):
     for asm in assemblies:
         labels.update(asm.collect_label_info())
 
+    max_stack_effects = []
+
     for (_, instr), asm in zip(insertion_points, assemblies):
         bytecode = asm.create_bytecode(target, labels)
+        stack_effect, max_stack_effect = asm.get_stack_effect_stats()
+
+        if stack_effect != 0 and bytecode and not (bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()):
+            print(asm)
+            raise RuntimeError(f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!")
+
+        max_stack_effects.append(max_stack_effect)
+
         if bytecode:
             instr.insert_after(bytecode)
 
@@ -66,6 +76,8 @@ def apply_inline_assemblies(target: MutableFunction):
             ins.change_arg_value(label_targets[instr.arg_value.name])
 
     target.instructions[0].apply_visitor(LambdaInstructionWalker(visit))
+
+    target.stack_size += max(max_stack_effects)
 
     return target.assemble_instructions_from_tree(target.instructions[0])
 
