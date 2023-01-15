@@ -51,8 +51,6 @@ class Lexer(AbstractLexer):
             )
             return token
 
-        # todo: special tokens
-
         if char in string.digits or (
             char == "-" and self.try_inspect_multi(2)[1] in string.digits
         ):
