@@ -401,7 +401,7 @@ class IFAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"IF({self.source}) -> {{{self.body}}}"
 
-    def emit_bytecodes(self, function: MutableFunction):
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]):
         end = Instruction(function, -1, "NOP")
         return (
             self.source.emit_bytecodes(function, labels)
@@ -456,7 +456,7 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"WHILE({self.source}) -> {{{self.body}}}"
 
-    def emit_bytecodes(self, function: MutableFunction):
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]):
         end = Instruction(function, -1, "NOP")
 
         CONDITION = self.source.emit_bytecodes(function, labels)
