@@ -12,10 +12,10 @@ for cross-version support.
 * STORE \<expression> ['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
 * CALL \<call target> '(' \<args> ')' [-> \<target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target'
 * OP (\<lhs> \<binary operator> \<rhs>) [-> \<target>]: uses the given operator
-  * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@
+  * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|nis|<|<=|==|!=|>|>=|xor|xnor
 * IF \<expression> '{' \<body> '}': executes 'body' only if 'expression' is not False
 * WHILE \<expression> '{' \<body> '}': executes 'body' while 'expression' is not False
-* JUMP \<label name> [IF \<condition access>]: jumps to the label named 'label name'
+* JUMP \<label name> [(IF \<condition access>) | ('(' \<expression> | \<op expression> ')')] : jumps to the label named 'label name'; if a condition is provided, jumps only if it evals to True
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
@@ -49,4 +49,5 @@ Expressions can be added as certain parameters to instructions to use instead of
 - \<expression>.\<name>: access an attribute of the expression
 
 TODO: float, list / tuple / set / map construction
-TODO: can we enable JUMP \<label> (\<expression>) where 'expression' can also be OP without OP keyword
+TODO: can we use offsets as labels in JUMP's?
+TODO: add singleton operators for OP

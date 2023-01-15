@@ -194,6 +194,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "+": Opcodes.UNARY_POSITIVE,
         "~": Opcodes.UNARY_INVERT,
         "not": Opcodes.UNARY_NOT,
+        "!": Opcodes.UNARY_NOT,
     }
 
     # todo: and, or, nand, nor, inplace variants
@@ -209,6 +210,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             raise NotImplementedError
 
         def __repr__(self):
+            raise NotImplementedError
+
+        def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
             raise NotImplementedError
 
     class BinaryOperation(IOperation):
@@ -263,6 +267,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
         ):
             pass
+
+        def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+            return -1, 0
 
     @classmethod
     def consume(cls, parser: "Parser") -> "OpAssembly":
@@ -371,6 +378,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             self,
             (self.operation.visit_parts(visitor), self.target.visit_parts(visitor)),
         )
+
+    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+        return self.children[0]
 
 
 @Parser.register
@@ -1250,7 +1260,7 @@ class YieldAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class JumpAssembly(AbstractAssemblyInstruction):
-    # JUMP <label> [IF <condition>]
+    # JUMP <label name> [(IF <condition access>) | ('(' <expression> | <op expression> ')')]
     NAME = "JUMP"
 
     @classmethod
@@ -1259,6 +1269,18 @@ class JumpAssembly(AbstractAssemblyInstruction):
 
         if parser.try_consume(IdentifierToken("IF")):
             condition = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, allow_op=True)
+
+        elif parser.try_consume(SpecialToken("(")):
+            parser.save()
+            condition = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, allow_op=True)
+
+            if condition is None or not parser.try_consume(SpecialToken(")")):
+                parser.rollback()
+                condition = OpAssembly.consume(parser)
+                parser.consume(SpecialToken(")"))
+            else:
+                parser.discard_save()
+
         else:
             condition = None
 

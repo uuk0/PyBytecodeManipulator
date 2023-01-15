@@ -487,13 +487,18 @@ WHILE OP ($a == $b) {
         )
 
     def test_jump(self):
-        expr = Parser("LABEL test\nJUMP test").parse()
+        expr = Parser("LABEL test\nJUMP test\nJUMP test IF @global\nJUMP test IF OP (@a == @b)\nJUMP test (@global)\nJUMP test (OP (@a == @b))\nJUMP test (@a == @b)").parse()
 
         self.assertEqualList(
             CompoundExpression(
                 [
                     LabelAssembly("test"),
                     JumpAssembly("test"),
+                    JumpAssembly("test", GlobalAccessExpression("global")),
+                    JumpAssembly("test", OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("a"), "==", GlobalAccessExpression("b")))),
+                    JumpAssembly("test", GlobalAccessExpression("global")),
+                    JumpAssembly("test", OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("a"), "==", GlobalAccessExpression("b")))),
+                    JumpAssembly("test", OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("a"), "==", GlobalAccessExpression("b")))),
                 ]
             ),
             expr,
