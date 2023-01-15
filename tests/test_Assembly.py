@@ -488,4 +488,17 @@ class TestInlineAssembly(TestCase):
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
 
+    def test_return(self):
+        def target():
+            assembly("RETURN 10")
+
+        mutable = MutableFunction(target)
+
+        apply_inline_assemblies(mutable)
+        inline_const_value_pop_pairs(mutable)
+        remove_nops(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: 10, opt_ideal=2)
+
 

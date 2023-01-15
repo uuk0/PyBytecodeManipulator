@@ -27,7 +27,10 @@ def apply_inline_assemblies(target: MutableFunction):
                 arg = next(invoke.trace_stack_position(0))
                 assert arg.opcode == Opcodes.LOAD_CONST, "only constant assembly code is allowed!"
 
-                insertion_points.append((arg.arg_value, invoke))
+                if invoke.next_instruction.opcode == Opcodes.POP_TOP:
+                    insertion_points.append((arg.arg_value, invoke.next_instruction))
+                else:
+                    insertion_points.append((arg.arg_value, invoke))
 
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
@@ -65,6 +68,7 @@ def apply_inline_assemblies(target: MutableFunction):
         max_stack_effects.append(max_stack_effect)
 
         if bytecode:
+            print("inserting AFTER", instr)
             instr.insert_after(bytecode)
 
     label_targets: typing.Dict[str, Instruction] = {}
@@ -79,5 +83,7 @@ def apply_inline_assemblies(target: MutableFunction):
 
     target.stack_size += max(max_stack_effects)
 
-    return target.assemble_instructions_from_tree(target.instructions[0])
+    target.assemble_instructions_from_tree(target.instructions[0])
+
+    return target
 

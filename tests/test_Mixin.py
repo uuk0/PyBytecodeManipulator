@@ -1,7 +1,10 @@
+import dis
 import unittest
 from unittest import TestCase
 
+
 from bytecodemanipulation.Mixin import *
+from tests.test_issues import compare_optimized_results
 
 
 FLAG = False
@@ -72,20 +75,18 @@ class TestMixinApply(TestCase):
                 global FLAG
                 FLAG = True
 
-        global FLAG
-        FLAG = False
-
-        XY.target(None)
-
-        self.assertFalse(FLAG)
-
         XYMixin._apply()
 
-        XY.target(None)
+        def compare():
+            global FLAG
+            FLAG = True
+            return 2
 
-        self.assertTrue(FLAG)
-
-        FLAG = False
+        compare_optimized_results(
+            self,
+            XY.target,
+            compare,
+        )
 
     def test_function_inject_at_return(self):
         class XY:

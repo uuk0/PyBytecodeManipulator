@@ -44,6 +44,9 @@ class _MixinContainer:
                 state = False
 
             if state:
+                print("DEBUGGING MIXINS!")
+
+            if state:
                 target = MutableFunction(self.target)
                 override_target = MutableFunction(_invoke_emulator)
                 override_target.constants[
@@ -51,6 +54,7 @@ class _MixinContainer:
                 ] = mutable
                 target.copy_from(override_target)
                 target.reassign_to_function()
+                target.target._debug_wrapper = mutable
             else:
                 mutable.reassign_to_function()
 
@@ -487,7 +491,7 @@ class Mixin:
 
                 insert_method_into(
                     tree,
-                    position_instr.offset,
+                    position_instr.offset - 1,
                     self.inject,
                     protected_locals=protected_locals,
                 )

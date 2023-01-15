@@ -1149,7 +1149,7 @@ class ReturnAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "ReturnAssembly":
-        return cls(parser.try_parse_data_source(allow_primitives=False, allow_op=True, include_bracket=False))
+        return cls(parser.try_parse_data_source(allow_primitives=True, allow_op=True, include_bracket=False))
 
     def __init__(self, expr: AbstractSourceExpression = None):
         self.expr = expr
@@ -1164,7 +1164,9 @@ class ReturnAssembly(AbstractAssemblyInstruction):
         return ReturnAssembly(self.expr.copy())
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return (self.expr.emit_bytecodes(function, labels) if self.expr else []) + [
+        expr = self.expr.emit_bytecodes(function, labels) if self.expr else []
+        print(expr)
+        return expr + [
             Instruction(function, -1, "RETURN_VALUE")
         ]
 

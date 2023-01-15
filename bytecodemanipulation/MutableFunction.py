@@ -913,6 +913,7 @@ class MutableFunction:
                     raise
 
         self.assemble_fast(instructions)
+        self.update_instruction_offsets(self.instructions)
         # We do not re-decode, as that would invalidate the instruction instances here
 
     def update_instruction_offsets(self, instructions):
@@ -1061,6 +1062,7 @@ class MutableFunction:
                 instruction.next_instruction is not None
                 and instruction.offset + 1 != instruction.next_instruction.offset
                 and not instruction.has_unconditional_jump()
+                and not instruction.has_stop_flow()
             ):
                 # todo: do we want to dynamic use assemble_instructions_from_tree()?
                 raise LinearCodeConstraintViolationException(

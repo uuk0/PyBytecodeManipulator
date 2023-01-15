@@ -27,9 +27,16 @@ BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
 def compare_optimized_results(
     case: unittest.TestCase, target, ideal, opt_ideal=1, msg=...
 ):
-    mutable = MutableFunction(target)
+    if hasattr(target, "_debug_wrapper"):
+        mutable = target._debug_wrapper
+        mutable.reassign_to_function()
+    else:
+        mutable = MutableFunction(target)
+
     BUILTIN_INLINE._inline_load_globals(mutable)
-    mutable.reassign_to_function()
+
+    if not hasattr(target, "_debug_wrapper"):
+        mutable.reassign_to_function()
 
     _OptimisationContainer.get_for_target(target).run_optimisers()
 
@@ -57,7 +64,12 @@ def compare_optimized_results(
         mutable.dump_info(local + "/ideal.json")
 
         print("target")
-        dis.dis(target)
+        if hasattr(target, "_debug_wrapper"):
+            for instr in target._debug_wrapper.instructions:
+                print(instr)
+        else:
+            dis.dis(target)
+
         print("compare")
         dis.dis(ideal)
 
