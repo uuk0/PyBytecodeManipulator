@@ -15,7 +15,7 @@ for cross-version support.
   * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@
 * IF \<expression> '{' \<body> '}': executes 'body' only if 'expression' is not False
 * WHILE \<expression> '{' \<body> '}': executes 'body' while 'expression' is not False
-* JUMP \<label name> [IF <condition access>]: jumps to the label named 'label name'
+* JUMP \<label name> [IF \<condition access>]: jumps to the label named 'label name'
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
@@ -24,12 +24,14 @@ for cross-version support.
 * LOAD_FAST \<name or index> [-> \<target>]: pushes the local variable on the stack or stores it at 'target'
 * STORE_FAST \<name or index> [(\<expression>)]: stores TOS or value of 'expression' in the local variable
 * LOAD_CONST \<value> | @\<const global source> [-> \<target>]: loads the constant onto TOS or into 'target'
-* POP [<count = 1>]: Pops 'count' elements from the stack and discards them
-* RETURN_VALUE [<expression>]: Returns the value from TOS or from 'expression'
+* POP [\<count = 1>]: Pops 'count' elements from the stack and discards them
+* RETURN [\<expression>]: Returns the value from TOS or from 'expression'
+* YIELD [*] \[\<expression>] [-> \<target>]: Yields the value from TOS or from 'expression'; Writes the result into 'target', default is discard; * means 'yield from'
 
 ## Python opcodes not having a corresponding assembly instruction
 
 * CALL_FUNCTION and related: automatically accessed via CALL
+* JUMPS: JUMP instruction with label (currently no offset define-able)
 
 ## Expressions
 
@@ -46,3 +48,4 @@ Expressions can be added as certain parameters to instructions to use instead of
 - \<expression>.\<name>: access an attribute of the expression
 
 TODO: float, list / tuple / set / map construction
+TODO: can we enable JUMP \<label> (\<expression>) where 'expression' can also be OP without OP keyword

@@ -1,4 +1,5 @@
 import dis
+import itertools
 import typing
 from unittest import TestCase
 
@@ -37,6 +38,10 @@ class TestParser(TestCase):
     def assertEqualList(
         self, correct: CompoundExpression, to_check: CompoundExpression
     ):
+        if len(correct.children) != len(to_check.children):
+            for check, corr in itertools.zip_longest(correct.children, to_check.children):
+                print(f"Expected {corr}, got {check}")
+
         self.assertEqual(
             len(correct.children), len(to_check.children), "Length of lists!"
         )
@@ -369,6 +374,25 @@ OP @lhs[$local.attr] ** @rhs"""
             expr,
         )
 
+    def test_yield(self):
+        expr = Parser("YIELD\nYIELD @global\nYIELD *\nYIELD* $local\nYIELD -> %\nYIELD @global -> $local\n YIELD* -> @global\nYIELD* @global -> $local").parse()
+
+        self.assertEqualList(
+            CompoundExpression(
+                [
+                    YieldAssembly(),
+                    YieldAssembly(GlobalAccessExpression("global")),
+                    YieldAssembly(is_star=True),
+                    YieldAssembly(LocalAccessExpression("local"), is_star=True),
+                    YieldAssembly(target=TopOfStackAccessExpression()),
+                    YieldAssembly(GlobalAccessExpression("global"), target=LocalAccessExpression("local")),
+                    YieldAssembly(is_star=True, target=GlobalAccessExpression("global")),
+                    YieldAssembly(GlobalAccessExpression("global"), True, LocalAccessExpression("local")),
+                ]
+            ),
+            expr,
+        )
+
     def test_if_expr(self):
         expr = Parser(
             """
@@ -575,5 +599,27 @@ class TestInlineAssembly(TestCase):
         mutable.reassign_to_function()
 
         compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
+
+    def test_yield(self):
+        def target(x):
+            assembly("""
+YIELD @GLOBAL
+YIELD* @GLOBAL
+YIELD* @GLOBAL -> $t
+YIELD @GLOBAL -> $v""")
+            yield 0
+
+        def compare():
+            yield GLOBAL
+            yield from GLOBAL
+            t = (yield from GLOBAL)
+            v = (yield GLOBAL)
+            yield 0
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
 
 

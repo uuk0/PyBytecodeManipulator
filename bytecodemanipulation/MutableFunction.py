@@ -665,6 +665,7 @@ class Instruction:
             Opcodes.BINARY_POWER,
             Opcodes.INPLACE_SUBTRACT,
             Opcodes.IMPORT_NAME,
+            Opcodes.YIELD_FROM,
         ):
             return 1, 2, None
 
@@ -675,6 +676,7 @@ class Instruction:
             Opcodes.LIST_TO_TUPLE,
             Opcodes.IMPORT_FROM,
             Opcodes.UNARY_NEGATIVE,
+            Opcodes.YIELD_VALUE,
         ):
             return 1, 1, None
 
@@ -687,8 +689,6 @@ class Instruction:
             Opcodes.POP_JUMP_IF_FALSE,
             Opcodes.STORE_FAST,
             Opcodes.STORE_DEREF,
-            Opcodes.YIELD_VALUE,
-            Opcodes.YIELD_FROM,
             Opcodes.RETURN_VALUE,
         ):
             return 0, 1, None

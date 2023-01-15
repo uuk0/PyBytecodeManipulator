@@ -1152,7 +1152,7 @@ class ReturnAssembly(AbstractAssemblyInstruction):
     def consume(cls, parser: "Parser") -> "ReturnAssembly":
         return cls(parser.try_parse_data_source(allow_primitives=True, allow_op=True, include_bracket=False))
 
-    def __init__(self, expr: AbstractSourceExpression = None):
+    def __init__(self, expr: AbstractSourceExpression | None = None):
         self.expr = expr
 
     def __eq__(self, other):
@@ -1172,6 +1172,80 @@ class ReturnAssembly(AbstractAssemblyInstruction):
 
     def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
         raise StopIteration
+
+
+@Parser.register
+class YieldAssembly(AbstractAssemblyInstruction):
+    # YIELD [*] [<expr>] [-> <taerget>]
+    NAME = "YIELD"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "YieldAssembly":
+        is_star = bool(parser.try_consume(SpecialToken("*")))
+
+        expr = parser.try_parse_data_source(allow_primitives=True, allow_op=True, include_bracket=False)
+
+        if parser.try_consume(SpecialToken("-")) and parser.try_consume(SpecialToken(">")):
+            target = parser.try_parse_data_source(allow_primitives=True, allow_op=True, include_bracket=False)
+
+            if target is None:
+                raise SyntaxError("expected writeable target")
+
+        else:
+            target = None
+
+        return cls(expr, is_star, target)
+
+    def __init__(self, expr: AbstractSourceExpression | None = None, is_star: bool = False, target: AbstractSourceExpression | None = None):
+        self.expr = expr
+        self.is_star = is_star
+        self.target = target
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.expr == other.expr and self.is_star == other.is_star and self.target == other.target
+
+    def __repr__(self):
+        return f"YIELD{'' if not self.is_star else '*'}({self.expr if self.expr else ''}{(', ' if self.expr else '->') + repr(self.target) if self.target else ''})"
+
+    def copy(self) -> "YieldAssembly":
+        return YieldAssembly(self.expr.copy() if self.expr else None, self.is_star, self.target.copy() if self.target else None)
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        bytecode = []
+
+        if self.expr:
+            bytecode += self.expr.emit_bytecodes(function, labels)
+
+        if self.is_star:
+            bytecode += [
+                Instruction(function, -1, Opcodes.GET_YIELD_FROM_ITER),
+                Instruction(function, -1, Opcodes.LOAD_CONST, None),
+                Instruction(function, -1, Opcodes.YIELD_FROM),
+            ]
+
+        else:
+            bytecode += [
+                Instruction(function, -1, Opcodes.YIELD_VALUE),
+            ]
+
+        if self.target:
+            bytecode += self.target.emit_store_bytecodes(function, labels)
+
+        else:
+            bytecode += [
+                Instruction(function, -1, Opcodes.POP_TOP)
+            ]
+
+        print(bytecode)
+
+        return bytecode
+
+    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+
+        x = 0
+        # todo: implement subexpression use!
+
+        return (-1, x) if self.target is None and self.expr is None else (0, x)
 
 
 @Parser.register
