@@ -70,7 +70,7 @@ class Instruction:
             and (_decode_next or not self.has_jump())
         ):
             self.change_arg(self.arg)
-        elif self.arg_value is not None and self.arg is None:
+        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and self.arg is None:
             self.change_arg_value(self.arg_value)
 
         # Reference to the next instruction
@@ -101,7 +101,7 @@ class Instruction:
 
         self.next_instruction.apply_visitor(visitor, visited)
 
-        if self.has_jump():
+        if self.has_jump() and isinstance(self.arg_value, Instruction):
             typing.cast(Instruction, self.arg_value).apply_visitor(visitor, visited)
 
     def add_previous_instruction(self, instruction: "Instruction"):
@@ -223,6 +223,8 @@ class Instruction:
         if arg_value:
             self.change_arg_value(arg_value)
 
+        return self
+
     def change_arg_value(self, value: object):
         self.arg_value = value
 
@@ -236,8 +238,8 @@ class Instruction:
                 assert isinstance(value, str), (value, self.opname)
                 self.arg = self.function.allocate_shared_variable_name(value)
             elif self.opcode in HAS_JUMP_ABSOLUTE:
-                assert isinstance(value, Instruction), value
-                self.arg = value.offset
+                if isinstance(value, Instruction):
+                    self.arg = value.offset
             elif self.opcode == Opcodes.FOR_ITER:
                 assert isinstance(value, Instruction), value
                 self.arg = value.offset - self.offset
@@ -946,7 +948,7 @@ class MutableFunction:
                 if instruction.opcode < dis.HAVE_ARGUMENT:
                     arg = 0
                 else:
-                    print(instruction)
+                    print("error", instruction)
 
             if arg >= 256**3:
                 count = 3

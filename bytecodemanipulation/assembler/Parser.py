@@ -579,10 +579,16 @@ class LabelAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
-        pass
+        return cls(parser.consume(IdentifierToken))
 
     def __init__(self, name_token: IdentifierToken | str):
         self.name_token = name_token if isinstance(name_token, IdentifierToken) else IdentifierToken(name_token)
+
+    def __repr__(self):
+        return f"LABEL({self.name_token.text})"
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.name_token == other.name_token
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return [

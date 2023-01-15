@@ -45,6 +45,7 @@ def apply_inline_assemblies(target: MutableFunction):
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
                 invoke.insert_after(Instruction(target, -1, Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
+                print(type(arg))
                 arg.change_opcode(Opcodes.NOP)
 
     assemblies = [
@@ -57,6 +58,8 @@ def apply_inline_assemblies(target: MutableFunction):
 
     max_stack_effects = []
 
+    label_targets: typing.Dict[str, Instruction] = {}
+
     for (_, instr), asm in zip(insertion_points, assemblies):
         bytecode = asm.create_bytecode(target, labels)
         stack_effect, max_stack_effect = asm.get_stack_effect_stats()
@@ -68,18 +71,24 @@ def apply_inline_assemblies(target: MutableFunction):
         max_stack_effects.append(max_stack_effect)
 
         if bytecode:
-            print("inserting AFTER", instr)
+            print("inserting AFTER", instr, bytecode)
             instr.insert_after(bytecode)
 
-    label_targets: typing.Dict[str, Instruction] = {}
+        for ins in bytecode:
+            if ins.opcode == Opcodes.BYTECODE_LABEL:
+                label_targets[ins.arg_value] = ins.next_instruction
+                ins.change_opcode(Opcodes.NOP)
 
-    target.instructions[0].apply_visitor(LambdaInstructionWalker(lambda ins: (label_targets.__setitem__(ins.arg_value, ins), ins.change_opcode(Opcodes.NOP)) if ins.opcode == Opcodes.BYTECODE_LABEL else None))
+    for ins in target.instructions:
+        if ins.opcode == Opcodes.BYTECODE_LABEL:
+            label_targets[ins.arg_value] = ins.next_instruction
+            ins.change_opcode(Opcodes.NOP)
 
-    def visit(ins: Instruction):
+    def resolve_jump_to_label(ins: Instruction):
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
-            ins.change_arg_value(label_targets[instr.arg_value.name])
+            ins.change_arg_value(label_targets[ins.arg_value.name])
 
-    target.instructions[0].apply_visitor(LambdaInstructionWalker(visit))
+    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
 
     target.stack_size += max(max_stack_effects)
 

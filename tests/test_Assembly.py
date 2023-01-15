@@ -1,3 +1,4 @@
+import dis
 import typing
 from unittest import TestCase
 
@@ -457,6 +458,19 @@ WHILE OP ($a == $b) {
             expr,
         )
 
+    def test_jump(self):
+        expr = Parser("LABEL test\nJUMP test").parse()
+
+        self.assertEqualList(
+            CompoundExpression(
+                [
+                    LabelAssembly("test"),
+                    JumpAssembly("test"),
+                ]
+            ),
+            expr,
+        )
+
 
 class TestInlineAssembly(TestCase):
     def test_empty(self):
@@ -464,10 +478,7 @@ class TestInlineAssembly(TestCase):
             assembly("")
 
         mutable = MutableFunction(target)
-
         apply_inline_assemblies(mutable)
-        inline_const_value_pop_pairs(mutable)
-        remove_nops(mutable)
         mutable.reassign_to_function()
 
         compare_optimized_results(self, target, lambda: None, opt_ideal=2)
@@ -477,10 +488,7 @@ class TestInlineAssembly(TestCase):
             assembly("LOAD @print; POP")
 
         mutable = MutableFunction(target)
-
         apply_inline_assemblies(mutable)
-        inline_const_value_pop_pairs(mutable)
-        remove_nops(mutable)
         mutable.reassign_to_function()
 
         def compare():
@@ -493,12 +501,43 @@ class TestInlineAssembly(TestCase):
             assembly("RETURN 10")
 
         mutable = MutableFunction(target)
-
         apply_inline_assemblies(mutable)
-        inline_const_value_pop_pairs(mutable)
-        remove_nops(mutable)
         mutable.reassign_to_function()
 
         compare_optimized_results(self, target, lambda: 10, opt_ideal=2)
+
+    def test_jump(self):
+        def target(x):
+            assembly("JUMP test")
+            if x:
+                return 4
+            label("test")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: None)
+
+    def test_jump_in_assembly(self):
+        def target(x):
+            assembly("JUMP test\nRETURN 0\nLABEL test")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: None)
+
+    def test_jump_across_assembly_blocks(self):
+        def target(x):
+            assembly("JUMP test\nRETURN 0")
+            assembly("LABEL test")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: None)
 
 

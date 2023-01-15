@@ -14,6 +14,7 @@ from bytecodemanipulation.assembler.Parser import (
     CompoundExpression,
     AbstractExpression,
     IAssemblyStructureVisitable,
+    JumpToLabel,
 )
 from bytecodemanipulation.assembler.Lexer import (
     SpecialToken,
@@ -1165,10 +1166,39 @@ class ReturnAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         expr = self.expr.emit_bytecodes(function, labels) if self.expr else []
-        print(expr)
         return expr + [
             Instruction(function, -1, "RETURN_VALUE")
         ]
 
     def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
         raise StopIteration
+
+
+@Parser.register
+class JumpAssembly(AbstractAssemblyInstruction):
+    # JUMP <label>
+    NAME = "JUMP"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "JumpAssembly":
+        return cls(parser.consume(IdentifierToken))
+
+    def __init__(self, label_name_token: IdentifierToken | str):
+        self.label_name_token = label_name_token if isinstance(label_name_token, IdentifierToken) else IdentifierToken(label_name_token)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.label_name_token == other.label_name_token
+
+    def __repr__(self):
+        return f"JUMP({self.label_name_token.text})"
+
+    def copy(self) -> "JumpAssembly":
+        return JumpAssembly(self.label_name_token)
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        return [Instruction(function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(self.label_name_token.text))]
+
+    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+        raise StopIteration
+
+
