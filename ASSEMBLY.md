@@ -39,6 +39,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 
 - Access Expressions:
   - @\<global name>: global variable
+  - @!\<global name>: static global variable
   - $\<local name>: local variable
   - %: top of stack (in most cases the default when not provided)
   - \<access>[\<index or expression>]: value by [] operator

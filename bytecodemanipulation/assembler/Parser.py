@@ -223,6 +223,23 @@ class GlobalAccessExpression(AbstractAccessExpression):
         return 1, 1
 
 
+class GlobalStaticAccessExpression(AbstractAccessExpression):
+    PREFIX = "@!"
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        key = self.name_token.text
+        value = function.target.__globals__.get(key)
+        return [Instruction(function, -1, "LOAD_CONST", value)]
+
+    def emit_store_bytecodes(
+        self, function: MutableFunction, labels: typing.Set[str]
+    ) -> typing.List[Instruction]:
+        raise RuntimeError("Cannot assign to a constant global")
+
+    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+        return 1, 1
+
+
 class LocalAccessExpression(AbstractAccessExpression):
     PREFIX = "$"
 
@@ -493,7 +510,11 @@ class Parser(AbstractParser):
 
         if start_token.text == "@":
             self.consume(SpecialToken("@"))
-            expr = GlobalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
+
+            if self.try_consume(SpecialToken("!")):
+                expr = GlobalStaticAccessExpression(self.consume([IdentifierToken, IntegerToken]))
+            else:
+                expr = GlobalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
 
         elif start_token.text == "$":
             self.consume(SpecialToken("$"))

@@ -151,7 +151,7 @@ class TestParser(TestCase):
 
     def test_load(self):
         expr = Parser(
-            'LOAD @test\nLOAD $test\nLOAD @global[10]\nLOAD $local[20]\nLOAD "hello"\nLOAD @test -> $hello'
+            'LOAD @test\nLOAD $test\nLOAD @global[10]\nLOAD $local[20]\nLOAD "hello"\nLOAD @test -> $hello\nLOAD @!test'
         ).parse()
 
         self.assertEqualList(
@@ -174,6 +174,7 @@ class TestParser(TestCase):
                     LoadAssembly(
                         GlobalAccessExpression("test"), LocalAccessExpression("hello")
                     ),
+                    LoadAssembly(GlobalStaticAccessExpression("test")),
                 ]
             ),
             expr,
