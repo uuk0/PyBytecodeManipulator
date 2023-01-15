@@ -59,10 +59,20 @@ class Lexer(AbstractLexer):
             text = ""
             if self.try_consume("-"):
                 text += "."
-            text += self.consume_while(string.digits)
+            text += self.consume_while(string.digits + "_")
 
             if self.try_inspect() == ".":
-                text += self.consume(".") + self.consume_while(string.digits)
+                remaining = self.consume(".") + self.consume_while(string.digits + "_")
+
+                if self.try_inspect() and self.try_inspect() in string.ascii_letters:
+                    return [IntegerToken(text), SpecialToken("."), IdentifierToken(remaining[1:] + self.consume_while(string.ascii_letters + string.digits + "_"))]
+
+                text += remaining
+
+            elif self.try_inspect() and self.try_inspect() in string.ascii_letters:
+                text += self.consume_while(string.ascii_letters + string.digits + "_")
+
+                return IdentifierToken(text)
 
             return IntegerToken(text)
 

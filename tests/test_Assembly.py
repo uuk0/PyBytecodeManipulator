@@ -7,7 +7,7 @@ from bytecodemanipulation import data_loader
 
 data_loader.INIT_ASSEMBLY = False
 from bytecodemanipulation.assembler.Parser import *
-from bytecodemanipulation.assembler.target import assembly, label
+from bytecodemanipulation.assembler.target import assembly, label, jump as asm_jump
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
 
 try:
@@ -536,6 +536,18 @@ class TestInlineAssembly(TestCase):
         def target(x):
             assembly("JUMP test\nRETURN 0")
             assembly("LABEL test")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: None)
+
+    def test_jump_method(self):
+        def target():
+            asm_jump("test")
+            print("Hello World")
+            label("test")
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)

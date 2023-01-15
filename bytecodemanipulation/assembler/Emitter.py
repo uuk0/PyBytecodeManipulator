@@ -1,3 +1,4 @@
+import string
 import typing
 
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
@@ -31,6 +32,21 @@ def apply_inline_assemblies(target: MutableFunction):
                     insertion_points.append((arg.arg_value, invoke.next_instruction))
                 else:
                     insertion_points.append((arg.arg_value, invoke))
+
+                instr.change_opcode(Opcodes.NOP)
+                arg.change_opcode(Opcodes.NOP)
+                invoke.change_opcode(Opcodes.LOAD_CONST, None)
+
+            elif value == assembly_targets.jump:
+                invoke = next(instr.trace_stack_position_use(0))
+                arg = next(invoke.trace_stack_position(0))
+                assert arg.opcode == Opcodes.LOAD_CONST, "only constant assembly code is allowed!"
+                assert all(e in string.ascii_letters + string.digits for e in arg.arg_value), "only characters and digits are allowed for label names!"
+
+                if invoke.next_instruction.opcode == Opcodes.POP_TOP:
+                    insertion_points.append((f"JUMP {arg.arg_value}", invoke.next_instruction))
+                else:
+                    insertion_points.append((f"JUMP {arg.arg_value}", invoke))
 
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
