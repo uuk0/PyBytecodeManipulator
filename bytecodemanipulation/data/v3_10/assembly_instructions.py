@@ -1176,27 +1176,37 @@ class ReturnAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class JumpAssembly(AbstractAssemblyInstruction):
-    # JUMP <label>
+    # JUMP <label> [IF <condition>]
     NAME = "JUMP"
 
     @classmethod
     def consume(cls, parser: "Parser") -> "JumpAssembly":
-        return cls(parser.consume(IdentifierToken))
+        label_target = parser.consume(IdentifierToken)
 
-    def __init__(self, label_name_token: IdentifierToken | str):
+        if parser.try_consume(IdentifierToken("IF")):
+            condition = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, allow_op=True)
+        else:
+            condition = None
+
+        return cls(label_target, condition)
+
+    def __init__(self, label_name_token: IdentifierToken | str, condition: AbstractAccessExpression | None = None):
         self.label_name_token = label_name_token if isinstance(label_name_token, IdentifierToken) else IdentifierToken(label_name_token)
+        self.condition = condition
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.label_name_token == other.label_name_token
+        return type(self) == type(other) and self.label_name_token == other.label_name_token and self.condition == other.condition
 
     def __repr__(self):
-        return f"JUMP({self.label_name_token.text})"
+        return f"JUMP({self.label_name_token.text}{'' if self.condition is None else ', IF '+repr(self.condition)})"
 
     def copy(self) -> "JumpAssembly":
-        return JumpAssembly(self.label_name_token)
+        return JumpAssembly(self.label_name_token, self.condition.copy() if self.condition else None)
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return [Instruction(function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(self.label_name_token.text))]
+        if self.condition is None:
+            return [Instruction(function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(self.label_name_token.text))]
+        return self.condition.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(self.label_name_token.text))]
 
     def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
         raise StopIteration

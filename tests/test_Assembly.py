@@ -30,6 +30,9 @@ from tests.test_issues import compare_optimized_results
 globals().update(data_loader.ASSEMBLY_MODULE)
 
 
+GLOBAL = None
+
+
 class TestParser(TestCase):
     def assertEqualList(
         self, correct: CompoundExpression, to_check: CompoundExpression
@@ -539,5 +542,26 @@ class TestInlineAssembly(TestCase):
         mutable.reassign_to_function()
 
         compare_optimized_results(self, target, lambda: None)
+
+    def test_conditional_jump(self):
+        def target(x):
+            assembly("JUMP test IF @GLOBAL\nRETURN 0\nLABEL test")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
+
+    def test_conditional_jump_external_target(self):
+        def target(x):
+            assembly("JUMP test IF @GLOBAL\nRETURN 0")
+            label("test")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
 
 

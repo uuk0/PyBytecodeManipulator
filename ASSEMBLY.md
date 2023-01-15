@@ -15,7 +15,7 @@ for cross-version support.
   * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@
 * IF \<expression> '{' \<body> '}': executes 'body' only if 'expression' is not False
 * WHILE \<expression> '{' \<body> '}': executes 'body' while 'expression' is not False
-* JUMP \<label name>: jumps to the label named 'label name'
+* JUMP \<label name> [IF <condition access>]: jumps to the label named 'label name'
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
