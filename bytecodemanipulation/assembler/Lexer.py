@@ -35,6 +35,20 @@ class SpecialToken(AbstractToken):
     pass
 
 
+class PythonCodeToken(AbstractToken):
+    pass
+
+
+def _count_chars_at_end(text: str, c: str) -> int:
+    count = 0
+
+    while text.endswith(c):
+        text = text.removesuffix(c)
+        count += 1
+
+    return count
+
+
 class Lexer(AbstractLexer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,6 +90,13 @@ class Lexer(AbstractLexer):
 
         if char in string.ascii_letters + "_":
             identifier = self.consume_while(string.ascii_letters + string.digits + "_")
+
+            if identifier == "PYTHON" and self.try_consume_multi(2, " {"):
+                python = self.consume_python_code()
+                self.consume("}")
+
+                return [IdentifierToken("PYTHON"), PythonCodeToken(python)]
+
             return IdentifierToken(identifier)
 
         if char in SPECIAL_CHARS:
@@ -101,3 +122,44 @@ class Lexer(AbstractLexer):
             return
 
         raise SyntaxError(repr(char))
+
+    def consume_python_code(self):
+        bracket_level = 0
+
+        code = ""
+
+        while True:
+            code += self.consume_while(string.ascii_letters + string.digits + string.whitespace + "@!$+~*-_.,:;%&/\\[]()<>|")
+
+            n = self.try_inspect()
+
+            if n is None:
+                raise SyntaxError("expected '}' at python end, got EOF")
+
+            if n == "#":
+                code += self.consume_until("\n")
+            elif n in "\"'":
+                # todo: f-strings
+
+                if code[-2:] == " f":
+                    raise NotImplementedError("f-strings")
+
+                triple = self.try_inspect_multi(3)
+
+                if triple == n * 3:
+                    code += self.consume(triple) + self.consume_until(lambda text, c: text.endswith(triple) and _count_chars_at_end(text.removesuffix(triple), "\\") % 1 == 0)
+                    pass
+
+                code += self.consume(n) + self.consume_until(lambda text, c: text.endswith(n) and _count_chars_at_end(text.removesuffix(n), "\\") % 1 == 0)
+
+            elif n == "{":
+                bracket_level += 1
+
+            elif n == "}":
+                bracket_level -= 1
+
+                if bracket_level == -1:
+                    return code.strip()
+
+            else:
+                raise NotImplementedError(n)

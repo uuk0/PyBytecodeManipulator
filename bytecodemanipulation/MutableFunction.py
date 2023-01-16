@@ -193,7 +193,7 @@ class Instruction:
                 if not isinstance(self.arg_value, Instruction)
                 else self.arg_value.lossy_eq(other.arg_value)
             )
-            if self.arg_value is not None and other.arg_value is not None
+            if (self.arg_value is not None and other.arg_value is not None) or self.opcode == Opcodes.LOAD_CONST
             else True
         )
 
@@ -313,7 +313,7 @@ class Instruction:
         return self.opcode in END_CONTROL_FLOW
 
     def update_owner(
-        self, function: "MutableFunction", offset: int, update_following=True
+        self, function: "MutableFunction", offset: int, update_following=True, force_change_arg_index=False
     ):
         previous_function = self.function
 
@@ -323,9 +323,9 @@ class Instruction:
         # If previously the ownership was unset, and we have not fully referenced args, do it now!
         # todo: when previous owner was set, and arg is not None, we might need to de-ref the value
         #    and re-ref afterwards, so the value lives in the new owner
-        if self.arg is not None and self.arg_value is None:
+        if self.arg is not None and self.arg_value is None and (not force_change_arg_index or self.opcode != Opcodes.LOAD_CONST):
             self.change_arg(self.arg)
-        elif self.arg_value is not None and self.arg is None:
+        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and (self.arg is None or force_change_arg_index):
             self.change_arg_value(self.arg_value)
 
         if update_following:

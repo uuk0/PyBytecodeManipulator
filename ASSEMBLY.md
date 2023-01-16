@@ -18,6 +18,8 @@ for cross-version support.
 * JUMP \<label name> \[(IF \<condition access>) | ('(' \<expression> | \<op expression> ')')] : jumps to the label named 'label name'; if a condition is provided, jumps only if it evals to True
 * DEF \[\<func name>] \['<' \['!'] \<bound variables\> '>'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}': creates a method named 'func name' (lambda-like if not provided), capturing the outer locals in 'bound variables' (or none)
   using the args stored in 'signature', and optionally storing the result at 'target' (if not provided, at 'func name' if provided else TOS). 'body' is the code itself
+* PYTHON '{' \<code> '}': puts the python code in place; '{' and '}' is allowed in code, but the last not matched and not escaped '}' will be used at end of code by the Lexer; WARNING: f-strings are currently NOT supported as they require
+  some special handling at the lexer.
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
@@ -57,8 +59,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - add singleton operators for OP
 - add ':=' binary operator
 - CALL PARTIAL (...) wraps the target in functools.partial; expressions can be prefixed with '?' for dynamic resolving
-- PYTHON '{' \<code> '}' invokes the code; requires modifications at the lexer side
 - FOREACH (\<expression> ['->' \<target>]) | ('(' \<expression> ')' ['->' \<target>] {['&'] '(' \<expression> ')' ['->' \<target>]}) iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
 - FORRANGE '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] {'(' '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] ')'} iterates over the ranges one after each other
 - CALL as expression (most likely with \<target>(...)
-- '# ...' as comments

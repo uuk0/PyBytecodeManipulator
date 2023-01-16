@@ -38,7 +38,7 @@ def compare_optimized_results(
     if not hasattr(target, "_debug_wrapper"):
         mutable.reassign_to_function()
 
-    _OptimisationContainer.get_for_target(target).run_optimisers()
+    _OptimisationContainer.get_for_target(mutable.target).run_optimisers()
 
     if opt_ideal > 0:
         mutable = MutableFunction(ideal)

@@ -504,7 +504,7 @@ WHILE OP ($a == $b) {
             expr,
         )
 
-    def test_def(self):
+    def test_def_assembly(self):
         expr = Parser("""
 DEF test () {}
 DEF test <test> () {}
@@ -527,6 +527,22 @@ DEF test <test> () -> @target {}
                     FunctionDefinitionAssembly("test", ["test"], [CallAssembly.Arg(IdentifierToken("a")), CallAssembly.Arg(IdentifierToken("b"))], CompoundExpression([])),
                     FunctionDefinitionAssembly("test", ["test"], [CallAssembly.KwArg("c", GlobalAccessExpression("d"))], CompoundExpression([])),
                     FunctionDefinitionAssembly("test", ["test"], [], CompoundExpression([]), GlobalAccessExpression("target")),
+                ]
+            ),
+            expr,
+        )
+
+    def test_python_assembly(self):
+        expr = Parser("""
+PYTHON {
+    print("Hello World")
+}
+""").parse()
+
+        self.assertEqualList(
+            CompoundExpression(
+                [
+                    PythonCodeAssembly("print(\"Hello World\")")
                 ]
             ),
             expr,
@@ -666,4 +682,19 @@ YIELD @GLOBAL -> $v""")
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
 
+    def test_python_assembly(self):
+        def target(x):
+            assembly("""
+PYTHON {
+    print("Hello World!")
+}
+""")
 
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        def compare():
+            print("Hello World!")
+
+        compare_optimized_results(self, target, compare)
