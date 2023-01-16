@@ -1,6 +1,7 @@
 import abc
 import typing
 
+import bytecodemanipulation.util
 from bytecodemanipulation.Opcodes import Opcodes
 
 from bytecodemanipulation.assembler.Parser import (
@@ -857,7 +858,7 @@ class CallAssembly(AbstractAssemblyInstruction):
     class IArg(IAssemblyStructureVisitable, abc.ABC):
         __slots__ = ("source",)
 
-        def __init__(self, source: "AbstractAccessExpression"):
+        def __init__(self, source: typing.Union["AbstractAccessExpression", IdentifierToken]):
             self.source = source
 
         def __repr__(self):
@@ -894,7 +895,7 @@ class CallAssembly(AbstractAssemblyInstruction):
         __slots__ = ("key", "source")
 
         def __init__(
-            self, key: IdentifierToken | str, source: "AbstractAccessExpression"
+            self, key: IdentifierToken | str, source: typing.Union["AbstractAccessExpression", IdentifierToken]
         ):
             self.key = key if isinstance(key, IdentifierToken) else IdentifierToken(key)
             super().__init__(source)
@@ -1165,6 +1166,16 @@ class ReturnAssembly(AbstractAssemblyInstruction):
     def __init__(self, expr: AbstractSourceExpression | None = None):
         self.expr = expr
 
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
+        return visitor(
+            self,
+            (
+                self.expr.visit_parts(visitor) if self.expr else None,
+            )
+        )
+
     def __eq__(self, other):
         return type(self) == type(other) and self.expr == other.expr
 
@@ -1210,6 +1221,17 @@ class YieldAssembly(AbstractAssemblyInstruction):
         self.expr = expr
         self.is_star = is_star
         self.target = target
+
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
+        return visitor(
+            self,
+            (
+                self.expr.visit_parts(visitor) if self.expr else None,
+                self.target.visit_parts(visitor) if self.target else None,
+            )
+        )
 
     def __eq__(self, other):
         return type(self) == type(other) and self.expr == other.expr and self.is_star == other.is_star and self.target == other.target
@@ -1290,6 +1312,16 @@ class JumpAssembly(AbstractAssemblyInstruction):
         self.label_name_token = label_name_token if isinstance(label_name_token, IdentifierToken) else IdentifierToken(label_name_token)
         self.condition = condition
 
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
+        return visitor(
+            self,
+            (
+                self.condition.visit_parts(visitor) if self.condition else None,
+            )
+        )
+
     def __eq__(self, other):
         return type(self) == type(other) and self.label_name_token == other.label_name_token and self.condition == other.condition
 
@@ -1306,5 +1338,199 @@ class JumpAssembly(AbstractAssemblyInstruction):
 
     def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
         raise StopIteration
+
+
+@Parser.register
+class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
+    # DEF [<func name>] ['<' ['!'] <bound variables\> '>'] '(' <signature> ')' ['->' <target>] '{' <body> '}'
+    NAME = "DEF"
+    SKIP_SUB_LABELS = True
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "JumpAssembly":
+        func_name = parser.try_consume(IdentifierToken)
+        bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []
+        args = []
+
+        if parser.try_consume(SpecialToken("<")):
+            is_static = bool(parser.try_consume(SpecialToken("!")))
+
+            expr = parser.try_consume(IdentifierToken)
+
+            if expr:
+                bound_variables.append((expr, is_static))
+
+            while True:
+                if not parser.try_consume(SpecialToken(",")) or not (expr := parser.try_consume(IdentifierToken)):
+                    break
+
+                bound_variables.append((expr, is_static))
+
+            parser.consume(SpecialToken(">"))
+
+        parser.consume(SpecialToken("("))
+
+        while parser.try_inspect() != SpecialToken(")"):
+            arg = None
+
+            star = parser.try_consume(SpecialToken("*"))
+            star_star = parser.try_consume(SpecialToken("*"))
+            identifier = parser.try_consume(IdentifierToken)
+
+            if not identifier:
+                if star:
+                    raise SyntaxError
+
+                break
+
+            if not star:
+                if parser.try_consume(SpecialToken("=")):
+                    default_value = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, allow_op=True)
+
+                    if default_value is None:
+                        raise SyntaxError
+
+                    arg = CallAssembly.KwArg(identifier, default_value)
+
+            if not arg:
+                if star_star:
+                    arg = CallAssembly.KwArgStar(identifier)
+                elif star:
+                    arg = CallAssembly.StarArg(identifier)
+                else:
+                    arg = CallAssembly.Arg(identifier)
+
+            args.append(arg)
+
+            if not parser.try_consume(SpecialToken(",")):
+                break
+
+        parser.consume(SpecialToken(")"))
+
+        if parser.try_consume(SpecialToken("<")):
+            raise SyntaxError("Respect ordering (got 'args' before 'captured'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }")
+
+        if parser.try_consume(SpecialToken("-")) and parser.try_consume(SpecialToken(">")):
+            target = parser.try_consume_access_token()
+        else:
+            target = None
+
+        body = parser.parse_body()
+
+        if parser.try_consume(SpecialToken("-")):
+            raise SyntaxError("Respect ordering (got 'code' before 'target'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }")
+
+        return cls(func_name, bound_variables, args, body, target)
+
+    def __init__(self, func_name: IdentifierToken | str | None, bound_variables: typing.List[typing.Tuple[IdentifierToken | str, bool] | str], args: typing.List[CallAssembly.IArg], body: CompoundExpression, target: AbstractAccessExpression | None = None):
+        self.func_name = func_name if not isinstance(func_name, str) else IdentifierToken(func_name)
+        self.bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []  # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
+
+        for element in bound_variables:
+            if isinstance(element, str):
+                self.bound_variables.append((IdentifierToken(element.removeprefix("!")), element.startswith("!")))
+            elif isinstance(element, tuple):
+                token, is_static = element
+
+                if isinstance(token, str):
+                    self.bound_variables.append((IdentifierToken(token), is_static))
+                else:
+                    self.bound_variables.append(element)
+            else:
+                raise ValueError(element)
+
+        self.args = args
+        self.body = body
+        self.target = target
+
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
+        return visitor(
+            self,
+            (
+                [
+                    arg.visit_parts(visitor) for arg in self.args
+                ],
+                self.body.visit_parts(visitor),
+                self.target.visit_parts(visitor) if self.target else None,
+            )
+        )
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.func_name == other.func_name and self.bound_variables == other.bound_variables and self.args == other.args and self.body == other.body and self.target == other.target
+
+    def __repr__(self):
+        return f"DEF({self.func_name.text}<{repr(self.bound_variables)[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+
+    def copy(self) -> "FunctionDefinitionAssembly":
+        return FunctionDefinitionAssembly(self.func_name, self.bound_variables.copy(), [arg.copy() for arg in self.args], self.body.copy(), self.target.copy() if self.target else None)
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        flags = 0
+        bytecode = []
+
+        inner_labels = self.body.collect_label_info()
+        label_targets = {}
+
+        target = MutableFunction(lambda: None)
+        target.assemble_instructions_from_tree(self.body.emit_bytecodes(target, inner_labels))
+
+        for ins in target.instructions:
+            if ins.opcode == Opcodes.BYTECODE_LABEL:
+                label_targets[ins.arg_value] = ins.next_instruction
+                ins.change_opcode(Opcodes.NOP)
+
+        def resolve_jump_to_label(ins: Instruction):
+            if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
+                ins.change_arg_value(label_targets[ins.arg_value.name])
+
+        target.instructions[0].apply_visitor(bytecodemanipulation.util.LambdaInstructionWalker(resolve_jump_to_label))
+
+        has_kwarg = False
+        for arg in self.args:
+            if isinstance(arg, CallAssembly.KwArg):
+                has_kwarg = True
+                break
+
+        if has_kwarg:
+            flags |= 0x02
+            raise NotImplementedError("Kwarg defaults")
+
+        if self.bound_variables:
+            if any(map(lambda e: e[1], self.bound_variables)):
+                raise NotImplementedError("Static variables")
+
+            flags |= 0x08
+
+            bytecode += [
+                Instruction(function, -1, "LOAD_CONST", tuple(map(lambda e: e[0], self.bound_variables))),
+            ]
+
+        code_object = target.create_code_obj()
+
+        bytecode += [
+            Instruction(function, -1, "LOAD_CONST", code_object),
+            Instruction(function, -1, "LOAD_CONST", self.func_name.text if self.func_name else "<lambda>"),
+            Instruction(function, -1, "MAKE_FUNCTION", arg=flags),
+        ]
+
+        if self.target:
+            bytecode += self.target.emit_store_bytecodes(function, labels)
+
+        return bytecode
+
+    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+        max_stack_size = 0
+        kw_arg_count = 0
+
+        for i, arg in enumerate(self.args):
+            if isinstance(arg, CallAssembly.KwArg):
+                max_stack_size = max(max_stack_size, children[0][1][1] + kw_arg_count)
+                kw_arg_count += 1
+
+        max_stack_size = max(max_stack_size, kw_arg_count)
+
+        return 0, max_stack_size
 
 

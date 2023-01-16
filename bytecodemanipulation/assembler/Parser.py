@@ -52,6 +52,8 @@ class JumpToLabel:
 
 
 class IAssemblyStructureVisitable(ABC):
+    SKIP_SUB_LABELS = False
+
     def visit_parts(
         self,
         visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any],
@@ -119,7 +121,7 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         )
 
     def collect_label_info(self) -> typing.Set[str]:
-        return set(self.visit_assembly_instructions(lambda asm, prev: sum(prev, tuple()) + ((asm.name_token.text,) if isinstance(asm, LabelAssembly) else tuple())))
+        return set(self.visit_assembly_instructions(lambda asm, prev: (sum(filter(lambda e: e is not None, prev), tuple()) if not asm.SKIP_SUB_LABELS else tuple()) + ((asm.name_token.text,) if isinstance(asm, LabelAssembly) else tuple())))
 
     def create_bytecode(self, target: MutableFunction, labels: typing.Set[str]):
         return self.emit_bytecodes(target, labels)

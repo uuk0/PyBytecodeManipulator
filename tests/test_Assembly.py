@@ -504,6 +504,34 @@ WHILE OP ($a == $b) {
             expr,
         )
 
+    def test_def(self):
+        expr = Parser("""
+DEF test () {}
+DEF test <test> () {}
+DEF test <!test> () {}
+DEF test <test, test2> () {}
+DEF test <test> (a) {}
+DEF test <test> (a, b) {}
+DEF test <test> (c=@d) {}
+DEF test <test> () -> @target {}
+""").parse()
+
+        self.assertEqualList(
+            CompoundExpression(
+                [
+                    FunctionDefinitionAssembly("test", [], [], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", ["test"], [], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", [("test", True)], [], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", ["test", "test2"], [], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", ["test"], [CallAssembly.Arg(IdentifierToken("a"))], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", ["test"], [CallAssembly.Arg(IdentifierToken("a")), CallAssembly.Arg(IdentifierToken("b"))], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", ["test"], [CallAssembly.KwArg("c", GlobalAccessExpression("d"))], CompoundExpression([])),
+                    FunctionDefinitionAssembly("test", ["test"], [], CompoundExpression([]), GlobalAccessExpression("target")),
+                ]
+            ),
+            expr,
+        )
+
 
 class TestInlineAssembly(TestCase):
     def test_empty(self):
