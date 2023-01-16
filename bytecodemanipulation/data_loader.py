@@ -12,6 +12,7 @@ local = os.path.dirname(__file__)
 
 version = f"{sys.version_info.major}_{sys.version_info.minor}"
 folder = local + "/data/v" + version
+sys.path.append(os.path.dirname(local))
 
 
 INIT_ASSEMBLY = True
@@ -80,8 +81,8 @@ ASSEMBLY_MODULE = {}
 
 def load_assembly_instructions():
     if os.path.exists(folder + "/assembly_instructions.py"):
-        exec(open(folder + "/assembly_instructions.py").read(), ASSEMBLY_MODULE)
-        # ASSEMBLY_MODULE.update(importlib.import_module("bytecodemanipulation.data.v" + version + ".assembly_instructions").__dict__)
+        # exec(open(folder + "/assembly_instructions.py").read(), ASSEMBLY_MODULE)
+        ASSEMBLY_MODULE.update(importlib.import_module("bytecodemanipulation.data.v" + version + ".assembly_instructions").__dict__)
 
 
 def init():

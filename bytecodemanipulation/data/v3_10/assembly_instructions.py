@@ -1,4 +1,5 @@
 import abc
+import functools
 import typing
 
 import bytecodemanipulation.util
@@ -852,23 +853,24 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class CallAssembly(AbstractAssemblyInstruction):
-    # CALL <call target> (<args>) [-> <target>]
+    # CALL ['PARTIAL'] <call target> (<args>) [-> <target>]
     NAME = "CALL"
 
     class IArg(IAssemblyStructureVisitable, abc.ABC):
-        __slots__ = ("source",)
+        __slots__ = ("source", "is_dynamic")
 
-        def __init__(self, source: typing.Union["AbstractAccessExpression", IdentifierToken]):
+        def __init__(self, source: typing.Union["AbstractAccessExpression", IdentifierToken], is_dynamic: bool = False):
             self.source = source
+            self.is_dynamic = is_dynamic
 
         def __repr__(self):
-            return f"{type(self).__name__}({self.source})"
+            return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.source})"
 
         def __eq__(self, other):
-            return type(self) == type(other) and self.source == other.source
+            return type(self) == type(other) and self.source == other.source and self.is_dynamic == other.is_dynamic
 
         def copy(self):
-            return type(self)(self.source.copy())
+            return type(self)(self.source.copy(), self.is_dynamic)
 
         def visit_parts(
             self,
@@ -892,32 +894,35 @@ class CallAssembly(AbstractAssemblyInstruction):
         pass
 
     class KwArg(IArg):
-        __slots__ = ("key", "source")
+        __slots__ = ("key", "source", "is_dynamic")
 
         def __init__(
-            self, key: IdentifierToken | str, source: typing.Union["AbstractAccessExpression", IdentifierToken]
+            self, key: IdentifierToken | str, source: typing.Union["AbstractAccessExpression", IdentifierToken], is_dynamic: bool = False
         ):
             self.key = key if isinstance(key, IdentifierToken) else IdentifierToken(key)
-            super().__init__(source)
+            super().__init__(source, is_dynamic=is_dynamic)
 
         def __repr__(self):
-            return f"{type(self).__name__}({self.key.text} = {self.source})"
+            return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.key.text} = {self.source})"
 
         def __eq__(self, other):
             return (
                 type(self) == type(other)
                 and self.source == other.source
                 and self.key == other.key
+                and self.is_dynamic == other.is_dynamic
             )
 
         def copy(self):
-            return type(self)(self.key, self.source.copy())
+            return type(self)(self.key, self.source.copy(), self.is_dynamic)
 
     class KwArgStar(IArg):
         pass
 
     @classmethod
     def consume(cls, parser: "Parser") -> "CallAssembly":
+        is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
+
         call_target = parser.try_parse_data_source(include_bracket=False)
 
         args: typing.List[CallAssembly.IArg] = []
@@ -932,11 +937,14 @@ class CallAssembly(AbstractAssemblyInstruction):
             ):
                 key = parser.consume(IdentifierToken)
                 parser.consume(SpecialToken("="))
+
+                is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
+
                 expr = parser.try_parse_data_source(
                     allow_primitives=True, include_bracket=False
                 )
 
-                args.append(CallAssembly.KwArg(key, expr))
+                args.append(CallAssembly.KwArg(key, expr, is_dynamic))
 
                 has_seen_keyword_arg = True
 
@@ -961,10 +969,12 @@ class CallAssembly(AbstractAssemblyInstruction):
                     raise SyntaxError("*<arg> only allowed before keyword arguments!")
 
             elif not has_seen_keyword_arg:
+                is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
+
                 expr = parser.try_parse_data_source(
                     allow_primitives=True, include_bracket=False
                 )
-                args.append(CallAssembly.Arg(expr))
+                args.append(CallAssembly.Arg(expr, is_dynamic))
 
             else:
                 raise SyntaxError("pure <arg> only allowed before keyword arguments!")
@@ -985,17 +995,19 @@ class CallAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        return cls(call_target, args, target)
+        return cls(call_target, args, target, is_partial)
 
     def __init__(
         self,
         call_target: AbstractAccessExpression,
         args: typing.List["CallAssembly.IArg"],
         target: AbstractAccessExpression | None = None,
+        is_partial: bool = False,
     ):
         self.call_target = call_target
         self.args = args
         self.target = target
+        self.is_partial = is_partial
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -1014,10 +1026,11 @@ class CallAssembly(AbstractAssemblyInstruction):
             self.call_target.copy(),
             [arg.copy() for arg in self.args],
             self.target.copy() if self.target else None,
+            self.is_partial,
         )
 
     def __repr__(self):
-        return f"CALL({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
+        return f"CALL{'' if not self.is_partial else '-PARTIAL'}({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
 
     def __eq__(self, other):
         return (
@@ -1025,11 +1038,10 @@ class CallAssembly(AbstractAssemblyInstruction):
             and self.call_target == other.call_target
             and self.args == other.args
             and self.target == other.target
+            and self.is_partial == other.is_partial
         )
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        bytecode = self.call_target.emit_bytecodes(function, labels)
-
         has_seen_star = False
         has_seen_star_star = False
         has_seen_kw_arg = False
@@ -1045,14 +1057,36 @@ class CallAssembly(AbstractAssemblyInstruction):
                 has_seen_star = True
 
         if not has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
+            if self.is_partial:
+                bytecode = [
+                    Instruction(function, -1, Opcodes.LOAD_CONST, functools.partial)
+                ]
+                extra_args = 1
+            else:
+                bytecode = []
+                extra_args = 0
+
+            bytecode += self.call_target.emit_bytecodes(function, labels)
+
             for arg in self.args:
                 bytecode += arg.source.emit_bytecodes(function, labels)
 
             bytecode += [
-                Instruction(function, -1, "CALL_FUNCTION", len(self.args)),
+                Instruction(function, -1, "CALL_FUNCTION", arg=len(self.args) + extra_args),
             ]
 
         elif has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
+            if self.is_partial:
+                bytecode = [
+                    Instruction(function, -1, Opcodes.LOAD_CONST, functools.partial)
+                ]
+                extra_args = 1
+            else:
+                bytecode = []
+                extra_args = 0
+
+            bytecode += self.call_target.emit_bytecodes(function, labels)
+
             kw_arg_keys = []
 
             for arg in reversed(self.args):
@@ -1065,11 +1099,19 @@ class CallAssembly(AbstractAssemblyInstruction):
 
                 bytecode += [
                     Instruction(function, -1, "LOAD_CONST", kw_const),
-                    Instruction(function, -1, "CALL_FUNCTION_KW", len(self.args)),
+                    Instruction(function, -1, "CALL_FUNCTION_KW", arg=len(self.args) + extra_args),
                 ]
 
         else:
+            bytecode = self.call_target.emit_bytecodes(function, labels)
+
             bytecode += [Instruction(function, -1, "BUILD_LIST")]
+
+            if self.is_partial:
+                bytecode += [
+                    Instruction(function, -1, Opcodes.LOAD_CONST, functools.partial),
+                    Instruction(function, -1, "LIST_APPEND"),
+                ]
 
             i = -1
             for i, arg in enumerate(self.args):
@@ -1114,12 +1156,23 @@ class CallAssembly(AbstractAssemblyInstruction):
             ]
 
         if self.target:
-            bytecode += self.target.emit_store_bytecodes(function)
+            bytecode += self.target.emit_store_bytecodes(function, labels)
 
         return bytecode
 
-    # def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-    #     return super()._get_stack_effect_stats(children + ((-len(self.args), len(self.args)+1),))
+    def _get_stack_effect_stats(self, children: typing.List[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
+        effect = 0
+
+        effect += children[0][0]
+
+        for stat in children[1]:
+            effect += stat[0]
+
+        effect -= len(self.args) - 1
+
+        effect -= children[2][0]
+
+        return effect,  super()._get_stack_effect_stats(children + ((-len(self.args), len(self.args)+1),))[0]
 
 
 @Parser.register

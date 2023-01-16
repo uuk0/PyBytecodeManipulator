@@ -76,9 +76,14 @@ class IAssemblyStructureVisitable(ABC):
         for x in children:
             if x is None: continue
 
-            eff, m = x
-            max_stack_size = max(max_stack_size, m)
-            effect += eff
+            for x in (x if isinstance(x, list) else [x]):
+                try:
+                    eff, m = x
+                except:
+                    raise
+
+                max_stack_size = max(max_stack_size, m)
+                effect += eff
 
         return effect, max(max_stack_size, effect, 0)
 

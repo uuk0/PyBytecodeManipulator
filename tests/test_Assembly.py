@@ -2,11 +2,12 @@ import dis
 import itertools
 import typing
 from unittest import TestCase
+import functools
 
 
-from bytecodemanipulation import data_loader
+import bytecodemanipulation.data_loader
 
-data_loader.INIT_ASSEMBLY = False
+bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
 from bytecodemanipulation.assembler.Parser import *
 from bytecodemanipulation.assembler.target import assembly, label, jump as asm_jump
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
@@ -18,7 +19,7 @@ except ImportError:
     from bytecodemanipulation.assembler.util.parser import IdentifierExpression
     from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 
-data_loader.load_assembly_instructions()
+bytecodemanipulation.data_loader.load_assembly_instructions()
 
 
 if typing.TYPE_CHECKING:
@@ -26,9 +27,13 @@ if typing.TYPE_CHECKING:
 
 from bytecodemanipulation.optimiser_util import remove_nops, inline_const_value_pop_pairs
 from tests.test_issues import compare_optimized_results
+from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationContainer
 
 
-globals().update(data_loader.ASSEMBLY_MODULE)
+if bytecodemanipulation.data_loader.version == "3_10":
+    from bytecodemanipulation.data.v3_10.assembly_instructions import *
+else:
+    raise RuntimeError(bytecodemanipulation.data_loader.version)
 
 
 GLOBAL = None
@@ -679,6 +684,42 @@ YIELD @GLOBAL -> $v""")
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
+
+    def test_call_assembly_partial(self):
+        # Only here so below code works!
+        _OptimisationContainer.get_for_target(functools).is_static = True
+
+        def target(x):
+            assembly("""
+CALL PARTIAL @print ("Hello World!") -> $x
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        @cache_global_name("functools")
+        def compare():
+            x = functools.partial(print, "Hello World!")
+
+        compare_optimized_results(self, target, compare, opt_ideal=2)
+
+        _OptimisationContainer.get_for_target(functools).is_static = False
+
+    def test_call_assembly(self):
+        def target(x):
+            assembly("""
+CALL @print ("Hello World!") -> $x
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        def compare():
+            x = print("Hello World!")
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
 

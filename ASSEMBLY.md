@@ -10,7 +10,9 @@ for cross-version support.
 
 * LOAD \<expression> \['->' \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> \['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
-* CALL \<call target> '(' \<args> ')' \['-> '\<target>]: invokes the target found at 'call target' with the given 'args' (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target'
+* CALL \['PARTIAL'] \<call target> '(' \<args> ')' \['-> '\<target>]: invokes the target found at 'call target' with the given 'args'
+  (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target';
+  'PARTIAL' is a wrapper like functools.partial. If used, each arg expression can be prefixed with '?' for dynamic evaluation, otherwise static evaluation (like the real functools.partial)
 * OP (\<lhs> \<binary operator> \<rhs>) \['->' \<target>]: uses the given operator
   * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|nis|<|<=|==|!=|>|>=|xor|xnor
 * IF \<expression> '{' \<body> '}': executes 'body' only if 'expression' is not False
@@ -46,7 +48,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - @!\<global name>: static global variable
   - $\<local name>: local variable
   - %: top of stack (in most cases the default when not provided)
-  - \<access>[\<index or expression>]: value by [] operator
+  - \<access>\[\<index or expression>]: value by \[] operator
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer
@@ -58,7 +60,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - can we use offsets as labels in JUMP's?
 - add singleton operators for OP
 - add ':=' binary operator
-- CALL PARTIAL (...) wraps the target in functools.partial; expressions can be prefixed with '?' for dynamic resolving
 - FOREACH (\<expression> ['->' \<target>]) | ('(' \<expression> ')' ['->' \<target>] {['&'] '(' \<expression> ')' ['->' \<target>]}) iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
 - FORRANGE '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] {'(' '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] ')'} iterates over the ranges one after each other
 - CALL as expression (most likely with \<target>(...)
