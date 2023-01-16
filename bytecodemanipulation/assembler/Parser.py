@@ -457,7 +457,8 @@ class Parser(AbstractParser):
         root = CompoundExpression()
 
         while predicate():
-            self.try_consume(CommentToken)
+            if self.try_consume(CommentToken):
+                continue
 
             if not (instr_token := self.try_consume(IdentifierToken)):
                 raise SyntaxError(self.try_inspect())

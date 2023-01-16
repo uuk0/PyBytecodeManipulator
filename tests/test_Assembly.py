@@ -544,6 +544,16 @@ class TestInlineAssembly(TestCase):
 
         compare_optimized_results(self, target, lambda: None, opt_ideal=2)
 
+    def test_empty_with_comment(self):
+        def target():
+            assembly("# Hello World!")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        compare_optimized_results(self, target, lambda: None, opt_ideal=2)
+
     def test_simple(self):
         def target():
             assembly("LOAD @print; POP")
