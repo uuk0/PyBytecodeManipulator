@@ -59,7 +59,11 @@ Expressions can be added as certain parameters to instructions to use instead of
 - float, list / tuple / set / map construction
 - can we use offsets as labels in JUMP's?
 - add singleton operators for OP
+- '§\<name>' for outer scope variable access
 - add ':=' binary operator
-- FOREACH (\<expression> ['->' \<target>]) | ('(' \<expression> ')' ['->' \<target>] {['&'] '(' \<expression> ')' ['->' \<target>]}) iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
-- FORRANGE '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] {'(' '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] ')'} iterates over the ranges one after each other
+- FOREACH (\<expression> ['->' \<target>]) | ('(' \<expression> ')' ['->' \<target>] {['&'] '(' \<expression> ')' ['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
+- FORRANGE '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] {'(' '(' [\<start>, ]\<stop>[, \<step>] ')' ['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
 - CALL as expression (most likely with \<target>(...)
+- LABEL part for WHILE, FOREACH, FORRANGE and IF (jump to end of if or top if wanted)
+- make it IF ... {ELSEIF ...} \[ELSE ...] (single assembly meta instruction)
+- stack size calculation based of the opcodes emitted, not some theoretical calculation
