@@ -78,7 +78,36 @@ def apply_inline_assemblies(target: MutableFunction):
 
     for (_, instr), asm in zip(insertion_points, assemblies):
         bytecode = asm.create_bytecode(target, labels)
-        stack_effect, max_stack_effect = asm.get_stack_effect_stats()
+
+        def visit(ins: Instruction, eff_a: typing.Tuple[int, int] | None, eff_b: typing.Tuple[int, int] | None) -> typing.Tuple[int, int]:
+            eff = 0
+            max_size = 0
+
+            if eff_b is not None:
+                max_size = eff_b[1]
+
+            if eff_a is not None:
+                eff += eff_a[0]
+
+                max_size = max(max_size, eff, eff_a[0])
+
+            push, pop, *_ = ins.get_stack_affect()
+
+            eff += push - pop
+
+            max_size = max(max_size, max_size+eff)
+
+            print(ins, eff, max_size)
+
+            return eff, max_size
+
+        for i, ins in enumerate(bytecode[:-1]):
+            ins.next_instruction = bytecode[i+1]
+
+        if bytecode:
+            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(visit)
+        else:
+            stack_effect = max_stack_effect = 0
 
         if stack_effect != 0 and bytecode and not (bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()):
             print(asm)

@@ -87,15 +87,6 @@ class LoadAssembly(AbstractAssemblyInstruction):
             ),
         )
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        source_stats, target_stats = children
-
-        if target_stats:
-            return source_stats[0] + target_stats[0], max(source_stats[1], target_stats[1])
-
-        return source_stats
-
-
 @Parser.register
 class StoreAssembly(AbstractAssemblyInstruction):
     # STORE <access> [(expression)]
@@ -214,9 +205,6 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def __repr__(self):
             raise NotImplementedError
 
-        def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-            raise NotImplementedError
-
     class BinaryOperation(IOperation):
         def __init__(
             self,
@@ -269,9 +257,6 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
         ):
             pass
-
-        def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-            return -1, 0
 
     @classmethod
     def consume(cls, parser: "Parser") -> "OpAssembly":
@@ -381,9 +366,6 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             (self.operation.visit_parts(visitor), self.target.visit_parts(visitor)),
         )
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return self.children[0]
-
 
 @Parser.register
 class IFAssembly(AbstractAssemblyInstruction):
@@ -434,10 +416,6 @@ class IFAssembly(AbstractAssemblyInstruction):
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
     ):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        # only the body affects the stack!
-        return super()._get_stack_effect_stats(children[1:2])
 
 
 @Parser.register
@@ -493,10 +471,6 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
     ):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        # only the body affects the stack!
-        return super()._get_stack_effect_stats(children[1:2])
 
 
 @Parser.register
@@ -567,9 +541,6 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
             self, (self.target.visit_parts(visitor) if self.target else None,)
         )
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
-
 
 @Parser.register
 class StoreGlobalAssembly(AbstractAssemblyInstruction):
@@ -632,9 +603,6 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         return visitor(
             self, (self.source.visit_parts(visitor) if self.target else None,)
         )
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return -1, 0
 
 
 @Parser.register
@@ -705,9 +673,6 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
             self, (self.target.visit_parts(visitor) if self.target else None,)
         )
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
-
 
 @Parser.register
 class StoreFastAssembly(AbstractAssemblyInstruction):
@@ -768,9 +733,6 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
         return visitor(
             self, (self.source.visit_parts(visitor) if self.target else None,)
         )
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return -1, 0
 
 
 @Parser.register
@@ -847,9 +809,6 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
             ),
         )
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
-
 
 @Parser.register
 class CallAssembly(AbstractAssemblyInstruction):
@@ -883,9 +842,6 @@ class CallAssembly(AbstractAssemblyInstruction):
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
         ):
             pass
-
-        def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-            return super()._get_stack_effect_stats(children + ((-1, 0),))
 
     class Arg(IArg):
         pass
@@ -1160,20 +1116,6 @@ class CallAssembly(AbstractAssemblyInstruction):
 
         return bytecode
 
-    def _get_stack_effect_stats(self, children: typing.List[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        effect = 0
-
-        effect += children[0][0]
-
-        for stat in children[1]:
-            effect += stat[0]
-
-        effect -= len(self.args) - 1
-
-        effect -= children[2][0]
-
-        return effect,  super()._get_stack_effect_stats(children + ((-len(self.args), len(self.args)+1),))[0]
-
 
 @Parser.register
 class PopElementAssembly(AbstractAssemblyInstruction):
@@ -1202,9 +1144,6 @@ class PopElementAssembly(AbstractAssemblyInstruction):
             Instruction(function, -1, "POP_TOP", int(self.count.text))
             for _ in range(int(self.count.text))
         ]
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return -1, 0
 
 
 @Parser.register
@@ -1243,9 +1182,6 @@ class ReturnAssembly(AbstractAssemblyInstruction):
         return expr + [
             Instruction(function, -1, "RETURN_VALUE")
         ]
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        raise StopIteration
 
 
 @Parser.register
@@ -1325,13 +1261,6 @@ class YieldAssembly(AbstractAssemblyInstruction):
 
         return bytecode
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-
-        x = 0
-        # todo: implement subexpression use!
-
-        return (-1, x) if self.target is None and self.expr is None else (0, x)
-
 
 @Parser.register
 class JumpAssembly(AbstractAssemblyInstruction):
@@ -1388,9 +1317,6 @@ class JumpAssembly(AbstractAssemblyInstruction):
         if self.condition is None:
             return [Instruction(function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(self.label_name_token.text))]
         return self.condition.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(self.label_name_token.text))]
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        raise StopIteration
 
 
 @Parser.register
@@ -1572,18 +1498,5 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
             bytecode += self.target.emit_store_bytecodes(function, labels)
 
         return bytecode
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        max_stack_size = 0
-        kw_arg_count = 0
-
-        for i, arg in enumerate(self.args):
-            if isinstance(arg, CallAssembly.KwArg):
-                max_stack_size = max(max_stack_size, children[0][1][1] + kw_arg_count)
-                kw_arg_count += 1
-
-        max_stack_size = max(max_stack_size, kw_arg_count)
-
-        return 0, max_stack_size
 
 

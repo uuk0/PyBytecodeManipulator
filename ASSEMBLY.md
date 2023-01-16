@@ -66,4 +66,3 @@ Expressions can be added as certain parameters to instructions to use instead of
 - CALL as expression (most likely with \<target>(...)
 - LABEL part for WHILE, FOREACH, FORRANGE and IF (jump to end of if or top if wanted)
 - make it IF ... {ELSEIF ...} \[ELSE ...] (single assembly meta instruction)
-- stack size calculation based of the opcodes emitted, not some theoretical calculation

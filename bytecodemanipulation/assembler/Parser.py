@@ -66,27 +66,6 @@ class IAssemblyStructureVisitable(ABC):
     ):
         raise NotImplementedError
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        max_stack_size = 0
-        effect = 0
-
-        if children is None:
-            raise RuntimeError(self)
-
-        for x in children:
-            if x is None: continue
-
-            for x in (x if isinstance(x, list) else [x]):
-                try:
-                    eff, m = x
-                except:
-                    raise
-
-                max_stack_size = max(max_stack_size, m)
-                effect += eff
-
-        return effect, max(max_stack_size, effect, 0)
-
 
 class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
     def __init__(self, children: typing.List[AbstractExpression] = None):
@@ -130,15 +109,6 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
 
     def create_bytecode(self, target: MutableFunction, labels: typing.Set[str]):
         return self.emit_bytecodes(target, labels)
-
-    def get_stack_effect_stats(self) -> typing.Tuple[int, int]:
-        def visit(element: IAssemblyStructureVisitable, children) -> typing.Tuple[int, int] | None:
-            try:
-                return element._get_stack_effect_stats(children)
-            except StopIteration:
-                return
-
-        return self.visit_parts(visit)
 
 
 class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitable, ABC):
@@ -201,9 +171,6 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(self.name_token)
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        raise NotImplementedError
-
 
 class GlobalAccessExpression(AbstractAccessExpression):
     PREFIX = "@"
@@ -226,9 +193,6 @@ class GlobalAccessExpression(AbstractAccessExpression):
 
         return [Instruction(function, -1, "STORE_GLOBAL", value)]
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
-
 
 class GlobalStaticAccessExpression(AbstractAccessExpression):
     PREFIX = "@!"
@@ -242,9 +206,6 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         raise RuntimeError("Cannot assign to a constant global")
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
 
 
 class LocalAccessExpression(AbstractAccessExpression):
@@ -267,9 +228,6 @@ class LocalAccessExpression(AbstractAccessExpression):
             value = int(value)
 
         return [Instruction(function, -1, "STORE_FAST", value)]
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
 
 
 class TopOfStackAccessExpression(AbstractAccessExpression):
@@ -295,10 +253,6 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         return []
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 0, 0
-
-
 class ConstantAccessExpression(AbstractAccessExpression):
     def __init__(self, value):
         self.value = value
@@ -319,9 +273,6 @@ class ConstantAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         raise SyntaxError("Cannot assign to a constant")
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return 1, 1
 
 
 class SubscriptionAccessExpression(AbstractAccessExpression):
@@ -382,9 +333,6 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
             (self.base_expr.visit_parts(visitor), self.index_expr.visit_parts(visitor)),
         )
 
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return -1, 0
-
 
 class AttributeAccessExpression(AbstractAccessExpression):
     def __init__(
@@ -426,9 +374,6 @@ class AttributeAccessExpression(AbstractAccessExpression):
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
     ):
         return visitor(self, (self.root.visit_parts(visitor),))
-
-    def _get_stack_effect_stats(self, children: typing.Iterable[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return -1, 0
 
 
 class Parser(AbstractParser):
@@ -595,10 +540,6 @@ class Parser(AbstractParser):
         print(self.try_inspect())
 
         self.rollback()
-
-    @staticmethod
-    def _get_stack_effect_stats(children: typing.Tuple[typing.Tuple[int, int]]) -> typing.Tuple[int, int]:
-        return -1, 0
 
 
 @Parser.register

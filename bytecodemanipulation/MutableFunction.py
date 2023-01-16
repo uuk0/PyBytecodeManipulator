@@ -104,6 +104,23 @@ class Instruction:
         if self.has_jump() and isinstance(self.arg_value, Instruction):
             typing.cast(Instruction, self.arg_value).apply_visitor(visitor, visited)
 
+    def apply_value_visitor(self, callback: typing.Callable[[typing.Any | None, typing.Any | None], typing.Any], visited: typing.Dict["Instruction", typing.Any] = None) -> typing.Any:
+        if visited is None:
+            visited = {}
+
+        elif self in visited:
+            return visited[self]
+
+        visited[self] = None
+
+        if self.has_stop_flow():
+            return callback(self, None, None)
+
+        if self.has_jump() and isinstance(self.arg_value, Instruction):
+            return callback(self, self.next_instruction.apply_value_visitor(callback, visited), self.arg_value.apply_value_visitor(callback, visited))
+
+        return callback(self, self.next_instruction.apply_value_visitor(callback, visited), None)
+
     def add_previous_instruction(self, instruction: "Instruction"):
         if self.previous_instructions is None:
             self.previous_instructions = [instruction]
@@ -590,6 +607,7 @@ class Instruction:
             Opcodes.SETUP_FINALLY,
             Opcodes.GEN_START,
             Opcodes.JUMP_ABSOLUTE,
+            Opcodes.BYTECODE_LABEL,
         ):
             return 0, 0, None
 
@@ -677,6 +695,7 @@ class Instruction:
             Opcodes.IMPORT_FROM,
             Opcodes.UNARY_NEGATIVE,
             Opcodes.YIELD_VALUE,
+            Opcodes.GET_YIELD_FROM_ITER,
         ):
             return 1, 1, None
 
