@@ -94,17 +94,23 @@ class Instruction:
         if visited is None:
             visited = set()
 
+        if self in visited:
+            return
+
+        visited.add(self)
+
         visitor.visit(self)
 
         if self.has_stop_flow():
             return
 
-        self.next_instruction.apply_visitor(visitor, visited)
+        if self.next_instruction is not None and self.next_instruction != self:
+            self.next_instruction.apply_visitor(visitor, visited)
 
         if self.has_jump() and isinstance(self.arg_value, Instruction):
             typing.cast(Instruction, self.arg_value).apply_visitor(visitor, visited)
 
-    def apply_value_visitor(self, callback: typing.Callable[[typing.Any | None, typing.Any | None], typing.Any], visited: typing.Dict["Instruction", typing.Any] = None) -> typing.Any:
+    def apply_value_visitor(self, callback: typing.Callable[["Instruction", typing.Any | None, typing.Any | None], typing.Any], visited: typing.Dict["Instruction", typing.Any] = None) -> typing.Any:
         if visited is None:
             visited = {}
 
@@ -119,7 +125,10 @@ class Instruction:
         if self.has_jump() and isinstance(self.arg_value, Instruction):
             return callback(self, self.next_instruction.apply_value_visitor(callback, visited), self.arg_value.apply_value_visitor(callback, visited))
 
-        return callback(self, self.next_instruction.apply_value_visitor(callback, visited), None)
+        if self.next_instruction is not None:
+            return callback(self, self.next_instruction.apply_value_visitor(callback, visited), None)
+
+        return callback(self, None, None)
 
     def add_previous_instruction(self, instruction: "Instruction"):
         if self.previous_instructions is None:
@@ -373,11 +382,13 @@ class Instruction:
         if visited is None:
             visited = set()
 
-        if self.opcode == Opcodes.NOP and self.next_instruction is not None:
-            return self.next_instruction.optimise_tree(visited)
-
         if self in visited:
             return self
+
+        visited.add(self)
+
+        if self.opcode == Opcodes.NOP and self.next_instruction is not None:
+            return self.next_instruction.optimise_tree(visited)
 
         while self.next_instruction is not None:
             assert isinstance(self.next_instruction, Instruction)
@@ -391,8 +402,6 @@ class Instruction:
                 continue
 
             break
-
-        visited.add(self)
 
         if (
             self.next_instruction is not None

@@ -50,10 +50,11 @@ class JumpToLabel:
     def __init__(self, name: str):
         self.name = name
 
+    def __repr__(self):
+        return f"-> Label('{self.name}')"
+
 
 class IAssemblyStructureVisitable(ABC):
-    SKIP_SUB_LABELS = False
-
     def visit_parts(
         self,
         visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any],
@@ -105,7 +106,15 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         )
 
     def collect_label_info(self) -> typing.Set[str]:
-        return set(self.visit_assembly_instructions(lambda asm, prev: (sum(filter(lambda e: e is not None, prev), tuple()) if not asm.SKIP_SUB_LABELS else tuple()) + ((asm.name_token.text,) if isinstance(asm, LabelAssembly) else tuple())))
+        return self.get_labels()
+
+    def get_labels(self) -> typing.Set[str]:
+        result = set()
+
+        for instr in self.children:
+            result.update(instr.get_labels())
+
+        return result
 
     def create_bytecode(self, target: MutableFunction, labels: typing.Set[str]):
         return self.emit_bytecodes(target, labels)
@@ -130,6 +139,9 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
     ):
         return visitor(self, tuple())
+
+    def get_labels(self) -> typing.Set[str]:
+        return set()
 
 
 class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, ABC):
@@ -432,6 +444,9 @@ class Parser(AbstractParser):
             if self[-1].line != expr.line:
                 continue
 
+            if not predicate():
+                break
+
             print(self[-1].line, self[-1], expr.line)
 
             raise SyntaxError(
@@ -567,6 +582,9 @@ class LabelAssembly(AbstractAssemblyInstruction):
 
     def copy(self) -> "LabelAssembly":
         return type(self)(self.name_token)
+
+    def get_labels(self) -> typing.Set[str]:
+        return {self.name_token.text}
 
 
 @Parser.register

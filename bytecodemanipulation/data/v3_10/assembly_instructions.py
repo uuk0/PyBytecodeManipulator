@@ -73,7 +73,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return self.access_token.emit_bytecodes(function, labels) + (
-            self.target.emit_bytecodes(function, labels) if self.target else []
+            self.target.emit_store_bytecodes(function, labels) if self.target else []
         )
 
     def visit_parts(
@@ -86,6 +86,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
                 self.target.visit_parts(visitor) if self.target is not None else None,
             ),
         )
+
 
 @Parser.register
 class StoreAssembly(AbstractAssemblyInstruction):
@@ -350,7 +351,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return self.operation.emit_bytecodes(function, labels) + (
-            [] if self.target is None else self.target.emit_bytecodes(function, labels)
+            [] if self.target is None else self.target.emit_store_bytecodes(function, labels)
         )
 
     def emit_store_bytecodes(
@@ -369,38 +370,62 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
 @Parser.register
 class IFAssembly(AbstractAssemblyInstruction):
-    # IF <expression> '{' <body> '}'
+    # IF <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "IF"
 
     @classmethod
     def consume(cls, parser: "Parser") -> "IFAssembly":
+        source = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        if source is None:
+            raise SyntaxError("<expression> expected!")
+
+        if parser.try_consume(SpecialToken("'")):
+            label_name = parser.consume(IdentifierToken)
+            parser.consume(SpecialToken("'"))
+        else:
+            label_name = None
+
+        body = parser.parse_body()
+
         return cls(
-            parser.try_parse_data_source(allow_primitives=True, include_bracket=False),
-            parser.parse_body(),
+            source,
+            body,
+            label_name,
         )
 
-    def __init__(self, source: AbstractSourceExpression, body: CompoundExpression):
+    def __init__(self, source: AbstractSourceExpression, body: CompoundExpression, label_name: IdentifierToken | str | None = None):
         self.source = source
         self.body = body
+        self.label_name = label_name if not isinstance(label_name, str) else IdentifierToken(label_name)
 
     def copy(self):
-        return type(self)(self.source.copy(), self.body.copy())
+        return type(self)(self.source.copy(), self.body.copy(), self.label_name)
 
     def __eq__(self, other):
         return (
             type(self) == type(other)
             and self.source == other.source
             and self.body == other.body
+            and self.label_name == other.label_name
         )
 
     def __repr__(self):
-        return f"IF({self.source}) -> {{{self.body}}}"
+        c = "'"
+        return f"IF({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]):
-        end = Instruction(function, -1, "NOP")
+
+        if self.label_name is None:
+            end = Instruction(function, -1, "NOP")
+        else:
+            end = Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END")
+
         return (
-            self.source.emit_bytecodes(function, labels)
+            ([] if self.label_name is None else [Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text+"_HEAD")])
+            + self.source.emit_bytecodes(function, labels)
             + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)]
+            + ([] if self.label_name is None else [Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text)])
             + self.body.emit_bytecodes(function, labels)
             + [end]
         )
@@ -417,44 +442,73 @@ class IFAssembly(AbstractAssemblyInstruction):
     ):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
 
+    def get_labels(self) -> typing.Set[str]:
+        return (set() if self.label_name is None else {self.label_name.text, self.label_name.text + "_END", self.label_name.text + "_HEAD"}) | self.body.get_labels()
+
 
 @Parser.register
 class WHILEAssembly(AbstractAssemblyInstruction):
-    # WHILE <expression> '{' <body> '}'
+    # WHILE <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "WHILE"
 
     @classmethod
     def consume(cls, parser: "Parser") -> "WHILEAssembly":
+        condition = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        if condition is None:
+            raise SyntaxError
+
+        if parser.try_consume(SpecialToken("'")):
+            label_name = parser.consume(IdentifierToken)
+            parser.consume(SpecialToken("'"))
+        else:
+            label_name = None
+
+        body = parser.parse_body()
+
         return cls(
-            parser.try_parse_data_source(allow_primitives=True, include_bracket=False),
-            parser.parse_body(),
+            condition,
+            body,
+            label_name,
         )
 
-    def __init__(self, source: AbstractSourceExpression, body: CompoundExpression):
+    def __init__(self, source: AbstractSourceExpression, body: CompoundExpression, label_name: IdentifierToken | str | None = None):
         self.source = source
         self.body = body
+        self.label_name = label_name if not isinstance(label_name, str) else IdentifierToken(label_name)
 
     def copy(self):
-        return type(self)(self.source.copy(), self.body.copy())
+        return type(self)(self.source.copy(), self.body.copy(), self.label_name)
 
     def __eq__(self, other):
         return (
             type(self) == type(other)
             and self.source == other.source
             and self.body == other.body
+            and self.label_name == other.label_name
         )
 
     def __repr__(self):
-        return f"WHILE({self.source}) -> {{{self.body}}}"
+        c = "'"
+        return f"WHILE({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]):
-        end = Instruction(function, -1, "NOP")
+        if self.label_name is None:
+            end = Instruction(function, -1, "NOP")
+        else:
+            end = Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END")
 
         CONDITION = self.source.emit_bytecodes(function, labels)
+
+        if self.label_name:
+            CONDITION.insert(0, Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text))
 
         HEAD = Instruction(function, -1, "POP_JUMP_IF_FALSE", end)
 
         BODY = self.body.emit_bytecodes(function, labels)
+
+        if self.label_name:
+            BODY.insert(0, Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text+"_INNER"))
 
         JUMP_BACK = Instruction(function, -1, "JUMP_ABSOLUTE", CONDITION[0])
 
@@ -471,6 +525,9 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
     ):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
+
+    def get_labels(self):
+        return (set() if self.label_name is None else {self.label_name.text, self.label_name.text + "_END", self.label_name.text + "_INNER"}) | self.body.get_labels()
 
 
 @Parser.register
@@ -1269,7 +1326,12 @@ class JumpAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "JumpAssembly":
+        has_quotes = parser.try_consume(SpecialToken("'"))
+
         label_target = parser.consume(IdentifierToken)
+
+        if has_quotes:
+            parser.consume(SpecialToken("'"))
 
         if parser.try_consume(IdentifierToken("IF")):
             condition = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, allow_op=True)
@@ -1314,6 +1376,9 @@ class JumpAssembly(AbstractAssemblyInstruction):
         return JumpAssembly(self.label_name_token, self.condition.copy() if self.condition else None)
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        if self.label_name_token.text not in labels:
+            raise ValueError(f"Label '{self.label_name_token.text}' is not valid in this context!")
+
         if self.condition is None:
             return [Instruction(function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(self.label_name_token.text))]
         return self.condition.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(self.label_name_token.text))]

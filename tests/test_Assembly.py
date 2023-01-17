@@ -413,6 +413,11 @@ IF OP ($a == $b) {
     STORE @global
 }
 
+IF @global 'test'
+{
+    JUMP test
+}
+
 """
         ).parse()
 
@@ -439,6 +444,11 @@ IF OP ($a == $b) {
                         CompoundExpression(
                             [StoreAssembly(GlobalAccessExpression("global"))]
                         ),
+                    ),
+                    IFAssembly(
+                        GlobalAccessExpression("global"), CompoundExpression([
+                            JumpAssembly("test")
+                        ]), "test"
                     ),
                 ]
             ),
@@ -459,6 +469,10 @@ WHILE OP ($a == $b) {
     STORE @global
 }
 
+WHILE $local 'test' {
+    STORE @global
+}
+
 """
         ).parse()
 
@@ -485,6 +499,13 @@ WHILE OP ($a == $b) {
                         CompoundExpression(
                             [StoreAssembly(GlobalAccessExpression("global"))]
                         ),
+                    ),
+                    WHILEAssembly(
+                        LocalAccessExpression("local"),
+                        CompoundExpression(
+                            [StoreAssembly(GlobalAccessExpression("global"))]
+                        ),
+                        "test",
                     ),
                 ]
             ),
