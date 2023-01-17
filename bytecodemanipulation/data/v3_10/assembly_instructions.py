@@ -130,7 +130,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return (
             [] if self.source is None else self.source.emit_bytecodes(function, labels)
-        ) + self.access_token.emit_store_bytecodes(function)
+        ) + self.access_token.emit_store_bytecodes(function, labels)
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -1235,8 +1235,9 @@ class ReturnAssembly(AbstractAssemblyInstruction):
         return ReturnAssembly(self.expr.copy())
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        expr = self.expr.emit_bytecodes(function, labels) if self.expr else []
-        return expr + [
+        expr_bytecode = self.expr.emit_bytecodes(function, labels) if self.expr else []
+
+        return expr_bytecode + [
             Instruction(function, -1, "RETURN_VALUE")
         ]
 
@@ -1388,10 +1389,9 @@ class JumpAssembly(AbstractAssemblyInstruction):
 class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     # DEF [<func name>] ['<' ['!'] <bound variables\> '>'] '(' <signature> ')' ['->' <target>] '{' <body> '}'
     NAME = "DEF"
-    SKIP_SUB_LABELS = True
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "JumpAssembly":
+    def consume(cls, parser: "Parser") -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
         bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []
         args = []
@@ -1518,7 +1518,13 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         label_targets = {}
 
         target = MutableFunction(lambda: None)
-        target.assemble_instructions_from_tree(self.body.emit_bytecodes(target, inner_labels))
+        inner_bytecode = self.body.emit_bytecodes(target, inner_labels)
+        inner_bytecode[-1].next_instruction = target.instructions[0]
+
+        for i, instr in enumerate(inner_bytecode[:-1]):
+            instr.next_instruction = inner_bytecode[i+1]
+
+        target.assemble_instructions_from_tree(inner_bytecode[0])
 
         for ins in target.instructions:
             if ins.opcode == Opcodes.BYTECODE_LABEL:
@@ -1551,6 +1557,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
                 Instruction(function, -1, "LOAD_CONST", tuple(map(lambda e: e[0], self.bound_variables))),
             ]
 
+        target.argument_count = len(self.args)
         code_object = target.create_code_obj()
 
         bytecode += [

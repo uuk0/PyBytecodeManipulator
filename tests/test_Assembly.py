@@ -760,3 +760,9 @@ PYTHON {
             print("Hello World!")
 
         compare_optimized_results(self, target, compare)
+
+    def test_module_importer_hook(self):
+        import bytecodemanipulation.assembler.hook
+
+        code = "import tests.test\nself.assertEqual(10, tests.test.test)"
+        exec(code, {"self": self})

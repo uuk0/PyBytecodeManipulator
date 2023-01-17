@@ -229,7 +229,7 @@ class LocalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "LOAD_FAST", value)]
+        return [Instruction(function, -1, "LOAD_FAST", value, _decode_next=False)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
@@ -264,6 +264,7 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         return []
+
 
 class ConstantAccessExpression(AbstractAccessExpression):
     def __init__(self, value):
@@ -426,7 +427,7 @@ class Parser(AbstractParser):
                 raise SyntaxError(self.try_inspect())
 
             if instr_token.text not in self.INSTRUCTIONS:
-                raise SyntaxError(instr_token)
+                raise SyntaxError(f"expected <assembly instruction name>, got '{instr_token.text}'")
 
             instr = self.INSTRUCTIONS[instr_token.text].consume(self)
 

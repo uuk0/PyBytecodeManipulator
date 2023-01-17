@@ -1,4 +1,6 @@
+import dis
 import string
+import types
 import typing
 
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
@@ -6,6 +8,28 @@ from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import Parser as AssemblyParser, JumpToLabel
 from bytecodemanipulation.assembler import target as assembly_targets
 from bytecodemanipulation.util import LambdaInstructionWalker
+
+
+def _visit_for_stack_effect(ins: Instruction, eff_a: typing.Tuple[int, int] | None, eff_b: typing.Tuple[int, int] | None) -> typing.Tuple[
+    int, int]:
+    eff = 0
+    max_size = 0
+
+    if eff_b is not None:
+        max_size = eff_b[1]
+
+    if eff_a is not None:
+        eff += eff_a[0]
+
+        max_size = max(max_size, eff, eff_a[0])
+
+    push, pop, *_ = ins.get_stack_affect()
+
+    eff += push - pop
+
+    max_size = max(max_size, max_size + eff)
+
+    return eff, max_size
 
 
 def apply_inline_assemblies(target: MutableFunction):
@@ -79,31 +103,11 @@ def apply_inline_assemblies(target: MutableFunction):
     for (_, instr), asm in zip(insertion_points, assemblies):
         bytecode = asm.create_bytecode(target, labels)
 
-        def visit(ins: Instruction, eff_a: typing.Tuple[int, int] | None, eff_b: typing.Tuple[int, int] | None) -> typing.Tuple[int, int]:
-            eff = 0
-            max_size = 0
-
-            if eff_b is not None:
-                max_size = eff_b[1]
-
-            if eff_a is not None:
-                eff += eff_a[0]
-
-                max_size = max(max_size, eff, eff_a[0])
-
-            push, pop, *_ = ins.get_stack_affect()
-
-            eff += push - pop
-
-            max_size = max(max_size, max_size+eff)
-
-            return eff, max_size
-
         for i, ins in enumerate(bytecode[:-1]):
             ins.next_instruction = bytecode[i+1]
 
         if bytecode:
-            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(visit)
+            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(_visit_for_stack_effect)
         else:
             stack_effect = max_stack_effect = 0
 
@@ -118,7 +122,7 @@ def apply_inline_assemblies(target: MutableFunction):
         max_stack_effects.append(max_stack_effect)
 
         if bytecode:
-            print("inserting AFTER", instr, bytecode)
+            print("inserting AFTER", instr)
             instr.insert_after(bytecode)
 
         for ins in bytecode:
@@ -139,9 +143,75 @@ def apply_inline_assemblies(target: MutableFunction):
 
     target.stack_size += max(max_stack_effects)
 
-    target.instructions[0].apply_value_visitor(lambda instr, *_: print(instr))
+    # target.instructions[0].apply_value_visitor(lambda instr, *_: print(instr))
 
     target.assemble_instructions_from_tree(target.instructions[0])
 
     return target
 
+
+def execute_module_in_instance(asm_code: str, module: types.ModuleType):
+    asm = AssemblyParser(asm_code).parse()
+    labels = asm.get_labels()
+    create_function = lambda m: None
+    target = MutableFunction(create_function)
+    target.shared_variable_names[0] = "$module$"
+    bytecode = asm.emit_bytecodes(target, labels)
+
+    if bytecode is None:
+        return
+
+    label_targets = {}
+    for ins in bytecode:
+        if ins.opcode == Opcodes.BYTECODE_LABEL:
+            label_targets[ins.arg_value] = ins.next_instruction
+            ins.change_opcode(Opcodes.NOP)
+
+    for i, ins in enumerate(bytecode[:-1]):
+        ins.next_instruction = bytecode[i+1]
+
+    def resolve_jump_to_label(ins: Instruction):
+        if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
+            ins.change_arg_value(label_targets[ins.arg_value.name])
+
+    for instr in bytecode:
+        instr.update_owner(target, -1, force_change_arg_index=True, update_following=False)
+
+    bytecode[-1].next_instruction = target.instructions[0]
+    target.assemble_instructions_from_tree(bytecode[0])
+
+    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
+    target.stack_size = bytecode[0].apply_value_visitor(_visit_for_stack_effect)[1]
+
+    target.assemble_instructions_from_tree(target.instructions[0])
+
+    for instr in target.instructions:
+        if instr.opcode == Opcodes.STORE_FAST:
+            load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
+            store = Instruction(target, -1, Opcodes.STORE_ATTR, instr.arg_value)
+
+            instr.change_opcode(Opcodes.NOP)
+            instr.insert_after([load_module, store])
+
+        elif instr.opcode == Opcodes.LOAD_FAST:
+            load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
+            load = Instruction(target, -1, Opcodes.LOAD_ATTR, instr.arg_value)
+
+            instr.change_opcode(Opcodes.NOP)
+            instr.insert_after([load_module, load])
+
+        elif instr.opcode == Opcodes.DELETE_FAST:
+            load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
+            delete = Instruction(target, -1, Opcodes.DELETE_ATTR, instr.arg_value)
+
+            instr.change_opcode(Opcodes.NOP)
+            instr.insert_after([load_module, delete])
+
+    target.assemble_instructions_from_tree(target.instructions[0])
+    target.function_name = module.__name__
+
+    target.reassign_to_function()
+
+    dis.dis(target)
+
+    create_function(module)

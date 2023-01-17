@@ -4,6 +4,16 @@
 Python Assembly is an Code Format representing python bytecode, with some meta-instructions
 for cross-version support.
 
+## .pyasm files
+
+- implementation in bytecodemanipulation.assembler.hook, which is enabled on import
+- hooks into the import system with lowest priority so that when a ModuleNotFoundException would be thrown,
+  we can look into .pyasm files instead
+- will be parsed as normal "inline" assembly, local space is the module scope
+- the assembly code will be invoked in a (lambda) method, so you can use "RETURN" at module exit to early exit
+- this method gets a single argument called "$module$" (which you cannot access), which defines the scope
+- LOAD_FAST, STORE_FAST and DELETE_FAST will be transformed to accessing that parameter instead of the local space
+
 ## Meta Instructions (dynamically decide what to use)
 
 * LABEL \<name>: an bytecode label, can be used for jumps (use bytecodemanipulation.assembler.target.label(\<name>) when trying to jump to a instruction not in ASM, but in pure python)
@@ -84,10 +94,3 @@ Expressions can be added as certain parameters to instructions to use instead of
 - PROPOSE \<type> \<value>
 - CALL INLINE
 - ITERATOR_OP (stream util)
-
-## Python Assembly Files
-
-- .pyasm file format containing only assembly instructions
-- hook for import mechanism for looking for such files
-- transform TopLevel local accesses to ..._NAME instructions
-- Invoke code and emit environment as module body

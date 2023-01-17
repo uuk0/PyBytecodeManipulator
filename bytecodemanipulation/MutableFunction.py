@@ -1049,6 +1049,9 @@ class MutableFunction:
         while pending_instructions:
             instruction = pending_instructions.pop()
 
+            if not isinstance(instruction, Instruction):
+                raise ValueError(instruction)
+
             # If we visited it, we can skip
             if instruction in visited:
                 continue
