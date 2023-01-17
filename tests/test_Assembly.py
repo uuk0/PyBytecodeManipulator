@@ -1,5 +1,6 @@
 import dis
 import itertools
+import sys
 import typing
 from unittest import TestCase
 import functools
@@ -766,3 +767,5 @@ PYTHON {
 
         code = "import tests.test\nself.assertEqual(10, tests.test.test)"
         exec(code, {"self": self})
+
+        sys.meta_path.remove(bytecodemanipulation.assembler.hook.ASMFileFinder)

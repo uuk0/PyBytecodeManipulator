@@ -94,3 +94,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 - PROPOSE \<type> \<value>
 - CALL INLINE
 - ITERATOR_OP (stream util)
+
+## PyASM
+
+- a syntax highlighter plugin
