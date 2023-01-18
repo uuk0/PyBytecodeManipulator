@@ -242,6 +242,28 @@ class LocalAccessExpression(AbstractAccessExpression):
         return [Instruction(function, -1, "STORE_FAST", value)]
 
 
+class DerefAccessExpression(AbstractAccessExpression):
+    PREFIX = "§"
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
+        return [Instruction(function, -1, "LOAD_DEREF", value, _decode_next=False)]
+
+    def emit_store_bytecodes(
+            self, function: MutableFunction, labels: typing.Set[str]
+    ) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value.isdigit():
+            value = int(value)
+
+        return [Instruction(function, -1, "STORE_DEREF", value)]
+
+
 class TopOfStackAccessExpression(AbstractAccessExpression):
     PREFIX = "%"
 
@@ -488,6 +510,10 @@ class Parser(AbstractParser):
         elif start_token.text == "$":
             self.consume(SpecialToken("$"))
             expr = LocalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
+
+        elif start_token.text == "§":
+            self.consume(SpecialToken("§"))
+            expr = DerefAccessExpression(self.consume([IdentifierToken, IntegerToken]))
 
         elif start_token.text == "%" and allow_tos:
             self.consume(SpecialToken("%"))

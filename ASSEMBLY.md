@@ -72,7 +72,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - can we use offsets as labels in JUMP's?
 - add singleton operators for OP
 - instanceof, subclassof, hasattr, getattr OP's
-- '§\<name>' for outer scope variable access
 - FOREACH (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
 - FORRANGE '(' \[\<start> ','] \<stop> \[',' \<step>] ')' \['->' \<target>] {'(' '(' \[\<start> ','] \<stop> \[ ',' \<step>] ')' \['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
 - CALL as expression (most likely with \<target>(...))
