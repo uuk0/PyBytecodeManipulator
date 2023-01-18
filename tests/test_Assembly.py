@@ -817,8 +817,8 @@ RETURN OP (10 isinstance @float)
     def test_issubclass_check(self):
         def target():
             assembly("""
-    RETURN OP (@int issubclass @object)
-    """)
+RETURN OP (@int issubclass @object)
+""")
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -829,8 +829,8 @@ RETURN OP (10 isinstance @float)
     def test_not_issubclass_check(self):
         def target():
             assembly("""
-    RETURN OP (@int issubclass @float)
-    """)
+RETURN OP (@int issubclass @float)
+""")
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -839,3 +839,29 @@ RETURN OP (10 isinstance @float)
         dis.dis(target)
 
         self.assertFalse(target())
+
+    def test_hasattr_check(self):
+        def target(t):
+            assembly("""
+RETURN OP ($t hasattr "test_hasattr_check")
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertTrue(target(self))
+
+    def test_not_hasattr_check(self):
+        def target(t):
+            assembly("""
+RETURN OP ($t hasattr "no attr")
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertFalse(target(self))

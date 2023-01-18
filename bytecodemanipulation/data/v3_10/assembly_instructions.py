@@ -184,6 +184,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         ":=": lambda lhs, rhs, function, labels: rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.DUP_TOP)] + lhs.emit_store_bytecodes(function, labels),
         "isinstance": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "issubclass": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, issubclass)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        "hasattr": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
     }
 
     # todo: parse and implement
