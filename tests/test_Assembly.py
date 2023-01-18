@@ -798,4 +798,44 @@ RETURN OP (10 isinstance @int)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        self.assertEqual(target(), True)
+        self.assertTrue(target())
+
+    def test_not_isinstance_check(self):
+        def target():
+            assembly("""
+RETURN OP (10 isinstance @float)
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertFalse(target())
+
+    def test_issubclass_check(self):
+        def target():
+            assembly("""
+    RETURN OP (@int issubclass @object)
+    """)
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertTrue(target())
+
+    def test_not_issubclass_check(self):
+        def target():
+            assembly("""
+    RETURN OP (@int issubclass @float)
+    """)
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertFalse(target())
