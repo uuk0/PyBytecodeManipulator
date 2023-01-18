@@ -787,3 +787,15 @@ RETURN OP ($local + $test)
             return local + test
 
         compare_optimized_results(self, target, compare, opt_ideal=0)
+
+    def test_isinstance_check(self):
+        def target():
+            assembly("""
+RETURN OP (10 isinstance @int)
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), True)

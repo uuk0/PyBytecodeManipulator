@@ -148,7 +148,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
-    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=
+    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance
     """
 
     NAME = "OP"
@@ -182,6 +182,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "!xor": (Opcodes.COMPARE_OP, 2),
 
         ":=": lambda lhs, rhs, function, labels: rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.DUP_TOP)] + lhs.emit_store_bytecodes(function, labels),
+        "isinstance": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_METHOD, arg=2)],
     }
 
     # todo: parse and implement
