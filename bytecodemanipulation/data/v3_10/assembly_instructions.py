@@ -148,12 +148,12 @@ class StoreAssembly(AbstractAssemblyInstruction):
 class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
-    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@ <expr>
+    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=
     """
 
     NAME = "OP"
 
-    BINARY_OPS: typing.Dict[str, typing.Tuple[int, int] | int] = {
+    BINARY_OPS: typing.Dict[str, typing.Tuple[int, int] | int | typing.Callable[[AbstractAccessExpression, AbstractAccessExpression, MutableFunction, typing.Set[str]], Instruction | typing.List[Instruction]]] = {
         "+": Opcodes.BINARY_ADD,
         "-": Opcodes.BINARY_SUBTRACT,
         "*": Opcodes.BINARY_MULTIPLY,
@@ -168,9 +168,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "<<": Opcodes.BINARY_LSHIFT,
         "@": Opcodes.BINARY_MATRIX_MULTIPLY,
         "is": (Opcodes.IS_OP, 0),
-        "nis": (Opcodes.IS_OP, 1),
+        "!is": (Opcodes.IS_OP, 1),
         "in": (Opcodes.CONTAINS_OP, 0),
-        "nin": (Opcodes.CONTAINS_OP, 1),
+        "!in": (Opcodes.CONTAINS_OP, 1),
         "<": (Opcodes.COMPARE_OP, 0),
         "<=": (Opcodes.COMPARE_OP, 1),
         "==": (Opcodes.COMPARE_OP, 2),
@@ -179,7 +179,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         ">=": (Opcodes.COMPARE_OP, 5),
         # todo: is there a better way?
         "xor": (Opcodes.COMPARE_OP, 3),
-        "xnor": (Opcodes.COMPARE_OP, 2),
+        "!xor": (Opcodes.COMPARE_OP, 2),
+
+        ":=": lambda lhs, rhs, function, labels: rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.DUP_TOP)] + lhs.emit_store_bytecodes(function, labels),
     }
 
     # todo: parse and implement
@@ -234,6 +236,18 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
             opcode_info = OpAssembly.BINARY_OPS[self.operator]
 
+            if callable(opcode_info):
+                result = opcode_info(self.lhs, self.rhs, function, labels)
+
+                if isinstance(result, Instruction):
+                    return (
+                        self.lhs.emit_bytecodes(function, labels)
+                        + self.rhs.emit_bytecodes(function, labels)
+                        + [result]
+                    )
+
+                return result
+
             if isinstance(opcode_info, int):
                 opcode, arg = opcode_info, 0
             else:
@@ -285,37 +299,17 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         else:
             first, second = parser[0], None
 
-        if isinstance(first, IdentifierToken) and first.text in cls.BINARY_OPS:
+        if first and second and (first.text + second.text) in cls.BINARY_OPS:
+            OP_NAME = first.text + second.text
+            parser.consume(first)
+            parser.consume(second)
+
+        elif first and first.text in cls.BINARY_OPS:
             OP_NAME = first.text
             parser.consume(first)
+
         else:
-            if not isinstance(first, SpecialToken):
-                first = None
-
-            if not isinstance(second, SpecialToken):
-                second = None
-
-            if first is None:
-                print("lhs is None")
-                parser.rollback()
-                return
-
-            OP_NAME = None
-
-            if second:
-                key = first.text + second.text
-
-                if key in cls.BINARY_OPS:
-                    OP_NAME = key
-                    parser.consume(first)
-                    parser.consume(second)
-
-            if OP_NAME is None:
-                if first.text in cls.BINARY_OPS:
-                    OP_NAME = first.text
-                    parser.consume(first)
-                else:
-                    return
+            raise SyntaxError(f"No valid operator found: {first}, {second}")
 
         rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
 
@@ -357,7 +351,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
-        raise RuntimeError("cannot assign to an operator!")
+        raise RuntimeError(f"cannot assign to an '{self.operation}' operator!")
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]

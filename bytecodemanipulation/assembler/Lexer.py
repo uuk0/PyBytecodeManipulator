@@ -28,7 +28,7 @@ except ImportError:
     )
 
 
-SPECIAL_CHARS = "@$+-~/%?;[]{}()<>=!,.*'"
+SPECIAL_CHARS = "@$+-~/%?;[]{}()<>=!,.*':"
 
 
 class SpecialToken(AbstractToken):

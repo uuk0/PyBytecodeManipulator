@@ -769,3 +769,21 @@ PYTHON {
         exec(code, {"self": self})
 
         sys.meta_path.remove(bytecodemanipulation.assembler.hook.ASMFileFinder)
+
+    def test_walrus_assigment(self):
+        def target():
+            assembly("""
+OP $local := 10
+STORE $test
+RETURN OP ($local + $test)
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        def compare():
+            test = (local := 10)
+            return local + test
+
+        compare_optimized_results(self, target, compare, opt_ideal=0)
