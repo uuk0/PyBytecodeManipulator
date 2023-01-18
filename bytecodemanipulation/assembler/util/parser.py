@@ -288,7 +288,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
             else:
                 if not isinstance(token, expected):
                     raise SyntaxError(
-                        f"Expected type {expected}, got {token} (type: {type(token)})"
+                        f"Expected type {expected.__name__}, got {token} (type: {type(token).__name__})"
                     )
 
         self.cursor += 1

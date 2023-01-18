@@ -788,6 +788,18 @@ RETURN OP ($local + $test)
 
         compare_optimized_results(self, target, compare, opt_ideal=0)
 
+    def test_dynamic_attribute_access(self):
+        def target(t):
+            assembly("""
+RETURN $t.("test_dynamic_attribute_access")
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(self), self.test_dynamic_attribute_access)
+
     def test_isinstance_check(self):
         def target():
             assembly("""

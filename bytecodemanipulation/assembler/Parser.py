@@ -411,6 +411,40 @@ class AttributeAccessExpression(AbstractAccessExpression):
         return visitor(self, (self.root.visit_parts(visitor),))
 
 
+class DynamicAttributeAccessExpression(AbstractAccessExpression):
+    def __init__(
+        self, root: AbstractAccessExpression, name_expr: AbstractSourceExpression
+    ):
+        self.root = root
+        self.name_expr = name_expr
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self.root == other.root
+            and self.name_expr == other.name_expr
+        )
+
+    def __repr__(self):
+        return f"{self.root}.{self.name_expr}"
+
+    def copy(self) -> "DynamicAttributeAccessExpression":
+        return DynamicAttributeAccessExpression(self.root.copy(), self.name_expr.copy())
+
+    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        return [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)] + self.root.emit_bytecodes(function, labels) + self.name_expr.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
+
+    def emit_store_bytecodes(
+        self, function: MutableFunction, labels: typing.Set[str]
+    ) -> typing.List[Instruction]:
+        return [Instruction(function, -1, Opcodes.LOAD_CONST, setattr)] + self.root.emit_bytecodes(function, labels) + self.name_expr.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.ROT_THREE), Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
+
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+    ):
+        return visitor(self, (self.root.visit_parts(visitor),))
+
+
 class Parser(AbstractParser):
     INSTRUCTIONS: typing.Dict[str, typing.Type[AbstractAssemblyInstruction]] = {}
 
@@ -529,7 +563,16 @@ class Parser(AbstractParser):
             return
 
         while self.try_consume(SpecialToken(".")):
-            expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
+            if self.try_consume(SpecialToken("(")):
+                source = self.try_parse_data_source(allow_tos=True, allow_primitives=True, include_bracket=False)
+
+                if source is None:
+                    raise SyntaxError("expected expression")
+
+                expr = DynamicAttributeAccessExpression(expr, source)
+                self.consume(SpecialToken(")"))
+            else:
+                expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
 
         if self.try_consume(SpecialToken("[")):
             # Consume either an Integer or a expression

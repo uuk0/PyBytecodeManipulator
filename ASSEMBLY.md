@@ -63,6 +63,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer
 - \<expression>.\<name>: access an attribute of the expression
+- \<expression>.(\<expression>): accesses the attribute by an dynamic name
 
 
 # TODOs
