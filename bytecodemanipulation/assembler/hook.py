@@ -37,5 +37,15 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         return module
 
 
-sys.meta_path.append(ASMFileFinder)
+def hook():
+    if ASMFileFinder not in sys.meta_path:
+        sys.meta_path.append(ASMFileFinder)
+
+
+def unhook():
+    if ASMFileFinder in sys.meta_path:
+        sys.meta_path.remove(ASMFileFinder)
+
+
+hook()
 

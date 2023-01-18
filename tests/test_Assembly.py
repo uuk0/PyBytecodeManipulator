@@ -765,10 +765,12 @@ PYTHON {
     def test_module_importer_hook(self):
         import bytecodemanipulation.assembler.hook
 
+        bytecodemanipulation.assembler.hook.hook()
+
         code = "import tests.test\nself.assertEqual(10, tests.test.test)"
         exec(code, {"self": self})
 
-        sys.meta_path.remove(bytecodemanipulation.assembler.hook.ASMFileFinder)
+        bytecodemanipulation.assembler.hook.unhook()
 
     def test_walrus_assigment(self):
         def target():
