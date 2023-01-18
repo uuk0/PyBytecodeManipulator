@@ -148,7 +148,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
-    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass
+    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
     """
 
     NAME = "OP"
@@ -185,6 +185,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "isinstance": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "issubclass": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, issubclass)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "hasattr": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        "getattr": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
     }
 
     # todo: parse and implement

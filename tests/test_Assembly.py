@@ -865,3 +865,15 @@ RETURN OP ($t hasattr "no attr")
         dis.dis(target)
 
         self.assertFalse(target(self))
+
+    def test_getattr_check(self):
+        def target(t):
+            assembly("""
+RETURN OP ($t getattr "test_getattr_check")
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(self), self.test_getattr_check)
