@@ -46,6 +46,15 @@ except ImportError:
     )
 
 
+def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
+    instr = Instruction(*args, **kwargs)
+    instr.source_location = token.line, token.column, token.span
+    return instr
+
+
+Instruction.create_with_token = create_instruction
+
+
 class JumpToLabel:
     def __init__(self, name: str):
         self.name = name
@@ -193,7 +202,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "LOAD_GLOBAL", value)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_GLOBAL", value)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
@@ -203,7 +212,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "STORE_GLOBAL", value)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "STORE_GLOBAL", value)]
 
 
 class GlobalStaticAccessExpression(AbstractAccessExpression):
@@ -212,7 +221,7 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         key = self.name_token.text
         value = function.target.__globals__.get(key)
-        return [Instruction(function, -1, "LOAD_CONST", value)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_CONST", value)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
@@ -229,7 +238,7 @@ class LocalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "LOAD_FAST", value, _decode_next=False)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_FAST", value, _decode_next=False)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
@@ -239,7 +248,7 @@ class LocalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "STORE_FAST", value)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "STORE_FAST", value)]
 
 
 class DerefAccessExpression(AbstractAccessExpression):
@@ -251,7 +260,7 @@ class DerefAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "LOAD_DEREF", value, _decode_next=False)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_DEREF", value, _decode_next=False)]
 
     def emit_store_bytecodes(
             self, function: MutableFunction, labels: typing.Set[str]
@@ -261,7 +270,7 @@ class DerefAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "STORE_DEREF", value)]
+        return [Instruction.create_with_token(self.name_token, function, -1, "STORE_DEREF", value)]
 
 
 class TopOfStackAccessExpression(AbstractAccessExpression):
@@ -339,10 +348,10 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                 self.index_expr.emit_bytecodes(function, labels)
                 if isinstance(self.index_expr, AbstractAccessExpression)
                 else [
-                    Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))
+                    Instruction.create_with_token(self.index_expr, function, -1, "LOAD_CONST", int(self.index_expr.text))
                 ]
             )
-            + [Instruction(function, -1, Opcodes.BINARY_SUBSCR)]
+            + [Instruction.create_with_token(self.name_token, function, -1, Opcodes.BINARY_SUBSCR)]
         )
 
     def emit_store_bytecodes(
@@ -354,10 +363,10 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                 self.index_expr.emit_bytecodes(function, labels)
                 if isinstance(self.index_expr, AbstractAccessExpression)
                 else [
-                    Instruction(function, -1, "LOAD_CONST", int(self.index_expr.text))
+                    Instruction.create_with_token(self.index_expr, function, -1, "LOAD_CONST", int(self.index_expr.text))
                 ]
             )
-            + [Instruction(function, -1, Opcodes.STORE_SUBSCR)]
+            + [Instruction.create_with_token(self.name_token, function, -1, Opcodes.STORE_SUBSCR)]
         )
 
     def visit_parts(
@@ -395,14 +404,14 @@ class AttributeAccessExpression(AbstractAccessExpression):
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, labels) + [
-            Instruction(function, -1, "LOAD_ATTR", self.name_token.text)
+            Instruction.create_with_token(self.name_token, function, -1, "LOAD_ATTR", self.name_token.text)
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, labels: typing.Set[str]
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, labels) + [
-            Instruction(function, -1, "STORE_ATTR", self.name_token.text)
+            Instruction.create_with_token(self.name_token, function, -1, "STORE_ATTR", self.name_token.text)
         ]
 
     def visit_parts(

@@ -3,6 +3,7 @@ import string
 import types
 import typing
 
+import bytecodemanipulation.assembler.Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import Parser as AssemblyParser, JumpToLabel
@@ -89,8 +90,8 @@ def apply_inline_assemblies(target: MutableFunction):
                 arg.change_opcode(Opcodes.NOP)
 
     assemblies = [
-        AssemblyParser(code).parse()
-        for code, _ in insertion_points
+        AssemblyParser(bytecodemanipulation.assembler.Lexer.Lexer(code).add_line_offset(instr.source_location[0] if instr.source_location and instr.source_location[0] else 0).lex()).parse()
+        for code, instr in insertion_points
     ]
 
     for asm in assemblies:

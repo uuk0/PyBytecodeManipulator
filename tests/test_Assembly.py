@@ -734,11 +734,14 @@ CALL PARTIAL @print ("Hello World!") -> $x
         def target(x):
             assembly("""
 CALL @print ("Hello World!") -> $x
+# LOAD $error -> @global
 """)
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
+
+        target(self)
 
         def compare():
             x = print("Hello World!")

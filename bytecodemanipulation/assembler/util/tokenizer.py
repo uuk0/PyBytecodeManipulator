@@ -104,6 +104,11 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
         self.text = text
         self.old_line_number = 1
         self.old_column_number = -1
+        self._line_offset = 0
+
+    def add_line_offset(self, offset: int):
+        self._line_offset += offset
+        return self
 
     def is_empty(self) -> bool:
         """
@@ -266,7 +271,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     self.old_line_number += partial.count("\n")
 
                 for r in (result if isinstance(result, list) else (result,)):
-                    r.line = self.old_line_number
+                    r.line = self.old_line_number + self._line_offset
                     r.column = self.old_column_number + skipped
                     r.span = self.cursor - old_cursor
 

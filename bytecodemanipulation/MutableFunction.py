@@ -4,6 +4,7 @@ import types
 import typing
 import simplejson
 
+import bytecodemanipulation.assembler.util.tokenizer
 from bytecodemanipulation.Opcodes import HAS_CELL_VARIABLE
 from bytecodemanipulation.Opcodes import HAS_JUMP_BACKWARDS
 from bytecodemanipulation.Opcodes import (
@@ -43,11 +44,25 @@ class Instruction:
         "arg",
         "_next_instruction",
         "previous_instructions",
+        "source_location",
     )
 
     @classmethod
     def create(cls, *args, **kwargs):
         return cls(None, -1, *args, **kwargs)
+
+    @classmethod
+    def create_with_token(
+        cls,
+        token: bytecodemanipulation.assembler.util.tokenizer.AbstractToken,
+        function: typing.Optional["MutableFunction"],
+        offset: int | None,
+        opcode_or_name: int | str,
+        arg_value: object = None,
+        arg: int = None,
+        _decode_next=True,
+    ) -> "Instruction":
+        raise NotImplementedError("not bound!")
 
     def __init__(
         self,
@@ -57,12 +72,14 @@ class Instruction:
         arg_value: object = None,
         arg: int = None,
         _decode_next=True,
+        pos_info=None,
     ):
         self.function = function
         self.offset = offset
         self.opcode, self.opname = self._pair_instruction(opcode_or_name)
         self.arg_value = arg_value
         self.arg = arg
+        self.source_location = pos_info
 
         if (
             self.arg is not None
@@ -717,6 +734,7 @@ class Instruction:
             Opcodes.POP_JUMP_IF_FALSE,
             Opcodes.STORE_FAST,
             Opcodes.STORE_DEREF,
+            Opcodes.STORE_GLOBAL,
             Opcodes.RETURN_VALUE,
         ):
             return 0, 1, None
@@ -776,6 +794,7 @@ class MutableFunction:
         self.keyword_only_argument_count = self.code_object.co_kwonlyargcount
         self.line_table = self.code_object.co_linetable
         self.lnotab = bytearray(self.code_object.co_lnotab)
+
         self.function_name = self.code_object.co_name
         self.shared_names = list(self.code_object.co_names)
         # Local variable count is implied by co_varnames
@@ -840,10 +859,40 @@ class MutableFunction:
             self.filename,
             self.function_name,
             self.first_line_number,
-            bytes(self.lnotab),
+            self.get_lnotab(),
             tuple(self.free_variables),
             tuple(self.cell_variables),
         )
+
+    def get_lnotab(self) -> bytes:
+        items = []
+
+        prev_line = self.first_line_number
+        count_since_previous = 0
+
+        for instr in self.__instructions:
+            count_since_previous += 1
+
+            if instr.source_location is None or instr.source_location[0] == prev_line:
+                continue
+
+            offset = instr.source_location[0] - prev_line
+
+            if offset > 127:
+                print("too big:", offset)
+                return bytes()
+
+            if offset < 0:
+                print("too small:", offset)
+                return bytes()
+
+            items.append(count_since_previous)
+            items.append(offset)
+            count_since_previous = 0
+
+            print("good", items)
+
+        return bytes(items)
 
     def reassign_to_function(self):
         self.target.__code__ = self.create_code_obj()
@@ -854,15 +903,16 @@ class MutableFunction:
         else:
             self.__instructions = []
 
+        line = self.first_line_number
+        lnotab = list(self.lnotab)
+
         extra: int = 0
         for i in range(0, len(self.__raw_code), 2):
             opcode, arg = self.__raw_code[i : i + 2]
 
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
-                self.__instructions.append(
-                    Instruction(self, i // 2, "NOP", _decode_next=False)
-                )
+                instr = Instruction(self, i // 2, "NOP", _decode_next=False)
 
             else:
                 arg += extra * 256
@@ -871,9 +921,21 @@ class MutableFunction:
                 if opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                     arg += 1
 
-                self.__instructions.append(
-                    Instruction(self, i // 2, opcode, arg=arg, _decode_next=False)
-                )
+                instr = Instruction(self, i // 2, opcode, arg=arg, _decode_next=False)
+
+            if lnotab:
+                lnotab[0] -= 1
+
+                if lnotab[0] == 0:
+                    line_incr = lnotab[1]
+                    del lnotab[:2]
+
+                    line += line_incr
+
+            instr.source_location = (line, None, None)
+
+            self.__instructions.append(instr)
+            # print(instr, instr.source_location)
 
         for i, instruction in enumerate(self.instructions):
             instruction.update_owner(self, i)

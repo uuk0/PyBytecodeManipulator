@@ -33,9 +33,9 @@ class LoadAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadAssembly":
-        access = parser.try_consume_access_token(allow_tos=False, allow_primitives=True)
+        access_expr = parser.try_consume_access_token(allow_tos=False, allow_primitives=True)
 
-        if access is None:
+        if access_expr is None:
             raise SyntaxError(parser.try_inspect())
 
         if parser.try_consume_multi(
@@ -48,31 +48,31 @@ class LoadAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        return cls(access, target)
+        return cls(access_expr, target)
 
     def __init__(
         self,
-        access_token: AbstractAccessExpression,
+        access_expr: AbstractAccessExpression,
         target: AbstractAccessExpression | None = None,
     ):
-        self.access_token = access_token
+        self.access_expr = access_expr
         self.target = target
 
     def __eq__(self, other):
         return (
-            type(self) == type(other)
-            and self.access_token == other.access_token
-            and self.target == other.target
+                type(self) == type(other)
+                and self.access_expr == other.access_expr
+                and self.target == other.target
         )
 
     def __repr__(self):
-        return f"LOAD({self.access_token}{', ' + repr(self.target) if self.target else ''})"
+        return f"LOAD({self.access_expr}{', ' + repr(self.target) if self.target else ''})"
 
     def copy(self) -> "LoadAssembly":
-        return LoadAssembly(self.access_token, self.target)
+        return LoadAssembly(self.access_expr, self.target)
 
     def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.access_token.emit_bytecodes(function, labels) + (
+        return self.access_expr.emit_bytecodes(function, labels) + (
             self.target.emit_store_bytecodes(function, labels) if self.target else []
         )
 
@@ -82,7 +82,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
         return visitor(
             self,
             (
-                self.access_token.visit_parts(visitor),
+                self.access_expr.visit_parts(visitor),
                 self.target.visit_parts(visitor) if self.target is not None else None,
             ),
         )
