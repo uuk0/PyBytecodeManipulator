@@ -1,5 +1,6 @@
 import string
 import typing
+import warnings
 
 try:
     from code_parser.lexers.common import (
@@ -142,7 +143,7 @@ class Lexer(AbstractLexer):
                 # todo: f-strings
 
                 if code[-2:] == " f":
-                    raise NotImplementedError("f-strings")
+                    warnings.warn("Found f-string in python literal, this might not work!")
 
                 triple = self.try_inspect_multi(3)
 

@@ -72,7 +72,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - COMPREHENSION \<type> \['\<' \<capture locals> '>'] \<source> '{' \<code> '}' where type can be list, tuple, set, dict, generator and async generator; YIELD statements for emitting to the outside
 - can we use offsets as labels in JUMP's?
 - add singleton operators for OP
-- FOREACH (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
+- FOREACH ['async'] (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
 - FORRANGE '(' \[\<start> ','] \<stop> \[',' \<step>] ')' \['->' \<target>] {'(' '(' \[\<start> ','] \<stop> \[ ',' \<step>] ')' \['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
 - CALL as expression (most likely with \<target>(...))
 - LABEL part for WHILE, FOREACH, FORRANGE and IF (jump to end of if or top if wanted)
@@ -85,8 +85,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 - CONVERT \<source type> \<target type> \[\<source=TOS>] \['->' \<target=TOS>]
 - DEF ASYNC ...
 - AWAIT \<expr> \['->' \<target>] and as an expression
-- FOREACH ASYNC ...
-- AWAIT '*' ('(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')') | ('(' \<expr> {\<expr>} ')' \['->' \<target>]) | (\<expr> \['->' \<target>]) asyncio.gather(...)
+- AWAIT '*' ('(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')') | ('(' \<expr> {\<expr>} ')' \['->' \<target>]) | (\<expr> \['->' \<target>]) (* = asyncio.gather(...))
 - WITH '(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')' '{' \<body> '}' with special handling for jumps (trigger exit or disable exit)
 - RAW \<opcode> \[\<arg> | \<arg value>]
 - PROPOSE \<type> \<value>

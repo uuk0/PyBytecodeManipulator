@@ -879,18 +879,14 @@ class MutableFunction:
             offset = instr.source_location[0] - prev_line
 
             if offset > 127:
-                print("too big:", offset)
                 return bytes()
 
             if offset < 0:
-                print("too small:", offset)
                 return bytes()
 
             items.append(count_since_previous)
             items.append(offset)
             count_since_previous = 0
-
-            print("good", items)
 
         return bytes(items)
 
