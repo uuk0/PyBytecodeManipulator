@@ -915,6 +915,23 @@ class TestMacro(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
-
         self.assertEqual(target(), 0)
+
+    def test_macro_local_access(self):
+        def target():
+            assembly("""
+        MACRO test {
+            LOAD 1 -> $local
+        }
+
+        LOAD 0 -> $local
+        CALL MACRO test()
+        RETURN $local
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 1)
