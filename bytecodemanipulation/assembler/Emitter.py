@@ -132,6 +132,8 @@ def apply_inline_assemblies(target: MutableFunction):
     for asm in assemblies:
         asm.fill_scope_complete(scope)
 
+    scope.scope_path.clear()
+
     for (_, instr), asm in zip(insertion_points, assemblies):
         bytecode = asm.create_bytecode(target, scope)
 

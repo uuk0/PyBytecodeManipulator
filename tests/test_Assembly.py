@@ -1169,6 +1169,25 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 0)
 
+    def test_namespace_macro_failure(self):
+        def target():
+            assembly(
+                """
+        NAMESPACE test_namespace {
+            MACRO test {
+                RETURN 0
+            }
+        }
+
+        CALL MACRO test()
+        RETURN 1
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        self.assertRaises(NameError, lambda: apply_inline_assemblies(mutable))
+
     def test_namespace_macro_inner(self):
         def target():
             assembly(
