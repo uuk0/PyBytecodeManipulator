@@ -1229,3 +1229,51 @@ class TestMacro(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 0)
+
+    def test_macro_paste(self):
+        def target():
+            assembly(
+                """
+        MACRO test (param) {
+            MACRO_PASTE param
+        }
+
+        LOAD 0 -> $test
+        CALL MACRO test({
+            LOAD 10 -> $test
+        })
+        RETURN $test
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 10)
+
+    def test_macro_paste_use(self):
+        def target():
+            assembly(
+                """
+        MACRO test (param) {
+            MACRO_PASTE param -> $test
+        }
+
+        LOAD 0 -> $test
+        CALL MACRO test({
+            LOAD 10
+        })
+        RETURN $test
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 10)

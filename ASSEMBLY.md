@@ -22,7 +22,9 @@ for cross-version support.
 * STORE \<expression> \['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
 * CALL \['PARTIAL' | 'MACRO'] \<call target> '(' \<args> ')' \['-> '\<target>]: invokes the target found at 'call target' with the given 'args'
   (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target';
-  'PARTIAL' is a wrapper like functools.partial. If used, each arg expression can be prefixed with '?' for dynamic evaluation, otherwise static evaluation (like the real functools.partial)
+  * 'PARTIAL' is a wrapper like functools.partial. If used, each arg expression can be prefixed with '?' for dynamic evaluation, otherwise static evaluation (like the real functools.partial)
+  * 'MACRO' calls macro code, meaning inlining; Parameters of the macro NOT prefixed with '!' will be evaluated on each access by the macro
+    * also enables the use of code blocks as parameters (by using '{' \<expressions> '}'' as a parameter)
 * OP (\<lhs> \<binary operator> \<rhs>) \['->' \<target>]: uses the given operator
   * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
 * IF \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' only if 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the IF statement and 'label name'+"_HEAD" the real HEAD, so before the condition check
@@ -38,6 +40,8 @@ for cross-version support.
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
   * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
+  * Comes with an extra instruction, which should only be used in macros:
+* MACRO_PASTE \<macro param name> \['->' \<target>]: pastes the code for a macro-parameter, and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)

@@ -1166,7 +1166,6 @@ class CallAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser") -> "CallAssembly":
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
-
         is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
 
         if not is_macro:
@@ -1225,11 +1224,16 @@ class CallAssembly(AbstractAssemblyInstruction):
                     raise SyntaxError("*<arg> only allowed before keyword arguments!")
 
             elif not has_seen_keyword_arg:
-                is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
+                if is_macro and parser[0] == SpecialToken("{"):
+                    expr = parser.parse_body()
+                    is_dynamic = False
+                else:
+                    is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
 
-                expr = parser.try_parse_data_source(
-                    allow_primitives=True, include_bracket=False
-                )
+                    expr = parser.try_parse_data_source(
+                        allow_primitives=True, include_bracket=False
+                    )
+
                 args.append(CallAssembly.Arg(expr, is_dynamic))
 
             else:

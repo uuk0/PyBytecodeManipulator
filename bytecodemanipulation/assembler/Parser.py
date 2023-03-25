@@ -1160,7 +1160,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         for instr in inner_bytecode:
             bytecode.append(instr)
 
-            if instr.opcode == Opcodes.LOAD_DEREF:
+            if instr.opcode in (Opcodes.LOAD_DEREF, Opcodes.MACRO_PARAMETER_EXPANSION):
                 if instr.arg_value not in arg_decl_lookup:
                     continue
 
@@ -1197,3 +1197,40 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
     def fill_scope(self, scope: ParsingScope):
         scope.insert_into_scope(list(map(lambda e: e.text, self.name)), self)
+
+
+@Parser.register
+class MacroPasteAssembly(AbstractAssemblyInstruction):
+    # MACRO_PASTE <macro param name> ['->' <target>]
+    NAME = "MACRO_PASTE"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "MacroPasteAssembly":
+        name = parser.consume(IdentifierToken)
+
+        if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
+            target = parser.try_consume_access_token(allow_primitives=False)
+        else:
+            target = None
+
+        return cls(name, target)
+
+    def __init__(self, name: IdentifierToken, target: AbstractAccessExpression = None):
+        self.name = name
+        self.target = target
+
+    def __repr__(self):
+        return f"MACRO_PASTE({self.name.text}{'' if self.target is None else '-> '+repr(self.target)})"
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.name == other.name and self.target == other.target
+
+    def copy(self) -> "MacroPasteAssembly":
+        return type(self)(self.name, self.target.copy() if self.target else None)
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        return [
+            Instruction(function, -1, Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)
+        ] + ([] if self.target is None else self.target.emit_store_bytecodes(function, scope))
