@@ -78,7 +78,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
         )
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -134,7 +134,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
         ) + self.access_token.emit_store_bytecodes(function, scope)
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -359,7 +359,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         raise RuntimeError(f"cannot assign to an '{self.operation}' operator!")
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -430,7 +430,7 @@ class IFAssembly(AbstractAssemblyInstruction):
         )
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self, (self.source.visit_parts(visitor), self.body.visit_parts(visitor))
@@ -514,7 +514,7 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         return CONDITION + [HEAD] + BODY + [JUMP_BACK, end]
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self, (self.source.visit_parts(visitor), self.body.visit_parts(visitor))
@@ -591,7 +591,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
         )
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self, (self.target.visit_parts(visitor) if self.target else None,)
@@ -654,7 +654,7 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         ]
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self, (self.source.visit_parts(visitor) if self.target else None,)
@@ -723,7 +723,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
         )
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self, (self.target.visit_parts(visitor) if self.target else None,)
@@ -784,7 +784,7 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
         ]
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self, (self.source.visit_parts(visitor) if self.target else None,)
@@ -855,7 +855,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         ] + (self.target.emit_bytecodes(function, scope) if self.target else [])
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -1022,7 +1022,7 @@ class CallAssembly(AbstractAssemblyInstruction):
         self.is_partial = is_partial
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -1215,7 +1215,7 @@ class ReturnAssembly(AbstractAssemblyInstruction):
         self.expr = expr
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -1269,7 +1269,7 @@ class YieldAssembly(AbstractAssemblyInstruction):
         self.target = target
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -1357,7 +1357,7 @@ class JumpAssembly(AbstractAssemblyInstruction):
         self.condition = condition
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -1488,7 +1488,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         self.target = target
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,

@@ -1029,3 +1029,23 @@ class TestMacro(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 0)
+
+    def test_namespace_macro(self):
+        def target():
+            assembly("""
+        NAMESPACE test_namespace {
+            MACRO test {
+                RETURN 0
+            }
+        }
+
+        CALL MACRO test_namespace:test()
+        RETURN 1
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 0)

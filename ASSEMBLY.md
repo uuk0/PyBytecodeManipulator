@@ -32,14 +32,13 @@ for cross-version support.
   using the args stored in 'signature', and optionally storing the result at 'target' (if not provided, at 'func name' if provided else TOS). 'body' is the code itself
 * PYTHON '{' \<code> '}': puts the python code in place; '{' and '}' is allowed in code, but the last not matched and not escaped '}' will be used at end of code by the Lexer; WARNING: f-strings are currently NOT supported as they require
   some special handling at the lexer.
-* 'MACRO' \<name> \['(' \<param> \[{',' \<param>}] ')'] '{' \<assembly code> '}', where param is \<name> \[\<data type>] defines a macro in an assembly file, which can be used from outside
+* 'MACRO' \<name> \['(' \<param> \[{',' \<param>}] ')'] '{' \<assembly code> '}', where param is \['!'] \['MACRO_'] \<name> \[' ' \<data type>] defines a macro in an assembly file, which can be used from outside
   * Call it by using 'CALL MACRO' with the name being the namespace
   * Parameters can be accessed via the '§' prefix
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
   * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
-* 'MACRO_RETURN' \[\<return expression>\]: returns a value from a macro
-* 'NAMESPACE' \[\{\<namespace> ':'}] \<name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
+* 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
@@ -100,6 +99,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 - PROPOSE \<type> \<value>
 - CALL INLINE
 - ITERATOR_OP (stream util)
+- CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
 
 ## PyASM
 

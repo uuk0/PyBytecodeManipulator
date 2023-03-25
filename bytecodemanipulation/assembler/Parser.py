@@ -105,7 +105,7 @@ class ParsingScope:
         scope = self.global_scope
 
         for e in (self.scope_path + name)[:-1]:
-            scope = scope[e]
+            scope = scope.setdefault(e, {})
 
         if name[-1] in scope and not override_existing:
             raise ValueError(f"name '{name[-1]}' does already exists in the scope!")
@@ -124,7 +124,8 @@ class JumpToLabel:
 class IAssemblyStructureVisitable(ABC):
     def visit_parts(
         self,
-        visitor: typing.Callable[["IAssemblyStructureVisitable", tuple], typing.Any],
+        visitor: typing.Callable[["IAssemblyStructureVisitable", tuple, list], typing.Any],
+        parents: list,
     ):
         raise NotImplementedError
 
@@ -156,14 +157,19 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         return sum((child.emit_bytecodes(function, scope) for child in self.children), [])
 
     def fill_scope_complete(self, scope: ParsingScope):
-        self.visit_parts(lambda e, _: e.fill_scope(scope) if hasattr(e, "fill_scope") else None)
+        def visitor(expression: AbstractExpression, _, parents: typing.List[AbstractAccessExpression]):
+            if hasattr(expression, "fill_scope") and type(expression).fill_scope != AbstractAssemblyInstruction.fill_scope:
+                scope.scope_path = sum([[expr.name.text] for expr in parents if isinstance(expr, NamespaceAssembly)], [])
+                expression.fill_scope(scope)
+
+        self.visit_parts(visitor, [])
         return scope
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
-            self, tuple([child.visit_parts(visitor) for child in self.children])
+            self, tuple([child.visit_parts(visitor, parents + [self]) for child in self.children]), parents,
         )
 
     def visit_assembly_instructions(
@@ -209,9 +215,9 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
         pass
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
-    ) -> tuple:
-        return visitor(self, tuple())
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
+    ):
+        return visitor(self, tuple(), parents)
 
     def visit_assembly_instructions(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -232,9 +238,9 @@ class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, 
         raise NotImplementedError
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
-        return visitor(self, tuple())
+        return visitor(self, tuple(), parents)
 
     def visit_assembly_instructions(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -439,7 +445,7 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         )
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(
             self,
@@ -484,7 +490,7 @@ class AttributeAccessExpression(AbstractAccessExpression):
         ]
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
         return visitor(self, (self.root.visit_parts(visitor),))
 
@@ -518,9 +524,9 @@ class DynamicAttributeAccessExpression(AbstractAccessExpression):
         return [Instruction(function, -1, Opcodes.LOAD_CONST, setattr)] + self.root.emit_bytecodes(function, scope) + self.name_expr.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.ROT_THREE), Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
 
     def visit_parts(
-        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
     ):
-        return visitor(self, (self.root.visit_parts(visitor),))
+        return visitor(self, (self.root.visit_parts(visitor, parents+[self]),), parents)
 
 
 class MacroAccessExpression(AbstractAccessExpression):
@@ -580,7 +586,7 @@ class Parser(AbstractParser):
                 continue
 
             if not (instr_token := self.try_consume(IdentifierToken)):
-                raise SyntaxError(self.try_inspect())
+                raise SyntaxError(f"expected Identifier, got {self.try_inspect()}")
 
             if instr_token.text not in self.INSTRUCTIONS:
                 raise SyntaxError(f"expected <assembly instruction name>, got '{instr_token.text}'")
@@ -602,6 +608,11 @@ class Parser(AbstractParser):
                 continue
 
             if not predicate():
+                if eof_error:
+                    print(self.try_inspect())
+                    print(repr(root))
+                    raise SyntaxError(eof_error)
+
                 break
 
             print(self[-1].line, self[-1], expr.line)
@@ -609,9 +620,6 @@ class Parser(AbstractParser):
             raise SyntaxError(
                 f"Expected <newline> or ';' after assembly instruction, got {self.try_inspect()}"
             )
-
-        if eof_error and not predicate():
-            raise SyntaxError(eof_error)
 
         return root
 
@@ -827,6 +835,16 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return self.assembly.emit_bytecodes(function, scope.copy(sub_scope_name=self.name.text))
 
+    def visit_parts(
+        self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]], typing.Any], parents: list
+    ):
+        return visitor(
+            self,
+            (
+                self.assembly.visit_parts(visitor, parents + [self],),
+            ), parents,
+        )
+
 
 @Parser.register
 class MacroAssembly(AbstractAssemblyInstruction):
@@ -844,7 +862,6 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "MacroAssembly":
-        # todo: allow static macro parameters!
         name = [parser.consume(IdentifierToken)]
 
         while parser.try_consume(SpecialToken(":")):
