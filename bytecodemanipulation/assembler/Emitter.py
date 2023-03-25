@@ -6,7 +6,7 @@ import typing
 import bytecodemanipulation.assembler.Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.assembler.Parser import Parser as AssemblyParser, JumpToLabel
+from bytecodemanipulation.assembler.Parser import Parser as AssemblyParser, JumpToLabel, ParsingScope
 from bytecodemanipulation.assembler import target as assembly_targets
 from bytecodemanipulation.util import LambdaInstructionWalker
 
@@ -97,12 +97,18 @@ def apply_inline_assemblies(target: MutableFunction):
     for asm in assemblies:
         labels.update(asm.collect_label_info())
 
+    scope = ParsingScope()
+    scope.labels |= labels
+
     max_stack_effects = []
 
     label_targets: typing.Dict[str, Instruction] = {}
 
+    for asm in assemblies:
+        asm.fill_scope_complete(scope)
+
     for (_, instr), asm in zip(insertion_points, assemblies):
-        bytecode = asm.create_bytecode(target, labels)
+        bytecode = asm.create_bytecode(target, scope)
 
         for i, ins in enumerate(bytecode[:-1]):
             ins.next_instruction = bytecode[i+1]

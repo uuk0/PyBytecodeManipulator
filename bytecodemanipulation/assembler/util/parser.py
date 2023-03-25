@@ -257,12 +257,9 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
 
         return token
 
-    def consume(
-        self,
-        expected: typing.Type[AbstractToken]
-        | AbstractToken
-        | typing.List[typing.Type[AbstractToken] | AbstractToken],
-    ) -> AbstractToken:
+    T = typing.TypeVar("T", AbstractToken, typing.List[typing.Type[AbstractToken] | AbstractToken])
+
+    def consume(self, expected: T | typing.Type[T]) -> T:
         token: AbstractToken = self.inspect()
 
         if expected:
@@ -295,12 +292,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
 
         return token
 
-    def try_consume(
-        self,
-        expected: AbstractToken
-        | typing.Type[AbstractToken]
-        | typing.List[typing.Type[AbstractToken] | AbstractToken],
-    ) -> AbstractToken | None:
+    def try_consume(self, expected: T | typing.Type[T]) -> T | None:
         token: AbstractToken = self.try_inspect()
 
         if token is None:
@@ -329,14 +321,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
 
         return token
 
-    def try_consume_multi(
-        self,
-        elements: typing.List[
-            AbstractToken
-            | typing.Type[AbstractToken]
-            | typing.List[typing.Type[AbstractToken] | AbstractToken]
-        ],
-    ) -> typing.List[AbstractToken] | None:
+    def try_consume_multi(self, elements: typing.List[T | typing.Type[T]]) -> typing.List[T] | None:
         self.save()
         parsed = []
 

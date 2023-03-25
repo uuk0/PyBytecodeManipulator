@@ -17,6 +17,9 @@ from bytecodemanipulation.assembler.Parser import (
     AbstractExpression,
     IAssemblyStructureVisitable,
     JumpToLabel,
+    ParsingScope,
+    MacroAccessExpression,
+    MacroAssembly,
 )
 from bytecodemanipulation.assembler.Lexer import (
     SpecialToken,
@@ -71,9 +74,9 @@ class LoadAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadAssembly":
         return LoadAssembly(self.access_expr, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.access_expr.emit_bytecodes(function, labels) + (
-            self.target.emit_store_bytecodes(function, labels) if self.target else []
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return self.access_expr.emit_bytecodes(function, scope) + (
+            self.target.emit_store_bytecodes(function, scope) if self.target else []
         )
 
     def visit_parts(
@@ -127,10 +130,10 @@ class StoreAssembly(AbstractAssemblyInstruction):
             self.access_token, self.source.copy() if self.source else None
         )
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return (
-            [] if self.source is None else self.source.emit_bytecodes(function, labels)
-        ) + self.access_token.emit_store_bytecodes(function, labels)
+            [] if self.source is None else self.source.emit_bytecodes(function, scope)
+        ) + self.access_token.emit_store_bytecodes(function, scope)
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -181,11 +184,11 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         "xor": (Opcodes.COMPARE_OP, 3),
         "!xor": (Opcodes.COMPARE_OP, 2),
 
-        ":=": lambda lhs, rhs, function, labels: rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.DUP_TOP)] + lhs.emit_store_bytecodes(function, labels),
-        "isinstance": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-        "issubclass": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, issubclass)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-        "hasattr": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-        "getattr": lambda lhs, rhs, function, labels: [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)] + lhs.emit_bytecodes(function, labels) + rhs.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        ":=": lambda lhs, rhs, function, scope: rhs.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.DUP_TOP)] + lhs.emit_store_bytecodes(function, scope),
+        "isinstance": lambda lhs, rhs, function, scope: [Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)] + lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        "issubclass": lambda lhs, rhs, function, scope: [Instruction(function, -1, Opcodes.LOAD_CONST, issubclass)] + lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        "hasattr": lambda lhs, rhs, function, scope: [Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)] + lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        "getattr": lambda lhs, rhs, function, scope: [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)] + lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
     }
 
     # todo: parse and implement
@@ -203,7 +206,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def copy(self):
             raise NotImplementedError
 
-        def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
             raise NotImplementedError
 
         def __eq__(self, other):
@@ -237,16 +240,16 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def copy(self):
             return type(self)(self.lhs.copy(), self.operator, self.rhs.copy())
 
-        def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+        def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
             opcode_info = OpAssembly.BINARY_OPS[self.operator]
 
             if callable(opcode_info):
-                result = opcode_info(self.lhs, self.rhs, function, labels)
+                result = opcode_info(self.lhs, self.rhs, function, scope)
 
                 if isinstance(result, Instruction):
                     return (
-                        self.lhs.emit_bytecodes(function, labels)
-                        + self.rhs.emit_bytecodes(function, labels)
+                        self.lhs.emit_bytecodes(function, scope)
+                        + self.rhs.emit_bytecodes(function, scope)
                         + [result]
                     )
 
@@ -258,8 +261,8 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
                 opcode, arg = opcode_info
 
             return (
-                self.lhs.emit_bytecodes(function, labels)
-                + self.rhs.emit_bytecodes(function, labels)
+                self.lhs.emit_bytecodes(function, scope)
+                + self.rhs.emit_bytecodes(function, scope)
                 + [Instruction(function, -1, opcode, arg=arg)]
             )
 
@@ -329,6 +332,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None
     ):
+        if operation is None:
+            raise ValueError("operation cannot be null!")
+        
         self.operation = operation
         self.target = target
 
@@ -347,13 +353,13 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def __repr__(self):
         return f"OP({self.operation}{', ' + repr(self.target) if self.target else ''})"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.operation.emit_bytecodes(function, labels) + (
-            [] if self.target is None else self.target.emit_store_bytecodes(function, labels)
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return self.operation.emit_bytecodes(function, scope) + (
+            [] if self.target is None else self.target.emit_store_bytecodes(function, scope)
         )
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise RuntimeError(f"cannot assign to an '{self.operation}' operator!")
 
@@ -362,7 +368,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     ):
         return visitor(
             self,
-            (self.operation.visit_parts(visitor), self.target.visit_parts(visitor)),
+            (self.operation.visit_parts(visitor), self.target.visit_parts(visitor) if self.target else None),
         )
 
 
@@ -412,7 +418,7 @@ class IFAssembly(AbstractAssemblyInstruction):
         c = "'"
         return f"IF({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
 
         if self.label_name is None:
             end = Instruction(function, -1, "NOP")
@@ -421,10 +427,10 @@ class IFAssembly(AbstractAssemblyInstruction):
 
         return (
             ([] if self.label_name is None else [Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text+"_HEAD")])
-            + self.source.emit_bytecodes(function, labels)
+            + self.source.emit_bytecodes(function, scope)
             + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)]
             + ([] if self.label_name is None else [Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text)])
-            + self.body.emit_bytecodes(function, labels)
+            + self.body.emit_bytecodes(function, scope)
             + [end]
         )
 
@@ -490,20 +496,20 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         c = "'"
         return f"WHILE({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
         if self.label_name is None:
             end = Instruction(function, -1, "NOP")
         else:
             end = Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END")
 
-        CONDITION = self.source.emit_bytecodes(function, labels)
+        CONDITION = self.source.emit_bytecodes(function, scope)
 
         if self.label_name:
             CONDITION.insert(0, Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text))
 
         HEAD = Instruction(function, -1, "POP_JUMP_IF_FALSE", end)
 
-        BODY = self.body.emit_bytecodes(function, labels)
+        BODY = self.body.emit_bytecodes(function, scope)
 
         if self.label_name:
             BODY.insert(0, Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text+"_INNER"))
@@ -579,14 +585,14 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadGlobalAssembly":
         return LoadGlobalAssembly(self.name_token, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
             value = int(value)
 
         return [Instruction(function, -1, "LOAD_GLOBAL", value)] + (
-            self.target.emit_bytecodes(function, labels) if self.target else []
+            self.target.emit_bytecodes(function, scope) if self.target else []
         )
 
     def visit_parts(
@@ -642,13 +648,13 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
             self.name, self.source.copy() if self.source else None
         )
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
             value = int(value)
 
-        return ([] if self.source is None else self.source.emit_bytecodes(function, labels)) + [
+        return ([] if self.source is None else self.source.emit_bytecodes(function, scope)) + [
             Instruction(function, -1, "STORE_GLOBAL", value)
         ]
 
@@ -711,14 +717,14 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadFastAssembly":
         return LoadFastAssembly(self.name_token, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
             value = int(value)
 
         return [Instruction(function, -1, "LOAD_FAST", value)] + (
-            self.target.emit_bytecodes(function, labels) if self.target else []
+            self.target.emit_bytecodes(function, scope) if self.target else []
         )
 
     def visit_parts(
@@ -772,13 +778,13 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "StoreFastAssembly":
         return StoreFastAssembly(self.name, self.source.copy() if self.source else None)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
             value = int(value)
 
-        return ([] if self.source is None else self.source.emit_bytecodes(function, labels)) + [
+        return ([] if self.source is None else self.source.emit_bytecodes(function, scope)) + [
             Instruction(function, -1, "STORE_FAST", value)
         ]
 
@@ -841,7 +847,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LoadConstAssembly":
         return LoadConstAssembly(self.value, self.target)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return [
             Instruction(
                 function,
@@ -851,7 +857,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
                 if isinstance(self.value, ConstantAccessExpression)
                 else function.target.__globals__.get(self.value.name_token.text),
             )
-        ] + (self.target.emit_bytecodes(function, labels) if self.target else [])
+        ] + (self.target.emit_bytecodes(function, scope) if self.target else [])
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -867,10 +873,10 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class CallAssembly(AbstractAssemblyInstruction):
-    # CALL ['PARTIAL'] <call target> (<args>) [-> <target>]
+    # CALL ['PARTIAL' | 'MACRO'] <call target> (<args>) [-> <target>]
     NAME = "CALL"
 
-    class IArg(IAssemblyStructureVisitable, abc.ABC):
+    class IArg(AbstractAccessExpression, abc.ABC):
         __slots__ = ("source", "is_dynamic")
 
         def __init__(self, source: typing.Union["AbstractAccessExpression", IdentifierToken], is_dynamic: bool = False):
@@ -897,6 +903,12 @@ class CallAssembly(AbstractAssemblyInstruction):
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
         ):
             pass
+
+        def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+            return self.source.emit_bytecodes(function, scope)
+
+        def emit_store_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+            return self.source.emit_store_bytecodes(function, scope)
 
     class Arg(IArg):
         pass
@@ -934,7 +946,17 @@ class CallAssembly(AbstractAssemblyInstruction):
     def consume(cls, parser: "Parser") -> "CallAssembly":
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
 
-        call_target = parser.try_parse_data_source(include_bracket=False)
+        is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
+
+        if not is_macro:
+            call_target = parser.try_parse_data_source(include_bracket=False)
+        else:
+            name = [parser.consume(IdentifierToken)]
+
+            while parser.try_consume(SpecialToken(":")):
+                name.append(parser.consume(IdentifierToken))
+
+            call_target = MacroAccessExpression(name)
 
         args: typing.List[CallAssembly.IArg] = []
 
@@ -945,7 +967,7 @@ class CallAssembly(AbstractAssemblyInstruction):
         while not (bracket := parser.try_consume(SpecialToken(")"))):
             if isinstance(parser[0], IdentifierToken) and parser[1] == SpecialToken(
                 "="
-            ):
+            ) and not is_macro:
                 key = parser.consume(IdentifierToken)
                 parser.consume(SpecialToken("="))
 
@@ -959,7 +981,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
                 has_seen_keyword_arg = True
 
-            elif parser[0].text == "*":
+            elif parser[0].text == "*" and not is_macro:
                 if parser[1] == SpecialToken("*"):
                     parser.consume(SpecialToken("*"))
                     parser.consume(SpecialToken("*"))
@@ -1006,19 +1028,21 @@ class CallAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        return cls(call_target, args, target, is_partial)
+        return cls(call_target, args, target, is_partial, is_macro)
 
     def __init__(
         self,
-        call_target: AbstractAccessExpression,
+        call_target: AbstractSourceExpression,
         args: typing.List["CallAssembly.IArg"],
         target: AbstractAccessExpression | None = None,
         is_partial: bool = False,
+        is_macro: bool = False,
     ):
         self.call_target = call_target
         self.args = args
         self.target = target
         self.is_partial = is_partial
+        self.is_macro = is_macro
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -1038,10 +1062,11 @@ class CallAssembly(AbstractAssemblyInstruction):
             [arg.copy() for arg in self.args],
             self.target.copy() if self.target else None,
             self.is_partial,
+            self.is_macro,
         )
 
     def __repr__(self):
-        return f"CALL{'' if not self.is_partial else '-PARTIAL'}({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
+        return f"CALL{('' if not self.is_macro else '-MACRO') if not self.is_partial else '-PARTIAL'}({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
 
     def __eq__(self, other):
         return (
@@ -1050,9 +1075,13 @@ class CallAssembly(AbstractAssemblyInstruction):
             and self.args == other.args
             and self.target == other.target
             and self.is_partial == other.is_partial
+            and self.is_macro == other.is_macro
         )
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        if self.is_macro:
+            return self.emit_macro_bytecode(function, scope)
+
         has_seen_star = False
         has_seen_star_star = False
         has_seen_kw_arg = False
@@ -1077,10 +1106,10 @@ class CallAssembly(AbstractAssemblyInstruction):
                 bytecode = []
                 extra_args = 0
 
-            bytecode += self.call_target.emit_bytecodes(function, labels)
+            bytecode += self.call_target.emit_bytecodes(function, scope)
 
             for arg in self.args:
-                bytecode += arg.source.emit_bytecodes(function, labels)
+                bytecode += arg.source.emit_bytecodes(function, scope)
 
             bytecode += [
                 Instruction(function, -1, "CALL_FUNCTION", arg=len(self.args) + extra_args),
@@ -1096,12 +1125,12 @@ class CallAssembly(AbstractAssemblyInstruction):
                 bytecode = []
                 extra_args = 0
 
-            bytecode += self.call_target.emit_bytecodes(function, labels)
+            bytecode += self.call_target.emit_bytecodes(function, scope)
 
             kw_arg_keys = []
 
             for arg in reversed(self.args):
-                bytecode += arg.source.emit_bytecodes(function, labels)
+                bytecode += arg.source.emit_bytecodes(function, scope)
 
                 if isinstance(arg, CallAssembly.KwArg):
                     kw_arg_keys.append(arg.key.text)
@@ -1114,7 +1143,7 @@ class CallAssembly(AbstractAssemblyInstruction):
                 ]
 
         else:
-            bytecode = self.call_target.emit_bytecodes(function, labels)
+            bytecode = self.call_target.emit_bytecodes(function, scope)
 
             bytecode += [Instruction(function, -1, "BUILD_LIST")]
 
@@ -1126,7 +1155,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
             i = -1
             for i, arg in enumerate(self.args):
-                bytecode += arg.source.emit_bytecodes(function, labels)
+                bytecode += arg.source.emit_bytecodes(function, scope)
 
                 if isinstance(arg, CallAssembly.Arg):
                     bytecode += [Instruction(function, -1, "LIST_APPEND")]
@@ -1146,14 +1175,14 @@ class CallAssembly(AbstractAssemblyInstruction):
                     if isinstance(arg, CallAssembly.KwArg):
                         bytecode += (
                             [Instruction(function, -1, "LOAD_CONST", arg.key.text)]
-                            + arg.source.emit_bytecodes(function, labels)
+                            + arg.source.emit_bytecodes(function, scope)
                             + [
                                 Instruction(function, -1, "BUILD_MAP", arg=1),
                                 Instruction(function, -1, "DICT_MERGE", arg=1),
                             ]
                         )
                     else:
-                        bytecode += arg.source.emit_bytecodes(function, labels) + [
+                        bytecode += arg.source.emit_bytecodes(function, scope) + [
                             Instruction(function, -1, "DICT_MERGE", arg=1)
                         ]
 
@@ -1167,9 +1196,24 @@ class CallAssembly(AbstractAssemblyInstruction):
             ]
 
         if self.target:
-            bytecode += self.target.emit_store_bytecodes(function, labels)
+            bytecode += self.target.emit_store_bytecodes(function, scope)
 
         return bytecode
+
+    def emit_macro_bytecode(self, function: MutableFunction, scope: ParsingScope):
+        access = typing.cast(MacroAccessExpression, self.call_target)
+        name = access.name
+
+        macro_declaration = scope.lookup_name_in_scope(name[0].text)
+
+        if len(name) > 1:
+            for e in name[1:]:
+                macro_declaration = macro_declaration[e.text]
+
+        if not isinstance(macro_declaration, MacroAssembly):
+            raise RuntimeError(f"Expected Macro Declaration, got {macro_declaration}")
+
+        return macro_declaration.emit_call_bytecode(function, scope, self.args)
 
 
 @Parser.register
@@ -1194,7 +1238,7 @@ class PopElementAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "PopElementAssembly":
         return PopElementAssembly(self.count)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return [
             Instruction(function, -1, "POP_TOP", int(self.count.text))
             for _ in range(int(self.count.text))
@@ -1232,8 +1276,8 @@ class ReturnAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "ReturnAssembly":
         return ReturnAssembly(self.expr.copy())
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        expr_bytecode = self.expr.emit_bytecodes(function, labels) if self.expr else []
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        expr_bytecode = self.expr.emit_bytecodes(function, scope) if self.expr else []
 
         return expr_bytecode + [
             Instruction(function, -1, "RETURN_VALUE")
@@ -1287,11 +1331,11 @@ class YieldAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "YieldAssembly":
         return YieldAssembly(self.expr.copy() if self.expr else None, self.is_star, self.target.copy() if self.target else None)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         bytecode = []
 
         if self.expr:
-            bytecode += self.expr.emit_bytecodes(function, labels)
+            bytecode += self.expr.emit_bytecodes(function, scope)
 
         if self.is_star:
             bytecode += [
@@ -1306,7 +1350,7 @@ class YieldAssembly(AbstractAssemblyInstruction):
             ]
 
         if self.target:
-            bytecode += self.target.emit_store_bytecodes(function, labels)
+            bytecode += self.target.emit_store_bytecodes(function, scope)
 
         else:
             bytecode += [
@@ -1374,13 +1418,14 @@ class JumpAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "JumpAssembly":
         return JumpAssembly(self.label_name_token, self.condition.copy() if self.condition else None)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        if self.label_name_token.text not in labels:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        if not scope.exists_label(self.label_name_token.text):
             raise ValueError(f"Label '{self.label_name_token.text}' is not valid in this context!")
 
         if self.condition is None:
             return [Instruction(function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(self.label_name_token.text))]
-        return self.condition.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(self.label_name_token.text))]
+
+        return self.condition.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(self.label_name_token.text))]
 
 
 @Parser.register
@@ -1508,15 +1553,17 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "FunctionDefinitionAssembly":
         return FunctionDefinitionAssembly(self.func_name, self.bound_variables.copy(), [arg.copy() for arg in self.args], self.body.copy(), self.target.copy() if self.target else None)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         flags = 0
         bytecode = []
 
         inner_labels = self.body.collect_label_info()
         label_targets = {}
 
+        inner_scope = scope.copy()
+
         target = MutableFunction(lambda: None)
-        inner_bytecode = self.body.emit_bytecodes(target, inner_labels)
+        inner_bytecode = self.body.emit_bytecodes(target, inner_scope)
         inner_bytecode[-1].next_instruction = target.instructions[0]
 
         for i, instr in enumerate(inner_bytecode[:-1]):
@@ -1565,7 +1612,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         ]
 
         if self.target:
-            bytecode += self.target.emit_store_bytecodes(function, labels)
+            bytecode += self.target.emit_store_bytecodes(function, scope)
 
         return bytecode
 

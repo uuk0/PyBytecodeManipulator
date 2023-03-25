@@ -20,7 +20,7 @@ for cross-version support.
 
 * LOAD \<expression> \['->' \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> \['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
-* CALL \['PARTIAL'] \<call target> '(' \<args> ')' \['-> '\<target>]: invokes the target found at 'call target' with the given 'args'
+* CALL \['PARTIAL' | 'MACRO'] \<call target> '(' \<args> ')' \['-> '\<target>]: invokes the target found at 'call target' with the given 'args'
   (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target';
   'PARTIAL' is a wrapper like functools.partial. If used, each arg expression can be prefixed with '?' for dynamic evaluation, otherwise static evaluation (like the real functools.partial)
 * OP (\<lhs> \<binary operator> \<rhs>) \['->' \<target>]: uses the given operator
@@ -32,6 +32,12 @@ for cross-version support.
   using the args stored in 'signature', and optionally storing the result at 'target' (if not provided, at 'func name' if provided else TOS). 'body' is the code itself
 * PYTHON '{' \<code> '}': puts the python code in place; '{' and '}' is allowed in code, but the last not matched and not escaped '}' will be used at end of code by the Lexer; WARNING: f-strings are currently NOT supported as they require
   some special handling at the lexer.
+* 'MACRO' \<name> \['(' \<param> \[{',' \<param>}] ')'] '{' \<assembly code> '}', where param is \<name> \[\<data type>] defines a macro in an assembly file, which can be used from outside
+  * Call it by using 'CALL MACRO' with the name being the namespace
+  * Parameters can be accessed via the '§' prefix
+  * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
+* 'MACRO_RETURN' \[\<return expression>\]: returns a value from a macro
+* 'NAMESPACE' \[\{\<namespace> ':'}] \<name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
@@ -57,6 +63,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - @\<global name>: global variable
   - @!\<global name>: static global variable
   - $\<local name>: local variable
+  - $\<name>: access an variable from an outer scope, or a macro parameter
   - %: top of stack (in most cases the default when not provided)
   - \<access>\[\<index or expression>]: value by \[] operator
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"

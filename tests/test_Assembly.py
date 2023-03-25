@@ -896,3 +896,25 @@ RETURN OP ($t getattr "test_getattr_check")
         mutable.reassign_to_function()
 
         self.assertEqual(target(self), self.test_getattr_check)
+
+
+class TestMacro(TestCase):
+    def test_basic(self):
+        def target():
+            assembly("""
+    MACRO test {
+        RETURN 0
+    }
+    
+    CALL MACRO test()
+    RETURN 1
+    """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 0)

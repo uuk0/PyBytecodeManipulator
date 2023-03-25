@@ -55,6 +55,63 @@ def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
 Instruction.create_with_token = create_instruction
 
 
+class ParsingScope:
+    def __init__(self):
+        self.labels: typing.Set[str] = set()
+        self.global_scope = {}
+        self.scope_path: typing.List[str] = []
+        self._name_counter = 1
+
+    def scope_name_generator(self, suffix="") -> str:
+        name = f"%INTERNAL:{self._name_counter}"
+        self._name_counter += 1
+
+        if suffix:
+            name += "/" + suffix
+
+        return name
+
+    def lookup_name_in_scope(self, name: str):
+        for i in range(len(self.scope_path), -1, -1):
+            path = self.scope_path[:i]
+
+            scope = self.global_scope
+            for e in path: scope = scope[e]
+
+            if name in scope:
+                return scope[name]
+
+    def exists_label(self, name: str) -> bool:
+        return name in self.labels
+
+    def copy(self, sub_scope_name: str = None, copy_labels=False, keep_scope_name_generator: bool = None):
+        instance = ParsingScope()
+        if copy_labels: instance.labels = self.labels
+        instance.global_scope = self.global_scope
+        instance.scope_path = self.scope_path.copy()
+
+        if sub_scope_name is not None:
+            instance.scope_path.append(sub_scope_name)
+        elif keep_scope_name_generator:
+            instance.scope_name_generator = self.scope_name_generator
+
+        return instance
+
+    def insert_into_scope(self, name: typing.List[str], data: typing.Any, override_existing=False):
+        if not name:
+            raise ValueError("'name' must have at least one element!")
+
+        scope = self.global_scope
+
+        for e in (self.scope_path + name)[:-1]:
+            scope = scope[e]
+
+        if name[-1] in scope and not override_existing:
+            raise ValueError(f"name '{name[-1]}' does already exists in the scope!")
+
+        scope[name[-1]] = data
+
+
 class JumpToLabel:
     def __init__(self, name: str):
         self.name = name
@@ -94,8 +151,12 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
         self.children.append(expr)
         return self
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return sum((child.emit_bytecodes(function, labels) for child in self.children), [])
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return sum((child.emit_bytecodes(function, scope) for child in self.children), [])
+
+    def fill_scope_complete(self, scope: ParsingScope):
+        self.visit_parts(lambda e, _: e.fill_scope(scope) if hasattr(e, "fill_scope") else None)
+        return scope
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -125,8 +186,8 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
 
         return result
 
-    def create_bytecode(self, target: MutableFunction, labels: typing.Set[str]):
-        return self.emit_bytecodes(target, labels)
+    def create_bytecode(self, target: MutableFunction, scope: ParsingScope):
+        return self.emit_bytecodes(target, scope)
 
 
 class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitable, ABC):
@@ -136,8 +197,15 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
         raise NotImplementedError
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         raise NotImplementedError
+
+    def fill_scope_complete(self, scope: ParsingScope):
+        self.visit_parts(lambda e, _: e.fill_scope(scope) if hasattr(e, "fill_scope") else None)
+        return scope
+
+    def fill_scope(self, scope: ParsingScope):
+        pass
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -154,11 +222,11 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
 
 
 class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, ABC):
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         raise NotImplementedError
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise NotImplementedError
 
@@ -196,7 +264,7 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
 class GlobalAccessExpression(AbstractAccessExpression):
     PREFIX = "@"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -205,7 +273,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
         return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_GLOBAL", value)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
@@ -218,13 +286,13 @@ class GlobalAccessExpression(AbstractAccessExpression):
 class GlobalStaticAccessExpression(AbstractAccessExpression):
     PREFIX = "@!"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         key = self.name_token.text
         value = function.target.__globals__.get(key)
         return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_CONST", value)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+            self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise RuntimeError("Cannot assign to a constant global")
 
@@ -232,7 +300,7 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
 class LocalAccessExpression(AbstractAccessExpression):
     PREFIX = "$"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -241,7 +309,7 @@ class LocalAccessExpression(AbstractAccessExpression):
         return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_FAST", value, _decode_next=False)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
@@ -254,7 +322,7 @@ class LocalAccessExpression(AbstractAccessExpression):
 class DerefAccessExpression(AbstractAccessExpression):
     PREFIX = "§"
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         value = self.name_token.text
 
         if value.isdigit():
@@ -263,7 +331,7 @@ class DerefAccessExpression(AbstractAccessExpression):
         return [Instruction.create_with_token(self.name_token, function, -1, "LOAD_DEREF", value, _decode_next=False)]
 
     def emit_store_bytecodes(
-            self, function: MutableFunction, labels: typing.Set[str]
+            self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
@@ -288,11 +356,11 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)()
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return []
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return []
 
@@ -310,11 +378,11 @@ class ConstantAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(copy.deepcopy(self.value))
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return [Instruction(function, -1, "LOAD_CONST", self.value)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise SyntaxError("Cannot assign to a constant")
 
@@ -341,11 +409,11 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(self.base_expr.copy(), self.index_expr.copy())
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return (
-            self.base_expr.emit_bytecodes(function, labels)
+            self.base_expr.emit_bytecodes(function, scope)
             + (
-                self.index_expr.emit_bytecodes(function, labels)
+                self.index_expr.emit_bytecodes(function, scope)
                 if isinstance(self.index_expr, AbstractAccessExpression)
                 else [
                     Instruction.create_with_token(self.index_expr, function, -1, "LOAD_CONST", int(self.index_expr.text))
@@ -355,12 +423,12 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         )
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return (
-            self.base_expr.emit_bytecodes(function, labels)
+            self.base_expr.emit_bytecodes(function, scope)
             + (
-                self.index_expr.emit_bytecodes(function, labels)
+                self.index_expr.emit_bytecodes(function, scope)
                 if isinstance(self.index_expr, AbstractAccessExpression)
                 else [
                     Instruction.create_with_token(self.index_expr, function, -1, "LOAD_CONST", int(self.index_expr.text))
@@ -402,15 +470,15 @@ class AttributeAccessExpression(AbstractAccessExpression):
     def copy(self) -> "AttributeAccessExpression":
         return AttributeAccessExpression(self.root.copy(), self.name_token)
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return self.root.emit_bytecodes(function, labels) + [
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return self.root.emit_bytecodes(function, scope) + [
             Instruction.create_with_token(self.name_token, function, -1, "LOAD_ATTR", self.name_token.text)
         ]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return self.root.emit_bytecodes(function, labels) + [
+        return self.root.emit_bytecodes(function, scope) + [
             Instruction.create_with_token(self.name_token, function, -1, "STORE_ATTR", self.name_token.text)
         ]
 
@@ -440,13 +508,13 @@ class DynamicAttributeAccessExpression(AbstractAccessExpression):
     def copy(self) -> "DynamicAttributeAccessExpression":
         return DynamicAttributeAccessExpression(self.root.copy(), self.name_expr.copy())
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
-        return [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)] + self.root.emit_bytecodes(function, labels) + self.name_expr.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)] + self.root.emit_bytecodes(function, scope) + self.name_expr.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
 
     def emit_store_bytecodes(
-        self, function: MutableFunction, labels: typing.Set[str]
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return [Instruction(function, -1, Opcodes.LOAD_CONST, setattr)] + self.root.emit_bytecodes(function, labels) + self.name_expr.emit_bytecodes(function, labels) + [Instruction(function, -1, Opcodes.ROT_THREE), Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
+        return [Instruction(function, -1, Opcodes.LOAD_CONST, setattr)] + self.root.emit_bytecodes(function, scope) + self.name_expr.emit_bytecodes(function, scope) + [Instruction(function, -1, Opcodes.ROT_THREE), Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
 
     def visit_parts(
         self, visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any]
@@ -454,11 +522,33 @@ class DynamicAttributeAccessExpression(AbstractAccessExpression):
         return visitor(self, (self.root.visit_parts(visitor),))
 
 
+class MacroAccessExpression(AbstractAccessExpression):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        raise RuntimeError
+
+    def emit_store_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        raise RuntimeError
+
+    def __init__(self, name: typing.List[IdentifierToken]):
+        self.name = name
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.name == other.name
+
+    def __repr__(self):
+        return f"MACRO-LINK({':'.join(map(lambda e: e.text, self.name))})"
+
+    def copy(self) -> "MacroAccessExpression":
+        return type(self)(self.name.copy())
+
+
 class Parser(AbstractParser):
     INSTRUCTIONS: typing.Dict[str, typing.Type[AbstractAssemblyInstruction]] = {}
 
+    T = typing.TypeVar("T", typing.Type[AbstractAssemblyInstruction], AbstractAssemblyInstruction)
+
     @classmethod
-    def register(cls, instr: typing.Type[AbstractAssemblyInstruction]):
+    def register(cls, instr: T) -> T:
         cls.INSTRUCTIONS[instr.NAME] = instr
         return instr
 
@@ -654,7 +744,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
     def __eq__(self, other):
         return type(self) == type(other) and self.name_token == other.name_token
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         return [
             Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.name_token.text)
         ]
@@ -684,7 +774,7 @@ class PythonCodeAssembly(AbstractAssemblyInstruction):
     def __eq__(self, other):
         return type(self) == type(other) and self.code == other.code
 
-    def emit_bytecodes(self, function: MutableFunction, labels: typing.Set[str]) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
         inner_code = '\n    '.join(self.code.text.split('\n'))
         code = f"def target():\n    {inner_code}"
 
@@ -703,3 +793,159 @@ class PythonCodeAssembly(AbstractAssemblyInstruction):
 
     def copy(self) -> "PythonCodeAssembly":
         return type(self)(self.code)
+
+
+@Parser.register
+class NamespaceAssembly(AbstractAssemblyInstruction):
+    # 'NAMESPACE' <name> '{' <code> '}'
+    NAME = "NAMESPACE"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "NamespaceAssembly":
+        name = parser.consume(IdentifierToken)
+        assembly = parser.parse_body()
+
+        return cls(
+            name,
+            assembly,
+        )
+
+    def __init__(self, name: IdentifierToken, assembly: CompoundExpression):
+        self.name = name
+        self.assembly = assembly
+
+    def __repr__(self):
+        return f"NAMESPACE::'{self.name.text}'({repr(self.assembly)})"
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.name == other.name and self.assembly == other.assembly
+
+    def copy(self):
+        return type(self)(self.name, self.assembly.copy())
+
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return self.assembly.emit_bytecodes(function, scope.copy(sub_scope_name=self.name.text))
+
+
+@Parser.register
+class MacroAssembly(AbstractAssemblyInstruction):
+    # 'MACRO' [{<namespace> ':'}] <name> ['(' <param> \[{',' <param>}] ')'] '{' <assembly code> '}', where param is ['!'] \<name> [<data type>]
+    NAME = "MACRO"
+
+    class MacroArg:
+        def __init__(self, name: IdentifierToken, is_static=False):
+            self.name = name
+            self.is_static = is_static
+            self.index = -1
+
+        def copy(self):
+            return type(self)(self.name, self.is_static)
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "MacroAssembly":
+        # todo: allow static macro parameters!
+        name = [parser.consume(IdentifierToken)]
+
+        while parser.try_consume(SpecialToken(":")):
+            name.append(parser.consume(IdentifierToken))
+
+        args = []
+        if parser.try_consume(BracketToken("(")):
+            i = 0
+
+            while not parser.try_consume(BracketToken(")")):
+                is_static = bool(parser.try_consume(SpecialToken("!")))
+                name = parser.consume(IdentifierToken)
+
+                arg = MacroAssembly.MacroArg(name, is_static)
+                arg.index = i
+                i += 1
+                args.append(arg)
+
+                if not parser.consume(SpecialToken(",")):
+                    parser.consume(BracketToken(")"))
+                    break
+
+        body = parser.parse_body()
+
+        return cls(name, args, body)
+
+    def __init__(self, name: typing.List[IdentifierToken], args: typing.List[MacroArg], body: CompoundExpression):
+        self.name = name
+        self.args = args
+        self.body = body
+
+    def __repr__(self):
+        return f"MACRO::'{':'.join(map(lambda e: e.text, self.name))}'({', '.join(map(repr, self.args))}) {{{repr(self.body)}}}"
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.name == other.name and self.args == other.args and self.body == other.body
+
+    def copy(self) -> "MacroAssembly":
+        return type(self)(
+            self.name.copy(),
+            [arg.copy() for arg in self.args],
+            self.body.copy(),
+        )
+
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        return []
+
+    def emit_call_bytecode(self, function: MutableFunction, scope: ParsingScope, args: typing.List[AbstractAccessExpression]) -> typing.List[Instruction]:
+        if len(args) != len(self.args):
+            raise RuntimeError("Argument count must be equal!")
+
+        bytecode = []
+
+        inner_bytecode = self.body.emit_bytecodes(function, scope)
+
+        arg_names: typing.List[str | None] = []
+        arg_decl_lookup: typing.Dict[str, MacroAssembly.MacroArg] = {}
+        for arg_decl, arg_code in zip(self.args, args):
+            arg_decl_lookup[arg_decl.name.text] = arg_decl
+            if arg_decl.is_static:
+                arg_names.append(var_name := scope.scope_name_generator())
+                bytecode += arg_code.emit_bytecodes(function, scope)
+                bytecode.append(
+                    Instruction(
+                        function,
+                        -1,
+                        Opcodes.STORE_FAST,
+                        var_name,
+                        _decode_next=False,
+                    )
+                )
+            else:
+                arg_names.append(None)
+
+        for instr in inner_bytecode:
+            bytecode.append(instr)
+
+            if instr.opcode == Opcodes.LOAD_DEREF:
+                if instr.arg_value not in arg_decl_lookup:
+                    continue
+
+                arg_decl = arg_decl_lookup[instr.arg_value]
+
+                if arg_decl.is_static:
+                    instr.change_opcode(Opcodes.LOAD_FAST, arg_names[arg_decl.index])
+
+                else:
+                    instr.change_opcode(Opcodes.NOP)
+                    instructions = args[arg_decl.index].emit_bytecodes(function, scope)
+                    instr.insert_after(instructions)
+                    bytecode += instructions
+
+            elif instr.opcode == Opcodes.STORE_DEREF:
+                if instr.arg_value not in arg_decl_lookup:
+                    continue
+
+                arg_decl = arg_decl_lookup[instr.arg_value]
+
+                if arg_decl.is_static:
+                    instr.change_opcode(Opcodes.STORE_FAST, arg_names[arg_decl.index])
+
+        return bytecode
+
+    def fill_scope(self, scope: ParsingScope):
+        scope.insert_into_scope(list(map(lambda e: e.text, self.name)), self)
