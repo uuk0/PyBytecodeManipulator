@@ -106,7 +106,11 @@ class SpecializationContainer:
         assert side_effect is None, "not implemented!"
 
         warnings.warn(
-            exception.__class__.__name__ + ": " + exception.args[0] + (f" [AT ARG {arg}]" if arg is not None else "") + " (Statically emitted)"
+            exception.__class__.__name__
+            + ": "
+            + exception.args[0]
+            + (f" [AT ARG {arg}]" if arg is not None else "")
+            + " (Statically emitted)"
         )
         self.replace_raised_exception = exception
 

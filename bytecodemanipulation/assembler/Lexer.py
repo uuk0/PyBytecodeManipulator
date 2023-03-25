@@ -78,7 +78,16 @@ class Lexer(AbstractLexer):
                 remaining = self.consume(".") + self.consume_while(string.digits + "_")
 
                 if self.try_inspect() and self.try_inspect() in string.ascii_letters:
-                    return [IntegerToken(text), SpecialToken("."), IdentifierToken(remaining[1:] + self.consume_while(string.ascii_letters + string.digits + "_"))]
+                    return [
+                        IntegerToken(text),
+                        SpecialToken("."),
+                        IdentifierToken(
+                            remaining[1:]
+                            + self.consume_while(
+                                string.ascii_letters + string.digits + "_"
+                            )
+                        ),
+                    ]
 
                 text += remaining
 
@@ -130,7 +139,12 @@ class Lexer(AbstractLexer):
         code = ""
 
         while True:
-            code += self.consume_while(string.ascii_letters + string.digits + string.whitespace + "@!$+~*-_.,:;%&/\\[]()<>|")
+            code += self.consume_while(
+                string.ascii_letters
+                + string.digits
+                + string.whitespace
+                + "@!$+~*-_.,:;%&/\\[]()<>|"
+            )
 
             n = self.try_inspect()
 
@@ -143,15 +157,24 @@ class Lexer(AbstractLexer):
                 # todo: f-strings
 
                 if code[-2:] == " f":
-                    warnings.warn("Found f-string in python literal, this might not work!")
+                    warnings.warn(
+                        "Found f-string in python literal, this might not work!"
+                    )
 
                 triple = self.try_inspect_multi(3)
 
                 if triple == n * 3:
-                    code += self.consume(triple) + self.consume_until(lambda text, c: text.endswith(triple) and _count_chars_at_end(text.removesuffix(triple), "\\") % 1 == 0)
+                    code += self.consume(triple) + self.consume_until(
+                        lambda text, c: text.endswith(triple)
+                        and _count_chars_at_end(text.removesuffix(triple), "\\") % 1
+                        == 0
+                    )
                     pass
 
-                code += self.consume(n) + self.consume_until(lambda text, c: text.endswith(n) and _count_chars_at_end(text.removesuffix(n), "\\") % 1 == 0)
+                code += self.consume(n) + self.consume_until(
+                    lambda text, c: text.endswith(n)
+                    and _count_chars_at_end(text.removesuffix(n), "\\") % 1 == 0
+                )
 
             elif n == "{":
                 bracket_level += 1

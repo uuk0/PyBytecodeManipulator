@@ -88,7 +88,9 @@ class Instruction:
             and (_decode_next or not self.has_jump())
         ):
             self.change_arg(self.arg)
-        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and self.arg is None:
+        elif (
+            self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST
+        ) and self.arg is None:
             self.change_arg_value(self.arg_value)
 
         # Reference to the next instruction
@@ -128,7 +130,13 @@ class Instruction:
         if self.has_jump() and isinstance(self.arg_value, Instruction):
             typing.cast(Instruction, self.arg_value).apply_visitor(visitor, visited)
 
-    def apply_value_visitor(self, callback: typing.Callable[["Instruction", typing.Any | None, typing.Any | None], typing.Any], visited: typing.Dict["Instruction", typing.Any] = None) -> typing.Any:
+    def apply_value_visitor(
+        self,
+        callback: typing.Callable[
+            ["Instruction", typing.Any | None, typing.Any | None], typing.Any
+        ],
+        visited: typing.Dict["Instruction", typing.Any] = None,
+    ) -> typing.Any:
         if visited is None:
             visited = {}
 
@@ -141,10 +149,16 @@ class Instruction:
             return callback(self, None, None)
 
         if self.has_jump() and isinstance(self.arg_value, Instruction):
-            return callback(self, self.next_instruction.apply_value_visitor(callback, visited), self.arg_value.apply_value_visitor(callback, visited))
+            return callback(
+                self,
+                self.next_instruction.apply_value_visitor(callback, visited),
+                self.arg_value.apply_value_visitor(callback, visited),
+            )
 
         if self.next_instruction is not None:
-            return callback(self, self.next_instruction.apply_value_visitor(callback, visited), None)
+            return callback(
+                self, self.next_instruction.apply_value_visitor(callback, visited), None
+            )
 
         return callback(self, None, None)
 
@@ -237,7 +251,8 @@ class Instruction:
                 if not isinstance(self.arg_value, Instruction)
                 else self.arg_value.lossy_eq(other.arg_value)
             )
-            if (self.arg_value is not None and other.arg_value is not None) or self.opcode == Opcodes.LOAD_CONST
+            if (self.arg_value is not None and other.arg_value is not None)
+            or self.opcode == Opcodes.LOAD_CONST
             else True
         )
 
@@ -362,7 +377,11 @@ class Instruction:
         return self.opcode in END_CONTROL_FLOW
 
     def update_owner(
-        self, function: "MutableFunction", offset: int, update_following=True, force_change_arg_index=False
+        self,
+        function: "MutableFunction",
+        offset: int,
+        update_following=True,
+        force_change_arg_index=False,
     ):
         previous_function = self.function
 
@@ -372,9 +391,15 @@ class Instruction:
         # If previously the ownership was unset, and we have not fully referenced args, do it now!
         # todo: when previous owner was set, and arg is not None, we might need to de-ref the value
         #    and re-ref afterwards, so the value lives in the new owner
-        if self.arg is not None and self.arg_value is None and (not force_change_arg_index or self.opcode != Opcodes.LOAD_CONST):
+        if (
+            self.arg is not None
+            and self.arg_value is None
+            and (not force_change_arg_index or self.opcode != Opcodes.LOAD_CONST)
+        ):
             self.change_arg(self.arg)
-        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and (self.arg is None or force_change_arg_index):
+        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and (
+            self.arg is None or force_change_arg_index
+        ):
             self.change_arg_value(self.arg_value)
 
         if update_following:
@@ -792,6 +817,7 @@ class MutableFunction:
         self._load_from_code_object(self.code_object)
 
     if sys.version_info.major == 3 and sys.version_info.minor == 10:
+
         def _load_from_code_object(self, obj: types.CodeType):
             self.argument_count = self.code_object.co_argcount
             self.cell_variables = list(self.code_object.co_cellvars)
@@ -815,6 +841,7 @@ class MutableFunction:
             self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+
         def _load_from_code_object(self, obj: types.CodeType):
             self.argument_count = self.code_object.co_argcount
             self.cell_variables = list(self.code_object.co_cellvars)
@@ -876,6 +903,7 @@ class MutableFunction:
         self.__instructions = None
 
     if sys.version_info.major == 3 and sys.version_info.minor == 10:
+
         def create_code_obj(self) -> types.CodeType:
             if self.__instructions is None:
                 self.get_instructions()
@@ -902,6 +930,7 @@ class MutableFunction:
             )
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+
         def create_code_obj(self) -> types.CodeType:
             if self.__instructions is None:
                 self.get_instructions()

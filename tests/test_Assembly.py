@@ -26,7 +26,10 @@ bytecodemanipulation.data_loader.load_assembly_instructions()
 if typing.TYPE_CHECKING:
     from bytecodemanipulation.data.v3_10.assembly_instructions import *
 
-from bytecodemanipulation.optimiser_util import remove_nops, inline_const_value_pop_pairs
+from bytecodemanipulation.optimiser_util import (
+    remove_nops,
+    inline_const_value_pop_pairs,
+)
 from tests.test_issues import compare_optimized_results
 from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationContainer
 
@@ -36,7 +39,9 @@ if bytecodemanipulation.data_loader.version == "3_10":
 elif bytecodemanipulation.data_loader.version == "3_11":
     from bytecodemanipulation.data.v3_11.assembly_instructions import *
 else:
-    raise RuntimeError(f"Found not supported version: '{bytecodemanipulation.data_loader.version}'")
+    raise RuntimeError(
+        f"Found not supported version: '{bytecodemanipulation.data_loader.version}'"
+    )
 
 
 GLOBAL = None
@@ -47,7 +52,9 @@ class TestParser(TestCase):
         self, correct: CompoundExpression, to_check: CompoundExpression
     ):
         if len(correct.children) != len(to_check.children):
-            for check, corr in itertools.zip_longest(correct.children, to_check.children):
+            for check, corr in itertools.zip_longest(
+                correct.children, to_check.children
+            ):
                 print(f"Expected {corr}, got {check}")
 
         self.assertEqual(
@@ -384,7 +391,9 @@ OP @lhs[$local.attr] ** @rhs"""
         )
 
     def test_yield(self):
-        expr = Parser("YIELD\nYIELD @global\nYIELD *\nYIELD* $local\nYIELD -> %\nYIELD @global -> $local\n YIELD* -> @global\nYIELD* @global -> $local").parse()
+        expr = Parser(
+            "YIELD\nYIELD @global\nYIELD *\nYIELD* $local\nYIELD -> %\nYIELD @global -> $local\n YIELD* -> @global\nYIELD* @global -> $local"
+        ).parse()
 
         self.assertEqualList(
             CompoundExpression(
@@ -394,9 +403,18 @@ OP @lhs[$local.attr] ** @rhs"""
                     YieldAssembly(is_star=True),
                     YieldAssembly(LocalAccessExpression("local"), is_star=True),
                     YieldAssembly(target=TopOfStackAccessExpression()),
-                    YieldAssembly(GlobalAccessExpression("global"), target=LocalAccessExpression("local")),
-                    YieldAssembly(is_star=True, target=GlobalAccessExpression("global")),
-                    YieldAssembly(GlobalAccessExpression("global"), True, LocalAccessExpression("local")),
+                    YieldAssembly(
+                        GlobalAccessExpression("global"),
+                        target=LocalAccessExpression("local"),
+                    ),
+                    YieldAssembly(
+                        is_star=True, target=GlobalAccessExpression("global")
+                    ),
+                    YieldAssembly(
+                        GlobalAccessExpression("global"),
+                        True,
+                        LocalAccessExpression("local"),
+                    ),
                 ]
             ),
             expr,
@@ -449,9 +467,9 @@ IF @global 'test'
                         ),
                     ),
                     IFAssembly(
-                        GlobalAccessExpression("global"), CompoundExpression([
-                            JumpAssembly("test")
-                        ]), "test"
+                        GlobalAccessExpression("global"),
+                        CompoundExpression([JumpAssembly("test")]),
+                        "test",
                     ),
                 ]
             ),
@@ -516,7 +534,9 @@ WHILE $local 'test' {
         )
 
     def test_jump(self):
-        expr = Parser("LABEL test\nJUMP test\nJUMP test IF @global\nJUMP test IF OP (@a == @b)\nJUMP test (@global)\nJUMP test (OP (@a == @b))\nJUMP test (@a == @b)").parse()
+        expr = Parser(
+            "LABEL test\nJUMP test\nJUMP test IF @global\nJUMP test IF OP (@a == @b)\nJUMP test (@global)\nJUMP test (OP (@a == @b))\nJUMP test (@a == @b)"
+        ).parse()
 
         self.assertEqualList(
             CompoundExpression(
@@ -524,17 +544,45 @@ WHILE $local 'test' {
                     LabelAssembly("test"),
                     JumpAssembly("test"),
                     JumpAssembly("test", GlobalAccessExpression("global")),
-                    JumpAssembly("test", OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("a"), "==", GlobalAccessExpression("b")))),
+                    JumpAssembly(
+                        "test",
+                        OpAssembly(
+                            OpAssembly.BinaryOperation(
+                                GlobalAccessExpression("a"),
+                                "==",
+                                GlobalAccessExpression("b"),
+                            )
+                        ),
+                    ),
                     JumpAssembly("test", GlobalAccessExpression("global")),
-                    JumpAssembly("test", OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("a"), "==", GlobalAccessExpression("b")))),
-                    JumpAssembly("test", OpAssembly(OpAssembly.BinaryOperation(GlobalAccessExpression("a"), "==", GlobalAccessExpression("b")))),
+                    JumpAssembly(
+                        "test",
+                        OpAssembly(
+                            OpAssembly.BinaryOperation(
+                                GlobalAccessExpression("a"),
+                                "==",
+                                GlobalAccessExpression("b"),
+                            )
+                        ),
+                    ),
+                    JumpAssembly(
+                        "test",
+                        OpAssembly(
+                            OpAssembly.BinaryOperation(
+                                GlobalAccessExpression("a"),
+                                "==",
+                                GlobalAccessExpression("b"),
+                            )
+                        ),
+                    ),
                 ]
             ),
             expr,
         )
 
     def test_def_assembly(self):
-        expr = Parser("""
+        expr = Parser(
+            """
 DEF test () {}
 DEF test <test> () {}
 DEF test <!test> () {}
@@ -543,37 +591,66 @@ DEF test <test> (a) {}
 DEF test <test> (a, b) {}
 DEF test <test> (c=@d) {}
 DEF test <test> () -> @target {}
-""").parse()
+"""
+        ).parse()
 
         self.assertEqualList(
             CompoundExpression(
                 [
                     FunctionDefinitionAssembly("test", [], [], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", ["test"], [], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", [("test", True)], [], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", ["test", "test2"], [], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", ["test"], [CallAssembly.Arg(IdentifierToken("a"))], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", ["test"], [CallAssembly.Arg(IdentifierToken("a")), CallAssembly.Arg(IdentifierToken("b"))], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", ["test"], [CallAssembly.KwArg("c", GlobalAccessExpression("d"))], CompoundExpression([])),
-                    FunctionDefinitionAssembly("test", ["test"], [], CompoundExpression([]), GlobalAccessExpression("target")),
+                    FunctionDefinitionAssembly(
+                        "test", ["test"], [], CompoundExpression([])
+                    ),
+                    FunctionDefinitionAssembly(
+                        "test", [("test", True)], [], CompoundExpression([])
+                    ),
+                    FunctionDefinitionAssembly(
+                        "test", ["test", "test2"], [], CompoundExpression([])
+                    ),
+                    FunctionDefinitionAssembly(
+                        "test",
+                        ["test"],
+                        [CallAssembly.Arg(IdentifierToken("a"))],
+                        CompoundExpression([]),
+                    ),
+                    FunctionDefinitionAssembly(
+                        "test",
+                        ["test"],
+                        [
+                            CallAssembly.Arg(IdentifierToken("a")),
+                            CallAssembly.Arg(IdentifierToken("b")),
+                        ],
+                        CompoundExpression([]),
+                    ),
+                    FunctionDefinitionAssembly(
+                        "test",
+                        ["test"],
+                        [CallAssembly.KwArg("c", GlobalAccessExpression("d"))],
+                        CompoundExpression([]),
+                    ),
+                    FunctionDefinitionAssembly(
+                        "test",
+                        ["test"],
+                        [],
+                        CompoundExpression([]),
+                        GlobalAccessExpression("target"),
+                    ),
                 ]
             ),
             expr,
         )
 
     def test_python_assembly(self):
-        expr = Parser("""
+        expr = Parser(
+            """
 PYTHON {
     print("Hello World")
 }
-""").parse()
+"""
+        ).parse()
 
         self.assertEqualList(
-            CompoundExpression(
-                [
-                    PythonCodeAssembly("print(\"Hello World\")")
-                ]
-            ),
+            CompoundExpression([PythonCodeAssembly('print("Hello World")')]),
             expr,
         )
 
@@ -691,18 +768,20 @@ class TestInlineAssembly(TestCase):
 
     def test_yield(self):
         def target(x):
-            assembly("""
+            assembly(
+                """
 YIELD @GLOBAL
 YIELD* @GLOBAL
 YIELD* @GLOBAL -> $t
-YIELD @GLOBAL -> $v""")
+YIELD @GLOBAL -> $v"""
+            )
             yield 0
 
         def compare():
             yield GLOBAL
             yield from GLOBAL
-            t = (yield from GLOBAL)
-            v = (yield GLOBAL)
+            t = yield from GLOBAL
+            v = yield GLOBAL
             yield 0
 
         mutable = MutableFunction(target)
@@ -716,9 +795,11 @@ YIELD @GLOBAL -> $v""")
         _OptimisationContainer.get_for_target(functools).is_static = True
 
         def target(x):
-            assembly("""
+            assembly(
+                """
 CALL PARTIAL @print ("Hello World!") -> $x
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -734,10 +815,12 @@ CALL PARTIAL @print ("Hello World!") -> $x
 
     def test_call_assembly(self):
         def target(x):
-            assembly("""
+            assembly(
+                """
 CALL @print ("Hello World!") -> $x
 # LOAD $error -> @global
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -752,11 +835,13 @@ CALL @print ("Hello World!") -> $x
 
     def test_python_assembly(self):
         def target(x):
-            assembly("""
+            assembly(
+                """
 PYTHON {
     print("Hello World!")
 }
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -779,11 +864,13 @@ PYTHON {
 
     def test_walrus_assigment(self):
         def target():
-            assembly("""
+            assembly(
+                """
 OP $local := 10
 STORE $test
 RETURN OP ($local + $test)
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -797,9 +884,11 @@ RETURN OP ($local + $test)
 
     def test_dynamic_attribute_access(self):
         def target(t):
-            assembly("""
+            assembly(
+                """
 RETURN $t.("test_dynamic_attribute_access")
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -809,9 +898,11 @@ RETURN $t.("test_dynamic_attribute_access")
 
     def test_isinstance_check(self):
         def target():
-            assembly("""
+            assembly(
+                """
 RETURN OP (10 isinstance @int)
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -821,9 +912,11 @@ RETURN OP (10 isinstance @int)
 
     def test_not_isinstance_check(self):
         def target():
-            assembly("""
+            assembly(
+                """
 RETURN OP (10 isinstance @float)
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -835,9 +928,11 @@ RETURN OP (10 isinstance @float)
 
     def test_issubclass_check(self):
         def target():
-            assembly("""
+            assembly(
+                """
 RETURN OP (@int issubclass @object)
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -847,9 +942,11 @@ RETURN OP (@int issubclass @object)
 
     def test_not_issubclass_check(self):
         def target():
-            assembly("""
+            assembly(
+                """
 RETURN OP (@int issubclass @float)
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -861,9 +958,11 @@ RETURN OP (@int issubclass @float)
 
     def test_hasattr_check(self):
         def target(t):
-            assembly("""
+            assembly(
+                """
 RETURN OP ($t hasattr "test_hasattr_check")
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -873,9 +972,11 @@ RETURN OP ($t hasattr "test_hasattr_check")
 
     def test_not_hasattr_check(self):
         def target(t):
-            assembly("""
+            assembly(
+                """
 RETURN OP ($t hasattr "no attr")
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -887,9 +988,11 @@ RETURN OP ($t hasattr "no attr")
 
     def test_getattr_check(self):
         def target(t):
-            assembly("""
+            assembly(
+                """
 RETURN OP ($t getattr "test_getattr_check")
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -901,14 +1004,16 @@ RETURN OP ($t getattr "test_getattr_check")
 class TestMacro(TestCase):
     def test_basic(self):
         def target():
-            assembly("""
+            assembly(
+                """
     MACRO test {
         RETURN 0
     }
     
     CALL MACRO test()
     RETURN 1
-    """)
+    """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -919,7 +1024,8 @@ class TestMacro(TestCase):
 
     def test_macro_local_access(self):
         def target():
-            assembly("""
+            assembly(
+                """
         MACRO test {
             LOAD 1 -> $local
         }
@@ -927,7 +1033,8 @@ class TestMacro(TestCase):
         LOAD 0 -> $local
         CALL MACRO test()
         RETURN $local
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -938,7 +1045,8 @@ class TestMacro(TestCase):
 
     def test_macro_parameter_resolver(self):
         def target():
-            assembly("""
+            assembly(
+                """
         MACRO test (!param) {
             LOAD §param -> $local
             LOAD 0 -> §param
@@ -947,7 +1055,8 @@ class TestMacro(TestCase):
         LOAD 0 -> $local
         CALL MACRO test(1)
         RETURN $local
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -958,7 +1067,8 @@ class TestMacro(TestCase):
 
     def test_macro_parameter_duplicated_access_static(self):
         def target():
-            assembly("""
+            assembly(
+                """
         MACRO test (!param) {
             LOAD §param -> $local
             LOAD 2 -> §param
@@ -968,7 +1078,8 @@ class TestMacro(TestCase):
         LOAD 0 -> $local
         CALL MACRO test(1)
         RETURN $local
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -979,14 +1090,16 @@ class TestMacro(TestCase):
 
     def test_macro_parameter_duplicated_access_static_invalid(self):
         def target():
-            assembly("""
+            assembly(
+                """
         MACRO test (param) {
             LOAD 2 -> §param
         }
 
         CALL MACRO test(1)
         RETURN $local
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -994,7 +1107,8 @@ class TestMacro(TestCase):
 
     def test_macro_local_name_override(self):
         def target():
-            assembly("""
+            assembly(
+                """
         MACRO test (!param) {
             LOAD 10 -> $test
         }
@@ -1002,7 +1116,8 @@ class TestMacro(TestCase):
         LOAD 0 -> $test
         CALL MACRO test(1)
         RETURN $test
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -1013,7 +1128,8 @@ class TestMacro(TestCase):
 
     def test_macro_local_name_escape(self):
         def target():
-            assembly("""
+            assembly(
+                """
         MACRO test (!param) {
             LOAD 10 -> $MACRO_test
         }
@@ -1021,7 +1137,8 @@ class TestMacro(TestCase):
         LOAD 0 -> $test
         CALL MACRO test(1)
         RETURN $test
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)
@@ -1032,7 +1149,8 @@ class TestMacro(TestCase):
 
     def test_namespace_macro(self):
         def target():
-            assembly("""
+            assembly(
+                """
         NAMESPACE test_namespace {
             MACRO test {
                 RETURN 0
@@ -1041,7 +1159,8 @@ class TestMacro(TestCase):
 
         CALL MACRO test_namespace:test()
         RETURN 1
-        """)
+        """
+            )
             return -1
 
         mutable = MutableFunction(target)

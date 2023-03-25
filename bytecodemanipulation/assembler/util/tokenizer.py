@@ -270,7 +270,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                 if "\n" in partial:
                     self.old_line_number += partial.count("\n")
 
-                for r in (result if isinstance(result, list) else (result,)):
+                for r in result if isinstance(result, list) else (result,):
                     r.line = self.old_line_number + self._line_offset
                     r.column = self.old_column_number + skipped
                     r.span = self.cursor - old_cursor

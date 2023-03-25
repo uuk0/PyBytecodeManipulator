@@ -6,13 +6,20 @@ import typing
 import bytecodemanipulation.assembler.Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.assembler.Parser import Parser as AssemblyParser, JumpToLabel, ParsingScope
+from bytecodemanipulation.assembler.Parser import (
+    Parser as AssemblyParser,
+    JumpToLabel,
+    ParsingScope,
+)
 from bytecodemanipulation.assembler import target as assembly_targets
 from bytecodemanipulation.util import LambdaInstructionWalker
 
 
-def _visit_for_stack_effect(ins: Instruction, eff_a: typing.Tuple[int, int] | None, eff_b: typing.Tuple[int, int] | None) -> typing.Tuple[
-    int, int]:
+def _visit_for_stack_effect(
+    ins: Instruction,
+    eff_a: typing.Tuple[int, int] | None,
+    eff_b: typing.Tuple[int, int] | None,
+) -> typing.Tuple[int, int]:
     eff = 0
     max_size = 0
 
@@ -51,7 +58,9 @@ def apply_inline_assemblies(target: MutableFunction):
             if value == assembly_targets.assembly:
                 invoke = next(instr.trace_stack_position_use(0))
                 arg = next(invoke.trace_stack_position(0))
-                assert arg.opcode == Opcodes.LOAD_CONST, "only constant assembly code is allowed!"
+                assert (
+                    arg.opcode == Opcodes.LOAD_CONST
+                ), "only constant assembly code is allowed!"
 
                 if invoke.next_instruction.opcode == Opcodes.POP_TOP:
                     insertion_points.append((arg.arg_value, invoke.next_instruction))
@@ -65,11 +74,17 @@ def apply_inline_assemblies(target: MutableFunction):
             elif value == assembly_targets.jump:
                 invoke = next(instr.trace_stack_position_use(0))
                 arg = next(invoke.trace_stack_position(0))
-                assert arg.opcode == Opcodes.LOAD_CONST, "only constant assembly code is allowed!"
-                assert all(e in string.ascii_letters + string.digits for e in arg.arg_value), "only characters and digits are allowed for label names!"
+                assert (
+                    arg.opcode == Opcodes.LOAD_CONST
+                ), "only constant assembly code is allowed!"
+                assert all(
+                    e in string.ascii_letters + string.digits for e in arg.arg_value
+                ), "only characters and digits are allowed for label names!"
 
                 if invoke.next_instruction.opcode == Opcodes.POP_TOP:
-                    insertion_points.append((f"JUMP {arg.arg_value}", invoke.next_instruction))
+                    insertion_points.append(
+                        (f"JUMP {arg.arg_value}", invoke.next_instruction)
+                    )
                 else:
                     insertion_points.append((f"JUMP {arg.arg_value}", invoke))
 
@@ -80,7 +95,9 @@ def apply_inline_assemblies(target: MutableFunction):
             elif value == assembly_targets.label:
                 invoke = next(instr.trace_stack_position_use(0))
                 arg = next(invoke.trace_stack_position(0))
-                assert arg.opcode == Opcodes.LOAD_CONST, "only constant label names are allowed!"
+                assert (
+                    arg.opcode == Opcodes.LOAD_CONST
+                ), "only constant label names are allowed!"
 
                 labels.add(arg.arg_value)
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
@@ -90,7 +107,15 @@ def apply_inline_assemblies(target: MutableFunction):
                 arg.change_opcode(Opcodes.NOP)
 
     assemblies = [
-        AssemblyParser(bytecodemanipulation.assembler.Lexer.Lexer(code).add_line_offset(instr.source_location[0] if instr.source_location and instr.source_location[0] else 0).lex()).parse()
+        AssemblyParser(
+            bytecodemanipulation.assembler.Lexer.Lexer(code)
+            .add_line_offset(
+                instr.source_location[0]
+                if instr.source_location and instr.source_location[0]
+                else 0
+            )
+            .lex()
+        ).parse()
         for code, instr in insertion_points
     ]
 
@@ -111,20 +136,30 @@ def apply_inline_assemblies(target: MutableFunction):
         bytecode = asm.create_bytecode(target, scope)
 
         for i, ins in enumerate(bytecode[:-1]):
-            ins.next_instruction = bytecode[i+1]
+            ins.next_instruction = bytecode[i + 1]
 
         if bytecode:
-            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(_visit_for_stack_effect)
+            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
+                _visit_for_stack_effect
+            )
         else:
             stack_effect = max_stack_effect = 0
 
-        if stack_effect != 0 and bytecode and not (bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()):
+        if (
+            stack_effect != 0
+            and bytecode
+            and not (
+                bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()
+            )
+        ):
             print(asm)
 
             for instr in bytecode:
                 print(instr)
 
-            raise RuntimeError(f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!")
+            raise RuntimeError(
+                f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"
+            )
 
         max_stack_effects.append(max_stack_effect)
 
@@ -175,14 +210,16 @@ def execute_module_in_instance(asm_code: str, module: types.ModuleType):
             ins.change_opcode(Opcodes.NOP)
 
     for i, ins in enumerate(bytecode[:-1]):
-        ins.next_instruction = bytecode[i+1]
+        ins.next_instruction = bytecode[i + 1]
 
     def resolve_jump_to_label(ins: Instruction):
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
 
     for instr in bytecode:
-        instr.update_owner(target, -1, force_change_arg_index=True, update_following=False)
+        instr.update_owner(
+            target, -1, force_change_arg_index=True, update_following=False
+        )
 
     bytecode[-1].next_instruction = target.instructions[0]
     target.assemble_instructions_from_tree(bytecode[0])

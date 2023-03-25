@@ -32,7 +32,9 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         with open(self.path) as fid:
             asm_code = fid.read()
 
-        bytecodemanipulation.assembler.Emitter.execute_module_in_instance(asm_code, module)
+        bytecodemanipulation.assembler.Emitter.execute_module_in_instance(
+            asm_code, module
+        )
 
         return module
 
@@ -48,4 +50,3 @@ def unhook():
 
 
 hook()
-
