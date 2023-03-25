@@ -276,6 +276,9 @@ class Instruction:
             if self.opcode in HAS_NAME:
                 assert isinstance(value, str)
                 self.arg = self.function.allocate_shared_name(value)
+            elif self.opcode in HAS_CELL_VARIABLE:
+                assert isinstance(value, str)
+                self.arg = self.function.allocate_shared_cell(value)
             elif self.opcode in HAS_CONST:
                 self.arg = self.function.allocate_shared_constant(value)
             elif self.opcode in HAS_LOCAL:
@@ -300,6 +303,8 @@ class Instruction:
             try:
                 if self.opcode in HAS_NAME:
                     self.arg_value = self.function.shared_names[arg]
+                elif self.opcode in HAS_CELL_VARIABLE:
+                    self.arg_value = self.function.cell_variables[arg]
                 elif self.opcode in HAS_CONST:
                     self.arg_value = self.function.constants[arg]
                 elif self.opcode in HAS_LOCAL:
@@ -1384,6 +1389,12 @@ class MutableFunction:
             return self.shared_variable_names.index(variable_name)
         self.shared_variable_names.append(variable_name)
         return len(self.shared_variable_names) - 1
+
+    def allocate_shared_cell(self, name: str):
+        if name in self.cell_variables:
+            return self.cell_variables.index(name)
+        self.cell_variables.append(name)
+        return len(self.cell_variables) - 1
 
     def dump_info(self, file: str):
         data = {

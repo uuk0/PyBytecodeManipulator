@@ -936,11 +936,12 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 1)
 
-    def test_macro_parameter(self):
+    def test_macro_parameter_resolver(self):
         def target():
             assembly("""
         MACRO test (param) {
             LOAD §param -> $local
+            LOAD 0 -> §param
         }
 
         LOAD 0 -> $local
@@ -954,3 +955,26 @@ class TestMacro(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 1)
+
+    def test_macro_parameter_duplicated_access_static(self):
+        def target():
+            assembly("""
+        MACRO test (!param) {
+            LOAD §param -> $local
+            LOAD 2 -> §param
+            LOAD §param -> $local
+        }
+
+        LOAD 0 -> $local
+        CALL MACRO test(1)
+        RETURN $local
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 2)
