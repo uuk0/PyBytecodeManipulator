@@ -1,0 +1,11 @@
+
+NAMESPACE std
+{
+
+    MACRO print(text)
+    {
+        CALL @print (§text)
+        POP
+    }
+
+}

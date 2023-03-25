@@ -130,6 +130,8 @@ def apply_inline_assemblies(target: MutableFunction):
 
     if target.target.__module__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]
+    else:
+        GLOBAL_SCOPE_CACHE[target.target.__module__] = scope.global_scope
 
     max_stack_effects = []
 
@@ -162,8 +164,8 @@ def apply_inline_assemblies(target: MutableFunction):
         ):
             print(asm)
 
-            for instr in bytecode:
-                print(instr)
+            for e in enumerate(bytecode):
+                print(*e)
 
             raise RuntimeError(
                 f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"
@@ -205,6 +207,8 @@ def execute_module_in_instance(asm_code: str, module: types.ModuleType):
 
     if module.__name__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[module.__name__]
+    else:
+        GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
     asm = AssemblyParser(asm_code).parse()
     scope.labels = asm.get_labels()
@@ -235,6 +239,9 @@ def execute_module_in_instance(asm_code: str, module: types.ModuleType):
         instr.update_owner(
             target, -1, force_change_arg_index=True, update_following=False
         )
+
+    if not bytecode:
+        bytecode.append(Instruction(target, -1, "NOP"))
 
     bytecode[-1].next_instruction = target.instructions[0]
     target.assemble_instructions_from_tree(bytecode[0])

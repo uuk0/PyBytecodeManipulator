@@ -1316,10 +1316,11 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         module = ".".join(map(lambda e: e.text, self.name))
         
         if module not in GLOBAL_SCOPE_CACHE:
-            raise NotImplementedError("Target not yet imported!")
+            __import__(module)
 
         if not scope_entry:
             scope_entry.update(GLOBAL_SCOPE_CACHE[module])
+
         else:
             tasks = [(scope_entry, GLOBAL_SCOPE_CACHE[module])]
 

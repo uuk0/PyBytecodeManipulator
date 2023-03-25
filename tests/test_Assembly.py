@@ -1006,11 +1006,11 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-    MACRO test {
+    MACRO test_basic {
         RETURN 0
     }
     
-    CALL MACRO test()
+    CALL MACRO test_basic()
     RETURN 1
     """
             )
@@ -1026,12 +1026,12 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test {
+        MACRO test_macro_local_access {
             LOAD 1 -> $local
         }
 
         LOAD 0 -> $local
-        CALL MACRO test()
+        CALL MACRO test_macro_local_access()
         RETURN $local
         """
             )
@@ -1047,13 +1047,13 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (!param) {
+        MACRO test_macro_parameter_resolver (!param) {
             LOAD §param -> $local
             LOAD 0 -> §param
         }
 
         LOAD 0 -> $local
-        CALL MACRO test(1)
+        CALL MACRO test_macro_parameter_resolver(1)
         RETURN $local
         """
             )
@@ -1069,14 +1069,14 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (!param) {
+        MACRO test_macro_parameter_duplicated_access_static (!param) {
             LOAD §param -> $local
             LOAD 2 -> §param
             LOAD §param -> $local
         }
 
         LOAD 0 -> $local
-        CALL MACRO test(1)
+        CALL MACRO test_macro_parameter_duplicated_access_static(1)
         RETURN $local
         """
             )
@@ -1092,11 +1092,11 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (param) {
+        MACRO test_macro_parameter_duplicated_access_static_invalid (param) {
             LOAD 2 -> §param
         }
 
-        CALL MACRO test(1)
+        CALL MACRO test_macro_parameter_duplicated_access_static_invalid(1)
         RETURN $local
         """
             )
@@ -1109,12 +1109,12 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (!param) {
+        MACRO test_macro_local_name_override (!param) {
             LOAD 10 -> $test
         }
 
         LOAD 0 -> $test
-        CALL MACRO test(1)
+        CALL MACRO test_macro_local_name_override(1)
         RETURN $test
         """
             )
@@ -1130,12 +1130,12 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (!param) {
+        MACRO test_macro_local_name_escape (!param) {
             LOAD 10 -> $MACRO_test
         }
 
         LOAD 0 -> $test
-        CALL MACRO test(1)
+        CALL MACRO test_macro_local_name_escape(1)
         RETURN $test
         """
             )
@@ -1152,12 +1152,12 @@ class TestMacro(TestCase):
             assembly(
                 """
         NAMESPACE test_namespace {
-            MACRO test {
+            MACRO test_namespace_macro {
                 RETURN 0
             }
         }
 
-        CALL MACRO test_namespace:test()
+        CALL MACRO test_namespace:test_namespace_macro()
         RETURN 1
         """
             )
@@ -1174,12 +1174,12 @@ class TestMacro(TestCase):
             assembly(
                 """
         NAMESPACE test_namespace {
-            MACRO test {
+            MACRO test_macro_failure {
                 RETURN 0
             }
         }
 
-        CALL MACRO test()
+        CALL MACRO test_macro_failure()
         RETURN 1
         """
             )
@@ -1193,11 +1193,11 @@ class TestMacro(TestCase):
             assembly(
                 """
         NAMESPACE test_namespace {
-            MACRO test {
+            MACRO test_namespace_macro_inner {
                 RETURN 0
             }
             
-            CALL MACRO test()
+            CALL MACRO test_namespace_macro_inner()
             RETURN 1
         }
         """
@@ -1214,11 +1214,11 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test_namespace:test {
+        MACRO test_namespace:test_namespace_macro_with_namespace {
             RETURN 0
         }
 
-        CALL MACRO test_namespace:test()
+        CALL MACRO test_namespace:test_namespace_macro_with_namespace()
         RETURN 1
         """
             )
@@ -1234,12 +1234,12 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (param) {
+        MACRO test_macro_paste (param) {
             MACRO_PASTE param
         }
 
         LOAD 0 -> $test
-        CALL MACRO test({
+        CALL MACRO test_macro_paste({
             LOAD 10 -> $test
         })
         RETURN $test
@@ -1257,12 +1257,12 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test (param) {
+        MACRO test_macro_paste_use (param) {
             MACRO_PASTE param -> $test
         }
 
         LOAD 0 -> $test
-        CALL MACRO test({
+        CALL MACRO test_macro_paste_use({
             LOAD 10
         })
         RETURN $test
@@ -1274,6 +1274,31 @@ class TestMacro(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
-
         self.assertEqual(target(), 10)
+
+
+class StandardLibraryTest(TestCase):
+    def setUp(self):
+        import bytecodemanipulation.assembler.hook as hook
+        hook.hook()
+
+        def target():
+            assembly("""MACRO_IMPORT bytecodemanipulation.standard_library""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        target()
+
+    def test_macro_import(self):
+        import bytecodemanipulation.assembler.hook as hook
+        hook.hook()
+
+        def target():
+            assembly("""CALL MACRO std:print("Hello World")""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+        target()

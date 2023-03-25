@@ -131,7 +131,7 @@ class Lexer(AbstractLexer):
             self.consume_while(string.whitespace)
             return
 
-        raise SyntaxError(repr(char))
+        raise SyntaxError(f"Invalid char: '{char}' (at {self.cursor})")
 
     def consume_python_code(self):
         bracket_level = 0

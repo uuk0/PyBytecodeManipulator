@@ -29,7 +29,7 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         return None
 
     def exec_module(self, module):
-        with open(self.path) as fid:
+        with open(self.path, encoding="utf-8") as fid:
             asm_code = fid.read()
 
         bytecodemanipulation.assembler.Emitter.execute_module_in_instance(
