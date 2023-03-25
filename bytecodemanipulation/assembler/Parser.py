@@ -1,5 +1,6 @@
 import copy
 import typing
+import warnings
 from abc import ABC
 
 from bytecodemanipulation.Opcodes import Opcodes
@@ -901,10 +902,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         arg_names: typing.List[str | None] = []
         arg_decl_lookup: typing.Dict[str, MacroAssembly.MacroArg] = {}
-        for arg_decl, arg_code in zip(self.args, args):
+        for i, (arg_decl, arg_code) in enumerate(zip(self.args, args)):
             arg_decl_lookup[arg_decl.name.text] = arg_decl
             if arg_decl.is_static:
-                arg_names.append(var_name := scope.scope_name_generator())
+                arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
                 bytecode += arg_code.emit_bytecodes(function, scope)
                 bytecode.append(
                     Instruction(
@@ -917,6 +918,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 )
             else:
                 arg_names.append(None)
+
+        local_prefix = scope.scope_name_generator("macro_local")
 
         for instr in inner_bytecode:
             bytecode.append(instr)
@@ -944,6 +947,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                 if arg_decl.is_static:
                     instr.change_opcode(Opcodes.STORE_FAST, arg_names[arg_decl.index])
+                else:
+                    raise RuntimeError(f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!")
+
+            elif instr.has_local() and instr.arg_value.startswith("MACRO_"):
+                instr.change_arg_value(local_prefix + ":" + instr.arg_value.removeprefix("MACRO_"))
 
         return bytecode
 

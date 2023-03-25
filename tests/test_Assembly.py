@@ -939,7 +939,7 @@ class TestMacro(TestCase):
     def test_macro_parameter_resolver(self):
         def target():
             assembly("""
-        MACRO test (param) {
+        MACRO test (!param) {
             LOAD §param -> $local
             LOAD 0 -> §param
         }
@@ -975,6 +975,57 @@ class TestMacro(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
-
         self.assertEqual(target(), 2)
+
+    def test_macro_parameter_duplicated_access_static_invalid(self):
+        def target():
+            assembly("""
+        MACRO test (param) {
+            LOAD 2 -> §param
+        }
+
+        CALL MACRO test(1)
+        RETURN $local
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        self.assertRaises(RuntimeError, lambda: apply_inline_assemblies(mutable))
+
+    def test_macro_local_name_override(self):
+        def target():
+            assembly("""
+        MACRO test (!param) {
+            LOAD 10 -> $test
+        }
+
+        LOAD 0 -> $test
+        CALL MACRO test(1)
+        RETURN $test
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 10)
+
+    def test_macro_local_name_escape(self):
+        def target():
+            assembly("""
+        MACRO test (!param) {
+            LOAD 10 -> $MACRO_test
+        }
+
+        LOAD 0 -> $test
+        CALL MACRO test(1)
+        RETURN $test
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 0)
