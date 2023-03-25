@@ -520,7 +520,7 @@ class Parser(AbstractParser):
             )
 
         if eof_error and not predicate():
-            raise SystemError(eof_error)
+            raise SyntaxError(eof_error)
 
         return root
 

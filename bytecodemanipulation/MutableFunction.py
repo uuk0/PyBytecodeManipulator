@@ -1,5 +1,6 @@
 import copy
 import dis
+import sys
 import types
 import typing
 import simplejson
@@ -783,26 +784,56 @@ class MutableFunction:
 
         self.code_object: types.CodeType = target.__code__
 
-        self.argument_count = self.code_object.co_argcount
-        self.cell_variables = list(self.code_object.co_cellvars)
-        self.__raw_code = bytearray(self.code_object.co_code)
-        self.constants = list(self.code_object.co_consts)
-        self.filename = self.code_object.co_filename
-        self.first_line_number = self.code_object.co_firstlineno
-        self.code_flags = self.code_object.co_flags
-        self.free_variables = list(self.code_object.co_freevars)
-        self.keyword_only_argument_count = self.code_object.co_kwonlyargcount
-        self.line_table = self.code_object.co_linetable
-        self.lnotab = bytearray(self.code_object.co_lnotab)
+        self._load_from_code_object(self.code_object)
 
-        self.function_name = self.code_object.co_name
-        self.shared_names = list(self.code_object.co_names)
-        # Local variable count is implied by co_varnames
-        self.positional_only_argument_count = self.code_object.co_posonlyargcount
-        self.stack_size = self.code_object.co_stacksize
-        self.shared_variable_names = list(self.code_object.co_varnames)
+    if sys.version_info.major == 3 and sys.version_info.minor == 10:
+        def _load_from_code_object(self, obj: types.CodeType):
+            self.argument_count = self.code_object.co_argcount
+            self.cell_variables = list(self.code_object.co_cellvars)
+            self.__raw_code = bytearray(self.code_object.co_code)
+            self.constants = list(self.code_object.co_consts)
+            self.filename = self.code_object.co_filename
+            self.first_line_number = self.code_object.co_firstlineno
+            self.code_flags = self.code_object.co_flags
+            self.free_variables = list(self.code_object.co_freevars)
+            self.keyword_only_argument_count = self.code_object.co_kwonlyargcount
+            self.line_table = self.code_object.co_linetable
+            self.lnotab = bytearray(self.code_object.co_lnotab)
 
-        self.__instructions: typing.Optional[typing.List[Instruction]] = None
+            self.function_name = self.code_object.co_name
+            self.shared_names = list(self.code_object.co_names)
+            # Local variable count is implied by co_varnames
+            self.positional_only_argument_count = self.code_object.co_posonlyargcount
+            self.stack_size = self.code_object.co_stacksize
+            self.shared_variable_names = list(self.code_object.co_varnames)
+
+            self.__instructions: typing.Optional[typing.List[Instruction]] = None
+
+    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+        def _load_from_code_object(self, obj: types.CodeType):
+            self.argument_count = self.code_object.co_argcount
+            self.cell_variables = list(self.code_object.co_cellvars)
+            self.__raw_code = bytearray(self.code_object.co_code)
+            self.constants = list(self.code_object.co_consts)
+            self.filename = self.code_object.co_filename
+            self.first_line_number = self.code_object.co_firstlineno
+            self.code_flags = self.code_object.co_flags
+            self.free_variables = list(self.code_object.co_freevars)
+            self.keyword_only_argument_count = self.code_object.co_kwonlyargcount
+            self.line_table = self.code_object.co_linetable
+            self.lnotab = bytearray(self.code_object.co_lnotab)
+
+            self.function_name = self.code_object.co_name
+            self.shared_names = list(self.code_object.co_names)
+            # Local variable count is implied by co_varnames
+            self.positional_only_argument_count = self.code_object.co_posonlyargcount
+            self.stack_size = self.code_object.co_stacksize
+            self.shared_variable_names = list(self.code_object.co_varnames)
+
+            self.__instructions: typing.Optional[typing.List[Instruction]] = None
+
+    else:
+        raise RuntimeError(sys.version_info)
 
     def __repr__(self):
         return f"MutableFunction({self.target})"
@@ -839,30 +870,57 @@ class MutableFunction:
 
         self.__instructions = None
 
-    def create_code_obj(self) -> types.CodeType:
-        if self.__instructions is None:
-            self.get_instructions()
+    if sys.version_info.major == 3 and sys.version_info.minor == 10:
+        def create_code_obj(self) -> types.CodeType:
+            if self.__instructions is None:
+                self.get_instructions()
 
-        self.assemble_fast(self.__instructions)
+            self.assemble_fast(self.__instructions)
 
-        return types.CodeType(
-            self.argument_count,
-            self.positional_only_argument_count,
-            self.keyword_only_argument_count,
-            len(self.shared_variable_names),
-            self.stack_size,
-            self.code_flags,
-            bytes(self.raw_code),
-            tuple(self.constants),
-            tuple(self.shared_names),
-            tuple(self.shared_variable_names),
-            self.filename,
-            self.function_name,
-            self.first_line_number,
-            self.get_lnotab(),
-            tuple(self.free_variables),
-            tuple(self.cell_variables),
-        )
+            return types.CodeType(
+                self.argument_count,
+                self.positional_only_argument_count,
+                self.keyword_only_argument_count,
+                len(self.shared_variable_names),
+                self.stack_size,
+                self.code_flags,
+                bytes(self.raw_code),
+                tuple(self.constants),
+                tuple(self.shared_names),
+                tuple(self.shared_variable_names),
+                self.filename,
+                self.function_name,
+                self.first_line_number,
+                self.get_lnotab(),
+                tuple(self.free_variables),
+                tuple(self.cell_variables),
+            )
+
+    elif sys.version_info.major == 3 and sys.version_info.minor == 11:
+        def create_code_obj(self) -> types.CodeType:
+            if self.__instructions is None:
+                self.get_instructions()
+
+            self.assemble_fast(self.__instructions)
+
+            return types.CodeType(
+                self.argument_count,
+                self.positional_only_argument_count,
+                self.keyword_only_argument_count,
+                len(self.shared_variable_names),
+                self.stack_size,
+                self.code_flags,
+                bytes(self.raw_code),
+                tuple(self.constants),
+                tuple(self.shared_names),
+                tuple(self.shared_variable_names),
+                self.filename,
+                self.function_name,
+                self.first_line_number,
+                self.get_lnotab(),
+                tuple(self.free_variables),
+                tuple(self.cell_variables),
+            )
 
     def get_lnotab(self) -> bytes:
         items = []

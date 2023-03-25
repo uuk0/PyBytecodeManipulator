@@ -33,8 +33,10 @@ from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationConta
 
 if bytecodemanipulation.data_loader.version == "3_10":
     from bytecodemanipulation.data.v3_10.assembly_instructions import *
+elif bytecodemanipulation.data_loader.version == "3_11":
+    from bytecodemanipulation.data.v3_11.assembly_instructions import *
 else:
-    raise RuntimeError(bytecodemanipulation.data_loader.version)
+    raise RuntimeError(f"Found not supported version: '{bytecodemanipulation.data_loader.version}'")
 
 
 GLOBAL = None
