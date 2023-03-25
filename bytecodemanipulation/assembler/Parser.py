@@ -850,20 +850,20 @@ class MacroAssembly(AbstractAssemblyInstruction):
             name.append(parser.consume(IdentifierToken))
 
         args = []
-        if parser.try_consume(BracketToken("(")):
+        if parser.try_consume(SpecialToken("(")):
             i = 0
 
-            while not parser.try_consume(BracketToken(")")):
+            while not parser.try_consume(SpecialToken(")")):
                 is_static = bool(parser.try_consume(SpecialToken("!")))
-                name = parser.consume(IdentifierToken)
+                parameter_name = parser.consume(IdentifierToken)
 
-                arg = MacroAssembly.MacroArg(name, is_static)
+                arg = MacroAssembly.MacroArg(parameter_name, is_static)
                 arg.index = i
                 i += 1
                 args.append(arg)
 
-                if not parser.consume(SpecialToken(",")):
-                    parser.consume(BracketToken(")"))
+                if not parser.try_consume(SpecialToken(",")):
+                    parser.consume(SpecialToken(")"))
                     break
 
         body = parser.parse_body()

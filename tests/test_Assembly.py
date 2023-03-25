@@ -935,3 +935,22 @@ class TestMacro(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 1)
+
+    def test_macro_parameter(self):
+        def target():
+            assembly("""
+        MACRO test (param) {
+            LOAD §param -> $local
+        }
+
+        LOAD 0 -> $local
+        CALL MACRO test(1)
+        RETURN $local
+        """)
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 1)
