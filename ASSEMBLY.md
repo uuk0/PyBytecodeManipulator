@@ -40,8 +40,11 @@ for cross-version support.
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
   * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
+  * Data Types: CONSTANT\['\<' \<type name> '>'], CODE_BLOCK (currently not implemented)
   * Comes with an extra instruction, which should only be used in macros:
 * MACRO_PASTE \<macro param name> \['->' \<target>]: pastes the code for a macro-parameter, and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
+* MACRO_IMPORT \<module name with '.'> \['->' \['.'\] \<namespace with '.'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
+  * WARNING: the other module must be imported first (TODO: import it manually here!)
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
@@ -104,6 +107,18 @@ Expressions can be added as certain parameters to instructions to use instead of
 - CALL INLINE
 - ITERATOR_OP (stream util)
 - CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
+- MACRO ASSEMBLY for creating assembly instructions from macros (so from a macro declaration an instruction is created)
+  - data types must be declared
+  - new data type: KEYWORD:'...' where ... is the keyword name to be required (and \' is the escaping for ')
+  - new data type: OPTIONAL\<...> where ... is another data type
+  - new data type: UNION\<...> where ... is a list of data types, separated by ','
+  - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
+  - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
+  - new special case for len(...) on § macro parameter where list: returns len of parameter list
+  - storing a list parameter in a local variable will create a list creation code
+  - new assembly instruction ASSERT_STATIC (\<condition>) which asserts an expression statically, in this case at instantiation time
+  - maybe also the possibility to define code for emitting assembly instructions
+    - this could be done by a new instruction called EMIT_INSTRUCTION
 
 ## PyASM
 
