@@ -109,6 +109,13 @@ def apply_inline_assemblies(target: MutableFunction):
                 print(type(arg))
                 arg.change_opcode(Opcodes.NOP)
 
+    scope = ParsingScope()
+
+    if target.target.__module__ in GLOBAL_SCOPE_CACHE:
+        scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]
+    else:
+        GLOBAL_SCOPE_CACHE[target.target.__module__] = scope.global_scope
+
     assemblies = [
         AssemblyParser(
             bytecodemanipulation.assembler.Lexer.Lexer(code)
@@ -117,7 +124,8 @@ def apply_inline_assemblies(target: MutableFunction):
                 if instr.source_location and instr.source_location[0]
                 else 0
             )
-            .lex()
+            .lex(),
+            scope.scope_path.clear() or scope
         ).parse()
         for code, instr in insertion_points
     ]
@@ -125,20 +133,14 @@ def apply_inline_assemblies(target: MutableFunction):
     for asm in assemblies:
         labels.update(asm.collect_label_info())
 
-    scope = ParsingScope()
     scope.labels |= labels
-
-    if target.target.__module__ in GLOBAL_SCOPE_CACHE:
-        scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]
-    else:
-        GLOBAL_SCOPE_CACHE[target.target.__module__] = scope.global_scope
 
     max_stack_effects = []
 
     label_targets: typing.Dict[str, Instruction] = {}
 
-    for asm in assemblies:
-        asm.fill_scope_complete(scope)
+    # for asm in assemblies:
+    #     asm.fill_scope_complete(scope)
 
     scope.scope_path.clear()
 
@@ -210,9 +212,9 @@ def execute_module_in_instance(asm_code: str, module: types.ModuleType):
     else:
         GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
-    asm = AssemblyParser(asm_code).parse()
+    asm = AssemblyParser(asm_code, scope).parse()
     scope.labels = asm.get_labels()
-    asm.fill_scope_complete(scope)
+    # asm.fill_scope_complete(scope)
     scope.scope_path.clear()
     create_function = lambda m: None
     target = MutableFunction(create_function)

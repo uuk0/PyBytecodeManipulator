@@ -1302,3 +1302,15 @@ class StandardLibraryTest(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
         target()
+
+    def test_macro_as_assembly(self):
+        import bytecodemanipulation.assembler.hook as hook
+        hook.hook()
+
+        def target():
+            assembly("""std:print("Hello World")""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+        target()

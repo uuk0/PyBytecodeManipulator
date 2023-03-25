@@ -1167,7 +1167,10 @@ class CallAssembly(AbstractAssemblyInstruction):
     def consume(cls, parser: "Parser") -> "CallAssembly":
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
         is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
+        return cls.consume_inner(parser, is_partial, is_macro)
 
+    @classmethod
+    def consume_inner(cls, parser: Parser, is_partial: bool, is_macro: bool) -> "CallAssembly":
         if not is_macro:
             call_target = parser.try_parse_data_source(include_bracket=False)
         else:
@@ -1256,6 +1259,10 @@ class CallAssembly(AbstractAssemblyInstruction):
             target = None
 
         return cls(call_target, args, target, is_partial, is_macro)
+
+    @classmethod
+    def consume_macro_call(cls, parser: Parser) -> "CallAssembly":
+        return cls.consume_inner(parser, False, True)
 
     def __init__(
         self,
@@ -1477,6 +1484,9 @@ class CallAssembly(AbstractAssemblyInstruction):
             )
 
         return macro_declaration.emit_call_bytecode(function, scope, self.args)
+
+
+MacroAssembly.consume_call = CallAssembly.consume_macro_call
 
 
 @Parser.register

@@ -737,22 +737,32 @@ class Parser(AbstractParser):
         cls.INSTRUCTIONS[instr.NAME] = instr
         return instr
 
-    def __init__(self, tokens_or_str: str | typing.List[AbstractToken]):
+    def __init__(self, tokens_or_str: str | typing.List[AbstractToken], scope: ParsingScope = None):
         super().__init__(
             tokens_or_str
             if isinstance(tokens_or_str, list)
             else Lexer(tokens_or_str).lex()
         )
+        self.scope = scope or ParsingScope()
 
     def parse(self) -> CompoundExpression:
         return self.parse_while_predicate(lambda: not self.is_empty())
 
-    def parse_body(self) -> CompoundExpression:
+    def parse_body(self, namespace_part: str = None) -> CompoundExpression:
+        if namespace_part is not None:
+            self.scope.scope_path.append(namespace_part)
+
         self.consume(SpecialToken("{"))
-        return self.parse_while_predicate(
+        body = self.parse_while_predicate(
             lambda: not self.try_consume(SpecialToken("}")),
             eof_error="Expected '}', got EOF",
         )
+
+        if namespace_part:
+            if self.scope.scope_path.pop() != namespace_part:
+                raise RuntimeError
+
+        return body
 
     def parse_while_predicate(
         self, predicate: typing.Callable[[], bool], eof_error: str = None
@@ -767,13 +777,16 @@ class Parser(AbstractParser):
                 raise SyntaxError(f"expected Identifier, got {self.try_inspect()}")
 
             if instr_token.text not in self.INSTRUCTIONS:
-                raise SyntaxError(
-                    f"expected <assembly instruction name>, got '{instr_token.text}'"
-                )
-
-            instr = self.INSTRUCTIONS[instr_token.text].consume(self)
+                if not (instr := self.try_parse_custom_assembly(instr_token)):
+                    raise SyntaxError(
+                        f"expected <assembly instruction name>, got '{instr_token.text}'"
+                    )
+            else:
+                instr = self.INSTRUCTIONS[instr_token.text].consume(self)
 
             root.add_child(instr)
+
+            instr.fill_scope(self.scope)
 
             if self.is_empty():
                 break
@@ -802,6 +815,22 @@ class Parser(AbstractParser):
             )
 
         return root
+
+    def try_parse_custom_assembly(self, base_token: IdentifierToken):
+        self.cursor -= 1
+        self.save()
+        self.cursor += 1
+
+        name = [base_token.text]
+
+        while self.try_consume(SpecialToken(":")):
+            name.append(self.consume(IdentifierToken).text)
+
+        target = self.scope.lookup_namespace(name)
+
+        if isinstance(target, MacroAssembly) and typing.cast(MacroAssembly, target).allow_assembly_instr:
+            self.rollback()
+            return MacroAssembly.consume_call(self)
 
     def try_consume_access_token(
         self, allow_tos=True, allow_primitives=False, allow_op=True
@@ -1006,7 +1035,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser") -> "NamespaceAssembly":
         name = parser.consume(IdentifierToken)
-        assembly = parser.parse_body()
+        assembly = parser.parse_body(name.text)
 
         return cls(
             name,
@@ -1059,7 +1088,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class MacroAssembly(AbstractAssemblyInstruction):
-    # 'MACRO' [{<namespace> ':'}] <name> ['(' <param> \[{',' <param>}] ')'] '{' <assembly code> '}', where param is ['!'] \<name> [<data type>]
+    # 'MACRO' ['ASSEMBLY'] [{<namespace> ':'}] <name> ['(' <param> \[{',' <param>}] ')'] '{' <assembly code> '}', where param is ['!'] \<name> [<data type>]
     NAME = "MACRO"
 
     class MacroArg:
@@ -1073,6 +1102,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "MacroAssembly":
+        allow_assembly_instr = bool(parser.try_consume(IdentifierToken("ASSEMBLY")))
+
         name = [parser.consume(IdentifierToken)]
 
         while parser.try_consume(SpecialToken(":")):
@@ -1097,20 +1128,26 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         body = parser.parse_body()
 
-        return cls(name, args, body)
+        return cls(name, args, body, allow_assembly_instr)
+
+    @classmethod
+    def consume_call(cls, parser: Parser) -> AbstractAssemblyInstruction:
+        raise RuntimeError
 
     def __init__(
         self,
         name: typing.List[IdentifierToken],
         args: typing.List[MacroArg],
         body: CompoundExpression,
+        allow_assembly_instr=False,
     ):
         self.name = name
         self.args = args
         self.body = body
+        self.allow_assembly_instr = allow_assembly_instr
 
     def __repr__(self):
-        return f"MACRO::'{':'.join(map(lambda e: e.text, self.name))}'({', '.join(map(repr, self.args))}) {{{repr(self.body)}}}"
+        return f"MACRO:{'ASSEMBLY' if self.allow_assembly_instr else ''}:'{':'.join(map(lambda e: e.text, self.name))}'({', '.join(map(repr, self.args))}) {{{repr(self.body)}}}"
 
     def __eq__(self, other):
         return (
@@ -1118,6 +1155,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             and self.name == other.name
             and self.args == other.args
             and self.body == other.body
+            and self.allow_assembly_instr == other.allow_assembly_instr
         )
 
     def copy(self) -> "MacroAssembly":
@@ -1125,6 +1163,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self.name.copy(),
             [arg.copy() for arg in self.args],
             self.body.copy(),
+            self.allow_assembly_instr,
         )
 
     def emit_bytecodes(
