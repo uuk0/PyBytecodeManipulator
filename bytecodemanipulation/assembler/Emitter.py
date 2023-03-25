@@ -40,6 +40,9 @@ def _visit_for_stack_effect(
     return eff, max_size
 
 
+GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
+
+
 def apply_inline_assemblies(target: MutableFunction):
     """
     Processes all assembly() calls and label() calls in 'target'
@@ -125,6 +128,9 @@ def apply_inline_assemblies(target: MutableFunction):
     scope = ParsingScope()
     scope.labels |= labels
 
+    if target.target.__module__ in GLOBAL_SCOPE_CACHE:
+        scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]
+
     max_stack_effects = []
 
     label_targets: typing.Dict[str, Instruction] = {}
@@ -195,12 +201,19 @@ def apply_inline_assemblies(target: MutableFunction):
 
 
 def execute_module_in_instance(asm_code: str, module: types.ModuleType):
+    scope = ParsingScope()
+
+    if module.__name__ in GLOBAL_SCOPE_CACHE:
+        scope.global_scope = GLOBAL_SCOPE_CACHE[module.__name__]
+
     asm = AssemblyParser(asm_code).parse()
-    labels = asm.get_labels()
+    scope.labels = asm.get_labels()
+    asm.fill_scope_complete(scope)
+    scope.scope_path.clear()
     create_function = lambda m: None
     target = MutableFunction(create_function)
     target.shared_variable_names[0] = "$module$"
-    bytecode = asm.emit_bytecodes(target, labels)
+    bytecode = asm.create_bytecode(target, scope)
 
     if bytecode is None:
         return
@@ -258,6 +271,6 @@ def execute_module_in_instance(asm_code: str, module: types.ModuleType):
 
     target.reassign_to_function()
 
-    dis.dis(target)
+    # dis.dis(target)
 
     create_function(module)
