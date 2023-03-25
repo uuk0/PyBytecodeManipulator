@@ -83,7 +83,7 @@ class ParsingScope:
 
             scope = self.global_scope
             for e in path:
-                scope = scope[e]
+                scope = scope.setdefault(e, {})
 
             if name in scope:
                 return scope[name]
