@@ -40,7 +40,7 @@ for cross-version support.
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
   * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
-  * Data Types: CONSTANT\['\<' \<type name> '>'], CODE_BLOCK (currently not implemented)
+  * Data Types: CODE_BLOCK
   * Macro names can be overloaded
   * Comes with an extra instruction, which should only be used in macros:
 * MACRO_PASTE \<macro param name> \['->' \<target>]: pastes the code for a macro-parameter, and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
@@ -115,6 +115,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: UNION\<...> where ... is a list of data types, separated by ','
   - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
   - new data types: ACCESSOR, VARIABLE (with special code to use as Accessors in macros)
+  - new data type: CONSTANT\['\<' \<type name> '>']
   - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on § macro parameter where list: returns len of parameter list
   - storing a list parameter in a local variable will create a list creation code

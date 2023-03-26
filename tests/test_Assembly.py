@@ -1253,6 +1253,47 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 10)
 
+    def test_macro_paste_with_type_annotation(self):
+        def target():
+            assembly(
+                """
+        MACRO test_macro_paste_with_type_annotation (param CODE_BLOCK) {
+            MACRO_PASTE param
+        }
+
+        LOAD 0 -> $test
+        CALL MACRO test_macro_paste_with_type_annotation({
+            LOAD 10 -> $test
+        })
+        RETURN $test
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 10)
+
+    def test_macro_paste_with_type_annotation_failure(self):
+        def target():
+            assembly(
+                """
+        MACRO test_macro_paste_with_type_annotation_failure (param CODE_BLOCK) {
+            MACRO_PASTE param
+        }
+
+        LOAD 0 -> $test
+        CALL MACRO test_macro_paste_with_type_annotation_failure(10)
+        RETURN $test
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        self.assertRaises(NameError, lambda: apply_inline_assemblies(mutable))
+
     def test_macro_paste_use(self):
         def target():
             assembly(

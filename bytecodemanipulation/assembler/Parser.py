@@ -1098,14 +1098,33 @@ class MacroAssembly(AbstractAssemblyInstruction):
     # 'MACRO' ['ASSEMBLY'] [{<namespace> ':'}] <name> ['(' <param> \[{',' <param>}] ')'] '{' <assembly code> '}', where param is ['!'] \<name> [<data type>]
     NAME = "MACRO"
 
+    class AbstractDataType(ABC):
+        IDENTIFIER: str = None
+
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
+            return isinstance(arg_accessor, CompoundExpression)
+
+    class CodeBlockDataType(AbstractDataType):
+        IDENTIFIER = "CODE_BLOCK"
+
     class MacroArg:
         def __init__(self, name: IdentifierToken, is_static=False):
             self.name = name
             self.is_static = is_static
             self.index = -1
+            self.data_type_annotation: MacroAssembly.AbstractDataType = None
 
         def copy(self):
             return type(self)(self.name, self.is_static)
+
+        def is_match(self, arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+            if self.data_type_annotation is None:
+                return True
+
+            if isinstance(self.data_type_annotation, MacroAssembly.AbstractDataType):
+                return self.data_type_annotation.is_match(self, arg_accessor)
+
+            return False
 
     class MacroOverloadPage:
         def __init__(self, name: typing.List[str]):
@@ -1116,11 +1135,12 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self, args: typing.List[AbstractAccessExpression]
         ) -> "MacroAssembly":
             for macro in self.assemblies:
-                if len(macro.args) == len(args):
+                # todo: better check here!
+                if len(macro.args) == len(args) and all(arg.is_match(param) for arg, param in zip(macro.args, args)):
                     return macro
 
             raise NameError(
-                f"Could not find overloaded variant of {':'.join(self.name)} with arg count {len(args)}!"
+                f"Could not find overloaded variant of {':'.join(self.name)} with args {args}!"
             )
 
         def add_definition(self, macro: "MacroAssembly"):
@@ -1148,6 +1168,14 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 arg.index = i
                 i += 1
                 args.append(arg)
+
+                parser.save()
+                if identifier := parser.try_consume(IdentifierToken):
+                    if identifier.text == "CODE_BLOCK":
+                        arg.data_type_annotation = cls.CodeBlockDataType()
+                        parser.discard_save()
+                    else:
+                        parser.rollback()
 
                 if not parser.try_consume(SpecialToken(",")):
                     parser.consume(SpecialToken(")"))
