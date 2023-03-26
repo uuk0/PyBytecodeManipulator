@@ -779,7 +779,7 @@ class Parser(AbstractParser):
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token)):
                     raise SyntaxError(
-                        f"expected <assembly instruction name>, got '{instr_token.text}'"
+                        f"expected <assembly instruction name> or <assembly macro name>, got '{instr_token.text}'"
                     )
             else:
                 instr = self.INSTRUCTIONS[instr_token.text].consume(self)
@@ -828,9 +828,11 @@ class Parser(AbstractParser):
 
         target = self.scope.lookup_namespace(name)
 
-        if isinstance(target, MacroAssembly) and typing.cast(MacroAssembly, target).allow_assembly_instr:
-            self.rollback()
-            return MacroAssembly.consume_call(self)
+        if isinstance(target, MacroAssembly.MacroOverloadPage):
+            for macro in typing.cast(MacroAssembly.MacroOverloadPage, target).assemblies:
+                if macro.allow_assembly_instr:
+                    self.rollback()
+                    return MacroAssembly.consume_call(self)
 
     def try_consume_access_token(
         self, allow_tos=True, allow_primitives=False, allow_op=True
@@ -1100,6 +1102,22 @@ class MacroAssembly(AbstractAssemblyInstruction):
         def copy(self):
             return type(self)(self.name, self.is_static)
 
+    class MacroOverloadPage:
+        def __init__(self, name: typing.List[str]):
+            self.name = name
+            self.assemblies: typing.List[MacroAssembly] = []
+
+        def lookup(self, args: typing.List[AbstractAccessExpression]) -> "MacroAssembly":
+            for macro in self.assemblies:
+                if len(macro.args) == len(args):
+                    return macro
+
+            raise NameError(f"Could not find overloaded variant of {':'.join(self.name)} with arg count {len(args)}!")
+
+        def add_definition(self, macro: "MacroAssembly"):
+            # todo: do a safety check!
+            self.assemblies.append(macro)
+
     @classmethod
     def consume(cls, parser: "Parser") -> "MacroAssembly":
         allow_assembly_instr = bool(parser.try_consume(IdentifierToken("ASSEMBLY")))
@@ -1244,7 +1262,20 @@ class MacroAssembly(AbstractAssemblyInstruction):
         return bytecode
 
     def fill_scope(self, scope: ParsingScope):
-        scope.insert_into_scope(list(map(lambda e: e.text, self.name)), self)
+        name = scope.scope_path + list(map(lambda e: e.text, self.name))
+        namespace = name[:-1]
+        inner_name = name[-1]
+        namespace_level = scope.lookup_namespace(namespace)
+
+        if inner_name not in namespace_level:
+            page = self.MacroOverloadPage(name)
+            namespace_level[inner_name] = page
+        elif not isinstance(namespace_level[inner_name], self.MacroOverloadPage):
+            raise RuntimeError(f"Expected <empty> or MacroOverloadPage, got {namespace_level[inner_name]}")
+        else:
+            page = namespace_level[inner_name]
+
+        page.add_definition(self)
 
 
 @Parser.register

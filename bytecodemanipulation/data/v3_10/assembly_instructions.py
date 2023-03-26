@@ -1478,12 +1478,12 @@ class CallAssembly(AbstractAssemblyInstruction):
             for e in name[1:]:
                 macro_declaration = macro_declaration[e.text]
 
-        if not isinstance(macro_declaration, MacroAssembly):
+        if not isinstance(macro_declaration, MacroAssembly.MacroOverloadPage):
             raise RuntimeError(
                 f"Expected Macro Declaration for '{':'.join(map(lambda e: e.text, name))}', got {macro_declaration}"
             )
 
-        return macro_declaration.emit_call_bytecode(function, scope, self.args)
+        return macro_declaration.lookup(self.args).emit_call_bytecode(function, scope, self.args)
 
 
 MacroAssembly.consume_call = CallAssembly.consume_macro_call

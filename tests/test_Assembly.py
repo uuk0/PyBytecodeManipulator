@@ -1276,6 +1276,58 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 10)
 
+    def test_macro_overload(self):
+        def target():
+            assembly(
+                """
+        MACRO test_macro_overload 
+        {
+            RETURN 0
+        }
+        
+        MACRO test_macro_overload(param)
+        {
+            RETURN 2
+        }
+
+        CALL MACRO test_macro_overload()
+        RETURN 1
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 0)
+
+    def test_macro_overload_2(self):
+        def target():
+            assembly(
+                """
+        MACRO test_macro_overload_2
+        {
+            RETURN 0
+        }
+
+        MACRO test_macro_overload_2(param)
+        {
+            RETURN 2
+        }
+
+        CALL MACRO test_macro_overload_2(10)
+        RETURN 1
+        """
+            )
+            return -1
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 2)
+
 
 class StandardLibraryTest(TestCase):
     def setUp(self):
@@ -1296,7 +1348,7 @@ class StandardLibraryTest(TestCase):
         hook.hook()
 
         def target():
-            assembly("""CALL MACRO std:print("Hello World")""")
+            assembly("""CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!")""")
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)

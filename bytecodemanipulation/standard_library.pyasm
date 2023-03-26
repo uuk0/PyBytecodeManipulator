@@ -8,4 +8,10 @@ NAMESPACE std
         POP
     }
 
+    MACRO ASSEMBLY print(text, text2)
+    {
+        CALL @print (§text, §text2)
+        POP
+    }
+
 }
