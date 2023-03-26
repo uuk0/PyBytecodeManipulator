@@ -72,7 +72,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - @\<global name>: global variable
   - @!\<global name>: static global variable
   - $\<local name>: local variable
-  - $\<name>: access an variable from an outer scope, or a macro parameter
+  - §\<name>: access an variable from an outer scope, or a macro parameter
   - %: top of stack (in most cases the default when not provided)
   - \<access>\[\<index or expression>]: value by \[] operator
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
@@ -86,7 +86,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 - float, list / tuple / set / map construction
   - CREATE \<type> '(' {\<expr>} ')' \['->' \<target>] where type can be list, tuple, set and dict
   - COMPREHENSION \<type> \['\<' \<capture locals> '>'] \<source> '{' \<code> '}' where type can be list, tuple, set, dict, generator and async generator; YIELD statements for emitting to the outside
-- can we use offsets as labels in JUMP's?
+- can we use offsets as labels in JUMP's? (offsets in assembly instruction and bytecode instructions?)
 - add singleton operators for OP
 - FOREACH ['async'] (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
 - FORRANGE '(' \[\<start> ','] \<stop> \[',' \<step>] ')' \['->' \<target>] {'(' '(' \[\<start> ','] \<stop> \[ ',' \<step>] ')' \['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
@@ -114,6 +114,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: OPTIONAL\<...> where ... is another data type
   - new data type: UNION\<...> where ... is a list of data types, separated by ','
   - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
+  - new data types: ACCESSOR, VARIABLE (with special code to use as Accessors in macros)
   - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on § macro parameter where list: returns len of parameter list
   - storing a list parameter in a local variable will create a list creation code
