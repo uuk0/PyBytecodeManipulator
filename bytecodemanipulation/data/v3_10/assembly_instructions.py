@@ -1412,7 +1412,7 @@ class CallAssembly(AbstractAssemblyInstruction):
         else:
             bytecode = self.call_target.emit_bytecodes(function, scope)
 
-            bytecode += [Instruction(function, -1, "BUILD_LIST")]
+            bytecode += [Instruction(function, -1, "BUILD_LIST", arg=0)]
 
             if self.is_partial:
                 bytecode += [
@@ -1425,9 +1425,9 @@ class CallAssembly(AbstractAssemblyInstruction):
                 bytecode += arg.source.emit_bytecodes(function, scope)
 
                 if isinstance(arg, CallAssembly.Arg):
-                    bytecode += [Instruction(function, -1, "LIST_APPEND")]
+                    bytecode += [Instruction(function, -1, "LIST_APPEND", arg=1)]
                 elif isinstance(arg, CallAssembly.StarArg):
-                    bytecode += [Instruction(function, -1, "LIST_EXTEND")]
+                    bytecode += [Instruction(function, -1, "LIST_EXTEND", arg=1)]
                 else:
                     break
 
@@ -1487,9 +1487,8 @@ class CallAssembly(AbstractAssemblyInstruction):
                 f"Expected Macro Declaration for '{':'.join(map(lambda e: e.text, name))}', got {macro_declaration}"
             )
 
-        return macro_declaration.lookup([arg.source for arg in self.args]).emit_call_bytecode(
-            function, scope, self.args
-        )
+        macro, args = macro_declaration.lookup([arg.source for arg in self.args])
+        return macro.emit_call_bytecode(function, scope, args)
 
 
 MacroAssembly.consume_call = CallAssembly.consume_macro_call

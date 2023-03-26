@@ -150,6 +150,10 @@ def apply_inline_assemblies(target: MutableFunction):
         for i, ins in enumerate(bytecode[:-1]):
             ins.next_instruction = bytecode[i + 1]
 
+        print("----")
+        for e in bytecode:
+            print(e)
+
         if bytecode:
             stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
                 _visit_for_stack_effect

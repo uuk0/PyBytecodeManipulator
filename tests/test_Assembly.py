@@ -1392,7 +1392,7 @@ class StandardLibraryTest(TestCase):
 
         def target():
             assembly(
-                """CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!")"""
+                """CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!"); CALL MACRO std:print("hello", "world", "test", 123)"""
             )
 
         mutable = MutableFunction(target)

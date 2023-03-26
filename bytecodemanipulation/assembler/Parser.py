@@ -1102,10 +1102,38 @@ class MacroAssembly(AbstractAssemblyInstruction):
         IDENTIFIER: str = None
 
         def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
-            return isinstance(arg_accessor, CompoundExpression)
+            raise NotImplementedError
+
+        def emit_for_arg(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+            return arg.emit_bytecodes(function, scope)
 
     class CodeBlockDataType(AbstractDataType):
         IDENTIFIER = "CODE_BLOCK"
+
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
+            return isinstance(arg_accessor, CompoundExpression)
+
+    class VariableArgCountDataType(AbstractDataType):
+        IDENTIFIER = "VARIABLE_ARG"
+
+        def __init__(self, sub_type: typing.Optional["MacroAssembly.AbstractDataType"]):
+            self.sub_type = sub_type
+
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
+            return self.sub_type is None or self.sub_type.is_match(arg, arg_accessor)
+
+        def emit_for_arg(self, args: typing.List[AbstractAccessExpression], function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+            if not isinstance(args, list):
+                raise ValueError(f"args must be list, got {args}!")
+
+            bytecode = []
+            for arg in args:
+                bytecode += arg.emit_bytecodes(function, scope)
+
+            bytecode += [
+                Instruction(function, -1, "BUILD_LIST", arg=len(args))
+            ]
+            return bytecode
 
     class MacroArg:
         def __init__(self, name: IdentifierToken, is_static=False):
@@ -1133,11 +1161,67 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def lookup(
             self, args: typing.List[AbstractAccessExpression]
-        ) -> "MacroAssembly":
+        ) -> typing.Tuple["MacroAssembly", list]:
             for macro in self.assemblies:
                 # todo: better check here!
-                if len(macro.args) == len(args) and all(arg.is_match(param) for arg, param in zip(macro.args, args)):
-                    return macro
+                has_star_args = any(isinstance(e.data_type_annotation, MacroAssembly.VariableArgCountDataType) for e in macro.args)
+
+                if len(macro.args) == len(args) and all(arg.is_match(param) for arg, param in zip(macro.args, args)) and not has_star_args:
+                    return macro, args
+
+                if has_star_args:
+                    error = False
+                    prefix = []
+                    inner = []
+                    postfix = []
+
+                    # Get all args before the VARIABLE_ARG
+                    i = 0
+                    for i, e in enumerate(macro.args):
+                        if isinstance(e.data_type_annotation, MacroAssembly.VariableArgCountDataType):
+                            break
+
+                        if not e.is_match(args[i]):
+                            error = True
+                            break
+
+                        prefix.append(args[i])
+
+                    star_index = i
+
+                    if error:
+                        continue
+
+                    # Get all args after the VARIABLE_ARG
+                    i = 0
+                    for i in range(-len(macro.args), 0):
+                        if isinstance(e.data_type_annotation, MacroAssembly.VariableArgCountDataType):
+                            break
+
+                        if not e.is_match(args[i]):
+                            error = True
+                            break
+
+                        postfix.insert(0, args[i])
+
+                    # todo: assert that the current i is equal to the star_index
+
+                    if error:
+                        continue
+
+                    # And now collect the args in between
+                    for arg in (args[star_index:i+1] if i != -1 else args[star_index:]):
+                        if not macro.args[star_index].is_match(arg):
+                            error = True
+                            break
+
+                        inner.append(arg)
+
+                    if error:
+                        continue
+
+                    args[:] = prefix + [inner] + postfix
+                    return macro, args
 
             raise NameError(
                 f"Could not find overloaded variant of {':'.join(self.name)} with args {args}!"
@@ -1146,6 +1230,27 @@ class MacroAssembly(AbstractAssemblyInstruction):
         def add_definition(self, macro: "MacroAssembly"):
             # todo: do a safety check!
             self.assemblies.append(macro)
+
+    @classmethod
+    def _try_parse_arg_data_type(cls, parser: Parser) -> AbstractDataType | None:
+        if identifier := parser.try_consume(IdentifierToken):
+            if identifier.text == "CODE_BLOCK":
+                inst = cls.CodeBlockDataType()
+                return inst
+
+            elif identifier.text == "VARIABLE_ARG":
+                # todo: add check that it is the only * arg
+                if parser.try_consume(SpecialToken("[")):
+                    inner_type = cls._try_parse_arg_data_type(parser)
+                    if inner_type is None:
+                        return
+
+                    inst = cls.VariableArgCountDataType(inner_type)
+                    parser.consume(SpecialToken("]"))
+                else:
+                    inst = cls.VariableArgCountDataType(None)
+
+                return inst
 
     @classmethod
     def consume(cls, parser: "Parser") -> "MacroAssembly":
@@ -1169,13 +1274,14 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 i += 1
                 args.append(arg)
 
+                data_type = cls._try_parse_arg_data_type(parser)
+
                 parser.save()
-                if identifier := parser.try_consume(IdentifierToken):
-                    if identifier.text == "CODE_BLOCK":
-                        arg.data_type_annotation = cls.CodeBlockDataType()
-                        parser.discard_save()
-                    else:
-                        parser.rollback()
+                if data_type is not None:
+                    arg.data_type_annotation = data_type
+                    parser.discard_save()
+                else:
+                    parser.rollback()
 
                 if not parser.try_consume(SpecialToken(",")):
                     parser.consume(SpecialToken(")"))
@@ -1244,17 +1350,30 @@ class MacroAssembly(AbstractAssemblyInstruction):
         for i, (arg_decl, arg_code) in enumerate(zip(self.args, args)):
             arg_decl_lookup[arg_decl.name.text] = arg_decl
             if arg_decl.is_static:
-                arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
-                bytecode += arg_code.emit_bytecodes(function, scope)
-                bytecode.append(
-                    Instruction(
-                        function,
-                        -1,
-                        Opcodes.STORE_FAST,
-                        var_name,
-                        _decode_next=False,
+                if arg_decl.data_type_annotation is not None:
+                    arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
+                    bytecode += arg_decl.data_type_annotation.emit_for_arg(arg_code, function, scope)
+                    bytecode.append(
+                        Instruction(
+                            function,
+                            -1,
+                            Opcodes.STORE_FAST,
+                            var_name,
+                            _decode_next=False,
+                        )
                     )
-                )
+                else:
+                    arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
+                    bytecode += arg_code.emit_bytecodes(function, scope)
+                    bytecode.append(
+                        Instruction(
+                            function,
+                            -1,
+                            Opcodes.STORE_FAST,
+                            var_name,
+                            _decode_next=False,
+                        )
+                    )
             else:
                 arg_names.append(None)
 
@@ -1267,16 +1386,27 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 if instr.arg_value not in arg_decl_lookup:
                     continue
 
-                arg_decl = arg_decl_lookup[instr.arg_value]
+                arg_decl: MacroAssembly.MacroArg = arg_decl_lookup[instr.arg_value]
 
-                if arg_decl.is_static:
-                    instr.change_opcode(Opcodes.LOAD_FAST, arg_names[arg_decl.index])
+                if arg_decl.data_type_annotation is not None:
+                    if arg_decl.is_static:
+                        instr.change_opcode(Opcodes.LOAD_FAST, arg_names[arg_decl.index])
+
+                    else:
+                        instr.change_opcode(Opcodes.NOP)
+                        instructions = arg_decl.data_type_annotation.emit_for_arg(args[arg_decl.index], function, scope)
+                        instr.insert_after(instructions)
+                        bytecode += instructions
 
                 else:
-                    instr.change_opcode(Opcodes.NOP)
-                    instructions = args[arg_decl.index].emit_bytecodes(function, scope)
-                    instr.insert_after(instructions)
-                    bytecode += instructions
+                    if arg_decl.is_static:
+                        instr.change_opcode(Opcodes.LOAD_FAST, arg_names[arg_decl.index])
+
+                    else:
+                        instr.change_opcode(Opcodes.NOP)
+                        instructions = args[arg_decl.index].emit_bytecodes(function, scope)
+                        instr.insert_after(instructions)
+                        bytecode += instructions
 
             elif instr.opcode == Opcodes.STORE_DEREF:
                 if instr.arg_value not in arg_decl_lookup:

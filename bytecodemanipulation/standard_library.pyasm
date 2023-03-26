@@ -2,15 +2,9 @@
 NAMESPACE std
 {
 
-    MACRO ASSEMBLY print(text)
+    MACRO ASSEMBLY print(text VARIABLE_ARG)
     {
-        CALL @print (§text)
-        POP
-    }
-
-    MACRO ASSEMBLY print(text, text2)
-    {
-        CALL @print (§text, §text2)
+        CALL @print (*§text)
         POP
     }
 
