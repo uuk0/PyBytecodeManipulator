@@ -96,7 +96,6 @@ class ParsingScope:
 
         return scope
 
-
     def exists_label(self, name: str) -> bool:
         return name in self.labels
 
@@ -737,7 +736,11 @@ class Parser(AbstractParser):
         cls.INSTRUCTIONS[instr.NAME] = instr
         return instr
 
-    def __init__(self, tokens_or_str: str | typing.List[AbstractToken], scope: ParsingScope = None):
+    def __init__(
+        self,
+        tokens_or_str: str | typing.List[AbstractToken],
+        scope: ParsingScope = None,
+    ):
         super().__init__(
             tokens_or_str
             if isinstance(tokens_or_str, list)
@@ -829,7 +832,9 @@ class Parser(AbstractParser):
         target = self.scope.lookup_namespace(name)
 
         if isinstance(target, MacroAssembly.MacroOverloadPage):
-            for macro in typing.cast(MacroAssembly.MacroOverloadPage, target).assemblies:
+            for macro in typing.cast(
+                MacroAssembly.MacroOverloadPage, target
+            ).assemblies:
                 if macro.allow_assembly_instr:
                     self.rollback()
                     return MacroAssembly.consume_call(self)
@@ -1107,12 +1112,16 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self.name = name
             self.assemblies: typing.List[MacroAssembly] = []
 
-        def lookup(self, args: typing.List[AbstractAccessExpression]) -> "MacroAssembly":
+        def lookup(
+            self, args: typing.List[AbstractAccessExpression]
+        ) -> "MacroAssembly":
             for macro in self.assemblies:
                 if len(macro.args) == len(args):
                     return macro
 
-            raise NameError(f"Could not find overloaded variant of {':'.join(self.name)} with arg count {len(args)}!")
+            raise NameError(
+                f"Could not find overloaded variant of {':'.join(self.name)} with arg count {len(args)}!"
+            )
 
         def add_definition(self, macro: "MacroAssembly"):
             # todo: do a safety check!
@@ -1271,7 +1280,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             page = self.MacroOverloadPage(name)
             namespace_level[inner_name] = page
         elif not isinstance(namespace_level[inner_name], self.MacroOverloadPage):
-            raise RuntimeError(f"Expected <empty> or MacroOverloadPage, got {namespace_level[inner_name]}")
+            raise RuntimeError(
+                f"Expected <empty> or MacroOverloadPage, got {namespace_level[inner_name]}"
+            )
         else:
             page = namespace_level[inner_name]
 
@@ -1302,7 +1313,11 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         return f"MACRO_PASTE({self.name.text}{'' if self.target is None else '-> '+repr(self.target)})"
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name == other.name and self.target == other.target
+        return (
+            type(self) == type(other)
+            and self.name == other.name
+            and self.target == other.target
+        )
 
     def copy(self) -> "MacroPasteAssembly":
         return type(self)(self.name, self.target.copy() if self.target else None)
@@ -1312,7 +1327,11 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
     ) -> typing.List[Instruction]:
         return [
             Instruction(function, -1, Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)
-        ] + ([] if self.target is None else self.target.emit_store_bytecodes(function, scope))
+        ] + (
+            []
+            if self.target is None
+            else self.target.emit_store_bytecodes(function, scope)
+        )
 
 
 @Parser.register
@@ -1352,7 +1371,12 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
             is_relative_target,
         )
 
-    def __init__(self, name: typing.List[IdentifierToken], target: typing.List[IdentifierToken] = None, is_relative_target: bool = False):
+    def __init__(
+        self,
+        name: typing.List[IdentifierToken],
+        target: typing.List[IdentifierToken] = None,
+        is_relative_target: bool = False,
+    ):
         self.name = name
         self.target = target
         self.is_relative_target = is_relative_target
@@ -1361,7 +1385,12 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         return f"MACRO_IMPORT('{'.'.join(map(lambda e: e.text, self.name))}'{'' if self.target is None else ('.' if self.is_relative_target else '') + '.'.join(map(lambda e: e.text, self.target))})"
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name == other.name and self.target == other.target and self.is_relative_target == other.is_relative_target
+        return (
+            type(self) == type(other)
+            and self.name == other.name
+            and self.target == other.target
+            and self.is_relative_target == other.is_relative_target
+        )
 
     def copy(self) -> "MacroImportAssembly":
         return type(self)(self.name.copy(), self.target.copy(), self.is_relative_target)
@@ -1382,9 +1411,9 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
             namespace = [e.text for e in self.target]
 
         scope_entry = scope.lookup_namespace(namespace)
-        
+
         module = ".".join(map(lambda e: e.text, self.name))
-        
+
         if module not in GLOBAL_SCOPE_CACHE:
             __import__(module)
 
@@ -1400,8 +1429,12 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                 for key in source.keys():
                     if key not in target:
                         target[key] = source[key]
-                    elif isinstance(target[key], dict) and isinstance(source[key], dict):
+                    elif isinstance(target[key], dict) and isinstance(
+                        source[key], dict
+                    ):
                         tasks.append((target[key], source[key]))
                     else:
-                        print(f"WARN: unknown integration stage: {source[key]} -> {target[key]}")
+                        print(
+                            f"WARN: unknown integration stage: {source[key]} -> {target[key]}"
+                        )
                         target[key] = source[key]

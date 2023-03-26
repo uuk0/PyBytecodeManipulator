@@ -1170,7 +1170,9 @@ class CallAssembly(AbstractAssemblyInstruction):
         return cls.consume_inner(parser, is_partial, is_macro)
 
     @classmethod
-    def consume_inner(cls, parser: Parser, is_partial: bool, is_macro: bool) -> "CallAssembly":
+    def consume_inner(
+        cls, parser: Parser, is_partial: bool, is_macro: bool
+    ) -> "CallAssembly":
         if not is_macro:
             call_target = parser.try_parse_data_source(include_bracket=False)
         else:
@@ -1231,7 +1233,9 @@ class CallAssembly(AbstractAssemblyInstruction):
                     expr = parser.parse_body()
                     is_dynamic = False
                 else:
-                    is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
+                    is_dynamic = is_partial and bool(
+                        parser.try_consume(SpecialToken("?"))
+                    )
 
                     expr = parser.try_parse_data_source(
                         allow_primitives=True, include_bracket=False
@@ -1483,7 +1487,9 @@ class CallAssembly(AbstractAssemblyInstruction):
                 f"Expected Macro Declaration for '{':'.join(map(lambda e: e.text, name))}', got {macro_declaration}"
             )
 
-        return macro_declaration.lookup(self.args).emit_call_bytecode(function, scope, self.args)
+        return macro_declaration.lookup(self.args).emit_call_bytecode(
+            function, scope, self.args
+        )
 
 
 MacroAssembly.consume_call = CallAssembly.consume_macro_call

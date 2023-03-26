@@ -125,7 +125,7 @@ def apply_inline_assemblies(target: MutableFunction):
                 else 0
             )
             .lex(),
-            scope.scope_path.clear() or scope
+            scope.scope_path.clear() or scope,
         ).parse()
         for code, instr in insertion_points
     ]

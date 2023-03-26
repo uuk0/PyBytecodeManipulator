@@ -1332,6 +1332,7 @@ class TestMacro(TestCase):
 class StandardLibraryTest(TestCase):
     def setUp(self):
         import bytecodemanipulation.assembler.hook as hook
+
         hook.hook()
 
         def target():
@@ -1345,10 +1346,13 @@ class StandardLibraryTest(TestCase):
 
     def test_macro_import(self):
         import bytecodemanipulation.assembler.hook as hook
+
         hook.hook()
 
         def target():
-            assembly("""CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!")""")
+            assembly(
+                """CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!")"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -1357,6 +1361,7 @@ class StandardLibraryTest(TestCase):
 
     def test_macro_as_assembly(self):
         import bytecodemanipulation.assembler.hook as hook
+
         hook.hook()
 
         def target():
