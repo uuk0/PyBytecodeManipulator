@@ -791,6 +791,9 @@ class Parser(AbstractParser):
 
             instr.fill_scope(self.scope)
 
+            while self.try_consume(CommentToken):
+                pass
+
             if self.is_empty():
                 break
 
@@ -1101,17 +1104,34 @@ class MacroAssembly(AbstractAssemblyInstruction):
     class AbstractDataType(ABC):
         IDENTIFIER: str = None
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
             raise NotImplementedError
 
         def emit_for_arg(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
             return arg.emit_bytecodes(function, scope)
 
+        def emit_for_arg_store(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction] | None:
+            pass
+
     class CodeBlockDataType(AbstractDataType):
         IDENTIFIER = "CODE_BLOCK"
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
             return isinstance(arg_accessor, CompoundExpression)
+
+    class VariableDataType(AbstractDataType):
+        IDENTIFIER = "VARIABLE"
+        VALID_ACCESSOR_TYPES = [
+            GlobalAccessExpression,
+            LocalAccessExpression,
+            DerefAccessExpression,
+        ]
+
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+            return isinstance(arg_accessor, tuple(self.VALID_ACCESSOR_TYPES))
+
+        def emit_for_arg_store(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction] | None:
+            return arg.emit_store_bytecodes(function, scope)
 
     class VariableArgCountDataType(AbstractDataType):
         IDENTIFIER = "VARIABLE_ARG"
@@ -1119,7 +1139,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         def __init__(self, sub_type: typing.Optional["MacroAssembly.AbstractDataType"]):
             self.sub_type = sub_type
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression):
+        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
             return self.sub_type is None or self.sub_type.is_match(arg, arg_accessor)
 
         def emit_for_arg(self, args: typing.List[AbstractAccessExpression], function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
@@ -1250,6 +1270,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 else:
                     inst = cls.VariableArgCountDataType(None)
 
+                return inst
+
+            elif identifier.text == "VARIABLE":
+                inst = cls.VariableDataType()
                 return inst
 
     @classmethod
@@ -1417,6 +1441,15 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 if arg_decl.is_static:
                     instr.change_opcode(Opcodes.STORE_FAST, arg_names[arg_decl.index])
                 else:
+                    if arg_decl.data_type_annotation is not None:
+                        instructions = arg_decl.data_type_annotation.emit_for_arg_store(args[arg_decl.index], function, scope)
+
+                        if instructions is not None:
+                            instr.change_opcode(Opcodes.NOP)
+                            instr.insert_after(instructions)
+                            bytecode += instructions
+                            continue
+                    
                     raise RuntimeError(
                         f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!"
                     )

@@ -170,8 +170,14 @@ def apply_inline_assemblies(target: MutableFunction):
         ):
             print(asm)
 
+            total = 0
+
             for e in enumerate(bytecode):
-                print(*e)
+                add, subtract, _ = e[1].get_stack_affect()
+                total += add - subtract
+                print(*e, total)
+
+            print(stack_effect)
 
             raise RuntimeError(
                 f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"

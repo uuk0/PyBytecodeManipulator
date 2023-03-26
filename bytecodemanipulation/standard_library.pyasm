@@ -1,11 +1,22 @@
+# Access via MACRO_IMPORT bytecodemanipulation.standard_library
+# and than either CALL MACRO std:..., or for macros marked with ASSEMBLY, directly with std:...
+
 
 NAMESPACE std
 {
 
+    # Wrapper around the print builtin
     MACRO ASSEMBLY print(text VARIABLE_ARG)
     {
         CALL @print (*§text)
         POP
+    }
+
+    # Wrapper around the input builtin
+    MACRO ASSEMBLY input(result VARIABLE, text VARIABLE_ARG)
+    {
+        CALL @input (*§text)
+        STORE §result
     }
 
 }

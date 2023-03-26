@@ -1369,6 +1369,26 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 2)
 
+    def test_variable_macro_input(self):
+        def target():
+            assembly(
+                """
+        MACRO test_variable_macro_input (target VARIABLE) {
+            LOAD 1 -> §target
+        }
+
+        LOAD 0 -> $local
+        CALL MACRO test_variable_macro_input($local)
+        RETURN $local
+        """
+            )
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 1)
+
 
 class StandardLibraryTest(TestCase):
     def setUp(self):
