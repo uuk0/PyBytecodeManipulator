@@ -1432,3 +1432,17 @@ class StandardLibraryTest(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
         target()
+
+    # def test_type_check_raise(self):
+    #     import bytecodemanipulation.assembler.hook as hook
+    #
+    #     hook.hook()
+    #
+    #     def target():
+    #         assembly("""std:check_type(@int, "test", "exception")""")
+    #
+    #     mutable = MutableFunction(target)
+    #     apply_inline_assemblies(mutable)
+    #     mutable.reassign_to_function()
+    #     target()
+    #     dis.dis(target)

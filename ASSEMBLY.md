@@ -50,6 +50,7 @@ for cross-version support.
 * MACRO_IMPORT \<module name with '.'> \['->' \['.'\] \<namespace with '.'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
+* 'RAISE' \[\<source>]: raises the exception at TOS or source 
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 

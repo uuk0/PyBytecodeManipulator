@@ -30,6 +30,37 @@ from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 
 
 @Parser.register
+class RaiseAssembly(AbstractAssemblyInstruction):
+    # RAISE [<source>]
+    NAME = "RAISE"
+
+    @classmethod
+    def consume(cls, parser: "Parser") -> "RaiseAssembly":
+        return cls(
+            parser.try_parse_data_source(include_bracket=False)
+        )
+
+    def __init__(self, source: AbstractSourceExpression = None):
+        self.source = source
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.source == other.source
+
+    def __repr__(self):
+        return f"RAISE({'TOS' if self.source is None else self.source})"
+
+    def copy(self):
+        return type(self)(self.source.copy() if self.source else None)
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        return ([] if self.source is None else self.source.emit_bytecodes(function, scope)) + [
+            Instruction(function, -1, Opcodes.RAISE_VARARGS, arg=1)
+        ]
+
+
+@Parser.register
 class LoadAssembly(AbstractAssemblyInstruction):
     # LOAD <access> [-> <target>]
     NAME = "LOAD"
@@ -470,7 +501,7 @@ class IFAssembly(AbstractAssemblyInstruction):
         )
 
         if source is None:
-            raise SyntaxError("<expression> expected!")
+            raise SyntaxError(f"<expression> expected, got {parser[0]}!")
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)

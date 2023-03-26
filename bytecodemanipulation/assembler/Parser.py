@@ -968,6 +968,9 @@ class Parser(AbstractParser):
             if integer := self.try_consume(IntegerToken):
                 return ConstantAccessExpression(int(integer.text))
 
+            if boolean := self.try_consume((IdentifierToken("True"), IdentifierToken("False"))):
+                return ConstantAccessExpression(boolean.text == "True")
+
         print(self.try_inspect())
 
         self.rollback()

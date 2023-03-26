@@ -779,6 +779,9 @@ class Instruction:
         if self.opcode == Opcodes.MAKE_FUNCTION:
             return 1, 2 + self.arg.bit_count(), None
 
+        if self.opcode == Opcodes.RAISE_VARARGS:
+            return 0, self.arg, None
+
         raise RuntimeError(self)
 
     def insert_after(self, *instructions: "Instruction" | typing.List["Instruction"]):

@@ -305,7 +305,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
                 if token != expected:
                     return
 
-            elif isinstance(expected, list):
+            elif isinstance(expected, (list, tuple)):
                 for element in expected:
                     if isinstance(element, AbstractToken):
                         if token == element:
