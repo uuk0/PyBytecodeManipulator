@@ -40,7 +40,10 @@ for cross-version support.
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
   * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
-  * Data Types: CODE_BLOCK, VARIABLE_ARG[...]
+  * Data Types:
+    * CODE_BLOCK (a code block in {})
+    * VARIABLE_ARG\[...] (a dynamic count (including 0) of the specific type; if no type should be specified, omit the \[])
+    * VARIABLE (a variable reference, similar to C#'s 'out' keyword; can be used as a store target than; requires special inputs to work (currently only local, global or cell variables are allowed, in the future more might work))
   * Macro names can be overloaded
   * Comes with an extra instruction, which should only be used in macros:
 * MACRO_PASTE \<macro param name> \['->' \<target>]: pastes the code for a macro-parameter, and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
@@ -114,7 +117,6 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: OPTIONAL\<...> where ... is another data type
   - new data type: UNION\<...> where ... is a list of data types, separated by ','
   - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
-  - new data types: ACCESSOR, VARIABLE (with special code to use as Accessors in macros)
   - new data type: CONSTANT\['\<' \<type name> '>']
   - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on § macro parameter where list: returns len of parameter list
