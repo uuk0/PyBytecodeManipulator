@@ -15,8 +15,7 @@ NAMESPACE std
     # Wrapper around the input builtin
     MACRO ASSEMBLY input(result VARIABLE, text VARIABLE_ARG)
     {
-        CALL @input (*§text)
-        STORE §result
+        CALL @input (*§text) -> §result
     }
 
 }

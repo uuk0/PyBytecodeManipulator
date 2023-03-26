@@ -101,7 +101,7 @@ class ParsingScope:
 
     def copy(
         self,
-        sub_scope_name: str = None,
+        sub_scope_name: str | list = None,
         copy_labels=False,
         keep_scope_name_generator: bool = None,
     ):
@@ -112,7 +112,11 @@ class ParsingScope:
         instance.scope_path = self.scope_path.copy()
 
         if sub_scope_name is not None:
-            instance.scope_path.append(sub_scope_name)
+            if isinstance(sub_scope_name, str):
+                instance.scope_path.append(sub_scope_name)
+            else:
+                instance.scope_path += sub_scope_name
+
         elif keep_scope_name_generator:
             instance.scope_name_generator = self.scope_name_generator
 
@@ -751,9 +755,12 @@ class Parser(AbstractParser):
     def parse(self) -> CompoundExpression:
         return self.parse_while_predicate(lambda: not self.is_empty())
 
-    def parse_body(self, namespace_part: str = None) -> CompoundExpression:
+    def parse_body(self, namespace_part: str | list | None = None) -> CompoundExpression:
         if namespace_part is not None:
-            self.scope.scope_path.append(namespace_part)
+            if isinstance(namespace_part, str):
+                self.scope.scope_path.append(namespace_part)
+            else:
+                self.scope.scope_path += namespace_part
 
         self.consume(SpecialToken("{"))
         body = self.parse_while_predicate(
@@ -762,8 +769,14 @@ class Parser(AbstractParser):
         )
 
         if namespace_part:
-            if self.scope.scope_path.pop() != namespace_part:
-                raise RuntimeError
+            if isinstance(namespace_part, str):
+                if self.scope.scope_path.pop() != namespace_part:
+                    raise RuntimeError
+            else:
+                if self.scope.scope_path[-len(namespace_part):] != namespace_part:
+                    raise RuntimeError
+
+                del self.scope.scope_path[-len(namespace_part):]
 
         return body
 
@@ -1039,25 +1052,29 @@ class PythonCodeAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class NamespaceAssembly(AbstractAssemblyInstruction):
-    # 'NAMESPACE' <name> '{' <code> '}'
+    # 'NAMESPACE' [{<namespace> ':'}] <name> '{' <code> '}'
     NAME = "NAMESPACE"
 
     @classmethod
     def consume(cls, parser: "Parser") -> "NamespaceAssembly":
-        name = parser.consume(IdentifierToken)
-        assembly = parser.parse_body(name.text)
+        name = [parser.consume(IdentifierToken)]
+
+        while parser.try_consume(SpecialToken(":")):
+            name.append(parser.consume(IdentifierToken))
+
+        assembly = parser.parse_body(namespace_part=[e.text for e in name])
 
         return cls(
             name,
             assembly,
         )
 
-    def __init__(self, name: IdentifierToken, assembly: CompoundExpression):
+    def __init__(self, name: typing.List[IdentifierToken], assembly: CompoundExpression):
         self.name = name
         self.assembly = assembly
 
     def __repr__(self):
-        return f"NAMESPACE::'{self.name.text}'({repr(self.assembly)})"
+        return f"NAMESPACE::'{':'.join(e.text for e in self.name)}'({repr(self.assembly)})"
 
     def __eq__(self, other):
         return (
@@ -1073,7 +1090,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return self.assembly.emit_bytecodes(
-            function, scope.copy(sub_scope_name=self.name.text)
+            function, scope.copy(sub_scope_name=[e.text for e in self.name])
         )
 
     def visit_parts(
