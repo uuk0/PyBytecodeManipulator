@@ -29,4 +29,30 @@ NAMESPACE std
         }
     }
 
+    NAMESPACE os
+    {
+
+        MACRO ASSEMBLY file_walker(directory, file VARIABLE, code CODE_BLOCK)
+        {
+            CALL @!__import__("os") -> $MACRO_os
+            CALL $MACRO_os.listdir(§directory) -> $MACRO_files
+
+            LOAD 0 -> $MACRO_counter
+            CALL @!len($MACRO_files) -> $MACRO_file_count
+
+            WHILE OP ($MACRO_counter < $MACRO_file_count)
+            {
+                LOAD $MACRO_files[$MACRO_counter] -> §file
+                OP $MACRO_counter + 1 -> $MACRO_counter
+
+                CALL $MACRO_os.path.isfile(§file)
+                IF %
+                {
+                    MACRO_PASTE §code
+                }
+            }
+        }
+
+    }
+
 }

@@ -1,3 +1,4 @@
+import os.path
 from unittest import TestCase
 import dis
 
@@ -22,10 +23,6 @@ class StandardLibraryTest(TestCase):
         target()
 
     def test_macro_import(self):
-        import bytecodemanipulation.assembler.hook as hook
-
-        hook.hook()
-
         def target():
             assembly(
                 """CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!"); CALL MACRO std:print("hello", "world", "test", 123)"""
@@ -37,10 +34,6 @@ class StandardLibraryTest(TestCase):
         target()
 
     def test_macro_as_assembly(self):
-        import bytecodemanipulation.assembler.hook as hook
-
-        hook.hook()
-
         def target():
             assembly("""std:print("Hello World")""")
 
@@ -53,10 +46,6 @@ class StandardLibraryTest(TestCase):
     # todo: can we test somehow the input system
 
     def test_type_check_raise(self):
-        import bytecodemanipulation.assembler.hook as hook
-
-        hook.hook()
-
         def target():
             assembly("""std:check_type(@int, "test", "exception")""")
 
@@ -64,6 +53,27 @@ class StandardLibraryTest(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
-
         self.assertRaises(ValueError, target)
+
+    def test_file_list(self):
+        file_name = os.path.dirname(__file__).replace("\\", "\\\\")
+        code = f'''def target():
+            assembly("""
+MACRO_IMPORT bytecodemanipulation.standard_library
+
+std:os:file_walker("{file_name}", $file, {{
+    YIELD $file
+}})
+""")
+            yield 0'''
+
+        space = globals().copy()
+        exec(code, space)
+        target = space["target"]
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        files = list(target())[:-1]
+        self.assertEqual(set(files), set(filter(lambda e: os.path.isfile(e), os.listdir(os.path.dirname(__file__)))))

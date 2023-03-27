@@ -109,6 +109,9 @@ def apply_inline_assemblies(target: MutableFunction):
                 print(type(arg))
                 arg.change_opcode(Opcodes.NOP)
 
+    if not insertion_points:
+        raise RuntimeError("no target found!")
+
     scope = ParsingScope()
 
     if target.target.__module__ in GLOBAL_SCOPE_CACHE:

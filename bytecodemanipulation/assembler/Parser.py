@@ -556,8 +556,8 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                 ]
             )
             + [
-                Instruction.create_with_token(
-                    self.name_token, function, -1, Opcodes.BINARY_SUBSCR
+                Instruction(
+                    function, -1, Opcodes.BINARY_SUBSCR
                 )
             ]
         )
@@ -1513,6 +1513,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "MacroPasteAssembly":
+        # Parse an optional § infront of the name
+        parser.try_consume(SpecialToken("§"))
+
         name = parser.consume(IdentifierToken)
 
         if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):

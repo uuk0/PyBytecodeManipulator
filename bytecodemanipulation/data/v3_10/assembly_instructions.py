@@ -1696,7 +1696,7 @@ class ReturnAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class YieldAssembly(AbstractAssemblyInstruction):
-    # YIELD [*] [<expr>] [-> <taerget>]
+    # YIELD [*] [<expr>] [-> <target>]
     NAME = "YIELD"
 
     @classmethod
