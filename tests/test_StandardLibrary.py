@@ -1,4 +1,5 @@
 from unittest import TestCase
+import dis
 
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.assembler.target import *
@@ -48,16 +49,18 @@ class StandardLibraryTest(TestCase):
         mutable.reassign_to_function()
         target()
 
-    # def test_type_check_raise(self):
-    #     import bytecodemanipulation.assembler.hook as hook
-    #
-    #     hook.hook()
-    #
-    #     def target():
-    #         assembly("""std:check_type(@int, "test", "exception")""")
-    #
-    #     mutable = MutableFunction(target)
-    #     apply_inline_assemblies(mutable)
-    #     mutable.reassign_to_function()
-    #     target()
-    #     dis.dis(target)
+    def test_type_check_raise(self):
+        import bytecodemanipulation.assembler.hook as hook
+
+        hook.hook()
+
+        def target():
+            assembly("""std:check_type(@int, "test", "exception")""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertRaises(ValueError, target)

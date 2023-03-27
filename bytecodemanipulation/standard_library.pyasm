@@ -18,16 +18,15 @@ NAMESPACE std
         CALL @input (*§text) -> §result
     }
 
-    # Requires OP with single argument to work
-    # MACRO ASSEMBLY check_type(expected_type, value, error_message)
-    # {
-    #     CALL @isinstance(§value, §expected_type) -> $MACRO_result
-    #     OP not $MACRO_result -> $MACRO_result
-    #     IF $MACRO_result
-    #     {
-    #         CALL @ValueError(§error_message)
-    #         RAISE
-    #     }
-    # }
+    MACRO ASSEMBLY check_type(expected_type, value, error_message)
+    {
+        CALL @isinstance(§value, §expected_type) -> $MACRO_result
+        OP not $MACRO_result -> $MACRO_result
+        IF $MACRO_result
+        {
+            CALL @ValueError(§error_message)
+            RAISE
+        }
+    }
 
 }

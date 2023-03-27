@@ -206,7 +206,8 @@ class StoreAssembly(AbstractAssemblyInstruction):
 class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
-    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
+    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr <expr>
+    - -|+|~|not|! <expr>
     """
 
     NAME = "OP"
@@ -220,7 +221,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
                 AbstractAccessExpression,
                 AbstractAccessExpression,
                 MutableFunction,
-                typing.Set[str],
+                ParsingScope,
             ],
             Instruction | typing.List[Instruction],
         ],
@@ -281,7 +282,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     }
 
     # todo: parse and implement
-    SINGLE_OPS: typing.Dict[str, typing.Tuple[int, int] | int] = {
+    SINGLE_OPS: typing.Dict[str, typing.Tuple[int, int] | int | typing.Callable[[AbstractAccessExpression, MutableFunction, ParsingScope], Instruction | typing.List[Instruction]]] = {
         "-": Opcodes.UNARY_NEGATIVE,
         "+": Opcodes.UNARY_POSITIVE,
         "~": Opcodes.UNARY_INVERT,
@@ -305,6 +306,74 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
         def __repr__(self):
             raise NotImplementedError
+
+
+    class SingleOperation(IOperation):
+        def __init__(
+            self,
+            operator: str,
+            expression: AbstractAccessExpression,
+        ):
+            self.operator = operator
+            self.expression = expression
+
+        def __eq__(self, other):
+            return (
+                type(self) == type(other)
+                and self.operator == other.operator
+                and self.expression == other.expression
+            )
+
+        def __repr__(self):
+            return f"{self.operator} {self.expression}"
+
+        def copy(self):
+            return type(self)(self.operator, self.expression.copy())
+
+        def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
+            opcode_info = OpAssembly.SINGLE_OPS[self.operator]
+
+            if callable(opcode_info):
+                result = opcode_info(self.expression, function, scope)
+
+                if isinstance(result, Instruction):
+                    return (
+                        self.expression.emit_bytecodes(function, scope)
+                        + [result]
+                    )
+
+                return result
+
+            if isinstance(opcode_info, int):
+                opcode, arg = opcode_info, 0
+            else:
+                opcode, arg = opcode_info
+
+            return (
+                self.expression.emit_bytecodes(function, scope)
+                + [Instruction(function, -1, opcode, arg=arg)]
+            )
+
+        def visit_parts(
+            self,
+            visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+            parents: list,
+        ):
+            return visitor(
+                self,
+                (
+                    self.expression.visit_parts(visitor, parents + [self]),
+                    parents,
+                ),
+            )
+
+        def visit_assembly_instructions(
+            self,
+            visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+        ):
+            pass
 
     class BinaryOperation(IOperation):
         def __init__(
@@ -381,10 +450,13 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "OpAssembly":
+        if expr := cls.try_consume_single(parser):
+            return cls(expr, cls.try_consume_arrow(parser))
+
         if expr := cls.try_consume_binary(parser):
             return cls(expr, cls.try_consume_arrow(parser))
 
-        raise SyntaxError
+        raise SyntaxError("no valid operation found!")
 
     @classmethod
     def try_consume_arrow(cls, parser: "Parser") -> AbstractAccessExpression | None:
@@ -393,10 +465,29 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             return parser.try_consume_access_token()
 
     @classmethod
+    def try_consume_single(cls, parser: "Parser") -> typing.Optional[IOperation]:
+        parser.save()
+        if not (expr := parser.try_consume(IdentifierToken)):
+            parser.rollback()
+            return
+
+        if expr.text in cls.SINGLE_OPS:
+            expression = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+            if expression is None:
+                parser.rollback()
+
+            return cls.SingleOperation(expr.text, expression)
+
+    @classmethod
     def try_consume_binary(cls, parser: "Parser") -> typing.Optional[IOperation]:
         parser.save()
 
         lhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        if lhs is None:
+            parser.rollback()
+            return
 
         part = parser[0:2]
 

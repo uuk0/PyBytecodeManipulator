@@ -753,6 +753,10 @@ class Instruction:
             Opcodes.UNARY_NEGATIVE,
             Opcodes.YIELD_VALUE,
             Opcodes.GET_YIELD_FROM_ITER,
+            Opcodes.UNARY_NOT,
+            Opcodes.UNARY_NEGATIVE,
+            Opcodes.UNARY_INVERT,
+            Opcodes.UNARY_POSITIVE,
         ):
             return 1, 1, None
 
