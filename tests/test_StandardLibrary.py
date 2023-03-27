@@ -47,7 +47,10 @@ class StandardLibraryTest(TestCase):
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
+
         target()
+
+    # todo: can we test somehow the input system
 
     def test_type_check_raise(self):
         import bytecodemanipulation.assembler.hook as hook

@@ -1,3 +1,4 @@
+import builtins
 import copy
 import typing
 import warnings
@@ -382,7 +383,12 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         key = self.name_token.text
-        value = function.target.__globals__.get(key)
+        global_dict = function.target.__globals__
+        if key not in global_dict and hasattr(builtins, key):
+            value = getattr(builtins, key)
+        else:
+            value = global_dict.get(key)
+
         return [
             Instruction.create_with_token(
                 self.name_token, function, -1, "LOAD_CONST", value

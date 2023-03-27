@@ -8,19 +8,19 @@ NAMESPACE std
     # Wrapper around the print builtin
     MACRO ASSEMBLY print(text VARIABLE_ARG)
     {
-        CALL @print (*§text)
+        CALL @!print (*§text)
         POP
     }
 
     # Wrapper around the input builtin
     MACRO ASSEMBLY input(result VARIABLE, text VARIABLE_ARG)
     {
-        CALL @input (*§text) -> §result
+        CALL @!input (*§text) -> §result
     }
 
     MACRO ASSEMBLY check_type(expected_type, value, error_message)
     {
-        CALL @isinstance(§value, §expected_type) -> $MACRO_result
+        CALL @!isinstance (§value, §expected_type) -> $MACRO_result
         OP not $MACRO_result -> $MACRO_result
         IF $MACRO_result
         {
