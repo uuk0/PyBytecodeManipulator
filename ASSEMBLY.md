@@ -110,7 +110,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - RAW \<opcode> \[\<arg> | \<arg value>]
 - PROPOSE \<type> \<value>
 - CALL INLINE
-- ITERATOR_OP (stream util)
 - CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
 - MACRO ASSEMBLY for creating assembly instructions from macros (so from a macro declaration an instruction is created)
   - data types must be declared
@@ -126,6 +125,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - maybe also the possibility to define code for emitting assembly instructions
     - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
+- makro MACRO_PASTE should also work in subfunctions
 
 ## PyASM
 

@@ -757,6 +757,7 @@ class Instruction:
             Opcodes.UNARY_NEGATIVE,
             Opcodes.UNARY_INVERT,
             Opcodes.UNARY_POSITIVE,
+            Opcodes.STATIC_ATTRIBUTE_ACCESS,
         ):
             return 1, 1, None
 
@@ -1207,6 +1208,10 @@ class MutableFunction:
             instruction = pending_instructions.pop()
 
             if not isinstance(instruction, Instruction):
+                print(f"Invalid task instruction: {instruction}")
+                continue
+
+            if not isinstance(instruction, Instruction):
                 raise ValueError(instruction)
 
             # If we visited it, we can skip
@@ -1215,6 +1220,10 @@ class MutableFunction:
 
             # Walk over the instructions as long as we have not met them
             while instruction not in visited:
+                if not isinstance(instruction, Instruction):
+                    print(f"Invalid task instruction: {instruction}")
+                    break
+
                 # If it branches off, it needs to be visited later on
                 if instruction.has_jump():
                     if instruction.arg_value is None:
@@ -1238,7 +1247,12 @@ class MutableFunction:
                     instruction.update_owner(self, instruction.offset)
 
                 # The next instruction MUST be set if it does NOT end the control flow
-                assert instruction.next_instruction is not None, instruction
+                if instruction.next_instruction is None:
+                    print("---- start dump")
+                    for instr in instructions:
+                        print(instr)
+                    print("---- end dump")
+                    raise RuntimeError(f"next instruction is None: {instruction}")
 
                 instruction = instruction.next_instruction
 
@@ -1352,6 +1366,9 @@ class MutableFunction:
 
         self.__raw_code.clear()
         for i, instruction in enumerate(self.__instructions):
+            if instruction.opcode > 255:
+                raise ValueError(f"invalid instruction at result level: {instruction}")
+
             arg = instruction.get_arg()
 
             if arg > 255:

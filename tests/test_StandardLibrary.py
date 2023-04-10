@@ -1,4 +1,5 @@
 import os.path
+import time
 from unittest import TestCase
 import dis
 

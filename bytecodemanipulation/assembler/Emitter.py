@@ -113,6 +113,7 @@ def apply_inline_assemblies(target: MutableFunction):
         raise RuntimeError("no target found!")
 
     scope = ParsingScope()
+    scope.globals_dict = target.target.__globals__
 
     if target.target.__module__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]
@@ -153,9 +154,10 @@ def apply_inline_assemblies(target: MutableFunction):
         for i, ins in enumerate(bytecode[:-1]):
             ins.next_instruction = bytecode[i + 1]
 
-        print("----")
+        print("---- start ----")
         for e in bytecode:
             print(e)
+        print("---- end ----")
 
         if bytecode:
             stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
@@ -189,24 +191,46 @@ def apply_inline_assemblies(target: MutableFunction):
         max_stack_effects.append(max_stack_effect)
 
         if bytecode:
+            for i, ins in enumerate(bytecode[:-1]):
+                if not ins.has_stop_flow() and not ins.has_unconditional_jump():
+                    ins.next_instruction = bytecode[i+1]
+
+            bytecode[-1].next_instruction = instr.next_instruction
+
             print("inserting AFTER", instr)
             instr.insert_after(bytecode)
+        else:
+            print("empty bytecode block")
+            print(asm)
 
         for ins in bytecode:
             if ins.opcode == Opcodes.BYTECODE_LABEL:
                 label_targets[ins.arg_value] = ins.next_instruction
+
+                if not isinstance(ins, Instruction):
+                    print(ins)
                 ins.change_opcode(Opcodes.NOP)
 
-    for ins in target.instructions:
+    for i, ins in enumerate(target.instructions):
         if ins.opcode == Opcodes.BYTECODE_LABEL:
             label_targets[ins.arg_value] = ins.next_instruction
             ins.change_opcode(Opcodes.NOP)
 
-    def resolve_jump_to_label(ins: Instruction):
+    def resolve_special_code(ins: Instruction):
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
 
-    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
+        elif ins.opcode == Opcodes.STATIC_ATTRIBUTE_ACCESS:
+            source = next(ins.trace_stack_position(0))
+
+            if source.opcode != Opcodes.LOAD_CONST:
+                raise RuntimeError("expected 'constant' for constant attribute access!")
+
+            obj = source.arg_value
+            source.change_opcode(Opcodes.NOP)
+            ins.change_opcode(Opcodes.LOAD_CONST, getattr(obj, ins.arg_value))
+
+    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_special_code))
 
     target.stack_size += max(max_stack_effects)
 

@@ -8,23 +8,23 @@ NAMESPACE std
     # Wrapper around the print builtin
     MACRO ASSEMBLY print(text VARIABLE_ARG)
     {
-        CALL @!print (*§text)
+        CALL ~print (*§text)
         POP
     }
 
     # Wrapper around the input builtin
     MACRO ASSEMBLY input(result VARIABLE, text VARIABLE_ARG)
     {
-        CALL @!input (*§text) -> §result
+        CALL ~input (*§text) -> §result
     }
 
     MACRO ASSEMBLY check_type(expected_type, value, error_message)
     {
-        CALL @!isinstance (§value, §expected_type) -> $MACRO_result
+        CALL ~isinstance (§value, §expected_type) -> $MACRO_result
         OP not $MACRO_result -> $MACRO_result
         IF $MACRO_result
         {
-            CALL @ValueError(§error_message)
+            CALL ~ValueError(§error_message)
             RAISE
         }
     }
@@ -34,18 +34,17 @@ NAMESPACE std
 
         MACRO ASSEMBLY file_walker(directory, file VARIABLE, code CODE_BLOCK)
         {
-            CALL @!__import__("os") -> $MACRO_os
-            CALL $MACRO_os.listdir(§directory) -> $MACRO_files
+            CALL ~os.listdir(§directory) -> $MACRO_files
 
             LOAD 0 -> $MACRO_counter
-            CALL @!len($MACRO_files) -> $MACRO_file_count
+            CALL ~len($MACRO_files) -> $MACRO_file_count
 
             WHILE OP ($MACRO_counter < $MACRO_file_count)
             {
                 LOAD $MACRO_files[$MACRO_counter] -> §file
                 OP $MACRO_counter + 1 -> $MACRO_counter
 
-                CALL $MACRO_os.path.isfile(§file)
+                CALL ~os.path.isfile(§file)
                 IF %
                 {
                     MACRO_PASTE §code

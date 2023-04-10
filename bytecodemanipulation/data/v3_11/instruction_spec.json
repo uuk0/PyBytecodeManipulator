@@ -18,7 +18,8 @@
     "LOAD_GLOBAL",
     "IMPORT_NAME",
     "IMPORT_FROM",
-    "LOAD_METHOD"
+    "LOAD_METHOD",
+    "STATIC_ATTRIBUTE_ACCESS"
   ],
   "HAS_GLOBAL": [
     "STORE_GLOBAL",

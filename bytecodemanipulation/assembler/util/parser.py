@@ -268,7 +268,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
             if isinstance(expected, AbstractToken):
                 if token != expected:
                     raise SyntaxError(
-                        f"Expected {expected}, got {token} (token {self.cursor+1})"
+                        f"Expected {expected}, got {token} (token position: {self.cursor+1})"
                     )
 
             elif isinstance(expected, list):
@@ -281,7 +281,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
                             break
                 else:
                     raise SyntaxError(
-                        f"Expected any of {repr(list(expected))[1:-1]}, got {token} (at token {self.cursor+1})"
+                        f"Expected any of {repr(list(expected))[1:-1]}, got {token} (at token token position: {self.cursor+1})"
                     )
 
             else:

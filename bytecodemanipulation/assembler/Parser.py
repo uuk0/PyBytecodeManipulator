@@ -1,5 +1,6 @@
 import builtins
 import copy
+import types
 import typing
 import warnings
 from abc import ABC
@@ -68,6 +69,7 @@ class ParsingScope:
         self.global_scope = {}
         self.scope_path: typing.List[str] = []
         self._name_counter = 1
+        self.globals_dict = {}
 
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
@@ -326,6 +328,7 @@ class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, 
 
 class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
+    IS_STATIC = False
 
     def __init__(self, name_token: IdentifierToken | IntegerToken | str):
         self.name_token = (
@@ -342,6 +345,9 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
 
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(self.name_token)
+
+    def get_static_value(self, scope: ParsingScope) -> typing.Any:
+        raise ValueError("not implemented")
 
 
 class GlobalAccessExpression(AbstractAccessExpression):
@@ -375,9 +381,13 @@ class GlobalAccessExpression(AbstractAccessExpression):
             )
         ]
 
+    def get_static_value(self, scope: ParsingScope) -> typing.Any:
+        raise ValueError("not implemented")
+
 
 class GlobalStaticAccessExpression(AbstractAccessExpression):
     PREFIX = "@!"
+    IS_STATIC = True
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -399,6 +409,12 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise RuntimeError("Cannot assign to a constant global")
+
+    def get_static_value(self, scope: ParsingScope) -> typing.Any:
+        if self.name_token.text in scope.globals_dict:
+            return scope.globals_dict[self.name_token]
+
+        raise NameError(self.name_token.text)
 
 
 class LocalAccessExpression(AbstractAccessExpression):
@@ -492,6 +508,8 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
 
 
 class ConstantAccessExpression(AbstractAccessExpression):
+    IS_STATIC = True
+
     def __init__(self, value):
         self.value = value
 
@@ -651,7 +669,58 @@ class AttributeAccessExpression(AbstractAccessExpression):
         ],
         parents: list,
     ):
-        return visitor(self, (self.root.visit_parts(visitor),))
+        return visitor(self, (self.root.visit_parts(visitor, parents+[self]),), parents)
+
+
+class StaticAttributeAccessExpression(AbstractAccessExpression):
+    IS_STATIC = True
+
+    def __init__(
+        self, root: AbstractAccessExpression, name_token: IdentifierToken | str
+    ):
+        self.root = root
+        self.name_token = (
+            name_token
+            if isinstance(name_token, IdentifierToken)
+            else IdentifierToken(name_token)
+        )
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self.root == other.root
+            and self.name_token == other.name_token
+        )
+
+    def __repr__(self):
+        return f"{self.root}.!{self.name_token.text}"
+
+    def copy(self) -> "AttributeAccessExpression":
+        return AttributeAccessExpression(self.root.copy(), self.name_token)
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        return self.root.emit_bytecodes(function, scope) + [
+            Instruction.create_with_token(
+                self.name_token, function, -1, "STATIC_ATTRIBUTE_ACCESS", self.name_token.text
+            )
+        ]
+
+    def emit_store_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        raise RuntimeError
+
+    def visit_parts(
+        self,
+        visitor: typing.Callable[
+            [IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]],
+            typing.Any,
+        ],
+        parents: list,
+    ):
+        return visitor(self, (self.root.visit_parts(visitor, parents+[self]),), parents)
 
 
 class DynamicAttributeAccessExpression(AbstractAccessExpression):
@@ -708,6 +777,36 @@ class DynamicAttributeAccessExpression(AbstractAccessExpression):
         return visitor(
             self, (self.root.visit_parts(visitor, parents + [self]),), parents
         )
+
+
+class ModuleAccessExpression(AbstractAccessExpression):
+    IS_STATIC = True
+    PREFIX = "~"
+    _CACHE = builtins.__dict__.copy()
+
+    @classmethod
+    def _cached_lookup(cls, module_name: str) -> types.ModuleType:
+        if module_name not in cls._CACHE:
+            module = cls._CACHE[module_name] = __import__(module_name)
+            return module
+
+        return cls._CACHE[module_name]
+
+    def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        value = self._cached_lookup(self.name_token.text)
+        return [
+            Instruction.create_with_token(self.name_token, function, -1, Opcodes.LOAD_CONST, value)
+        ]
+
+    def emit_store_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        raise RuntimeError
+
+    def get_static_value(self, scope: ParsingScope) -> typing.Any:
+        return self._cached_lookup(self.name_token.text)
 
 
 class MacroAccessExpression(AbstractAccessExpression):
@@ -903,6 +1002,10 @@ class Parser(AbstractParser):
             self.consume(SpecialToken("%"))
             expr = TopOfStackAccessExpression()
 
+        elif start_token.text == "~":
+            self.consume(SpecialToken("~"))
+            expr = ModuleAccessExpression(self.consume(IdentifierToken))
+
         elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS:
             self.consume(start_token)
             self.consume(SpecialToken("("))
@@ -924,7 +1027,10 @@ class Parser(AbstractParser):
                 expr = DynamicAttributeAccessExpression(expr, source)
                 self.consume(SpecialToken(")"))
             else:
-                expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
+                if self.try_consume(SpecialToken("!")):
+                    expr = StaticAttributeAccessExpression(expr, self.consume(IdentifierToken))
+                else:
+                    expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
 
         if self.try_consume(SpecialToken("[")):
             # Consume either an Integer or a expression
@@ -939,7 +1045,10 @@ class Parser(AbstractParser):
                 raise SyntaxError(self.try_inspect())
 
             while self.try_consume(SpecialToken(".")):
-                expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
+                if self.try_consume(SpecialToken("!")):
+                    expr = StaticAttributeAccessExpression(expr, self.consume(IdentifierToken))
+                else:
+                    expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
 
             self.consume(SpecialToken("]"))
             return SubscriptionAccessExpression(expr, index)
