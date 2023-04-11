@@ -1312,12 +1312,12 @@ class MutableFunction:
                         root.next_instruction = instruction
                         missing -= 1
 
-                    # And now, insert the "NOP"'s required after the previous for the things
-                    for delta in range(missing):
-                        nop = Instruction(self, previous.offset + delta + 1, "NOP")
-                        nop.next_instruction = instruction
-                        previous.next_instruction = nop
-                        previous = nop
+                    previous.insert_after([
+                        Instruction(self, previous.offset + i + 1, Opcodes.NOP)
+                        for i in range(missing)
+                    ])
+
+                nop_count = 0
 
             previous = instruction
 

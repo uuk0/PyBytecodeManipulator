@@ -1,4 +1,7 @@
 
+# Version 0.2.2
+- added assembly system, including macros
+
 # Version 0.2.1
 - added a few more opcodes
 - fixed potential issue when the system does not detect children of classes correctly, when only the class is annotated
