@@ -20,6 +20,7 @@ from bytecodemanipulation.assembler.Parser import (
     ParsingScope,
     MacroAccessExpression,
     MacroAssembly,
+    throw_positioned_syntax_error,
 )
 from bytecodemanipulation.assembler.Lexer import (
     SpecialToken,
@@ -72,7 +73,10 @@ class LoadAssembly(AbstractAssemblyInstruction):
         )
 
         if access_expr is None:
-            raise SyntaxError(parser.try_inspect())
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <expression>"
+            )
+            raise SyntaxError
 
         if parser.try_consume_multi(
             [
@@ -146,6 +150,9 @@ class StoreAssembly(AbstractAssemblyInstruction):
         access = parser.try_consume_access_to_value(allow_tos=False, scope=scope)
 
         if access is None:
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <epxression>"
+            )
             raise SyntaxError
 
         source = parser.try_parse_data_source()
@@ -456,7 +463,10 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         if expr := cls.try_consume_binary(parser):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
-        raise SyntaxError("no valid operation found!")
+        throw_positioned_syntax_error(
+            scope, parser.try_inspect(), "expected <operator>"
+        )
+        raise SyntaxError
 
     @classmethod
     def try_consume_arrow(cls, parser: "Parser", scope: ParsingScope) -> AbstractAccessExpression | None:
@@ -592,7 +602,10 @@ class IFAssembly(AbstractAssemblyInstruction):
         )
 
         if source is None:
-            raise SyntaxError(f"<expression> expected, got {parser[0]}!")
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <epxression>"
+            )
+            raise SyntaxError
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
@@ -715,6 +728,9 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         )
 
         if condition is None:
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <epxression>"
+            )
             raise SyntaxError
 
         if parser.try_consume(SpecialToken("'")):
@@ -1126,7 +1142,10 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         )
 
         if not isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)):
-            raise SyntaxError(value)
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <constant epxression>"
+            )
+            raise SyntaxError
 
         if parser.try_consume_multi(
             [
@@ -1348,7 +1367,10 @@ class CallAssembly(AbstractAssemblyInstruction):
                     args.append(CallAssembly.StarArg(expr))
 
                 else:
-                    raise SyntaxError("*<arg> only allowed before keyword arguments!")
+                    throw_positioned_syntax_error(
+                        scope, parser.try_inspect(), "*<arg> only allowed before keyword arguments!"
+                    )
+                    raise SyntaxError
 
             elif not has_seen_keyword_arg:
                 if is_macro and parser[0] == SpecialToken("{"):
@@ -1366,13 +1388,19 @@ class CallAssembly(AbstractAssemblyInstruction):
                 args.append(CallAssembly.Arg(expr, is_dynamic))
 
             else:
-                raise SyntaxError("pure <arg> only allowed before keyword arguments!")
+                throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "pure <arg> only allowed before keyword arguments"
+                )
+                raise SyntaxError
 
             if not parser.try_consume(SpecialToken(",")):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            raise SyntaxError(f"expected closing bracket, got {parser[0]}")
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected ')'"
+            )
+            raise SyntaxError
 
         if parser.try_consume_multi(
             [
@@ -1715,7 +1743,10 @@ class YieldAssembly(AbstractAssemblyInstruction):
             )
 
             if target is None:
-                raise SyntaxError("expected writeable target")
+                throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected <expression>"
+                )
+                raise SyntaxError
 
         else:
             target = None

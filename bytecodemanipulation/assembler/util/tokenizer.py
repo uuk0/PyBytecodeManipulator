@@ -99,12 +99,12 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
     INCLUDE_LINE_INFO = True
 
-    def __init__(self, text: str):
+    def __init__(self, text: str, initial_line_offset=0):
         super().__init__()
         self.text = text
         self.old_line_number = 1
-        self.old_column_number = -1
-        self._line_offset = 0
+        self.old_column_number = 0
+        self._line_offset = initial_line_offset
 
     def add_line_offset(self, offset: int):
         self._line_offset += offset
@@ -245,6 +245,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
         Returns the list of tokens.
         """
         skipped = 0
+        self.old_column_number = 0
 
         tokens = []
         while not self.is_empty():
@@ -262,6 +263,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
             if result is None:
                 skipped += self.cursor - old_cursor
+                self.old_column_number += self.cursor - old_cursor
                 continue
 
             if self.INCLUDE_LINE_INFO:
@@ -275,10 +277,12 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     r.column = self.old_column_number + skipped
                     r.span = self.cursor - old_cursor
 
-                # print(repr(partial))
+                # print(f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})")
 
                 if "\n" in partial:
                     self.old_column_number = len(partial) - partial.index("\n") - 1
+                else:
+                    self.old_column_number += r.span
 
                 skipped = 0
 
