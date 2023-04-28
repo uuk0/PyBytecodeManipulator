@@ -67,7 +67,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "LoadAssembly":
-        access_expr = parser.try_consume_access_token(
+        access_expr = parser.try_consume_access_to_value(
             allow_tos=False, allow_primitives=True
         )
 
@@ -80,7 +80,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_token()
+            target = parser.try_consume_access_to_value()
         else:
             target = None
 
@@ -143,7 +143,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser") -> "StoreAssembly":
-        access = parser.try_consume_access_token(allow_tos=False)
+        access = parser.try_consume_access_to_value(allow_tos=False)
 
         if access is None:
             raise SyntaxError
@@ -462,7 +462,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def try_consume_arrow(cls, parser: "Parser") -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
             parser.consume(SpecialToken(">"))
-            return parser.try_consume_access_token()
+            return parser.try_consume_access_to_value()
 
     @classmethod
     def try_consume_single(cls, parser: "Parser") -> typing.Optional[IOperation]:
@@ -840,7 +840,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_token()
+            target = parser.try_consume_access_to_value()
         else:
             target = None
 
@@ -986,7 +986,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_token()
+            target = parser.try_consume_access_to_value()
         else:
             target = None
 
@@ -1134,7 +1134,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_token()
+            target = parser.try_consume_access_to_value()
         else:
             target = None
 
@@ -1380,7 +1380,7 @@ class CallAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_token()
+            target = parser.try_consume_access_to_value()
         else:
             target = None
 
@@ -1991,7 +1991,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("-")) and parser.try_consume(
             SpecialToken(">")
         ):
-            target = parser.try_consume_access_token()
+            target = parser.try_consume_access_to_value()
         else:
             target = None
 

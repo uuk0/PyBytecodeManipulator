@@ -960,9 +960,20 @@ class Parser(AbstractParser):
                     self.rollback()
                     return MacroAssembly.consume_call(self)
 
-    def try_consume_access_token(
-        self, allow_tos=True, allow_primitives=False, allow_op=True
+    def try_consume_access_to_value(
+        self, allow_tos=True, allow_primitives=False, allow_op=True, allow_advanced_access=True,
     ) -> AbstractAccessExpression | None:
+        """
+        Consumes an access to a value, for read or write access
+
+        todo: add an option to force write compatibility
+        todo: make it extendable
+
+        :param allow_tos: if TOS (%) is allowed
+        :param allow_primitives: if primitives are allowed, e.g. numeric literals
+        :param allow_op: if operations are allowed, starting with OP
+        :param allow_advanced_access: if expressions like @global[$index].attribute are allowed
+        """
         start_token = self.try_inspect()
 
         if start_token is None:
@@ -1015,43 +1026,49 @@ class Parser(AbstractParser):
         else:
             return
 
-        while self.try_consume(SpecialToken(".")):
-            if self.try_consume(SpecialToken("(")):
-                source = self.try_parse_data_source(
-                    allow_tos=True, allow_primitives=True, include_bracket=False
-                )
+        if allow_advanced_access:
+            while True:
+                if self.try_consume(SpecialToken("[")):
+                    # Consume either an Integer or a expression
+                    if not (
+                        index := self.try_consume_access_to_value(
+                            allow_primitives=True,
+                            allow_tos=allow_tos,
+                            allow_op=allow_op,
+                        )
+                    ):
+                        raise SyntaxError(self.try_inspect())
 
-                if source is None:
-                    raise SyntaxError("expected expression")
+                    if not self.try_consume(SpecialToken("]")):
+                        raise SyntaxError(self.try_inspect())
 
-                expr = DynamicAttributeAccessExpression(expr, source)
-                self.consume(SpecialToken(")"))
-            else:
-                if self.try_consume(SpecialToken("!")):
-                    expr = StaticAttributeAccessExpression(expr, self.consume(IdentifierToken))
+                    expr = SubscriptionAccessExpression(
+                        expr,
+                        index,
+                    )
+
+                elif self.try_consume(SpecialToken(".")):
+                    if self.try_consume(SpecialToken("(")):
+                        if not (index := self.try_consume_access_to_value(
+                            allow_primitives=True,
+                            allow_tos=allow_tos,
+                            allow_op=allow_op,
+                        )):
+                            raise SyntaxError(self.try_inspect())
+
+                        if not self.try_consume(SpecialToken(")")):
+                            raise SyntaxError(self.try_inspect())
+
+                        expr = DynamicAttributeAccessExpression(expr, index)
+                    elif self.try_consume(SpecialToken("!")):
+                        name = self.try_consume(IdentifierToken)
+                        expr = StaticAttributeAccessExpression(expr, name)
+                    else:
+                        name = self.try_consume(IdentifierToken)
+                        expr = AttributeAccessExpression(expr, name)
+
                 else:
-                    expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
-
-        if self.try_consume(SpecialToken("[")):
-            # Consume either an Integer or a expression
-            if not (
-                index := self.try_parse_data_source(
-                    allow_primitives=True,
-                    allow_tos=allow_tos,
-                    include_bracket=False,
-                    allow_op=allow_op,
-                )
-            ):
-                raise SyntaxError(self.try_inspect())
-
-            while self.try_consume(SpecialToken(".")):
-                if self.try_consume(SpecialToken("!")):
-                    expr = StaticAttributeAccessExpression(expr, self.consume(IdentifierToken))
-                else:
-                    expr = AttributeAccessExpression(expr, self.consume(IdentifierToken))
-
-            self.consume(SpecialToken("]"))
-            return SubscriptionAccessExpression(expr, index)
+                    break
 
         return expr
 
@@ -1068,7 +1085,7 @@ class Parser(AbstractParser):
             self.rollback()
             return
 
-        if access := self.try_consume_access_token(
+        if access := self.try_consume_access_to_value(
             allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op
         ):
             self.discard_save()
@@ -1086,7 +1103,7 @@ class Parser(AbstractParser):
             if boolean := self.try_consume((IdentifierToken("True"), IdentifierToken("False"))):
                 return ConstantAccessExpression(boolean.text == "True")
 
-        print(self.try_inspect())
+        print("failed", self.try_inspect())
 
         self.rollback()
 
@@ -1628,7 +1645,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         name = parser.consume(IdentifierToken)
 
         if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
-            target = parser.try_consume_access_token(allow_primitives=False)
+            target = parser.try_consume_access_to_value(allow_primitives=False)
         else:
             target = None
 
