@@ -35,7 +35,7 @@ class RaiseAssembly(AbstractAssemblyInstruction):
     NAME = "RAISE"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "RaiseAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "RaiseAssembly":
         return cls(
             parser.try_parse_data_source(include_bracket=False)
         )
@@ -66,9 +66,9 @@ class LoadAssembly(AbstractAssemblyInstruction):
     NAME = "LOAD"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "LoadAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "LoadAssembly":
         access_expr = parser.try_consume_access_to_value(
-            allow_tos=False, allow_primitives=True
+            allow_tos=False, allow_primitives=True, scope=scope
         )
 
         if access_expr is None:
@@ -80,7 +80,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -142,8 +142,8 @@ class StoreAssembly(AbstractAssemblyInstruction):
     NAME = "STORE"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "StoreAssembly":
-        access = parser.try_consume_access_to_value(allow_tos=False)
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "StoreAssembly":
+        access = parser.try_consume_access_to_value(allow_tos=False, scope=scope)
 
         if access is None:
             raise SyntaxError
@@ -449,20 +449,20 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             pass
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "OpAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "OpAssembly":
         if expr := cls.try_consume_single(parser):
-            return cls(expr, cls.try_consume_arrow(parser))
+            return cls(expr, cls.try_consume_arrow(parser, scope))
 
         if expr := cls.try_consume_binary(parser):
-            return cls(expr, cls.try_consume_arrow(parser))
+            return cls(expr, cls.try_consume_arrow(parser, scope))
 
         raise SyntaxError("no valid operation found!")
 
     @classmethod
-    def try_consume_arrow(cls, parser: "Parser") -> AbstractAccessExpression | None:
+    def try_consume_arrow(cls, parser: "Parser", scope: ParsingScope) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
             parser.consume(SpecialToken(">"))
-            return parser.try_consume_access_to_value()
+            return parser.try_consume_access_to_value(scope=scope)
 
     @classmethod
     def try_consume_single(cls, parser: "Parser") -> typing.Optional[IOperation]:
@@ -586,7 +586,7 @@ class IFAssembly(AbstractAssemblyInstruction):
     NAME = "IF"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "IFAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "IFAssembly":
         source = parser.try_parse_data_source(
             allow_primitives=True, include_bracket=False
         )
@@ -709,7 +709,7 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     NAME = "WHILE"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "WHILEAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "WHILEAssembly":
         condition = parser.try_parse_data_source(
             allow_primitives=True, include_bracket=False
         )
@@ -830,7 +830,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     NAME = "LOAD_GLOBAL"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "LoadGlobalAssembly":
+    def consume(cls, parser: "Parser", scope) -> "LoadGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
@@ -840,7 +840,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -906,7 +906,7 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
     NAME = "STORE_GLOBAL"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "StoreGlobalAssembly":
+    def consume(cls, parser: "Parser", scope) -> "StoreGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
@@ -976,7 +976,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
     NAME = "LOAD_FAST"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "LoadFastAssembly":
+    def consume(cls, parser: "Parser", scope) -> "LoadFastAssembly":
         parser.try_consume(SpecialToken("$"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
@@ -986,7 +986,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -1052,7 +1052,7 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
     NAME = "STORE_FAST"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "StoreFastAssembly":
+    def consume(cls, parser: "Parser", scope) -> "StoreFastAssembly":
         parser.try_consume(SpecialToken("$"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
@@ -1120,7 +1120,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
     NAME = "LOAD_CONST"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "LoadConstAssembly":
+    def consume(cls, parser: "Parser", scope) -> "LoadConstAssembly":
         value = parser.try_parse_data_source(
             allow_primitives=True, include_bracket=False
         )
@@ -1134,7 +1134,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -1286,14 +1286,14 @@ class CallAssembly(AbstractAssemblyInstruction):
         pass
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "CallAssembly":
+    def consume(cls, parser: "Parser", scope) -> "CallAssembly":
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
         is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
-        return cls.consume_inner(parser, is_partial, is_macro)
+        return cls.consume_inner(parser, is_partial, is_macro, scope)
 
     @classmethod
     def consume_inner(
-        cls, parser: Parser, is_partial: bool, is_macro: bool
+        cls, parser: Parser, is_partial: bool, is_macro: bool, scope: ParsingScope
     ) -> "CallAssembly":
         if not is_macro:
             call_target = parser.try_parse_data_source(include_bracket=False)
@@ -1380,15 +1380,15 @@ class CallAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
         return cls(call_target, args, target, is_partial, is_macro)
 
     @classmethod
-    def consume_macro_call(cls, parser: Parser) -> "CallAssembly":
-        return cls.consume_inner(parser, False, True)
+    def consume_macro_call(cls, parser: Parser, scope) -> "CallAssembly":
+        return cls.consume_inner(parser, False, True, scope)
 
     def __init__(
         self,
@@ -1622,7 +1622,7 @@ class PopElementAssembly(AbstractAssemblyInstruction):
     NAME = "POP"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "PopElementAssembly":
+    def consume(cls, parser: "Parser", scope) -> "PopElementAssembly":
         count = parser.try_consume(IntegerToken)
         return cls(count if count is not None else IntegerToken("1"))
 
@@ -1653,7 +1653,7 @@ class ReturnAssembly(AbstractAssemblyInstruction):
     NAME = "RETURN"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "ReturnAssembly":
+    def consume(cls, parser: "Parser", scope) -> "ReturnAssembly":
         return cls(
             parser.try_parse_data_source(
                 allow_primitives=True, allow_op=True, include_bracket=False
@@ -1700,7 +1700,7 @@ class YieldAssembly(AbstractAssemblyInstruction):
     NAME = "YIELD"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "YieldAssembly":
+    def consume(cls, parser: "Parser", scope) -> "YieldAssembly":
         is_star = bool(parser.try_consume(SpecialToken("*")))
 
         expr = parser.try_parse_data_source(
@@ -1809,7 +1809,7 @@ class JumpAssembly(AbstractAssemblyInstruction):
     NAME = "JUMP"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "JumpAssembly":
+    def consume(cls, parser: "Parser", scope) -> "JumpAssembly":
         has_quotes = parser.try_consume(SpecialToken("'"))
 
         label_target = parser.consume(IdentifierToken)
@@ -1830,7 +1830,7 @@ class JumpAssembly(AbstractAssemblyInstruction):
 
             if condition is None or not parser.try_consume(SpecialToken(")")):
                 parser.rollback()
-                condition = OpAssembly.consume(parser)
+                condition = OpAssembly.consume(parser, None)
                 parser.consume(SpecialToken(")"))
             else:
                 parser.discard_save()
@@ -1919,7 +1919,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     NAME = "DEF"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "FunctionDefinitionAssembly":
+    def consume(cls, parser: "Parser", scope) -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
         bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []
         args = []
@@ -1991,7 +1991,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("-")) and parser.try_consume(
             SpecialToken(">")
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 

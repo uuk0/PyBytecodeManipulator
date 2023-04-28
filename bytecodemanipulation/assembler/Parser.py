@@ -70,6 +70,7 @@ class ParsingScope:
         self.scope_path: typing.List[str] = []
         self._name_counter = 1
         self.globals_dict = {}
+        self.module_file: str = None
 
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
@@ -113,6 +114,7 @@ class ParsingScope:
             instance.labels = self.labels
         instance.global_scope = self.global_scope
         instance.scope_path = self.scope_path.copy()
+        instance.module_file = self.module_file
 
         if sub_scope_name is not None:
             if isinstance(sub_scope_name, str):
@@ -140,6 +142,19 @@ class ParsingScope:
             raise ValueError(f"name '{name[-1]}' does already exists in the scope!")
 
         scope[name[-1]] = data
+
+
+def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken, message: str):
+    if scope.module_file:
+        print(f"SyntaxError in {scope.module_file}")
+        with open(scope.module_file, mode="r") as f:
+            content = f.readlines()
+
+        line = content[token.line]
+        print(line)
+        print((" " * token.column) + "^" + ("~" * (token.span - 1)))
+
+    raise SyntaxError(message)
 
 
 class JumpToLabel:
@@ -263,7 +278,7 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     NAME: str | None = None
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractAssemblyInstruction":
         raise NotImplementedError
 
     def emit_bytecodes(
@@ -886,7 +901,7 @@ class Parser(AbstractParser):
         return body
 
     def parse_while_predicate(
-        self, predicate: typing.Callable[[], bool], eof_error: str = None
+        self, predicate: typing.Callable[[], bool], eof_error: str = None, scope: ParsingScope = None
     ) -> CompoundExpression:
         root = CompoundExpression()
 
@@ -898,12 +913,12 @@ class Parser(AbstractParser):
                 raise SyntaxError(f"expected Identifier, got {self.try_inspect()}")
 
             if instr_token.text not in self.INSTRUCTIONS:
-                if not (instr := self.try_parse_custom_assembly(instr_token)):
+                if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
                     raise SyntaxError(
                         f"expected <assembly instruction name> or <assembly macro name>, got '{instr_token.text}'"
                     )
             else:
-                instr = self.INSTRUCTIONS[instr_token.text].consume(self)
+                instr = self.INSTRUCTIONS[instr_token.text].consume(self, scope)
 
             root.add_child(instr)
 
@@ -940,7 +955,7 @@ class Parser(AbstractParser):
 
         return root
 
-    def try_parse_custom_assembly(self, base_token: IdentifierToken):
+    def try_parse_custom_assembly(self, base_token: IdentifierToken, scope: ParsingScope):
         self.cursor -= 1
         self.save()
         self.cursor += 1
@@ -958,10 +973,10 @@ class Parser(AbstractParser):
             ).assemblies:
                 if macro.allow_assembly_instr:
                     self.rollback()
-                    return MacroAssembly.consume_call(self)
+                    return MacroAssembly.consume_call(self, scope)
 
     def try_consume_access_to_value(
-        self, allow_tos=True, allow_primitives=False, allow_op=True, allow_advanced_access=True,
+        self, allow_tos=True, allow_primitives=False, allow_op=True, allow_advanced_access=True, scope=None
     ) -> AbstractAccessExpression | None:
         """
         Consumes an access to a value, for read or write access
@@ -973,6 +988,7 @@ class Parser(AbstractParser):
         :param allow_primitives: if primitives are allowed, e.g. numeric literals
         :param allow_op: if operations are allowed, starting with OP
         :param allow_advanced_access: if expressions like @global[$index].attribute are allowed
+        :param scope: the parsing scope instance
         """
         start_token = self.try_inspect()
 
@@ -1020,7 +1036,7 @@ class Parser(AbstractParser):
         elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS:
             self.consume(start_token)
             self.consume(SpecialToken("("))
-            expr = self.INSTRUCTIONS["OP"].consume(self)
+            expr = self.INSTRUCTIONS["OP"].consume(self, scope)
             self.consume(SpecialToken(")"))
 
         else:
@@ -1035,6 +1051,7 @@ class Parser(AbstractParser):
                             allow_primitives=True,
                             allow_tos=allow_tos,
                             allow_op=allow_op,
+                            scope=scope,
                         )
                     ):
                         raise SyntaxError(self.try_inspect())
@@ -1053,6 +1070,7 @@ class Parser(AbstractParser):
                             allow_primitives=True,
                             allow_tos=allow_tos,
                             allow_op=allow_op,
+                            scope=scope,
                         )):
                             raise SyntaxError(self.try_inspect())
 
@@ -1078,6 +1096,7 @@ class Parser(AbstractParser):
         allow_primitives=False,
         include_bracket=True,
         allow_op=True,
+        scope=None,
     ) -> AbstractSourceExpression | None:
         self.save()
 
@@ -1086,7 +1105,7 @@ class Parser(AbstractParser):
             return
 
         if access := self.try_consume_access_to_value(
-            allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op
+            allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op, scope=scope
         ):
             self.discard_save()
             if include_bracket:
@@ -1114,7 +1133,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
     NAME = "LABEL"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractAssemblyInstruction":
         return cls(parser.consume(IdentifierToken))
 
     def __init__(self, name_token: IdentifierToken | str):
@@ -1148,7 +1167,7 @@ class PythonCodeAssembly(AbstractAssemblyInstruction):
     NAME = "PYTHON"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "PythonCodeAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "PythonCodeAssembly":
         return cls(parser.consume(PythonCodeToken))
 
     def __init__(self, code: PythonCodeToken | str):
@@ -1191,7 +1210,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
     NAME = "NAMESPACE"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "NamespaceAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "NamespaceAssembly":
         name = [parser.consume(IdentifierToken)]
 
         while parser.try_consume(SpecialToken(":")):
@@ -1429,7 +1448,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 return inst
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "MacroAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "MacroAssembly":
         allow_assembly_instr = bool(parser.try_consume(IdentifierToken("ASSEMBLY")))
 
         name = [parser.consume(IdentifierToken)]
@@ -1468,7 +1487,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         return cls(name, args, body, allow_assembly_instr)
 
     @classmethod
-    def consume_call(cls, parser: Parser) -> AbstractAssemblyInstruction:
+    def consume_call(cls, parser: Parser, scope: ParsingScope) -> AbstractAssemblyInstruction:
         raise RuntimeError
 
     def __init__(
@@ -1638,14 +1657,14 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
     NAME = "MACRO_PASTE"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "MacroPasteAssembly":
+    def consume(cls, parser: "Parser", scope) -> "MacroPasteAssembly":
         # Parse an optional § infront of the name
         parser.try_consume(SpecialToken("§"))
 
         name = parser.consume(IdentifierToken)
 
         if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
-            target = parser.try_consume_access_to_value(allow_primitives=False)
+            target = parser.try_consume_access_to_value(allow_primitives=False, scope=scope)
         else:
             target = None
 
@@ -1686,7 +1705,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
     NAME = "MACRO_IMPORT"
 
     @classmethod
-    def consume(cls, parser: "Parser") -> "AbstractAssemblyInstruction":
+    def consume(cls, parser: "Parser", scope) -> "AbstractAssemblyInstruction":
         name = [parser.consume(IdentifierToken)]
 
         while parser.try_consume(SpecialToken(".")):

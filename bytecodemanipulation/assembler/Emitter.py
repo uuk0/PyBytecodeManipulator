@@ -114,6 +114,7 @@ def apply_inline_assemblies(target: MutableFunction):
 
     scope = ParsingScope()
     scope.globals_dict = target.target.__globals__
+    scope.module_file = target.target.__globals__["__file__"]
 
     if target.target.__module__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]
@@ -243,6 +244,11 @@ def apply_inline_assemblies(target: MutableFunction):
 
 def execute_module_in_instance(asm_code: str, module: types.ModuleType):
     scope = ParsingScope()
+
+    try:
+        scope.module_file = module.__file__
+    except AttributeError:
+        pass
 
     if module.__name__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[module.__name__]
