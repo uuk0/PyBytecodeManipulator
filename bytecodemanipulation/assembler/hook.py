@@ -33,7 +33,7 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
             asm_code = fid.read()
 
         bytecodemanipulation.assembler.Emitter.execute_module_in_instance(
-            asm_code, module
+            asm_code, module, self.path
         )
 
         return module

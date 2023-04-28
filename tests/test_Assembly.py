@@ -69,7 +69,7 @@ class TestParser(TestCase):
 #         scope.module_file = __file__
 #         expr = Parser("""
 # LOAD 10 -> $hello[0].(hello
-# """, initial_line_offset=68).parse(scope=scope)
+# """, initial_line_offset=67).parse(scope=scope)
 
     def test_load_global(self):
         expr = Parser(

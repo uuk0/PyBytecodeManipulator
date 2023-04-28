@@ -471,7 +471,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     @classmethod
     def try_consume_arrow(cls, parser: "Parser", scope: ParsingScope) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
-            parser.consume(SpecialToken(">"))
+            parser.consume(SpecialToken(">"), err_arg=scope)
             return parser.try_consume_access_to_value(scope=scope)
 
     @classmethod
@@ -613,7 +613,7 @@ class IFAssembly(AbstractAssemblyInstruction):
         else:
             label_name = None
 
-        body = parser.parse_body()
+        body = parser.parse_body(scope=scope)
 
         return cls(
             source,
@@ -1317,16 +1317,22 @@ class CallAssembly(AbstractAssemblyInstruction):
         if not is_macro:
             call_target = parser.try_parse_data_source(include_bracket=False)
         else:
-            name = [parser.consume(IdentifierToken)]
+            name = [parser.consume(IdentifierToken, err_arg=scope)]
 
             while parser.try_consume(SpecialToken(":")):
-                name.append(parser.consume(IdentifierToken))
+                name.append(parser.consume(IdentifierToken, err_arg=scope))
 
             call_target = MacroAccessExpression(name)
 
+        if call_target is None:
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <expression> (did you forget the prefix?)" if not is_macro else "expected <macro name>"
+            )
+            raise SyntaxError
+
         args: typing.List[CallAssembly.IArg] = []
 
-        parser.consume(SpecialToken("("))
+        parser.consume(SpecialToken("("), err_arg=scope)
 
         has_seen_keyword_arg = False
 

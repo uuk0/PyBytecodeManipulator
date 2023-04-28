@@ -195,6 +195,10 @@ class IdentifierExpression(AbstractExpression):
         return IdentifierExpression(self.token)
 
 
+def raise_syntax_error(token: AbstractToken, message: str, arg):
+    raise SyntaxError(f"{token}: {message}")
+
+
 class AbstractParser(AbstractCursorStateItem, abc.ABC):
     def __init__(self, tokens: typing.List[AbstractToken]):
         super().__init__()
@@ -261,7 +265,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         "T", AbstractToken, typing.List[typing.Type[AbstractToken] | AbstractToken]
     )
 
-    def consume(self, expected: T | typing.Type[T]) -> T:
+    def consume(self, expected: T | typing.Type[T], err_arg=None) -> T:
         """
         Consumes a token and compares it against the 'expected' (which is an instance or the expected type of token)
 
@@ -273,9 +277,8 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         if expected:
             if isinstance(expected, AbstractToken):
                 if token != expected:
-                    raise SyntaxError(
-                        f"Expected {expected}, got {token} (token position: {self.cursor+1})"
-                    )
+                    raise_syntax_error(token, f"Expected {expected}", err_arg)
+                    raise SyntaxError
 
             elif isinstance(expected, list):
                 for element in expected:

@@ -273,8 +273,8 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     self.old_line_number += partial.count("\n")
 
                 for r in result if isinstance(result, list) else (result,):
-                    r.line = self.old_line_number + self._line_offset
-                    r.column = self.old_column_number + skipped
+                    r.line = self.old_line_number + self._line_offset - 1
+                    r.column = self.old_column_number + skipped - (len(partial) - len(partial.lstrip()))
                     r.span = self.cursor - old_cursor
 
                 # print(f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})")

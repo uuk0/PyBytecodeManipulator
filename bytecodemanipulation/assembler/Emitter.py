@@ -242,11 +242,11 @@ def apply_inline_assemblies(target: MutableFunction):
     return target
 
 
-def execute_module_in_instance(asm_code: str, module: types.ModuleType):
+def execute_module_in_instance(asm_code: str, module: types.ModuleType, file: str = None):
     scope = ParsingScope()
 
     try:
-        scope.module_file = module.__file__
+        scope.module_file = file or module.__file__
     except AttributeError:
         pass
 

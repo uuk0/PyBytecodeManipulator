@@ -31,7 +31,6 @@ NAMESPACE std
 
     NAMESPACE os
     {
-
         MACRO ASSEMBLY file_walker(directory, file VARIABLE, code CODE_BLOCK)
         {
             CALL ~os.listdir(§directory) -> $MACRO_files
@@ -51,7 +50,5 @@ NAMESPACE std
                 }
             }
         }
-
     }
-
 }

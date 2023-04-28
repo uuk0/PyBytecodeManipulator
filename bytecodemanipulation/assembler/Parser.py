@@ -35,6 +35,8 @@ try:
         BinaryExpression,
         IdentifierExpression,
     )
+    import code_parser.parsers.common as parser_file
+
 except ImportError:
     from bytecodemanipulation.assembler.util.tokenizer import (
         AbstractToken,
@@ -53,6 +55,7 @@ except ImportError:
         BinaryExpression,
         IdentifierExpression,
     )
+    import bytecodemanipulation.assembler.util.parser as parser_file
 
 
 def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
@@ -148,7 +151,7 @@ class ParsingScope:
 def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken, message: str):
     if scope and scope.module_file and token:
         print(f"SyntaxError in \"{scope.module_file}\"", file=sys.stderr)
-        with open(scope.module_file, mode="r") as f:
+        with open(scope.module_file, mode="r", encoding="utf-8") as f:
             content = f.readlines()
 
         line = content[token.line]
@@ -159,6 +162,9 @@ def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken, mes
         raise SyntaxError(f"{token}: {message}")
 
     raise SyntaxError(message)
+
+
+parser_file.raise_syntax_error = lambda token, text, scope: throw_positioned_syntax_error(scope, token, text)
 
 
 class JumpToLabel:
@@ -881,9 +887,10 @@ class Parser(AbstractParser):
         self.scope = scope or ParsingScope()
 
     def parse(self, scope: ParsingScope=None) -> CompoundExpression:
+        self.scope = scope or self.scope
         return self.parse_while_predicate(lambda: not self.is_empty(), scope=scope or self.scope)
 
-    def parse_body(self, namespace_part: str | list | None = None) -> CompoundExpression:
+    def parse_body(self, namespace_part: str | list | None = None, scope: ParsingScope = None) -> CompoundExpression:
         if namespace_part is not None:
             if isinstance(namespace_part, str):
                 self.scope.scope_path.append(namespace_part)
@@ -894,6 +901,7 @@ class Parser(AbstractParser):
         body = self.parse_while_predicate(
             lambda: not self.try_consume(SpecialToken("}")),
             eof_error="Expected '}', got EOF",
+            scope=scope,
         )
 
         if namespace_part:
@@ -1246,7 +1254,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
         while parser.try_consume(SpecialToken(":")):
             name.append(parser.consume(IdentifierToken))
 
-        assembly = parser.parse_body(namespace_part=[e.text for e in name])
+        assembly = parser.parse_body(namespace_part=[e.text for e in name], scope=scope)
 
         return cls(
             name,
@@ -1512,7 +1520,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     parser.consume(SpecialToken(")"))
                     break
 
-        body = parser.parse_body()
+        body = parser.parse_body(scope=scope)
 
         return cls(name, args, body, allow_assembly_instr)
 
