@@ -45,6 +45,27 @@ def make_macro(export_name: str = None, /):
     :param export_name: the name to export into the global namespace
     """
     def annotation(function):
+        from bytecodemanipulation.assembler.Parser import MacroAssembly
+        from bytecodemanipulation.assembler.Lexer import IdentifierToken
+
+        macro_asm = MacroAssembly(
+            [
+                IdentifierToken(e)
+                for e in export_name.split(":")
+            ]
+            if export_name else
+            [
+                IdentifierToken(function.__name__)
+            ],
+            [
+                MacroAssembly.MacroArg(IdentifierToken(e))
+                for e in function.__code__.co_varnems[:function.__code__.co_argcount]
+            ],
+            MacroAssembly.Function2CompoundMapper(function),
+        )
+
+        # todo: store macro assembly into file namespace
+
         return function
 
     return annotation

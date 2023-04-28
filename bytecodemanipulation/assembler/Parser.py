@@ -973,7 +973,7 @@ class Parser(AbstractParser):
                 return ConstantAccessExpression(string.text)
 
             if integer := self.try_consume(IntegerToken):
-                return ConstantAccessExpression(int(integer.text))
+                return ConstantAccessExpression(int(integer.text) if "." not in integer.text else float(integer.text))
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
             return

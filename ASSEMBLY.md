@@ -81,7 +81,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - \<access>\[\<index or expression>]: value by \[] operator
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
 - A string literal with " as quotes, and \\" for escaping
-- A signed integer
+- A signed integer or floating-point number
 - \<expression>.\<name>: access an attribute of the expression
 - \<expression>.(\<expression>): accesses the attribute by an dynamic name
 
@@ -125,7 +125,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - maybe also the possibility to define code for emitting assembly instructions
     - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
-- makro MACRO_PASTE should also work in subfunctions
+- makro MACRO_PASTE should also work in subfunctions (so store it somewhere in the scope)
 
 ## PyASM
 

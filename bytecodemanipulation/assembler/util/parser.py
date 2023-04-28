@@ -262,6 +262,12 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
     )
 
     def consume(self, expected: T | typing.Type[T]) -> T:
+        """
+        Consumes a token and compares it against the 'expected' (which is an instance or the expected type of token)
+
+        :return: the parsed token
+        :raises SyntaxError: if it failed to parse the token (either invalid type or end of stream)
+        """
         token: AbstractToken = self.inspect()
 
         if expected:
@@ -295,6 +301,12 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         return token
 
     def try_consume(self, expected: T | typing.Type[T]) -> T | None:
+        """
+        Tries to consume a token from the token stream
+
+        :param expected: the expected type of token, either instance or type
+        :return: the consumed token or None
+        """
         token: AbstractToken = self.try_inspect()
 
         if token is None:
@@ -326,11 +338,19 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
     def try_consume_multi(
         self, elements: typing.List[T | typing.Type[T]]
     ) -> typing.List[T] | None:
+        """
+        Tries to consume multiple tokens at ones, and fails completely if any fails to be parsed
+
+        :param elements: the stuff to be parsed, like the parameters to try_consume(...)
+        :return: a list of tokens, or None in case of a parsing error
+        """
+
         self.save()
-        parsed = []
+        parsed: typing.List[AbstractParser.T | typing.Type[AbstractParser.T]] = []
 
         for element in elements:
             if expr := self.try_consume(element):
+                expr: AbstractParser.T | typing.Type[AbstractParser.T]
                 parsed.append(expr)
                 continue
 
