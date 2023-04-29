@@ -743,7 +743,7 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         else:
             label_name = None
 
-        body = parser.parse_body()
+        body = parser.parse_body(scope=scope)
 
         return cls(
             condition,
@@ -1384,7 +1384,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
             elif not has_seen_keyword_arg:
                 if is_macro and parser[0] == SpecialToken("{"):
-                    expr = parser.parse_body()
+                    expr = parser.parse_body(scope=scope)
                     is_dynamic = False
                 else:
                     is_dynamic = is_partial and bool(

@@ -976,7 +976,8 @@ class Parser(AbstractParser):
                 )
                 raise SyntaxError
 
-            scope.last_base_token = instr_token
+            if scope:
+                scope.last_base_token = instr_token
 
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
