@@ -602,18 +602,21 @@ class IFAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "IFAssembly":
         source = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False
+            allow_primitives=True, include_bracket=False, scope=scope
         )
 
         if source is None:
             throw_positioned_syntax_error(
-                scope, parser.try_inspect(), "expected <epxression>"
+                scope, parser.try_inspect(), "expected <expression>"
             )
             raise SyntaxError
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
-            parser.consume(SpecialToken("'"))
+            if not parser.try_consume(SpecialToken("'")):
+                throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected '"
+                )
         else:
             label_name = None
 
@@ -728,18 +731,21 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "WHILEAssembly":
         condition = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False
+            allow_primitives=True, include_bracket=False, scope=scope
         )
 
         if condition is None:
             throw_positioned_syntax_error(
-                scope, parser.try_inspect(), "expected <epxression>"
+                scope, parser.try_inspect(), "expected <expression>"
             )
             raise SyntaxError
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
-            parser.consume(SpecialToken("'"))
+            if not parser.try_consume(SpecialToken("'")):
+                throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected '"
+                )
         else:
             label_name = None
 
@@ -852,15 +858,26 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "LoadGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
-        name = parser.consume([IdentifierToken, IntegerToken])
 
-        if parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
+        name = parser.try_consume([IdentifierToken, IntegerToken])
+
+        if name is None:
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <name> or <integer>"
+            )
+
+        if parser.try_consume(SpecialToken("-")):
+            if not parser.try_consume(SpecialToken(">")):
+                throw_positioned_syntax_error(
+                    scope, parser[-1:1]+[scope.last_base_token], "expected '>' after '-'"
+                )
+
             target = parser.try_consume_access_to_value(scope=scope)
+
+            if target is None:
+                throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected <expression>"
+                )
         else:
             target = None
 
@@ -928,7 +945,12 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "StoreGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
-        name = parser.consume([IdentifierToken, IntegerToken])
+        name = parser.try_consume([IdentifierToken, IntegerToken])
+
+        if name is None:
+            throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <name> or <integer>"
+            )
 
         source = parser.try_parse_data_source()
 

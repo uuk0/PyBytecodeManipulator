@@ -99,7 +99,9 @@ class SpecializationContainer:
         exception: Exception,
         side_effect: typing.Callable[[...], None] = None,
         arg: int = None,
+        stackoffset=0,
     ):
+        # todo: emit such warnings via the location emitter
         if self.replace_raised_exception:
             return
 
@@ -110,7 +112,8 @@ class SpecializationContainer:
             + ": "
             + exception.args[0]
             + (f" [AT ARG {arg}]" if arg is not None else "")
-            + " (Statically emitted)"
+            + " (Statically emitted)",
+            stacklevel=2 + stackoffset,
         )
         self.replace_raised_exception = exception
 
@@ -130,9 +133,9 @@ class SpecializationContainer:
     ):
         if predicate() if callable(predicate) else predicate:
             if isinstance(construct, Exception):
-                self.replace_with_raise_exception(construct, side_effect, arg=arg)
+                self.replace_with_raise_exception(construct, side_effect, arg=arg, stackoffset=1)
             else:
-                self.replace_with_raise_exception(construct(), side_effect, arg=arg)
+                self.replace_with_raise_exception(construct(), side_effect, arg=arg, stackoffset=1)
 
     def replace_call_with_opcodes(self, opcodes: typing.List[Instruction]):
         """
