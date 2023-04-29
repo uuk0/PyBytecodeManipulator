@@ -160,6 +160,7 @@ def _print_complex_token_location(scope: ParsingScope, tokens: typing.List[Abstr
             lines.setdefault(token.line, []).append(token)
 
     already_seen_line = False
+    previous_line_no = -2
 
     for line in sorted(list(lines.keys())):
         tokens = lines[line]
@@ -180,11 +181,14 @@ def _print_complex_token_location(scope: ParsingScope, tokens: typing.List[Abstr
 
         error_location = error_location.replace("^^", "^~").replace("~^", "~~")
 
-        if already_seen_line:
-            print()
-        already_seen_line = True
+        if line != previous_line_no + 1:
+            if already_seen_line:
+                print()
+            already_seen_line = True
 
-        print(f"File \"{scope.module_file}\", line {line + 1}", file=sys.stderr)
+            print(f"File \"{scope.module_file}\", line {line + 1}", file=sys.stderr)
+        previous_line_no = line
+
         print(content[line].removesuffix("\n"), file=sys.stderr)
         print(error_location, file=sys.stderr)
 
