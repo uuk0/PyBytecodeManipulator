@@ -78,12 +78,13 @@ class LoadAssembly(AbstractAssemblyInstruction):
             )
             raise SyntaxError
 
-        if parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
+        if parser.try_consume(SpecialToken("-")):
+            if not parser.try_consume(SpecialToken(">")):
+                throw_positioned_syntax_error(
+                    scope, parser[-1:1] + [scope.last_base_token], "expected '>' after '-' to complete '->'"
+                )
+                raise SyntaxError
+
             target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
@@ -151,7 +152,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
         if access is None:
             throw_positioned_syntax_error(
-                scope, parser.try_inspect(), "expected <epxression>"
+                scope, parser.try_inspect(), "expected <expression>"
             )
             raise SyntaxError
 
@@ -314,7 +315,6 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def __repr__(self):
             raise NotImplementedError
 
-
     class SingleOperation(IOperation):
         def __init__(
             self,
@@ -464,14 +464,18 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
         throw_positioned_syntax_error(
-            scope, parser.try_inspect(), "expected <operator>"
+            scope, parser.try_inspect(), "expected <operator> or <expression> <operator> ..."
         )
         raise SyntaxError
 
     @classmethod
     def try_consume_arrow(cls, parser: "Parser", scope: ParsingScope) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
-            parser.consume(SpecialToken(">"), err_arg=scope)
+            if not parser.try_consume(SpecialToken(">")):
+                throw_positioned_syntax_error(
+                    scope, parser[-1:1] + [scope.last_base_token], "expected '>' after '-' to complete '->'"
+                )
+
             return parser.try_consume_access_to_value(scope=scope)
 
     @classmethod

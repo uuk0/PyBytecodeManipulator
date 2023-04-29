@@ -43,10 +43,15 @@ def _visit_for_stack_effect(
 GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
-def apply_inline_assemblies(target: MutableFunction):
+def apply_inline_assemblies(target: MutableFunction | typing.Callable, store_at_target: bool = None):
     """
     Processes all assembly() calls and label() calls in 'target'
     """
+
+    if not isinstance(target, MutableFunction):
+        target = MutableFunction(target)
+        if store_at_target is None:
+            store_at_target = True
 
     labels = set()
     insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
@@ -124,11 +129,7 @@ def apply_inline_assemblies(target: MutableFunction):
     assemblies = [
         AssemblyParser(
             bytecodemanipulation.assembler.Lexer.Lexer(code)
-            .add_line_offset(
-                instr.source_location[0]
-                if instr.source_location and instr.source_location[0]
-                else 0
-            )
+            .add_line_offset(instr.source_location[0] + 1)
             .lex(),
             scope.scope_path.clear() or scope,
         ).parse()
@@ -238,6 +239,9 @@ def apply_inline_assemblies(target: MutableFunction):
     # target.instructions[0].apply_value_visitor(lambda instr, *_: print(instr))
 
     target.assemble_instructions_from_tree(target.instructions[0])
+
+    if store_at_target:
+        target.reassign_to_function()
 
     return target
 

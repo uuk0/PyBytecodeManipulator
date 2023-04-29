@@ -64,12 +64,15 @@ class TestParser(TestCase):
         for a, b in zip(correct.children, to_check.children):
             self.assertEqual(a, b)
 
-#     def test_syntax_error(self):
-#         scope = ParsingScope()
-#         scope.module_file = __file__
-#         expr = Parser("""
-# LOAD 10 -> $hello[0].(hello
-# """, initial_line_offset=67).parse(scope=scope)
+    def test_syntax_error(self):
+        def test():
+            @apply_inline_assemblies
+            def target():
+                assembly("""
+LOAD 19 --> $test
+    """)
+
+        self.assertRaises(SyntaxError, test)
 
     def test_load_global(self):
         expr = Parser(

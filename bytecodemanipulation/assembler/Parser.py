@@ -75,6 +75,7 @@ class ParsingScope:
         self._name_counter = 1
         self.globals_dict = {}
         self.module_file: str = None
+        self.last_base_token: AbstractToken = None
 
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
@@ -148,16 +149,60 @@ class ParsingScope:
         scope[name[-1]] = data
 
 
-def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken, message: str):
-    if scope and scope.module_file and token:
-        print(f"SyntaxError in \"{scope.module_file}\"", file=sys.stderr)
-        with open(scope.module_file, mode="r", encoding="utf-8") as f:
-            content = f.readlines()
+def _print_complex_token_location(scope: ParsingScope, tokens: typing.List[AbstractToken | None]):
+    lines: typing.Dict[int, typing.List[AbstractToken]] = {}
 
-        line = content[token.line]
-        print(line.rstrip(), file=sys.stderr)
-        print((" " * token.column) + "^" + ("~" * (token.span - 1)), file=sys.stderr)
-        print("->", message, file=sys.stderr)
+    with open(scope.module_file, mode="r", encoding="utf-8") as f:
+        content = f.readlines()
+
+    for token in tokens:
+        if token:
+            lines.setdefault(token.line, []).append(token)
+
+    already_seen_line = False
+
+    for line in sorted(list(lines.keys())):
+        tokens = lines[line]
+        tokens.sort(key=lambda t: t.column)
+
+        error_location = ""
+
+        for token in tokens:
+            if token.column > len(error_location):
+                error_location += " " * (token.column - len(error_location))
+
+            delta = len(error_location) - token.column
+
+            if delta >= token.span:
+                continue
+
+            error_location += "^" + ("~" * (token.span - delta))
+
+        error_location = error_location.replace("^^", "^~").replace("~^", "~~")
+
+        if already_seen_line:
+            print()
+        already_seen_line = True
+
+        print(f"File \"{scope.module_file}\", line {line + 1}", file=sys.stderr)
+        print(content[line].removesuffix("\n"), file=sys.stderr)
+        print(error_location, file=sys.stderr)
+
+
+def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken | typing.List[AbstractToken | None] | None, message: str):
+    if scope and scope.module_file and token:
+        if isinstance(token, list):
+            _print_complex_token_location(scope, token)
+        else:
+            print(f"File \"{scope.module_file}\", line {token.line+1}")
+            with open(scope.module_file, mode="r", encoding="utf-8") as f:
+                content = f.readlines()
+
+            line = content[token.line]
+            print(line.rstrip(), file=sys.stderr)
+            print((" " * token.column) + "^" + ("~" * (token.span - 1)), file=sys.stderr)
+
+        print("-> SyntaxError:", message, file=sys.stderr)
     else:
         raise SyntaxError(f"{token}: {message}")
 
@@ -931,6 +976,8 @@ class Parser(AbstractParser):
                 )
                 raise SyntaxError
 
+            scope.last_base_token = instr_token
+
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
                     throw_positioned_syntax_error(
@@ -1456,7 +1503,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 f"Could not find overloaded variant of {':'.join(self.name)} with args {args}!"
             )
 
-        def add_definition(self, macro: "MacroAssembly"):
+        def add_definition(self, macro: "MacroAssembly", override=False):
             # todo: do a safety check!
             self.assemblies.append(macro)
 
@@ -1836,6 +1883,11 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                         source[key], dict
                     ):
                         tasks.append((target[key], source[key]))
+
+                    # todo: can we use something like this?
+                    # elif isinstance(target[key], MacroAssembly.MacroOverloadPage) and isinstance(source[key], MacroAssembly.MacroOverloadPage):
+                    #     target[key].integrate(source[key])
+
                     else:
                         print(
                             f"WARN: unknown integration stage: {source[key]} -> {target[key]}"
