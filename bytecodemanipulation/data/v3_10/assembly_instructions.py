@@ -71,19 +71,17 @@ class LoadAssembly(AbstractAssemblyInstruction):
         )
 
         if access_expr is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <expression>"
             )
-            raise SyntaxError
 
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope,
                     parser[-1:1] + [scope.last_base_token],
                     "expected '>' after '-' to complete '->'",
                 )
-                raise SyntaxError
 
             target = parser.try_consume_access_to_value(scope=scope)
         else:
@@ -151,10 +149,9 @@ class StoreAssembly(AbstractAssemblyInstruction):
         access = parser.try_consume_access_to_value(allow_tos=False, scope=scope)
 
         if access is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <expression>"
             )
-            raise SyntaxError
 
         source = parser.try_parse_data_source()
 
@@ -467,12 +464,11 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         if expr := cls.try_consume_binary(parser):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
-        throw_positioned_syntax_error(
+        raise throw_positioned_syntax_error(
             scope,
             parser.try_inspect(),
             "expected <operator> or <expression> <operator> ...",
         )
-        raise SyntaxError
 
     @classmethod
     def try_consume_arrow(
@@ -480,7 +476,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     ) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope,
                     parser[-1:1] + [scope.last_base_token],
                     "expected '>' after '-' to complete '->'",
@@ -618,15 +614,14 @@ class IFAssembly(AbstractAssemblyInstruction):
         )
 
         if source is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <expression>"
             )
-            raise SyntaxError
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
             if not parser.try_consume(SpecialToken("'")):
-                throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
+                raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
         else:
             label_name = None
 
@@ -745,15 +740,14 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         )
 
         if condition is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <expression>"
             )
-            raise SyntaxError
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
             if not parser.try_consume(SpecialToken("'")):
-                throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
+                raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
         else:
             label_name = None
 
@@ -870,13 +864,13 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
         name = parser.try_consume([IdentifierToken, IntegerToken])
 
         if name is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <name> or <integer>"
             )
 
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope,
                     parser[-1:1] + [scope.last_base_token],
                     "expected '>' after '-'",
@@ -885,7 +879,7 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
             target = parser.try_consume_access_to_value(scope=scope)
 
             if target is None:
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope, parser.try_inspect(), "expected <expression>"
                 )
         else:
@@ -958,7 +952,7 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         name = parser.try_consume([IdentifierToken, IntegerToken])
 
         if name is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <name> or <integer>"
             )
 
@@ -1178,10 +1172,9 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         )
 
         if not isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)):
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope, parser.try_inspect(), "expected <constant epxression>"
             )
-            raise SyntaxError
 
         if parser.try_consume_multi(
             [
@@ -1361,14 +1354,13 @@ class CallAssembly(AbstractAssemblyInstruction):
             call_target = MacroAccessExpression(name)
 
         if call_target is None:
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope,
                 parser.try_inspect(),
                 "expected <expression> (did you forget the prefix?)"
                 if not is_macro
                 else "expected <macro name>",
             )
-            raise SyntaxError
 
         args: typing.List[CallAssembly.IArg] = []
 
@@ -1413,12 +1405,11 @@ class CallAssembly(AbstractAssemblyInstruction):
                     args.append(CallAssembly.StarArg(expr))
 
                 else:
-                    throw_positioned_syntax_error(
+                    raise throw_positioned_syntax_error(
                         scope,
                         parser.try_inspect(),
                         "*<arg> only allowed before keyword arguments!",
                     )
-                    raise SyntaxError
 
             elif not has_seen_keyword_arg:
                 if is_macro and parser[0] == SpecialToken("{"):
@@ -1436,19 +1427,17 @@ class CallAssembly(AbstractAssemblyInstruction):
                 args.append(CallAssembly.Arg(expr, is_dynamic))
 
             else:
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope,
                     parser.try_inspect(),
                     "pure <arg> only allowed before keyword arguments",
                 )
-                raise SyntaxError
 
             if not parser.try_consume(SpecialToken(",")):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            throw_positioned_syntax_error(scope, parser.try_inspect(), "expected ')'")
-            raise SyntaxError
+            raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected ')'")
 
         if parser.try_consume_multi(
             [
@@ -1791,10 +1780,9 @@ class YieldAssembly(AbstractAssemblyInstruction):
             )
 
             if target is None:
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope, parser.try_inspect(), "expected <expression>"
                 )
-                raise SyntaxError
 
         else:
             target = None

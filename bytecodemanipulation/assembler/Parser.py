@@ -199,7 +199,7 @@ def throw_positioned_syntax_error(
     scope: ParsingScope,
     token: AbstractToken | typing.List[AbstractToken | None] | None,
     message: str,
-):
+) -> Exception:
     if scope and scope.module_file and token:
         if isinstance(token, list):
             _print_complex_token_location(scope, token)
@@ -216,14 +216,16 @@ def throw_positioned_syntax_error(
 
         print("-> SyntaxError:", message, file=sys.stderr)
     else:
-        raise SyntaxError(f"{token}: {message}")
+        return SyntaxError(f"{token}: {message}")
 
-    raise SyntaxError(message)
+    return SyntaxError(message)
 
 
-parser_file.raise_syntax_error = (
-    lambda token, text, scope: throw_positioned_syntax_error(scope, token, text)
-)
+def _syntax_wrapper(token, text, scope):
+    raise throw_positioned_syntax_error(scope, token, text)
+
+
+parser_file.raise_syntax_error = _syntax_wrapper
 
 
 class JumpToLabel:
@@ -616,10 +618,9 @@ class ConstantAccessExpression(AbstractAccessExpression):
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        throw_positioned_syntax_error(
+        raise throw_positioned_syntax_error(
             scope, self.name_token, "Cannot assign to a constant"
         )
-        raise SyntaxError
 
 
 class SubscriptionAccessExpression(AbstractAccessExpression):
@@ -968,7 +969,9 @@ class Parser(AbstractParser):
             else:
                 self.scope.scope_path += namespace_part
 
-        self.consume(SpecialToken("{"))
+        if not self.try_consume(SpecialToken("{")):
+            raise throw_positioned_syntax_error(scope, self.try_inspect(), "expected '{'")
+
         body = self.parse_while_predicate(
             lambda: not self.try_consume(SpecialToken("}")),
             eof_error="Expected '}', got EOF",
@@ -1000,22 +1003,20 @@ class Parser(AbstractParser):
                 continue
 
             if not (instr_token := self.try_consume(IdentifierToken)):
-                throw_positioned_syntax_error(
+                raise throw_positioned_syntax_error(
                     scope, self.try_inspect(), "expected identifier"
                 )
-                raise SyntaxError
 
             if scope:
                 scope.last_base_token = instr_token
 
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
-                    throw_positioned_syntax_error(
+                    raise throw_positioned_syntax_error(
                         scope,
                         instr_token,
                         "expected <assembly instruction name> or <assembly macro name>",
                     )
-                    raise SyntaxError
             else:
                 instr = self.INSTRUCTIONS[instr_token.text].consume(self, scope)
 
@@ -1048,13 +1049,11 @@ class Parser(AbstractParser):
 
             print(self[-1].line, self[-1], expr.line)
 
-            throw_positioned_syntax_error(
+            raise throw_positioned_syntax_error(
                 scope,
                 self.try_inspect(),
                 "Expected <newline> or ';' after assembly instruction",
             )
-
-            raise SyntaxError
 
         return root
 
@@ -1168,7 +1167,7 @@ class Parser(AbstractParser):
                             scope=scope,
                         )
                     ):
-                        throw_positioned_syntax_error(
+                        raise throw_positioned_syntax_error(
                             scope,
                             self.try_inspect() or self[-1],
                             "expected <expression>"
@@ -1178,13 +1177,11 @@ class Parser(AbstractParser):
                                 else " (did you forget a prefix?)"
                             ),
                         )
-                        raise SyntaxError
 
                     if not self.try_consume(SpecialToken("]")):
-                        throw_positioned_syntax_error(
+                        raise throw_positioned_syntax_error(
                             scope, self.try_inspect() or self[-1], "expected ']''"
                         )
-                        raise SyntaxError
 
                     expr = SubscriptionAccessExpression(
                         expr,
@@ -1201,7 +1198,7 @@ class Parser(AbstractParser):
                                 scope=scope,
                             )
                         ):
-                            throw_positioned_syntax_error(
+                            raise throw_positioned_syntax_error(
                                 scope,
                                 self.try_inspect() or self[-1],
                                 "expected <expression>"
@@ -1213,13 +1210,11 @@ class Parser(AbstractParser):
                                     else " (did you forget a prefix?)"
                                 ),
                             )
-                            raise SyntaxError
 
                         if not self.try_consume(SpecialToken(")")):
-                            throw_positioned_syntax_error(
+                            raise throw_positioned_syntax_error(
                                 scope, self.try_inspect() or self[-1], "expected ')'"
                             )
-                            raise SyntaxError
 
                         expr = DynamicAttributeAccessExpression(expr, index)
                     elif self.try_consume(SpecialToken("!")):
@@ -1284,7 +1279,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(
         cls, parser: "Parser", scope: ParsingScope
-    ) -> "AbstractAssemblyInstruction":
+    ) -> "LabelAssembly":
         return cls(parser.consume(IdentifierToken))
 
     def __init__(self, name_token: IdentifierToken | str):
