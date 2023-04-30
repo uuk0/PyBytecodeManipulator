@@ -43,7 +43,9 @@ def _visit_for_stack_effect(
 GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
-def apply_inline_assemblies(target: MutableFunction | typing.Callable, store_at_target: bool = None):
+def apply_inline_assemblies(
+    target: MutableFunction | typing.Callable, store_at_target: bool = None
+):
     """
     Processes all assembly() calls and label() calls in 'target'
     """
@@ -195,7 +197,7 @@ def apply_inline_assemblies(target: MutableFunction | typing.Callable, store_at_
         if bytecode:
             for i, ins in enumerate(bytecode[:-1]):
                 if not ins.has_stop_flow() and not ins.has_unconditional_jump():
-                    ins.next_instruction = bytecode[i+1]
+                    ins.next_instruction = bytecode[i + 1]
 
             bytecode[-1].next_instruction = instr.next_instruction
 
@@ -246,7 +248,9 @@ def apply_inline_assemblies(target: MutableFunction | typing.Callable, store_at_
     return target
 
 
-def execute_module_in_instance(asm_code: str, module: types.ModuleType, file: str = None):
+def execute_module_in_instance(
+    asm_code: str, module: types.ModuleType, file: str = None
+):
     scope = ParsingScope()
 
     try:

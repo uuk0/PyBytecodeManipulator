@@ -37,9 +37,7 @@ class RaiseAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "RaiseAssembly":
-        return cls(
-            parser.try_parse_data_source(include_bracket=False)
-        )
+        return cls(parser.try_parse_data_source(include_bracket=False))
 
     def __init__(self, source: AbstractSourceExpression = None):
         self.source = source
@@ -56,9 +54,9 @@ class RaiseAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return ([] if self.source is None else self.source.emit_bytecodes(function, scope)) + [
-            Instruction(function, -1, Opcodes.RAISE_VARARGS, arg=1)
-        ]
+        return (
+            [] if self.source is None else self.source.emit_bytecodes(function, scope)
+        ) + [Instruction(function, -1, Opcodes.RAISE_VARARGS, arg=1)]
 
 
 @Parser.register
@@ -81,7 +79,9 @@ class LoadAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
                 throw_positioned_syntax_error(
-                    scope, parser[-1:1] + [scope.last_base_token], "expected '>' after '-' to complete '->'"
+                    scope,
+                    parser[-1:1] + [scope.last_base_token],
+                    "expected '>' after '-' to complete '->'",
                 )
                 raise SyntaxError
 
@@ -290,7 +290,15 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     }
 
     # todo: parse and implement
-    SINGLE_OPS: typing.Dict[str, typing.Tuple[int, int] | int | typing.Callable[[AbstractAccessExpression, MutableFunction, ParsingScope], Instruction | typing.List[Instruction]]] = {
+    SINGLE_OPS: typing.Dict[
+        str,
+        typing.Tuple[int, int]
+        | int
+        | typing.Callable[
+            [AbstractAccessExpression, MutableFunction, ParsingScope],
+            Instruction | typing.List[Instruction],
+        ],
+    ] = {
         "-": Opcodes.UNARY_NEGATIVE,
         "+": Opcodes.UNARY_POSITIVE,
         "~": Opcodes.UNARY_INVERT,
@@ -346,10 +354,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
                 result = opcode_info(self.expression, function, scope)
 
                 if isinstance(result, Instruction):
-                    return (
-                        self.expression.emit_bytecodes(function, scope)
-                        + [result]
-                    )
+                    return self.expression.emit_bytecodes(function, scope) + [result]
 
                 return result
 
@@ -358,10 +363,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             else:
                 opcode, arg = opcode_info
 
-            return (
-                self.expression.emit_bytecodes(function, scope)
-                + [Instruction(function, -1, opcode, arg=arg)]
-            )
+            return self.expression.emit_bytecodes(function, scope) + [
+                Instruction(function, -1, opcode, arg=arg)
+            ]
 
         def visit_parts(
             self,
@@ -464,16 +468,22 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
         throw_positioned_syntax_error(
-            scope, parser.try_inspect(), "expected <operator> or <expression> <operator> ..."
+            scope,
+            parser.try_inspect(),
+            "expected <operator> or <expression> <operator> ...",
         )
         raise SyntaxError
 
     @classmethod
-    def try_consume_arrow(cls, parser: "Parser", scope: ParsingScope) -> AbstractAccessExpression | None:
+    def try_consume_arrow(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
                 throw_positioned_syntax_error(
-                    scope, parser[-1:1] + [scope.last_base_token], "expected '>' after '-' to complete '->'"
+                    scope,
+                    parser[-1:1] + [scope.last_base_token],
+                    "expected '>' after '-' to complete '->'",
                 )
 
             return parser.try_consume_access_to_value(scope=scope)
@@ -486,7 +496,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             return
 
         if expr.text in cls.SINGLE_OPS:
-            expression = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+            expression = parser.try_parse_data_source(
+                allow_primitives=True, include_bracket=False
+            )
 
             if expression is None:
                 parser.rollback()
@@ -614,9 +626,7 @@ class IFAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
             if not parser.try_consume(SpecialToken("'")):
-                throw_positioned_syntax_error(
-                    scope, parser.try_inspect(), "expected '"
-                )
+                throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
         else:
             label_name = None
 
@@ -743,9 +753,7 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
             if not parser.try_consume(SpecialToken("'")):
-                throw_positioned_syntax_error(
-                    scope, parser.try_inspect(), "expected '"
-                )
+                throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
         else:
             label_name = None
 
@@ -869,7 +877,9 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
                 throw_positioned_syntax_error(
-                    scope, parser[-1:1]+[scope.last_base_token], "expected '>' after '-'"
+                    scope,
+                    parser[-1:1] + [scope.last_base_token],
+                    "expected '>' after '-'",
                 )
 
             target = parser.try_consume_access_to_value(scope=scope)
@@ -1352,7 +1362,11 @@ class CallAssembly(AbstractAssemblyInstruction):
 
         if call_target is None:
             throw_positioned_syntax_error(
-                scope, parser.try_inspect(), "expected <expression> (did you forget the prefix?)" if not is_macro else "expected <macro name>"
+                scope,
+                parser.try_inspect(),
+                "expected <expression> (did you forget the prefix?)"
+                if not is_macro
+                else "expected <macro name>",
             )
             raise SyntaxError
 
@@ -1400,7 +1414,9 @@ class CallAssembly(AbstractAssemblyInstruction):
 
                 else:
                     throw_positioned_syntax_error(
-                        scope, parser.try_inspect(), "*<arg> only allowed before keyword arguments!"
+                        scope,
+                        parser.try_inspect(),
+                        "*<arg> only allowed before keyword arguments!",
                     )
                     raise SyntaxError
 
@@ -1421,7 +1437,9 @@ class CallAssembly(AbstractAssemblyInstruction):
 
             else:
                 throw_positioned_syntax_error(
-                    scope, parser.try_inspect(), "pure <arg> only allowed before keyword arguments"
+                    scope,
+                    parser.try_inspect(),
+                    "pure <arg> only allowed before keyword arguments",
                 )
                 raise SyntaxError
 
@@ -1429,9 +1447,7 @@ class CallAssembly(AbstractAssemblyInstruction):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            throw_positioned_syntax_error(
-                scope, parser.try_inspect(), "expected ')'"
-            )
+            throw_positioned_syntax_error(scope, parser.try_inspect(), "expected ')'")
             raise SyntaxError
 
         if parser.try_consume_multi(

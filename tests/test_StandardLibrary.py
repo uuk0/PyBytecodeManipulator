@@ -77,4 +77,11 @@ std:os:file_walker("{file_name}", $file, {{
         mutable.reassign_to_function()
 
         files = list(target())[:-1]
-        self.assertEqual(set(files), set(filter(lambda e: os.path.isfile(e), os.listdir(os.path.dirname(__file__)))))
+        self.assertEqual(
+            set(files),
+            set(
+                filter(
+                    lambda e: os.path.isfile(e), os.listdir(os.path.dirname(__file__))
+                )
+            ),
+        )

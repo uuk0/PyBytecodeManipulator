@@ -149,7 +149,9 @@ class ParsingScope:
         scope[name[-1]] = data
 
 
-def _print_complex_token_location(scope: ParsingScope, tokens: typing.List[AbstractToken | None]):
+def _print_complex_token_location(
+    scope: ParsingScope, tokens: typing.List[AbstractToken | None]
+):
     lines: typing.Dict[int, typing.List[AbstractToken]] = {}
 
     with open(scope.module_file, mode="r", encoding="utf-8") as f:
@@ -186,25 +188,31 @@ def _print_complex_token_location(scope: ParsingScope, tokens: typing.List[Abstr
                 print()
             already_seen_line = True
 
-            print(f"File \"{scope.module_file}\", line {line + 1}", file=sys.stderr)
+            print(f'File "{scope.module_file}", line {line + 1}', file=sys.stderr)
         previous_line_no = line
 
         print(content[line].removesuffix("\n"), file=sys.stderr)
         print(error_location, file=sys.stderr)
 
 
-def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken | typing.List[AbstractToken | None] | None, message: str):
+def throw_positioned_syntax_error(
+    scope: ParsingScope,
+    token: AbstractToken | typing.List[AbstractToken | None] | None,
+    message: str,
+):
     if scope and scope.module_file and token:
         if isinstance(token, list):
             _print_complex_token_location(scope, token)
         else:
-            print(f"File \"{scope.module_file}\", line {token.line+1}")
+            print(f'File "{scope.module_file}", line {token.line+1}')
             with open(scope.module_file, mode="r", encoding="utf-8") as f:
                 content = f.readlines()
 
             line = content[token.line]
             print(line.rstrip(), file=sys.stderr)
-            print((" " * token.column) + "^" + ("~" * (token.span - 1)), file=sys.stderr)
+            print(
+                (" " * token.column) + "^" + ("~" * (token.span - 1)), file=sys.stderr
+            )
 
         print("-> SyntaxError:", message, file=sys.stderr)
     else:
@@ -213,7 +221,9 @@ def throw_positioned_syntax_error(scope: ParsingScope, token: AbstractToken | ty
     raise SyntaxError(message)
 
 
-parser_file.raise_syntax_error = lambda token, text, scope: throw_positioned_syntax_error(scope, token, text)
+parser_file.raise_syntax_error = (
+    lambda token, text, scope: throw_positioned_syntax_error(scope, token, text)
+)
 
 
 class JumpToLabel:
@@ -337,7 +347,9 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     NAME: str | None = None
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractAssemblyInstruction":
+    def consume(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> "AbstractAssemblyInstruction":
         raise NotImplementedError
 
     def emit_bytecodes(
@@ -650,11 +662,7 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                     )
                 ]
             )
-            + [
-                Instruction(
-                    function, -1, Opcodes.BINARY_SUBSCR
-                )
-            ]
+            + [Instruction(function, -1, Opcodes.BINARY_SUBSCR)]
         )
 
     def emit_store_bytecodes(
@@ -746,7 +754,9 @@ class AttributeAccessExpression(AbstractAccessExpression):
         ],
         parents: list,
     ):
-        return visitor(self, (self.root.visit_parts(visitor, parents+[self]),), parents)
+        return visitor(
+            self, (self.root.visit_parts(visitor, parents + [self]),), parents
+        )
 
 
 class StaticAttributeAccessExpression(AbstractAccessExpression):
@@ -780,7 +790,11 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, scope) + [
             Instruction.create_with_token(
-                self.name_token, function, -1, "STATIC_ATTRIBUTE_ACCESS", self.name_token.text
+                self.name_token,
+                function,
+                -1,
+                "STATIC_ATTRIBUTE_ACCESS",
+                self.name_token.text,
             )
         ]
 
@@ -797,7 +811,9 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
         ],
         parents: list,
     ):
-        return visitor(self, (self.root.visit_parts(visitor, parents+[self]),), parents)
+        return visitor(
+            self, (self.root.visit_parts(visitor, parents + [self]),), parents
+        )
 
 
 class DynamicAttributeAccessExpression(AbstractAccessExpression):
@@ -870,15 +886,17 @@ class ModuleAccessExpression(AbstractAccessExpression):
         return cls._CACHE[module_name]
 
     def emit_bytecodes(
-            self, function: MutableFunction, scope: ParsingScope
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self._cached_lookup(self.name_token.text)
         return [
-            Instruction.create_with_token(self.name_token, function, -1, Opcodes.LOAD_CONST, value)
+            Instruction.create_with_token(
+                self.name_token, function, -1, Opcodes.LOAD_CONST, value
+            )
         ]
 
     def emit_store_bytecodes(
-            self, function: MutableFunction, scope: ParsingScope
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise RuntimeError
 
@@ -935,11 +953,15 @@ class Parser(AbstractParser):
         )
         self.scope = scope or ParsingScope()
 
-    def parse(self, scope: ParsingScope=None) -> CompoundExpression:
+    def parse(self, scope: ParsingScope = None) -> CompoundExpression:
         self.scope = scope or self.scope
-        return self.parse_while_predicate(lambda: not self.is_empty(), scope=scope or self.scope)
+        return self.parse_while_predicate(
+            lambda: not self.is_empty(), scope=scope or self.scope
+        )
 
-    def parse_body(self, namespace_part: str | list | None = None, scope: ParsingScope = None) -> CompoundExpression:
+    def parse_body(
+        self, namespace_part: str | list | None = None, scope: ParsingScope = None
+    ) -> CompoundExpression:
         if namespace_part is not None:
             if isinstance(namespace_part, str):
                 self.scope.scope_path.append(namespace_part)
@@ -958,15 +980,18 @@ class Parser(AbstractParser):
                 if self.scope.scope_path.pop() != namespace_part:
                     raise RuntimeError
             else:
-                if self.scope.scope_path[-len(namespace_part):] != namespace_part:
+                if self.scope.scope_path[-len(namespace_part) :] != namespace_part:
                     raise RuntimeError
 
-                del self.scope.scope_path[-len(namespace_part):]
+                del self.scope.scope_path[-len(namespace_part) :]
 
         return body
 
     def parse_while_predicate(
-        self, predicate: typing.Callable[[], bool], eof_error: str = None, scope: ParsingScope = None
+        self,
+        predicate: typing.Callable[[], bool],
+        eof_error: str = None,
+        scope: ParsingScope = None,
     ) -> CompoundExpression:
         root = CompoundExpression()
 
@@ -986,7 +1011,9 @@ class Parser(AbstractParser):
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
                     throw_positioned_syntax_error(
-                        scope, instr_token, "expected <assembly instruction name> or <assembly macro name>"
+                        scope,
+                        instr_token,
+                        "expected <assembly instruction name> or <assembly macro name>",
                     )
                     raise SyntaxError
             else:
@@ -1022,14 +1049,18 @@ class Parser(AbstractParser):
             print(self[-1].line, self[-1], expr.line)
 
             throw_positioned_syntax_error(
-                scope, self.try_inspect(), "Expected <newline> or ';' after assembly instruction"
+                scope,
+                self.try_inspect(),
+                "Expected <newline> or ';' after assembly instruction",
             )
 
             raise SyntaxError
 
         return root
 
-    def try_parse_custom_assembly(self, base_token: IdentifierToken, scope: ParsingScope):
+    def try_parse_custom_assembly(
+        self, base_token: IdentifierToken, scope: ParsingScope
+    ):
         self.cursor -= 1
         self.save()
         self.cursor += 1
@@ -1050,7 +1081,12 @@ class Parser(AbstractParser):
                     return MacroAssembly.consume_call(self, scope)
 
     def try_consume_access_to_value(
-        self, allow_tos=True, allow_primitives=False, allow_op=True, allow_advanced_access=True, scope=None
+        self,
+        allow_tos=True,
+        allow_primitives=False,
+        allow_op=True,
+        allow_advanced_access=True,
+        scope=None,
     ) -> AbstractAccessExpression | None:
         """
         Consumes an access to a value, for read or write access
@@ -1074,7 +1110,11 @@ class Parser(AbstractParser):
                 return ConstantAccessExpression(string.text)
 
             if integer := self.try_consume(IntegerToken):
-                return ConstantAccessExpression(int(integer.text) if "." not in integer.text else float(integer.text))
+                return ConstantAccessExpression(
+                    int(integer.text)
+                    if "." not in integer.text
+                    else float(integer.text)
+                )
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
             return
@@ -1129,9 +1169,14 @@ class Parser(AbstractParser):
                         )
                     ):
                         throw_positioned_syntax_error(
-                            scope, self.try_inspect() or self[-1], "expected <expression>" + (
-                                "" if not isinstance(self.try_inspect(), IdentifierToken) else " (did you forget a prefix?)"
-                            )
+                            scope,
+                            self.try_inspect() or self[-1],
+                            "expected <expression>"
+                            + (
+                                ""
+                                if not isinstance(self.try_inspect(), IdentifierToken)
+                                else " (did you forget a prefix?)"
+                            ),
                         )
                         raise SyntaxError
 
@@ -1148,16 +1193,25 @@ class Parser(AbstractParser):
 
                 elif self.try_consume(SpecialToken(".")):
                     if self.try_consume(SpecialToken("(")):
-                        if not (index := self.try_consume_access_to_value(
-                            allow_primitives=True,
-                            allow_tos=allow_tos,
-                            allow_op=allow_op,
-                            scope=scope,
-                        )):
+                        if not (
+                            index := self.try_consume_access_to_value(
+                                allow_primitives=True,
+                                allow_tos=allow_tos,
+                                allow_op=allow_op,
+                                scope=scope,
+                            )
+                        ):
                             throw_positioned_syntax_error(
-                                scope, self.try_inspect() or self[-1], "expected <expression>" + (
-                                    "" if not isinstance(self.try_inspect(), IdentifierToken) else " (did you forget a prefix?)"
-                                )
+                                scope,
+                                self.try_inspect() or self[-1],
+                                "expected <expression>"
+                                + (
+                                    ""
+                                    if not isinstance(
+                                        self.try_inspect(), IdentifierToken
+                                    )
+                                    else " (did you forget a prefix?)"
+                                ),
                             )
                             raise SyntaxError
 
@@ -1195,7 +1249,10 @@ class Parser(AbstractParser):
             return
 
         if access := self.try_consume_access_to_value(
-            allow_tos=allow_tos, allow_primitives=allow_primitives, allow_op=allow_op, scope=scope
+            allow_tos=allow_tos,
+            allow_primitives=allow_primitives,
+            allow_op=allow_op,
+            scope=scope,
         ):
             self.discard_save()
             if include_bracket:
@@ -1209,7 +1266,9 @@ class Parser(AbstractParser):
             if integer := self.try_consume(IntegerToken):
                 return ConstantAccessExpression(int(integer.text))
 
-            if boolean := self.try_consume((IdentifierToken("True"), IdentifierToken("False"))):
+            if boolean := self.try_consume(
+                (IdentifierToken("True"), IdentifierToken("False"))
+            ):
                 return ConstantAccessExpression(boolean.text == "True")
 
         print("failed", self.try_inspect())
@@ -1223,7 +1282,9 @@ class LabelAssembly(AbstractAssemblyInstruction):
     NAME = "LABEL"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractAssemblyInstruction":
+    def consume(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> "AbstractAssemblyInstruction":
         return cls(parser.consume(IdentifierToken))
 
     def __init__(self, name_token: IdentifierToken | str):
@@ -1313,12 +1374,16 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
             assembly,
         )
 
-    def __init__(self, name: typing.List[IdentifierToken], assembly: CompoundExpression):
+    def __init__(
+        self, name: typing.List[IdentifierToken], assembly: CompoundExpression
+    ):
         self.name = name
         self.assembly = assembly
 
     def __repr__(self):
-        return f"NAMESPACE::'{':'.join(e.text for e in self.name)}'({repr(self.assembly)})"
+        return (
+            f"NAMESPACE::'{':'.join(e.text for e in self.name)}'({repr(self.assembly)})"
+        )
 
     def __eq__(self, other):
         return (
@@ -1365,19 +1430,37 @@ class MacroAssembly(AbstractAssemblyInstruction):
     class AbstractDataType(ABC):
         IDENTIFIER: str = None
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+        def is_match(
+            self,
+            arg: "MacroAssembly.MacroArg",
+            arg_accessor: AbstractAccessExpression | CompoundExpression,
+        ) -> bool:
             raise NotImplementedError
 
-        def emit_for_arg(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        def emit_for_arg(
+            self,
+            arg: AbstractAccessExpression,
+            function: MutableFunction,
+            scope: ParsingScope,
+        ) -> typing.List[Instruction]:
             return arg.emit_bytecodes(function, scope)
 
-        def emit_for_arg_store(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction] | None:
+        def emit_for_arg_store(
+            self,
+            arg: AbstractAccessExpression,
+            function: MutableFunction,
+            scope: ParsingScope,
+        ) -> typing.List[Instruction] | None:
             pass
 
     class CodeBlockDataType(AbstractDataType):
         IDENTIFIER = "CODE_BLOCK"
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+        def is_match(
+            self,
+            arg: "MacroAssembly.MacroArg",
+            arg_accessor: AbstractAccessExpression | CompoundExpression,
+        ) -> bool:
             return isinstance(arg_accessor, CompoundExpression)
 
     class VariableDataType(AbstractDataType):
@@ -1388,10 +1471,19 @@ class MacroAssembly(AbstractAssemblyInstruction):
             DerefAccessExpression,
         ]
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+        def is_match(
+            self,
+            arg: "MacroAssembly.MacroArg",
+            arg_accessor: AbstractAccessExpression | CompoundExpression,
+        ) -> bool:
             return isinstance(arg_accessor, tuple(self.VALID_ACCESSOR_TYPES))
 
-        def emit_for_arg_store(self, arg: AbstractAccessExpression, function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction] | None:
+        def emit_for_arg_store(
+            self,
+            arg: AbstractAccessExpression,
+            function: MutableFunction,
+            scope: ParsingScope,
+        ) -> typing.List[Instruction] | None:
             return arg.emit_store_bytecodes(function, scope)
 
     class VariableArgCountDataType(AbstractDataType):
@@ -1400,10 +1492,19 @@ class MacroAssembly(AbstractAssemblyInstruction):
         def __init__(self, sub_type: typing.Optional["MacroAssembly.AbstractDataType"]):
             self.sub_type = sub_type
 
-        def is_match(self, arg: "MacroAssembly.MacroArg", arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+        def is_match(
+            self,
+            arg: "MacroAssembly.MacroArg",
+            arg_accessor: AbstractAccessExpression | CompoundExpression,
+        ) -> bool:
             return self.sub_type is None or self.sub_type.is_match(arg, arg_accessor)
 
-        def emit_for_arg(self, args: typing.List[AbstractAccessExpression], function: MutableFunction, scope: ParsingScope) -> typing.List[Instruction]:
+        def emit_for_arg(
+            self,
+            args: typing.List[AbstractAccessExpression],
+            function: MutableFunction,
+            scope: ParsingScope,
+        ) -> typing.List[Instruction]:
             if not isinstance(args, list):
                 raise ValueError(f"args must be list, got {args}!")
 
@@ -1411,9 +1512,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             for arg in args:
                 bytecode += arg.emit_bytecodes(function, scope)
 
-            bytecode += [
-                Instruction(function, -1, "BUILD_LIST", arg=len(args))
-            ]
+            bytecode += [Instruction(function, -1, "BUILD_LIST", arg=len(args))]
             return bytecode
 
     class MacroArg:
@@ -1426,7 +1525,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
         def copy(self):
             return type(self)(self.name, self.is_static)
 
-        def is_match(self, arg_accessor: AbstractAccessExpression | CompoundExpression) -> bool:
+        def is_match(
+            self, arg_accessor: AbstractAccessExpression | CompoundExpression
+        ) -> bool:
             if self.data_type_annotation is None:
                 return True
 
@@ -1445,9 +1546,18 @@ class MacroAssembly(AbstractAssemblyInstruction):
         ) -> typing.Tuple["MacroAssembly", list]:
             for macro in self.assemblies:
                 # todo: better check here!
-                has_star_args = any(isinstance(e.data_type_annotation, MacroAssembly.VariableArgCountDataType) for e in macro.args)
+                has_star_args = any(
+                    isinstance(
+                        e.data_type_annotation, MacroAssembly.VariableArgCountDataType
+                    )
+                    for e in macro.args
+                )
 
-                if len(macro.args) == len(args) and all(arg.is_match(param) for arg, param in zip(macro.args, args)) and not has_star_args:
+                if (
+                    len(macro.args) == len(args)
+                    and all(arg.is_match(param) for arg, param in zip(macro.args, args))
+                    and not has_star_args
+                ):
                     return macro, args
 
                 if has_star_args:
@@ -1459,7 +1569,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     # Get all args before the VARIABLE_ARG
                     i = 0
                     for i, e in enumerate(macro.args):
-                        if isinstance(e.data_type_annotation, MacroAssembly.VariableArgCountDataType):
+                        if isinstance(
+                            e.data_type_annotation,
+                            MacroAssembly.VariableArgCountDataType,
+                        ):
                             break
 
                         if not e.is_match(args[i]):
@@ -1476,7 +1589,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     # Get all args after the VARIABLE_ARG
                     i = 0
                     for i in range(-len(macro.args), 0):
-                        if isinstance(e.data_type_annotation, MacroAssembly.VariableArgCountDataType):
+                        if isinstance(
+                            e.data_type_annotation,
+                            MacroAssembly.VariableArgCountDataType,
+                        ):
                             break
 
                         if not e.is_match(args[i]):
@@ -1491,7 +1607,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         continue
 
                     # And now collect the args in between
-                    for arg in (args[star_index:i+1] if i != -1 else args[star_index:]):
+                    for arg in (
+                        args[star_index : i + 1] if i != -1 else args[star_index:]
+                    ):
                         if not macro.args[star_index].is_match(arg):
                             error = True
                             break
@@ -1577,7 +1695,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
         return cls(name, args, body, allow_assembly_instr)
 
     @classmethod
-    def consume_call(cls, parser: Parser, scope: ParsingScope) -> AbstractAssemblyInstruction:
+    def consume_call(
+        cls, parser: Parser, scope: ParsingScope
+    ) -> AbstractAssemblyInstruction:
         raise RuntimeError
 
     def __init__(
@@ -1637,7 +1757,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             if arg_decl.is_static:
                 if arg_decl.data_type_annotation is not None:
                     arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
-                    bytecode += arg_decl.data_type_annotation.emit_for_arg(arg_code, function, scope)
+                    bytecode += arg_decl.data_type_annotation.emit_for_arg(
+                        arg_code, function, scope
+                    )
                     bytecode.append(
                         Instruction(
                             function,
@@ -1675,21 +1797,29 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                 if arg_decl.data_type_annotation is not None:
                     if arg_decl.is_static:
-                        instr.change_opcode(Opcodes.LOAD_FAST, arg_names[arg_decl.index])
+                        instr.change_opcode(
+                            Opcodes.LOAD_FAST, arg_names[arg_decl.index]
+                        )
 
                     else:
                         instr.change_opcode(Opcodes.NOP)
-                        instructions = arg_decl.data_type_annotation.emit_for_arg(args[arg_decl.index], function, scope)
+                        instructions = arg_decl.data_type_annotation.emit_for_arg(
+                            args[arg_decl.index], function, scope
+                        )
                         instr.insert_after(instructions)
                         bytecode += instructions
 
                 else:
                     if arg_decl.is_static:
-                        instr.change_opcode(Opcodes.LOAD_FAST, arg_names[arg_decl.index])
+                        instr.change_opcode(
+                            Opcodes.LOAD_FAST, arg_names[arg_decl.index]
+                        )
 
                     else:
                         instr.change_opcode(Opcodes.NOP)
-                        instructions = args[arg_decl.index].emit_bytecodes(function, scope)
+                        instructions = args[arg_decl.index].emit_bytecodes(
+                            function, scope
+                        )
                         instr.insert_after(instructions)
                         bytecode += instructions
 
@@ -1703,14 +1833,16 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     instr.change_opcode(Opcodes.STORE_FAST, arg_names[arg_decl.index])
                 else:
                     if arg_decl.data_type_annotation is not None:
-                        instructions = arg_decl.data_type_annotation.emit_for_arg_store(args[arg_decl.index], function, scope)
+                        instructions = arg_decl.data_type_annotation.emit_for_arg_store(
+                            args[arg_decl.index], function, scope
+                        )
 
                         if instructions is not None:
                             instr.change_opcode(Opcodes.NOP)
                             instr.insert_after(instructions)
                             bytecode += instructions
                             continue
-                    
+
                     raise RuntimeError(
                         f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!"
                     )
@@ -1754,7 +1886,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         name = parser.consume(IdentifierToken)
 
         if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
-            target = parser.try_consume_access_to_value(allow_primitives=False, scope=scope)
+            target = parser.try_consume_access_to_value(
+                allow_primitives=False, scope=scope
+            )
         else:
             target = None
 

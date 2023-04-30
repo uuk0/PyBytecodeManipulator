@@ -268,11 +268,13 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
             if self.INCLUDE_LINE_INFO:
                 partial = self.text[old_cursor - skipped : self.cursor]
-                whitespace_count = (len(partial) - len(partial.lstrip()))
+                whitespace_count = len(partial) - len(partial.lstrip())
 
                 self.old_line_number += partial.count("\n")
                 if "\n" in partial[:whitespace_count]:
-                    self.old_column_number = len(partial.split("\n")[-1]) - len(partial.split("\n")[-1].lstrip())
+                    self.old_column_number = len(partial.split("\n")[-1]) - len(
+                        partial.split("\n")[-1].lstrip()
+                    )
 
                 for r in result if isinstance(result, list) else (result,):
                     newline_count = partial[:whitespace_count].count("\n")
@@ -280,7 +282,9 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     r.column = self.old_column_number - newline_count
                     r.span = self.cursor - old_cursor
 
-                    print(f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})")
+                    print(
+                        f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})"
+                    )
 
                     self.old_column_number += r.span
 

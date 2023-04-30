@@ -133,9 +133,13 @@ class SpecializationContainer:
     ):
         if predicate() if callable(predicate) else predicate:
             if isinstance(construct, Exception):
-                self.replace_with_raise_exception(construct, side_effect, arg=arg, stackoffset=1)
+                self.replace_with_raise_exception(
+                    construct, side_effect, arg=arg, stackoffset=1
+                )
             else:
-                self.replace_with_raise_exception(construct(), side_effect, arg=arg, stackoffset=1)
+                self.replace_with_raise_exception(
+                    construct(), side_effect, arg=arg, stackoffset=1
+                )
 
     def replace_call_with_opcodes(self, opcodes: typing.List[Instruction]):
         """

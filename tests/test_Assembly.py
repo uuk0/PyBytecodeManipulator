@@ -68,9 +68,11 @@ class TestParser(TestCase):
         def test():
             @apply_inline_assemblies
             def target():
-                assembly("""
+                assembly(
+                    """
 LOAD 19 --> $test
-    """)
+    """
+                )
 
         self.assertRaises(SyntaxError, test)
 
@@ -1398,4 +1400,3 @@ class TestMacro(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 1)
-
