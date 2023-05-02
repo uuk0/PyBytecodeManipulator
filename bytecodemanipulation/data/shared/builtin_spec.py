@@ -16,7 +16,7 @@ def specialize_typing_cast(container: SpecializationContainer):
     data_type, value = container.get_arg_specifications()
 
     if ASSERT_TYPE_CASTS:
-        # todo: check type
+        # todo: add check type
         pass
 
     container.replace_call_with_arg(value)
@@ -121,13 +121,36 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
                 arg=1,
             )
 
+        if len(sources) == 2 and sources[0].opcode == sources[1].opcode == Opcodes.LOAD_CONST and sources[0].arg_value > sources[1].arg_value:
+            container.replace_with_raise_exception(
+                lambda: ValueError("range argument 0 must be < than arg 1"),
+                arg=1,
+            )
+
         if len(sources) > 2 and sources[2].opcode == Opcodes.LOAD_CONST:
-            container.replace_with_raise_exception_if(
+            if not container.replace_with_raise_exception_if(
                 not _check_int(sources[2].arg_value),
                 lambda: TypeError(
                     f"'{type(sources[2].arg_value).__name__}' object cannot be interpreted as an integer"
                 ),
                 arg=2,
+            ) and sources[2].arg_value == 0:
+                container.replace_with_raise_exception(
+                    lambda: ValueError("range argument 3 must be != 0!"),
+                    arg=2,
+                )
+
+
+        if len(sources) == 3 and sources[0].opcode == sources[1].opcode == sources[2].opcode == Opcodes.LOAD_CONST and sources[0].arg_value > sources[1].arg_value and sources[2].arg_value > 0:
+            container.replace_with_raise_exception(
+                lambda: ValueError("range argument 0 must be < than arg 1 if arg 2 is > 0"),
+                arg=1,
+            )
+
+        if len(sources) == 3 and sources[0].opcode == sources[1].opcode == sources[2].opcode == Opcodes.LOAD_CONST and sources[0].arg_value < sources[1].arg_value and sources[2].arg_value < 0:
+            container.replace_with_raise_exception(
+                lambda: ValueError("range argument 0 must be > than arg 1 if arg 2 is < 0"),
+                arg=1,
             )
 
     elif len(sources) == 0:
@@ -360,3 +383,17 @@ def specialize_any(container: SpecializationContainer):
         create_primitive_arg.change_arg(arg_count)
 
         container.no_special = False
+
+
+@register(sum)
+def specialize_any(container: SpecializationContainer):
+    args = container.get_arg_specifications()
+
+    if len(args) == 1:
+        container.replace_call_with_arg(args[0])
+    elif len(args) == 2:
+        container.replace_call_with_opcodes([
+            args[0],
+            args[1],
+            Instruction(None, -1, Opcodes.BINARY_ADD),
+        ])

@@ -96,7 +96,7 @@ class SpecializationContainer:
 
     def replace_with_raise_exception(
         self,
-        exception: Exception,
+        exception: Exception | typing.Callable[[], Exception],
         side_effect: typing.Callable[[...], None] = None,
         arg: int = None,
         stackoffset=0,
@@ -106,6 +106,9 @@ class SpecializationContainer:
             return
 
         assert side_effect is None, "not implemented!"
+
+        if not isinstance(exception, Exception):
+            exception = exception()
 
         warnings.warn(
             exception.__class__.__name__
@@ -127,26 +130,44 @@ class SpecializationContainer:
     def replace_with_raise_exception_if(
         self,
         predicate: typing.Callable[[], bool] | bool,
-        construct: typing.Callable[[], Exception] | Exception,
-        side_effect: typing.Callable[[...], None] = None,
+        construct: typing.Callable[[], Exception] | Exception | None,
+        construct_exception_at_runtime=False,
+        side_effect: typing.Callable[[...], Exception | None] = None,
+        side_effect_returns_exception=False,
         arg: int = None,
-    ):
-        if predicate() if callable(predicate) else predicate:
-            if isinstance(construct, Exception):
-                self.replace_with_raise_exception(
-                    construct, side_effect, arg=arg, stackoffset=1
-                )
-            else:
-                self.replace_with_raise_exception(
-                    construct(), side_effect, arg=arg, stackoffset=1
-                )
+    ) -> bool:
+        """
+        Replaces the call with an 'raise <exception>' iff predicate() evaluated to True
 
-    def replace_call_with_opcodes(self, opcodes: typing.List[Instruction]):
+        :param predicate: the predicate to decide on, either bool or callable(->bool)
+        :param construct: the Exception instance, or a callable to get such instance
+        :param construct_exception_at_runtime: if True, 'construct' MUST be a callable, and it is called now
+            each time the exception should be raised, instead of onces ahead of time
+        :param side_effect: a callable to call before raising the exception, for doing side effect magic; args are given
+            directly to the side effect; Discarded args are skipped
+        :param  side_effect_returns_exception: if True, 'side_effect' must be provided, and it must return an Exception,
+            which is then raised
+        :param arg: Optional: the arg the exception is raised for; will be included in the emitted warning
+        :return: the result of the predicate, if possible
+        """
+        if predicate() if callable(predicate) else predicate:
+            self.replace_with_raise_exception(
+                construct, side_effect, arg=arg, stackoffset=1
+            )
+            return True
+        return False
+
+    def replace_call_with_opcodes(self, opcodes: typing.List[Instruction | ArgDescriptor]):
         """
         Replaces the call with a set of instructions.
         The instructions must be bound to the underlying function objects
         Arguments are at head like for the call instruction, skipping possible
         discard()-ed arguments.
+
+        todo: implement
+
+        :param opcodes: the opcodes to use, possibly mixed with arg descriptors to access the args to the call;
+            args are de-duplicated, and stored in temporary locals if needed
         """
 
     def replace_call_with_arg(self, arg: ArgDescriptor):
@@ -238,7 +259,7 @@ class SpecializationContainer:
     def _discard_args(self):
         for arg in self.arg_descriptors:
             if arg.discarded:
-                # todo: safe-guard
+                # todo: safe-guard when multi-use
                 arg.get_real_data_instr().change_opcode(Opcodes.NOP)
 
 
