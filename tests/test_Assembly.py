@@ -1400,3 +1400,59 @@ class TestMacro(TestCase):
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 1)
+
+    def test_class_assembly(self):
+        def target():
+            test = None
+            assembly(
+                """
+CLASS test{}"""
+            )
+            return test
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target().__name__, "test")
+
+    def test_class_assembly_parent(self):
+        def target():
+            test = None
+            assembly(
+                """
+CLASS test(~int){}"""
+            )
+            return test
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target().__bases__, (int,))
+
+    def test_class_assembly_func_define(self):
+        def target():
+            test = None
+            assembly(
+                """
+CLASS test
+{
+    DEF test()
+    {
+        RETURN 42
+    }
+}
+"""
+            )
+            return test
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        cls = target()
+
+        dis.dis(target)
+
+        self.assertEqual(cls.test(), 42)

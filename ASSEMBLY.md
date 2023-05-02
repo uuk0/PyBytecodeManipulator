@@ -51,6 +51,7 @@ for cross-version support.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 * 'RAISE' \[\<source>]: raises the exception at TOS or source 
+* CLASS \<name> \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
@@ -92,23 +93,20 @@ Expressions can be added as certain parameters to instructions to use instead of
   - COMPREHENSION \<type> \['\<' \<capture locals> '>'] \<source> '{' \<code> '}' where type can be list, tuple, set, dict, generator and async generator; YIELD statements for emitting to the outside
 - can we use offsets as labels in JUMP's? (offsets in assembly instruction and bytecode instructions?)
 - add singleton operators for OP
-- FOREACH ['async'] (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list
+- FOREACH \['ASYNC'] (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list 
 - FORRANGE '(' \[\<start> ','] \<stop> \[',' \<step>] ')' \['->' \<target>] {'(' '(' \[\<start> ','] \<stop> \[ ',' \<step>] ')' \['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
-- CALL as expression (most likely with \<target>(...))
+  - \['PARALLEL'] prefixes for FOREACH and FORRANGE so threading / async gather can be used on them
 - LABEL part for WHILE, FOREACH, FORRANGE and IF (jump to end of if or top if wanted)
 - make it IF ... {ELSEIF ...} \[ELSE ...] (single assembly meta instruction)
-- CLASS \<name> \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}'
 - IMPORT \<item> \[\<item>] where 'item' is \<package> \['/' \<sub module>] \['->' \<target=sub module name OR package name>]
-- DEF TEMPLATE ... exports an template function (auto-inlined), where args might be prefixed with '?' for copying the bytecode instead of the value,
-  target must be '<name>' (and must be provided), exposing it as a static-resolved thing; Invoked via CALL '<name' ...
 - TRY '{' \<code> '}' CATCH \['\\'' \<label name> '\\''] \['->' \<exception target>] ('{' \<handle> '}') | \<label name>
 - CONVERT \<source type> \<target type> \[\<source=TOS>] \['->' \<target=TOS>]
 - DEF ASYNC ...
 - AWAIT \<expr> \['->' \<target>] and as an expression
-- AWAIT '*' ('(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')') | ('(' \<expr> {\<expr>} ')' \['->' \<target>]) | (\<expr> \['->' \<target>]) (* = asyncio.gather(...))
+- AWAIT '\*' ('(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')') | ('(' \<expr> {\<expr>} ')' \['->' \<target>]) | (\<expr> \['->' \<target>]) (* = asyncio.gather(...))
 - WITH '(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')' '{' \<body> '}' with special handling for jumps (trigger exit or disable exit)
-- RAW \<opcode> \[\<arg> | \<arg value>]
-- PROPOSE \<type> \<value>
+- RAW \<opcode> \[\<arg> | \<arg value> | \<internal name>]
+  - RESERVE \<value> \['->' \<internal name>]
 - CALL INLINE
 - CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
 - MACRO ASSEMBLY for creating assembly instructions from macros (so from a macro declaration an instruction is created)
@@ -118,6 +116,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: UNION\<...> where ... is a list of data types, separated by ','
   - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
   - new data type: CONSTANT\['\<' \<type name> '>']
+  - new data type: LABEL exposing a label to the macro, which can be used in places were normal labels can be used
   - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on § macro parameter where list: returns len of parameter list
   - storing a list parameter in a local variable will create a list creation code

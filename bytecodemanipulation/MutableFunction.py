@@ -680,6 +680,7 @@ class Instruction:
             Opcodes.LOAD_FAST,
             Opcodes.LOAD_DEREF,
             Opcodes.LOAD_CLOSURE,
+            Opcodes.LOAD_BUILD_CLASS,
         ):
             return 1, 0, None
 
@@ -769,6 +770,7 @@ class Instruction:
             Opcodes.POP_JUMP_IF_TRUE,
             Opcodes.POP_JUMP_IF_FALSE,
             Opcodes.STORE_FAST,
+            Opcodes.STORE_NAME,
             Opcodes.STORE_DEREF,
             Opcodes.STORE_GLOBAL,
             Opcodes.RETURN_VALUE,
