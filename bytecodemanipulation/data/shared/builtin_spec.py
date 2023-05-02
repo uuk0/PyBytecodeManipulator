@@ -122,10 +122,7 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
             )
 
         if len(sources) == 2 and sources[0].opcode == sources[1].opcode == Opcodes.LOAD_CONST and sources[0].arg_value > sources[1].arg_value:
-            container.replace_with_raise_exception(
-                lambda: ValueError("range argument 0 must be < than arg 1"),
-                arg=1,
-            )
+            container.replace_with_constant_value(tuple())
 
         if len(sources) > 2 and sources[2].opcode == Opcodes.LOAD_CONST:
             if not container.replace_with_raise_exception_if(
@@ -136,22 +133,16 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
                 arg=2,
             ) and sources[2].arg_value == 0:
                 container.replace_with_raise_exception(
-                    lambda: ValueError("range argument 3 must be != 0!"),
+                    lambda: ValueError("range() arg 3 must not be zero"),
                     arg=2,
                 )
 
 
         if len(sources) == 3 and sources[0].opcode == sources[1].opcode == sources[2].opcode == Opcodes.LOAD_CONST and sources[0].arg_value > sources[1].arg_value and sources[2].arg_value > 0:
-            container.replace_with_raise_exception(
-                lambda: ValueError("range argument 0 must be < than arg 1 if arg 2 is > 0"),
-                arg=1,
-            )
+            container.replace_with_constant_value(tuple())
 
         if len(sources) == 3 and sources[0].opcode == sources[1].opcode == sources[2].opcode == Opcodes.LOAD_CONST and sources[0].arg_value < sources[1].arg_value and sources[2].arg_value < 0:
-            container.replace_with_raise_exception(
-                lambda: ValueError("range argument 0 must be > than arg 1 if arg 2 is < 0"),
-                arg=1,
-            )
+            container.replace_with_constant_value(tuple())
 
     elif len(sources) == 0:
         if container.method_call_descriptor.lookup_method_instr.arg_value == range:

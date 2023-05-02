@@ -303,6 +303,32 @@ class TestOptimiserUtil(TestCase):
         mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(mutable.instructions[0].arg_value, None)
+
+    def test_empty_range_from_invalid_range(self):
+        @cache_global_name("range", lambda: range)
+        def target():
+            return range(2, 0)
+
+        compare_optimized_results(self, target, lambda: tuple(), opt_ideal=2)
+
+        @cache_global_name("range", lambda: range)
+        def target():
+            return range(2, 0, 1)
+
+        compare_optimized_results(self, target, lambda: tuple(), opt_ideal=2)
+
+        @cache_global_name("range", lambda: range)
+        def target():
+            return range(0, 2, -1)
+
+        compare_optimized_results(self, target, lambda: tuple(), opt_ideal=2)
+
+    def test_sum_specializations(self):
+        @cache_global_name("sum", lambda: sum)
+        def target(a, b):
+            return sum(a, b)
+
+        compare_optimized_results(self, target, lambda a, b: a + b)

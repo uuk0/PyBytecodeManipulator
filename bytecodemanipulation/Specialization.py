@@ -89,6 +89,9 @@ class SpecializationContainer:
         self.constant_value = (value,)
         return self
 
+    def replace_with_constant_lazy_value(self, value: typing.Callable[[], object], side_effect: typing.Callable[[...], None] = None):
+        pass  # todo: implement!
+
     def replace_with_variant(self, target: typing.Callable[[...], object]):
         self.replaced_call_target = target
         self.no_special = False
