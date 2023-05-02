@@ -97,13 +97,33 @@ class ParsingScope:
             if name in scope:
                 return scope[name]
 
-    def lookup_namespace(self, name: typing.List[str]):
-        scope = self.global_scope
+    def lookup_namespace(self, name: typing.List[str], create=True, include_prefixes=False):
+        if include_prefixes:
+            for i in range(len(self.scope_path)+1):
+                if space := self.lookup_namespace(self.scope_path[:i] + name, create=False):
+                    return space
 
-        for e in name:
-            scope = scope.setdefault(e, {})
+            if not create:
+                return
 
-        return scope
+        if create:
+            scope = self.global_scope
+
+            for e in name:
+                scope = scope.setdefault(e, {})
+
+            return scope
+
+        else:
+            scope = self.global_scope
+
+            for e in name:
+                if e in scope:
+                    scope = scope[e]
+                else:
+                    return
+
+            return scope
 
     def exists_label(self, name: str) -> bool:
         return name in self.labels
@@ -1072,7 +1092,7 @@ class Parser(AbstractParser):
         while self.try_consume(SpecialToken(":")):
             name.append(self.consume(IdentifierToken).text)
 
-        target = self.scope.lookup_namespace(name)
+        target = self.scope.lookup_namespace(name, create=False, include_prefixes=True)
 
         if isinstance(target, MacroAssembly.MacroOverloadPage):
             for macro in typing.cast(
@@ -1535,15 +1555,16 @@ class MacroAssembly(AbstractAssemblyInstruction):
             return False
 
     class MacroOverloadPage:
-        def __init__(self, name: typing.List[str]):
+        def __init__(self, name: typing.List[str], name_token: typing.List[IdentifierToken] = None):
             self.name = name
+            self.name_token = name_token
             self.assemblies: typing.List[MacroAssembly] = []
 
         def __repr__(self) -> str:
             return f"MACRO_OVERLOAD({'::'.join(self.name)}, [{', '.join(map(repr, self.assemblies))}])"
 
         def lookup(
-            self, args: typing.List[AbstractAccessExpression]
+            self, args: typing.List[AbstractAccessExpression], scope: ParsingScope,
         ) -> typing.Tuple["MacroAssembly", list]:
             for macro in self.assemblies:
                 # todo: better check here!
@@ -1623,8 +1644,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     args[:] = prefix + [inner] + postfix
                     return macro, args
 
-            raise NameError(
-                f"Could not find overloaded variant of {':'.join(self.name)} with args {args}!"
+            raise throw_positioned_syntax_error(
+                scope,
+                self.name_token,
+                f"Could not find overloaded variant of {':'.join(self.name)} with args {args}!",
+                NameError,
             )
 
         def add_definition(self, macro: "MacroAssembly", override=False):
@@ -1693,7 +1717,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         body = parser.parse_body(scope=scope)
 
-        return cls(name, args, body, allow_assembly_instr, scope_path=scope.scope_path.copy())
+        return cls(name, args, body, allow_assembly_instr, scope_path=scope.scope_path.copy(), module_path=scope.module_file)
 
     @classmethod
     def consume_call(
@@ -1708,12 +1732,14 @@ class MacroAssembly(AbstractAssemblyInstruction):
         body: CompoundExpression,
         allow_assembly_instr=False,
         scope_path: typing.List[str] = None,
+        module_path: str = None,
     ):
         self.name = name
         self.args = args
         self.body = body
         self.allow_assembly_instr = allow_assembly_instr
-        self.scope_path = scope_path
+        self.scope_path = scope_path or []
+        self.module_path = module_path
 
     def __repr__(self):
         return f"MACRO:{'ASSEMBLY' if self.allow_assembly_instr else ''}:'{':'.join(map(lambda e: e.text, self.name))}'({', '.join(map(repr, self.args))}) {{{repr(self.body)}}}"
@@ -1751,6 +1777,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         scope = scope.copy()
         scope.scope_path = self.scope_path
+        scope.module_file = self.module_path
 
         bytecode = []
 
@@ -1867,7 +1894,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         namespace_level = scope.lookup_namespace(namespace)
 
         if inner_name not in namespace_level:
-            page = self.MacroOverloadPage(name)
+            page = self.MacroOverloadPage(name, self.name)
             namespace_level[inner_name] = page
         elif not isinstance(namespace_level[inner_name], self.MacroOverloadPage):
             raise RuntimeError(

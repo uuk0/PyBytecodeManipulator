@@ -31,7 +31,7 @@ NAMESPACE std
 
     MACRO ASSEMBLY check_type(expected_type, value)
     {
-        CALL MACRO check_type(§expected_type, §value, "Invalid type")
+        check_type(§expected_type, §value, "Invalid type")
     }
 
     NAMESPACE os

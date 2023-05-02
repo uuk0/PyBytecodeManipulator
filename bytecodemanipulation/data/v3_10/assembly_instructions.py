@@ -1682,7 +1682,7 @@ class CallAssembly(AbstractAssemblyInstruction):
                 f"Expected Macro Declaration for '{':'.join(map(lambda e: e.text, name))}', got {macro_declaration}"
             )
 
-        macro, args = macro_declaration.lookup([arg.source for arg in self.args])
+        macro, args = macro_declaration.lookup([arg.source for arg in self.args], scope)
         return macro.emit_call_bytecode(function, scope, args)
 
 
