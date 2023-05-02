@@ -525,7 +525,12 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
         if self.name_token.text in scope.globals_dict:
             return scope.globals_dict[self.name_token]
 
-        raise NameError(self.name_token.text)
+        raise throw_positioned_syntax_error(
+            scope,
+            self.name_token,
+            f"Name {self.name_token.text} not found!",
+            NameError,
+        )
 
 
 class LocalAccessExpression(AbstractAccessExpression):
