@@ -328,7 +328,15 @@ class TestOptimiserUtil(TestCase):
 
     def test_sum_specializations(self):
         @cache_global_name("sum", lambda: sum)
+        def target(a):
+            return sum((a,))
+
+        compare_optimized_results(self, target, lambda a: a)
+
+        @cache_global_name("sum", lambda: sum)
         def target(a, b):
-            return sum(a, b)
+            return sum((a, b))
 
         compare_optimized_results(self, target, lambda a, b: a + b)
+
+        # we currently cannot test 3 or more args, as that would require reordering of instructions

@@ -381,10 +381,15 @@ def specialize_any(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
     if len(args) == 1:
-        container.replace_call_with_arg(args[0])
-    elif len(args) == 2:
-        container.replace_call_with_opcodes([
-            args[0],
-            args[1],
-            Instruction(None, -1, Opcodes.BINARY_ADD),
-        ])
+        if args[0].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST:
+            container.replace_with_constant_value(sum(args[0].get_normalized_data_instr().arg_value))
+        elif args[0].get_normalized_data_instr().opcode in (Opcodes.BUILD_LIST, Opcodes.BUILD_TUPLE, Opcodes.BUILD_SET):
+            count = args[0].get_normalized_data_instr().arg
+            args[0].get_normalized_data_instr().change_opcode(Opcodes.NOP)
+            container.replace_call_with_opcodes(
+                [
+                    Instruction(None, -1, Opcodes.BINARY_ADD)
+                    for _ in range(count-1)
+                ],
+                leave_args_on_stack=True,
+            )

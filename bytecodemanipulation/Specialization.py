@@ -50,7 +50,8 @@ class ArgDescriptor:
 
 class SpecializationContainer:
     def __init__(self):
-        self.underlying_function: MutableFunction | None = None
+        self.underlying_function: typing.Callable | None = None
+        self.target: MutableFunction | None = None
         self.method_call_descriptor: MethodCallDescriptor | None = None
         self.arg_descriptors: typing.List[ArgDescriptor] = []
         self.return_type_annotation: TypeAnnotation | None = None
@@ -61,6 +62,7 @@ class SpecializationContainer:
         self.replace_raised_exception: Exception | None = None
         self.constant_value = tuple()
         self.invoke_before: typing.Callable | None = None
+        self.replacement_bytecode = None
 
     def set_arg_descriptors(self, descriptors: typing.List[ArgDescriptor]):
         for e in descriptors:
@@ -160,18 +162,40 @@ class SpecializationContainer:
             return True
         return False
 
-    def replace_call_with_opcodes(self, opcodes: typing.List[Instruction | ArgDescriptor]):
+    def replace_call_with_opcodes(self, opcodes: typing.List[Instruction | ArgDescriptor], leave_args_on_stack=False):
         """
         Replaces the call with a set of instructions.
-        The instructions must be bound to the underlying function objects
-        Arguments are at head like for the call instruction, skipping possible
-        discard()-ed arguments.
-
-        todo: implement
+        Arguments can be accessed by their arg descriptor as an "instruction".
+        Writing is currently not allowed
 
         :param opcodes: the opcodes to use, possibly mixed with arg descriptors to access the args to the call;
             args are de-duplicated, and stored in temporary locals if needed
+        :param leave_args_on_stack: if True, the args of the call will be at the stack top like in a real call; This makes
+            using ArgDescriptor as instructions impossible!
         """
+
+        if not leave_args_on_stack:
+            # Store values in temporary variables
+            bytecode = [
+                Instruction(self.target, -1, Opcodes.STORE_FAST, f"&fast_tmp_specialize_local::{i}")
+                for i in range(self.method_call_descriptor.call_method_instr.arg)
+            ]
+
+            bytecode += [
+                (
+                    instruction.update_owner(self.target, -1)
+                    if isinstance(instruction, Instruction)
+                    else
+                    Instruction(self.target, -1, Opcodes.LOAD_FAST, f"&fast_tmp_specialize_local::{instruction.arg_id}")
+                )
+                for instruction in opcodes
+            ]
+        else:
+            bytecode = opcodes
+
+        self.no_special = False
+        self.replacement_bytecode = bytecode
+        return self
 
     def replace_call_with_arg(self, arg: ArgDescriptor):
         """
@@ -188,6 +212,12 @@ class SpecializationContainer:
 
     def apply(self):
         if self.no_special:
+            return
+
+        if self.replacement_bytecode is not None:
+            self.method_call_descriptor.call_method_instr.change_opcode(Opcodes.NOP)
+            self.method_call_descriptor.call_method_instr.insert_after(self.replacement_bytecode)
+            self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.NOP)
             return
 
         if self.result_arg:

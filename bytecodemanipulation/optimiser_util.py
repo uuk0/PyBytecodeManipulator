@@ -454,6 +454,7 @@ def apply_specializations(mutable: MutableFunction) -> bool:
                 target_func = source.arg_value
 
                 spec = SpecializationContainer()
+                spec.target = mutable
                 spec.underlying_function = target_func
                 spec.method_call_descriptor = MethodCallDescriptor(
                     safe_source, instruction

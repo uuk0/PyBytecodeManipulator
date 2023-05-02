@@ -799,6 +799,9 @@ class Instruction:
 
             instructions = instructions[0]
 
+        if len(instructions) == 0:
+            return self
+
         instructions[0].next_instruction = self.next_instruction
         self.next_instruction = instructions[0]
 
