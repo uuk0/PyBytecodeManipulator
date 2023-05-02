@@ -56,6 +56,16 @@ class StandardLibraryTest(TestCase):
 
         self.assertRaises(ValueError, target)
 
+    def test_type_check_raise_with_default_text(self):
+        def target():
+            assembly("""std:check_type(@int, "test")""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertRaises(ValueError, target)
+
     def test_file_list(self):
         file_name = os.path.dirname(__file__).replace("\\", "\\\\")
         code = f'''def target():

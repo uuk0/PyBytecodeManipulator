@@ -150,7 +150,7 @@ class ParsingScope:
 
 
 def _print_complex_token_location(
-    scope: ParsingScope, tokens: typing.List[AbstractToken | None]
+    scope: ParsingScope, tokens: typing.List[AbstractToken | None], exc_type: typing.Type[Exception] = SyntaxError,
 ):
     lines: typing.Dict[int, typing.List[AbstractToken]] = {}
 
@@ -188,7 +188,8 @@ def _print_complex_token_location(
                 print()
             already_seen_line = True
 
-            print(f'File "{scope.module_file}", line {line + 1}', file=sys.stderr)
+            file = scope.module_file.replace('\\', '/')
+            print(f'File "{file}", line {line + 1}', file=sys.stderr)
         previous_line_no = line
 
         print(content[line].removesuffix("\n"), file=sys.stderr)
@@ -199,12 +200,14 @@ def throw_positioned_syntax_error(
     scope: ParsingScope,
     token: AbstractToken | typing.List[AbstractToken | None] | None,
     message: str,
+    exc_type: typing.Type[Exception] = SyntaxError,
 ) -> Exception:
     if scope and scope.module_file and token:
         if isinstance(token, list):
-            _print_complex_token_location(scope, token)
+            _print_complex_token_location(scope, token, exc_type=exc_type)
         else:
-            print(f'File "{scope.module_file}", line {token.line+1}')
+            file = scope.module_file.replace('\\', '/')
+            print(f'File "{file}", line {token.line+1}')
             with open(scope.module_file, mode="r", encoding="utf-8") as f:
                 content = f.readlines()
 
@@ -214,11 +217,11 @@ def throw_positioned_syntax_error(
                 (" " * token.column) + "^" + ("~" * (token.span - 1)), file=sys.stderr
             )
 
-        print("-> SyntaxError:", message, file=sys.stderr)
+        print(f"-> {exc_type.__name__}: {message}", file=sys.stderr)
     else:
-        return SyntaxError(f"{token}: {message}")
+        return exc_type(f"{token}: {message}")
 
-    return SyntaxError(message)
+    return exc_type(message)
 
 
 def _syntax_wrapper(token, text, scope):
@@ -1536,6 +1539,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self.name = name
             self.assemblies: typing.List[MacroAssembly] = []
 
+        def __repr__(self) -> str:
+            return f"MACRO_OVERLOAD({'::'.join(self.name)}, [{', '.join(map(repr, self.assemblies))}])"
+
         def lookup(
             self, args: typing.List[AbstractAccessExpression]
         ) -> typing.Tuple["MacroAssembly", list]:
@@ -1687,7 +1693,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         body = parser.parse_body(scope=scope)
 
-        return cls(name, args, body, allow_assembly_instr)
+        return cls(name, args, body, allow_assembly_instr, scope_path=scope.scope_path.copy())
 
     @classmethod
     def consume_call(
@@ -1701,11 +1707,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
         args: typing.List[MacroArg],
         body: CompoundExpression,
         allow_assembly_instr=False,
+        scope_path: typing.List[str] = None,
     ):
         self.name = name
         self.args = args
         self.body = body
         self.allow_assembly_instr = allow_assembly_instr
+        self.scope_path = scope_path
 
     def __repr__(self):
         return f"MACRO:{'ASSEMBLY' if self.allow_assembly_instr else ''}:'{':'.join(map(lambda e: e.text, self.name))}'({', '.join(map(repr, self.args))}) {{{repr(self.body)}}}"
@@ -1740,6 +1748,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
     ) -> typing.List[Instruction]:
         if len(args) != len(self.args):
             raise RuntimeError("Argument count must be equal!")
+
+        scope = scope.copy()
+        scope.scope_path = self.scope_path
 
         bytecode = []
 
@@ -2013,6 +2024,8 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                 for key in source.keys():
                     if key not in target:
                         target[key] = source[key]
+                    elif target[key] == source[key]:
+                        pass
                     elif isinstance(target[key], dict) and isinstance(
                         source[key], dict
                     ):

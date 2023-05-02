@@ -2,6 +2,10 @@ import pathlib
 import sys
 import importlib
 import importlib.machinery
+import types
+
+import typing
+
 import bytecodemanipulation.assembler.Emitter
 
 
@@ -10,6 +14,8 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
     .pyasm file importer
     so the Emitter is bound to module-level parsing if only the .pyasm file is provided
     """
+
+    MODULE_CACHE: typing.Dict[str, types.ModuleType] = {}
 
     @classmethod
     def find_spec(cls, name, path, target=None):
@@ -29,6 +35,11 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         return None
 
     def exec_module(self, module):
+        if module.__name__ in self.MODULE_CACHE:
+            return self.MODULE_CACHE[module.__name__]
+
+        self.MODULE_CACHE[module.__name__] = module
+
         with open(self.path, encoding="utf-8") as fid:
             asm_code = fid.read()
 

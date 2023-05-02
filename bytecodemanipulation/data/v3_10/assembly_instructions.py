@@ -1424,6 +1424,14 @@ class CallAssembly(AbstractAssemblyInstruction):
                         allow_primitives=True, include_bracket=False
                     )
 
+                    if expr is None:
+                        if parser[0] == SpecialToken(")"):
+                            break
+
+                        raise throw_positioned_syntax_error(
+                            scope, parser[0], "<expression> expected"
+                        )
+
                 args.append(CallAssembly.Arg(expr, is_dynamic))
 
             else:
@@ -1661,8 +1669,8 @@ class CallAssembly(AbstractAssemblyInstruction):
         macro_declaration = scope.lookup_name_in_scope(name[0].text)
 
         if macro_declaration is None:
-            raise NameError(
-                f"Macro '{':'.join(map(lambda e: e.text, name))}' not found!"
+            raise throw_positioned_syntax_error(
+                scope, typing.cast(MacroAccessExpression, self.call_target).name, f"Macro '{':'.join(map(lambda e: e.text, name))}' not found!", NameError
             )
 
         if len(name) > 1:

@@ -282,9 +282,9 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     r.column = self.old_column_number - newline_count
                     r.span = self.cursor - old_cursor
 
-                    print(
-                        f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})"
-                    )
+                    # print(
+                    #     f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})"
+                    # )
 
                     self.old_column_number += r.span
 

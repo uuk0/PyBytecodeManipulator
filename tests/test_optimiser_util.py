@@ -4,6 +4,7 @@ import math
 import os.path
 import random
 from unittest import TestCase
+
 import bytecodemanipulation.MutableFunction
 from bytecodemanipulation.optimiser_util import *
 from bytecodemanipulation.Optimiser import (

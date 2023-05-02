@@ -787,6 +787,9 @@ class Instruction:
         if self.opcode == Opcodes.RAISE_VARARGS:
             return 0, self.arg, None
 
+        if self.opcode == Opcodes.DUP_TOP_TWO:
+            return 2, 4, None
+
         raise RuntimeError(self)
 
     def insert_after(self, *instructions: "Instruction" | typing.List["Instruction"]):

@@ -29,6 +29,11 @@ NAMESPACE std
         }
     }
 
+    MACRO ASSEMBLY check_type(expected_type, value)
+    {
+        CALL MACRO check_type(§expected_type, §value, "Invalid type")
+    }
+
     NAMESPACE os
     {
         MACRO ASSEMBLY file_walker(directory, file VARIABLE, code CODE_BLOCK)
