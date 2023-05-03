@@ -68,11 +68,12 @@ TODO
 
 # Applied Optimisations
 
-- Constant Expression inlining
+- Constant Expression inlining (can be declared for custom functions to be constant)
 - LOAD_GLOBAL for builtins (if enabled)
 - standard library inlining (if enabled)
 - specialization of methods based on arguments, e.g. constant arguments (when already resolved before, requires one of above options)
 - branch elimination when jumping on a constant (TODO: also if condition can be inferred ahead-of-time, see specialization)
+- local variable elimination
 
 
 # Currently Limitations
