@@ -97,10 +97,14 @@ class ParsingScope:
             if name in scope:
                 return scope[name]
 
-    def lookup_namespace(self, name: typing.List[str], create=True, include_prefixes=False):
+    def lookup_namespace(
+        self, name: typing.List[str], create=True, include_prefixes=False
+    ):
         if include_prefixes:
-            for i in range(len(self.scope_path)+1):
-                if space := self.lookup_namespace(self.scope_path[:i] + name, create=False):
+            for i in range(len(self.scope_path) + 1):
+                if space := self.lookup_namespace(
+                    self.scope_path[:i] + name, create=False
+                ):
                     return space
 
             if not create:
@@ -170,7 +174,9 @@ class ParsingScope:
 
 
 def _print_complex_token_location(
-    scope: ParsingScope, tokens: typing.List[AbstractToken | None], exc_type: typing.Type[Exception] = SyntaxError,
+    scope: ParsingScope,
+    tokens: typing.List[AbstractToken | None],
+    exc_type: typing.Type[Exception] = SyntaxError,
 ):
     lines: typing.Dict[int, typing.List[AbstractToken]] = {}
 
@@ -208,7 +214,7 @@ def _print_complex_token_location(
                 print()
             already_seen_line = True
 
-            file = scope.module_file.replace('\\', '/')
+            file = scope.module_file.replace("\\", "/")
             print(f'File "{file}", line {line + 1}', file=sys.stderr)
         previous_line_no = line
 
@@ -226,7 +232,7 @@ def throw_positioned_syntax_error(
         if isinstance(token, list):
             _print_complex_token_location(scope, token, exc_type=exc_type)
         else:
-            file = scope.module_file.replace('\\', '/')
+            file = scope.module_file.replace("\\", "/")
             print(f'File "{file}", line {token.line+1}')
             with open(scope.module_file, mode="r", encoding="utf-8") as f:
                 content = f.readlines()
@@ -998,7 +1004,9 @@ class Parser(AbstractParser):
                 self.scope.scope_path += namespace_part
 
         if not self.try_consume(SpecialToken("{")):
-            raise throw_positioned_syntax_error(scope, self.try_inspect(), "expected '{'")
+            raise throw_positioned_syntax_error(
+                scope, self.try_inspect(), "expected '{'"
+            )
 
         body = self.parse_while_predicate(
             lambda: not self.try_consume(SpecialToken("}")),
@@ -1305,9 +1313,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
     NAME = "LABEL"
 
     @classmethod
-    def consume(
-        cls, parser: "Parser", scope: ParsingScope
-    ) -> "LabelAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "LabelAssembly":
         return cls(parser.consume(IdentifierToken))
 
     def __init__(self, name_token: IdentifierToken | str):
@@ -1560,7 +1566,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
             return False
 
     class MacroOverloadPage:
-        def __init__(self, name: typing.List[str], name_token: typing.List[IdentifierToken] = None):
+        def __init__(
+            self,
+            name: typing.List[str],
+            name_token: typing.List[IdentifierToken] = None,
+        ):
             self.name = name
             self.name_token = name_token
             self.assemblies: typing.List[MacroAssembly] = []
@@ -1569,7 +1579,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             return f"MACRO_OVERLOAD({'::'.join(self.name)}, [{', '.join(map(repr, self.assemblies))}])"
 
         def lookup(
-            self, args: typing.List[AbstractAccessExpression], scope: ParsingScope,
+            self,
+            args: typing.List[AbstractAccessExpression],
+            scope: ParsingScope,
         ) -> typing.Tuple["MacroAssembly", list]:
             for macro in self.assemblies:
                 # todo: better check here!
@@ -1722,7 +1734,14 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         body = parser.parse_body(scope=scope)
 
-        return cls(name, args, body, allow_assembly_instr, scope_path=scope.scope_path.copy(), module_path=scope.module_file)
+        return cls(
+            name,
+            args,
+            body,
+            allow_assembly_instr,
+            scope_path=scope.scope_path.copy(),
+            module_path=scope.module_file,
+        )
 
     @classmethod
     def consume_call(

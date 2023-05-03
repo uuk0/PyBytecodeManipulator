@@ -621,7 +621,9 @@ class IFAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
             if not parser.try_consume(SpecialToken("'")):
-                raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
+                raise throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected '"
+                )
         else:
             label_name = None
 
@@ -747,7 +749,9 @@ class WHILEAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
             if not parser.try_consume(SpecialToken("'")):
-                raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
+                raise throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected '"
+                )
         else:
             label_name = None
 
@@ -1445,7 +1449,9 @@ class CallAssembly(AbstractAssemblyInstruction):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected ')'")
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected ')'"
+            )
 
         if parser.try_consume_multi(
             [
@@ -1670,7 +1676,10 @@ class CallAssembly(AbstractAssemblyInstruction):
 
         if macro_declaration is None:
             raise throw_positioned_syntax_error(
-                scope, typing.cast(MacroAccessExpression, self.call_target).name, f"Macro '{':'.join(map(lambda e: e.text, name))}' not found!", NameError
+                scope,
+                typing.cast(MacroAccessExpression, self.call_target).name,
+                f"Macro '{':'.join(map(lambda e: e.text, name))}' not found!",
+                NameError,
             )
 
         if len(name) > 1:
@@ -1994,7 +2003,9 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     NAME = "DEF"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "FunctionDefinitionAssembly":
+    def consume(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
         bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []
         args = []
@@ -2245,7 +2256,9 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
     NAME = "CLASS"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "ClassDefinitionAssembly":
+    def consume(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> "ClassDefinitionAssembly":
         name_token = parser.consume(IdentifierToken, err_arg=scope)
 
         parents = []
@@ -2268,11 +2281,7 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
                     parents.append(parent)
 
             if not parser.try_consume(SpecialToken(")")):
-                raise throw_positioned_syntax_error(
-                    scope,
-                    parser[0],
-                    "Expected ')'"
-                )
+                raise throw_positioned_syntax_error(scope, parser[0], "Expected ')'")
 
         if not parents:
             parents = [ConstantAccessExpression(object)]
@@ -2284,7 +2293,12 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
             code_block,
         )
 
-    def __init__(self, name_token: IdentifierToken, parents: typing.List[AbstractAccessExpression], code_block: CompoundExpression):
+    def __init__(
+        self,
+        name_token: IdentifierToken,
+        parents: typing.List[AbstractAccessExpression],
+        code_block: CompoundExpression,
+    ):
         self.name_token = name_token
         self.parents = parents
         self.code_block = code_block
@@ -2295,15 +2309,17 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
     def copy(self):
         return ClassDefinitionAssembly(
             self.name_token,
-            [
-                parent.copy()
-                for parent in self.parents
-            ],
-            self.code_block.copy()
+            [parent.copy() for parent in self.parents],
+            self.code_block.copy(),
         )
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and self.name_token == other.name_token and self.parents == other.parents and self.code_block == other.code_block
+        return (
+            isinstance(other, type(self))
+            and self.name_token == other.name_token
+            and self.parents == other.parents
+            and self.code_block == other.code_block
+        )
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -2361,4 +2377,3 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
             Instruction(function, -1, Opcodes.STORE_FAST, self.name_token.text),
         ]
         return bytecode
-

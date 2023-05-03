@@ -121,27 +121,49 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
                 arg=1,
             )
 
-        if len(sources) == 2 and sources[0].opcode == sources[1].opcode == Opcodes.LOAD_CONST and sources[0].arg_value > sources[1].arg_value:
+        if (
+            len(sources) == 2
+            and sources[0].opcode == sources[1].opcode == Opcodes.LOAD_CONST
+            and sources[0].arg_value > sources[1].arg_value
+        ):
             container.replace_with_constant_value(tuple())
 
         if len(sources) > 2 and sources[2].opcode == Opcodes.LOAD_CONST:
-            if not container.replace_with_raise_exception_if(
-                not _check_int(sources[2].arg_value),
-                lambda: TypeError(
-                    f"'{type(sources[2].arg_value).__name__}' object cannot be interpreted as an integer"
-                ),
-                arg=2,
-            ) and sources[2].arg_value == 0:
+            if (
+                not container.replace_with_raise_exception_if(
+                    not _check_int(sources[2].arg_value),
+                    lambda: TypeError(
+                        f"'{type(sources[2].arg_value).__name__}' object cannot be interpreted as an integer"
+                    ),
+                    arg=2,
+                )
+                and sources[2].arg_value == 0
+            ):
                 container.replace_with_raise_exception(
                     lambda: ValueError("range() arg 3 must not be zero"),
                     arg=2,
                 )
 
-
-        if len(sources) == 3 and sources[0].opcode == sources[1].opcode == sources[2].opcode == Opcodes.LOAD_CONST and sources[0].arg_value > sources[1].arg_value and sources[2].arg_value > 0:
+        if (
+            len(sources) == 3
+            and sources[0].opcode
+            == sources[1].opcode
+            == sources[2].opcode
+            == Opcodes.LOAD_CONST
+            and sources[0].arg_value > sources[1].arg_value
+            and sources[2].arg_value > 0
+        ):
             container.replace_with_constant_value(tuple())
 
-        if len(sources) == 3 and sources[0].opcode == sources[1].opcode == sources[2].opcode == Opcodes.LOAD_CONST and sources[0].arg_value < sources[1].arg_value and sources[2].arg_value < 0:
+        if (
+            len(sources) == 3
+            and sources[0].opcode
+            == sources[1].opcode
+            == sources[2].opcode
+            == Opcodes.LOAD_CONST
+            and sources[0].arg_value < sources[1].arg_value
+            and sources[2].arg_value < 0
+        ):
             container.replace_with_constant_value(tuple())
 
     elif len(sources) == 0:
@@ -382,14 +404,17 @@ def specialize_any(container: SpecializationContainer):
 
     if len(args) == 1:
         if args[0].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST:
-            container.replace_with_constant_value(sum(args[0].get_normalized_data_instr().arg_value))
-        elif args[0].get_normalized_data_instr().opcode in (Opcodes.BUILD_LIST, Opcodes.BUILD_TUPLE, Opcodes.BUILD_SET):
+            container.replace_with_constant_value(
+                sum(args[0].get_normalized_data_instr().arg_value)
+            )
+        elif args[0].get_normalized_data_instr().opcode in (
+            Opcodes.BUILD_LIST,
+            Opcodes.BUILD_TUPLE,
+            Opcodes.BUILD_SET,
+        ):
             count = args[0].get_normalized_data_instr().arg
             args[0].get_normalized_data_instr().change_opcode(Opcodes.NOP)
             container.replace_call_with_opcodes(
-                [
-                    Instruction(None, -1, Opcodes.BINARY_ADD)
-                    for _ in range(count-1)
-                ],
+                [Instruction(None, -1, Opcodes.BINARY_ADD) for _ in range(count - 1)],
                 leave_args_on_stack=True,
             )

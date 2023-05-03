@@ -91,7 +91,11 @@ class SpecializationContainer:
         self.constant_value = (value,)
         return self
 
-    def replace_with_constant_lazy_value(self, value: typing.Callable[[], object], side_effect: typing.Callable[[...], None] = None):
+    def replace_with_constant_lazy_value(
+        self,
+        value: typing.Callable[[], object],
+        side_effect: typing.Callable[[...], None] = None,
+    ):
         pass  # todo: implement!
 
     def replace_with_variant(self, target: typing.Callable[[...], object]):
@@ -162,7 +166,11 @@ class SpecializationContainer:
             return True
         return False
 
-    def replace_call_with_opcodes(self, opcodes: typing.List[Instruction | ArgDescriptor], leave_args_on_stack=False):
+    def replace_call_with_opcodes(
+        self,
+        opcodes: typing.List[Instruction | ArgDescriptor],
+        leave_args_on_stack=False,
+    ):
         """
         Replaces the call with a set of instructions.
         Arguments can be accessed by their arg descriptor as an "instruction".
@@ -177,7 +185,12 @@ class SpecializationContainer:
         if not leave_args_on_stack:
             # Store values in temporary variables
             bytecode = [
-                Instruction(self.target, -1, Opcodes.STORE_FAST, f"&fast_tmp_specialize_local::{i}")
+                Instruction(
+                    self.target,
+                    -1,
+                    Opcodes.STORE_FAST,
+                    f"&fast_tmp_specialize_local::{i}",
+                )
                 for i in range(self.method_call_descriptor.call_method_instr.arg)
             ]
 
@@ -185,8 +198,12 @@ class SpecializationContainer:
                 (
                     instruction.update_owner(self.target, -1)
                     if isinstance(instruction, Instruction)
-                    else
-                    Instruction(self.target, -1, Opcodes.LOAD_FAST, f"&fast_tmp_specialize_local::{instruction.arg_id}")
+                    else Instruction(
+                        self.target,
+                        -1,
+                        Opcodes.LOAD_FAST,
+                        f"&fast_tmp_specialize_local::{instruction.arg_id}",
+                    )
                 )
                 for instruction in opcodes
             ]
@@ -216,7 +233,9 @@ class SpecializationContainer:
 
         if self.replacement_bytecode is not None:
             self.method_call_descriptor.call_method_instr.change_opcode(Opcodes.NOP)
-            self.method_call_descriptor.call_method_instr.insert_after(self.replacement_bytecode)
+            self.method_call_descriptor.call_method_instr.insert_after(
+                self.replacement_bytecode
+            )
             self.method_call_descriptor.lookup_method_instr.change_opcode(Opcodes.NOP)
             return
 
