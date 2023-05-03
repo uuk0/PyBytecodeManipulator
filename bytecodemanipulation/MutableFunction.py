@@ -316,7 +316,15 @@ class Instruction:
 
         if self.function is not None:
             try:
-                if self.opcode in HAS_NAME:
+                flag = False
+                if sys.version_info.minor >= 11:
+                    if self.opcode == Opcodes.LOAD_GLOBAL:
+                        self.arg_value = self.function.shared_names[arg >> 1]
+                        flag = True
+
+                if flag:
+                    pass
+                elif self.opcode in HAS_NAME:
                     self.arg_value = self.function.shared_names[arg]
                 elif self.opcode in HAS_CELL_VARIABLE:
                     self.arg_value = self.function.cell_variables[arg]
@@ -665,6 +673,9 @@ class Instruction:
             Opcodes.GEN_START,
             Opcodes.JUMP_ABSOLUTE,
             Opcodes.BYTECODE_LABEL,
+            Opcodes.CACHE,
+            Opcodes.PRECALL,
+            Opcodes.RESUME,
         ):
             return 0, 0, None
 
@@ -703,6 +714,7 @@ class Instruction:
             Opcodes.CALL_FUNCTION,
             Opcodes.CALL_METHOD,
             Opcodes.CALL_FUNCTION_KW,
+            Opcodes.CALL,
         ):
             return 1, self.arg + 1, None
 
@@ -878,6 +890,8 @@ class MutableFunction:
             self.stack_size = self.code_object.co_stacksize
             self.shared_variable_names = list(self.code_object.co_varnames)
 
+            self.exception_table = bytearray(self.code_object.co_exceptiontable)
+
             self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
     else:
@@ -966,8 +980,10 @@ class MutableFunction:
                 tuple(self.shared_variable_names),
                 self.filename,
                 self.function_name,
+                self.function_name,
                 self.first_line_number,
                 self.get_lnotab(),
+                bytes(self.exception_table),
                 tuple(self.free_variables),
                 tuple(self.cell_variables),
             )

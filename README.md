@@ -88,6 +88,15 @@ TODO
   parent instruction, using the arg to switch between modes
 
 
+# Assembly Code
+
+- The library provides also a way to use some "python-assembly" for writing code
+- This is only python bytecode, so no fancy stuff can be done
+- See ASSEMBLY.md for more information on instructions
+- We provide an import system hook for importing .pyasm files via bytecodemanipulation.assembler.hook
+- You may use the functions from bytecodemanipulation.assembler.target for creating inline-assembly
+
+
 ## Code Formatting
 
 We use the python formatting library "black" on our code

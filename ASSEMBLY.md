@@ -6,7 +6,7 @@ for cross-version support.
 
 ## .pyasm files
 
-- implementation in bytecodemanipulation.assembler.hook, which is enabled on import
+- implementation in bytecodemanipulation.assembler.hook, which is enabled on import of that module
 - hooks into the import system with lowest priority so that when a ModuleNotFoundException would be thrown,
   we can look into .pyasm files instead
 - will be parsed as normal "inline" assembly, local space is the module scope
@@ -116,7 +116,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: UNION\<...> where ... is a list of data types, separated by ','
   - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
   - new data type: CONSTANT\['\<' \<type name> '>']
-  - new data type: LABEL exposing a label to the macro, which can be used in places were normal labels can be used
+  - new data type: LABEL exposing a label to the macro, which can be used in places were normal labels can be used (handed over only by name)
   - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on § macro parameter where list: returns len of parameter list
   - storing a list parameter in a local variable will create a list creation code
@@ -125,7 +125,16 @@ Expressions can be added as certain parameters to instructions to use instead of
     - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
 - makro MACRO_PASTE should also work in subfunctions (so store it somewhere in the scope)
+- CLASS STRUCT ... '\<' \<attr name> {',' \<attr name>} '>' '{' ... '}' to declare a class with \_\_slots__ (and maybe compile-time checks that no other attributes are set on 'self' attributes on functions?)
+- CLASS ABSTRACT ... for abstract classes, which includes the abc.ABC baseclass
+- DEF ABSTRACT ... for defining abstract methods (no body to declare!)
+- ATTR_TYPEDEF \<attr name> \<type definition> in class bodies
+- VAR_TYPEDEF \<variable name> \<type definition> everywhere to hint types
+- ..._TYPEDEF_STRICT for enforcing types
+
+- make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 
 ## PyASM
 
 - a syntax highlighter plugin
+- maybe make the module parsing (optional) async?

@@ -18,6 +18,9 @@ from bytecodemanipulation.assembler.Parser import (
     IAssemblyStructureVisitable,
     JumpToLabel,
     ParsingScope,
+    MacroAccessExpression,
+    MacroAssembly,
+    throw_positioned_syntax_error,
 )
 from bytecodemanipulation.assembler.Lexer import (
     SpecialToken,
@@ -28,6 +31,35 @@ from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 
 
 @Parser.register
+class RaiseAssembly(AbstractAssemblyInstruction):
+    # RAISE [<source>]
+    NAME = "RAISE"
+
+    @classmethod
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "RaiseAssembly":
+        return cls(parser.try_parse_data_source(include_bracket=False))
+
+    def __init__(self, source: AbstractSourceExpression = None):
+        self.source = source
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.source == other.source
+
+    def __repr__(self):
+        return f"RAISE({'TOS' if self.source is None else self.source})"
+
+    def copy(self):
+        return type(self)(self.source.copy() if self.source else None)
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        return (
+            [] if self.source is None else self.source.emit_bytecodes(function, scope)
+        ) + [Instruction(function, -1, Opcodes.RAISE_VARARGS, arg=1)]
+
+
+@Parser.register
 class LoadAssembly(AbstractAssemblyInstruction):
     # LOAD <access> [-> <target>]
     NAME = "LOAD"
@@ -35,19 +67,23 @@ class LoadAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "LoadAssembly":
         access_expr = parser.try_consume_access_to_value(
-            allow_tos=False, allow_primitives=True
+            allow_tos=False, allow_primitives=True, scope=scope
         )
 
         if access_expr is None:
-            raise SyntaxError(parser.try_inspect())
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <expression>"
+            )
 
-        if parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
-            target = parser.try_consume_access_to_value()
+        if parser.try_consume(SpecialToken("-")):
+            if not parser.try_consume(SpecialToken(">")):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    parser[-1:1] + [scope.last_base_token],
+                    "expected '>' after '-' to complete '->'",
+                )
+
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -94,9 +130,12 @@ class LoadAssembly(AbstractAssemblyInstruction):
         return visitor(
             self,
             (
-                self.access_expr.visit_parts(visitor),
-                self.target.visit_parts(visitor) if self.target is not None else None,
+                self.access_expr.visit_parts(visitor, parents + [self]),
+                self.target.visit_parts(visitor, parents + [self])
+                if self.target is not None
+                else None,
             ),
+            parents,
         )
 
 
@@ -107,10 +146,12 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "StoreAssembly":
-        access = parser.try_consume_access_to_value(allow_tos=False)
+        access = parser.try_consume_access_to_value(allow_tos=False, scope=scope)
 
         if access is None:
-            raise SyntaxError
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <expression>"
+            )
 
         source = parser.try_parse_data_source()
 
@@ -157,9 +198,12 @@ class StoreAssembly(AbstractAssemblyInstruction):
         return visitor(
             self,
             (
-                self.access_token.visit_parts(visitor),
-                self.source.visit_parts(visitor) if self.source is not None else None,
+                self.access_token.visit_parts(visitor, parents + [self]),
+                self.source.visit_parts(visitor, parents + [self])
+                if self.source is not None
+                else None,
             ),
+            parents,
         )
 
 
@@ -167,7 +211,8 @@ class StoreAssembly(AbstractAssemblyInstruction):
 class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
-    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
+    - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr <expr>
+    - -|+|~|not|! <expr>
     """
 
     NAME = "OP"
@@ -181,7 +226,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
                 AbstractAccessExpression,
                 AbstractAccessExpression,
                 MutableFunction,
-                typing.Set[str],
+                ParsingScope,
             ],
             Instruction | typing.List[Instruction],
         ],
@@ -242,7 +287,15 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     }
 
     # todo: parse and implement
-    SINGLE_OPS: typing.Dict[str, typing.Tuple[int, int] | int] = {
+    SINGLE_OPS: typing.Dict[
+        str,
+        typing.Tuple[int, int]
+        | int
+        | typing.Callable[
+            [AbstractAccessExpression, MutableFunction, ParsingScope],
+            Instruction | typing.List[Instruction],
+        ],
+    ] = {
         "-": Opcodes.UNARY_NEGATIVE,
         "+": Opcodes.UNARY_POSITIVE,
         "~": Opcodes.UNARY_INVERT,
@@ -266,6 +319,69 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
         def __repr__(self):
             raise NotImplementedError
+
+    class SingleOperation(IOperation):
+        def __init__(
+            self,
+            operator: str,
+            expression: AbstractAccessExpression,
+        ):
+            self.operator = operator
+            self.expression = expression
+
+        def __eq__(self, other):
+            return (
+                type(self) == type(other)
+                and self.operator == other.operator
+                and self.expression == other.expression
+            )
+
+        def __repr__(self):
+            return f"{self.operator} {self.expression}"
+
+        def copy(self):
+            return type(self)(self.operator, self.expression.copy())
+
+        def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
+            opcode_info = OpAssembly.SINGLE_OPS[self.operator]
+
+            if callable(opcode_info):
+                result = opcode_info(self.expression, function, scope)
+
+                if isinstance(result, Instruction):
+                    return self.expression.emit_bytecodes(function, scope) + [result]
+
+                return result
+
+            if isinstance(opcode_info, int):
+                opcode, arg = opcode_info, 0
+            else:
+                opcode, arg = opcode_info
+
+            return self.expression.emit_bytecodes(function, scope) + [
+                Instruction(function, -1, opcode, arg=arg)
+            ]
+
+        def visit_parts(
+            self,
+            visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+            parents: list,
+        ):
+            return visitor(
+                self,
+                (
+                    self.expression.visit_parts(visitor, parents + [self]),
+                    parents,
+                ),
+            )
+
+        def visit_assembly_instructions(
+            self,
+            visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+        ):
+            pass
 
     class BinaryOperation(IOperation):
         def __init__(
@@ -323,9 +439,15 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def visit_parts(
             self,
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+            parents: list,
         ):
             return visitor(
-                self, (self.lhs.visit_parts(visitor), self.rhs.visit_parts(visitor))
+                self,
+                (
+                    self.lhs.visit_parts(visitor, parents + [self]),
+                    self.rhs.visit_parts(visitor, parents + [self]),
+                ),
+                parents,
             )
 
         def visit_assembly_instructions(
@@ -336,22 +458,58 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "OpAssembly":
-        if expr := cls.try_consume_binary(parser):
-            return cls(expr, cls.try_consume_arrow(parser))
+        if expr := cls.try_consume_single(parser):
+            return cls(expr, cls.try_consume_arrow(parser, scope))
 
-        raise SyntaxError
+        if expr := cls.try_consume_binary(parser):
+            return cls(expr, cls.try_consume_arrow(parser, scope))
+
+        raise throw_positioned_syntax_error(
+            scope,
+            parser.try_inspect(),
+            "expected <operator> or <expression> <operator> ...",
+        )
 
     @classmethod
-    def try_consume_arrow(cls, parser: "Parser") -> AbstractAccessExpression | None:
+    def try_consume_arrow(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
-            parser.consume(SpecialToken(">"))
-            return parser.try_consume_access_to_value()
+            if not parser.try_consume(SpecialToken(">")):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    parser[-1:1] + [scope.last_base_token],
+                    "expected '>' after '-' to complete '->'",
+                )
+
+            return parser.try_consume_access_to_value(scope=scope)
+
+    @classmethod
+    def try_consume_single(cls, parser: "Parser") -> typing.Optional[IOperation]:
+        parser.save()
+        if not (expr := parser.try_consume(IdentifierToken)):
+            parser.rollback()
+            return
+
+        if expr.text in cls.SINGLE_OPS:
+            expression = parser.try_parse_data_source(
+                allow_primitives=True, include_bracket=False
+            )
+
+            if expression is None:
+                parser.rollback()
+
+            return cls.SingleOperation(expr.text, expression)
 
     @classmethod
     def try_consume_binary(cls, parser: "Parser") -> typing.Optional[IOperation]:
         parser.save()
 
         lhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+
+        if lhs is None:
+            parser.rollback()
+            return
 
         part = parser[0:2]
 
@@ -386,6 +544,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None
     ):
+        if operation is None:
+            raise ValueError("operation cannot be null!")
+
         self.operation = operation
         self.target = target
 
@@ -428,7 +589,16 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     ):
         return visitor(
             self,
-            (self.operation.visit_parts(visitor), self.target.visit_parts(visitor)),
+            (
+                self.operation.visit_parts(visitor, parents + [self]),
+                self.target.visit_parts(
+                    visitor,
+                    parents + [self],
+                )
+                if self.target
+                else None,
+            ),
+            parents,
         )
 
 
@@ -440,19 +610,22 @@ class IFAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "IFAssembly":
         source = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False
+            allow_primitives=True, include_bracket=False, scope=scope
         )
 
         if source is None:
-            raise SyntaxError("<expression> expected!")
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <expression>"
+            )
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
-            parser.consume(SpecialToken("'"))
+            if not parser.try_consume(SpecialToken("'")):
+                raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
         else:
             label_name = None
 
-        body = parser.parse_body()
+        body = parser.parse_body(scope=scope)
 
         return cls(
             source,
@@ -563,19 +736,22 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "WHILEAssembly":
         condition = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False
+            allow_primitives=True, include_bracket=False, scope=scope
         )
 
         if condition is None:
-            raise SyntaxError
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <expression>"
+            )
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.consume(IdentifierToken)
-            parser.consume(SpecialToken("'"))
+            if not parser.try_consume(SpecialToken("'")):
+                raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected '")
         else:
             label_name = None
 
-        body = parser.parse_body()
+        body = parser.parse_body(scope=scope)
 
         return cls(
             condition,
@@ -682,17 +858,30 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     NAME = "LOAD_GLOBAL"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "LoadGlobalAssembly":
+    def consume(cls, parser: "Parser", scope) -> "LoadGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
-        name = parser.consume([IdentifierToken, IntegerToken])
 
-        if parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
-            target = parser.try_consume_access_to_value()
+        name = parser.try_consume([IdentifierToken, IntegerToken])
+
+        if name is None:
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <name> or <integer>"
+            )
+
+        if parser.try_consume(SpecialToken("-")):
+            if not parser.try_consume(SpecialToken(">")):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    parser[-1:1] + [scope.last_base_token],
+                    "expected '>' after '-'",
+                )
+
+            target = parser.try_consume_access_to_value(scope=scope)
+
+            if target is None:
+                raise throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected <expression>"
+                )
         else:
             target = None
 
@@ -758,9 +947,14 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
     NAME = "STORE_GLOBAL"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "StoreGlobalAssembly":
+    def consume(cls, parser: "Parser", scope) -> "StoreGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
-        name = parser.consume([IdentifierToken, IntegerToken])
+        name = parser.try_consume([IdentifierToken, IntegerToken])
+
+        if name is None:
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <name> or <integer>"
+            )
 
         source = parser.try_parse_data_source()
 
@@ -828,7 +1022,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
     NAME = "LOAD_FAST"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "LoadFastAssembly":
+    def consume(cls, parser: "Parser", scope) -> "LoadFastAssembly":
         parser.try_consume(SpecialToken("$"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
@@ -838,7 +1032,7 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -978,7 +1172,9 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
         )
 
         if not isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)):
-            raise SyntaxError(value)
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <constant epxression>"
+            )
 
         if parser.try_consume_multi(
             [
@@ -986,7 +1182,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
                 SpecialToken(">"),
             ]
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -1050,10 +1246,10 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class CallAssembly(AbstractAssemblyInstruction):
-    # CALL ['PARTIAL'] <call target> (<args>) [-> <target>]
+    # CALL ['PARTIAL' | 'MACRO'] <call target> (<args>) [-> <target>]
     NAME = "CALL"
 
-    class IArg(IAssemblyStructureVisitable, abc.ABC):
+    class IArg(AbstractAccessExpression, abc.ABC):
         __slots__ = ("source", "is_dynamic")
 
         def __init__(
@@ -1080,14 +1276,27 @@ class CallAssembly(AbstractAssemblyInstruction):
         def visit_parts(
             self,
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+            parents: list,
         ):
-            return visitor(self, (self.source.visit_parts(visitor),))
+            return visitor(
+                self, (self.source.visit_parts(visitor, parents + [self]),), parents
+            )
 
         def visit_assembly_instructions(
             self,
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
         ):
             pass
+
+        def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
+            return self.source.emit_bytecodes(function, scope)
+
+        def emit_store_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
+            return self.source.emit_store_bytecodes(function, scope)
 
     class Arg(IArg):
         pass
@@ -1127,18 +1336,43 @@ class CallAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "CallAssembly":
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
+        is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
+        return cls.consume_inner(parser, is_partial, is_macro, scope)
 
-        call_target = parser.try_parse_data_source(include_bracket=False)
+    @classmethod
+    def consume_inner(
+        cls, parser: Parser, is_partial: bool, is_macro: bool, scope: ParsingScope
+    ) -> "CallAssembly":
+        if not is_macro:
+            call_target = parser.try_parse_data_source(include_bracket=False)
+        else:
+            name = [parser.consume(IdentifierToken, err_arg=scope)]
+
+            while parser.try_consume(SpecialToken(":")):
+                name.append(parser.consume(IdentifierToken, err_arg=scope))
+
+            call_target = MacroAccessExpression(name)
+
+        if call_target is None:
+            raise throw_positioned_syntax_error(
+                scope,
+                parser.try_inspect(),
+                "expected <expression> (did you forget the prefix?)"
+                if not is_macro
+                else "expected <macro name>",
+            )
 
         args: typing.List[CallAssembly.IArg] = []
 
-        parser.consume(SpecialToken("("))
+        parser.consume(SpecialToken("("), err_arg=scope)
 
         has_seen_keyword_arg = False
 
         while not (bracket := parser.try_consume(SpecialToken(")"))):
-            if isinstance(parser[0], IdentifierToken) and parser[1] == SpecialToken(
-                "="
+            if (
+                isinstance(parser[0], IdentifierToken)
+                and parser[1] == SpecialToken("=")
+                and not is_macro
             ):
                 key = parser.consume(IdentifierToken)
                 parser.consume(SpecialToken("="))
@@ -1153,7 +1387,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
                 has_seen_keyword_arg = True
 
-            elif parser[0].text == "*":
+            elif parser[0].text == "*" and not is_macro:
                 if parser[1] == SpecialToken("*"):
                     parser.consume(SpecialToken("*"))
                     parser.consume(SpecialToken("*"))
@@ -1171,24 +1405,47 @@ class CallAssembly(AbstractAssemblyInstruction):
                     args.append(CallAssembly.StarArg(expr))
 
                 else:
-                    raise SyntaxError("*<arg> only allowed before keyword arguments!")
+                    raise throw_positioned_syntax_error(
+                        scope,
+                        parser.try_inspect(),
+                        "*<arg> only allowed before keyword arguments!",
+                    )
 
             elif not has_seen_keyword_arg:
-                is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
+                if is_macro and parser[0] == SpecialToken("{"):
+                    expr = parser.parse_body(scope=scope)
+                    is_dynamic = False
+                else:
+                    is_dynamic = is_partial and bool(
+                        parser.try_consume(SpecialToken("?"))
+                    )
 
-                expr = parser.try_parse_data_source(
-                    allow_primitives=True, include_bracket=False
-                )
+                    expr = parser.try_parse_data_source(
+                        allow_primitives=True, include_bracket=False
+                    )
+
+                    if expr is None:
+                        if parser[0] == SpecialToken(")"):
+                            break
+
+                        raise throw_positioned_syntax_error(
+                            scope, parser[0], "<expression> expected"
+                        )
+
                 args.append(CallAssembly.Arg(expr, is_dynamic))
 
             else:
-                raise SyntaxError("pure <arg> only allowed before keyword arguments!")
+                raise throw_positioned_syntax_error(
+                    scope,
+                    parser.try_inspect(),
+                    "pure <arg> only allowed before keyword arguments",
+                )
 
             if not parser.try_consume(SpecialToken(",")):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            raise SyntaxError(f"expected closing bracket, got {parser[0]}")
+            raise throw_positioned_syntax_error(scope, parser.try_inspect(), "expected ')'")
 
         if parser.try_consume_multi(
             [
@@ -1200,19 +1457,25 @@ class CallAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        return cls(call_target, args, target, is_partial)
+        return cls(call_target, args, target, is_partial, is_macro)
+
+    @classmethod
+    def consume_macro_call(cls, parser: Parser, scope) -> "CallAssembly":
+        return cls.consume_inner(parser, False, True, scope)
 
     def __init__(
         self,
-        call_target: AbstractAccessExpression,
+        call_target: AbstractSourceExpression,
         args: typing.List["CallAssembly.IArg"],
         target: AbstractAccessExpression | None = None,
         is_partial: bool = False,
+        is_macro: bool = False,
     ):
         self.call_target = call_target
         self.args = args
         self.target = target
         self.is_partial = is_partial
+        self.is_macro = is_macro
 
     def visit_parts(
         self,
@@ -1225,10 +1488,25 @@ class CallAssembly(AbstractAssemblyInstruction):
         return visitor(
             self,
             (
-                self.call_target.visit_parts(visitor),
-                [arg.visit_parts(visitor) for arg in self.args],
-                self.target.visit_parts(visitor) if self.target else None,
+                self.call_target.visit_parts(
+                    visitor,
+                    parents + [self],
+                ),
+                [
+                    arg.visit_parts(
+                        visitor,
+                        parents + [self],
+                    )
+                    for arg in self.args
+                ],
+                self.target.visit_parts(
+                    visitor,
+                    parents + [self],
+                )
+                if self.target
+                else None,
             ),
+            parents,
         )
 
     def copy(self) -> "CallAssembly":
@@ -1237,10 +1515,11 @@ class CallAssembly(AbstractAssemblyInstruction):
             [arg.copy() for arg in self.args],
             self.target.copy() if self.target else None,
             self.is_partial,
+            self.is_macro,
         )
 
     def __repr__(self):
-        return f"CALL{'' if not self.is_partial else '-PARTIAL'}({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
+        return f"CALL{('' if not self.is_macro else '-MACRO') if not self.is_partial else '-PARTIAL'}({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
 
     def __eq__(self, other):
         return (
@@ -1249,11 +1528,15 @@ class CallAssembly(AbstractAssemblyInstruction):
             and self.args == other.args
             and self.target == other.target
             and self.is_partial == other.is_partial
+            and self.is_macro == other.is_macro
         )
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
+        if self.is_macro:
+            return self.emit_macro_bytecode(function, scope)
+
         has_seen_star = False
         has_seen_star_star = False
         has_seen_kw_arg = False
@@ -1285,7 +1568,7 @@ class CallAssembly(AbstractAssemblyInstruction):
 
             bytecode += [
                 Instruction(
-                    function, -1, "CALL_FUNCTION", arg=len(self.args) + extra_args
+                    function, -1, Opcodes.CALL, arg=len(self.args) + extra_args
                 ),
             ]
 
@@ -1324,7 +1607,7 @@ class CallAssembly(AbstractAssemblyInstruction):
         else:
             bytecode = self.call_target.emit_bytecodes(function, scope)
 
-            bytecode += [Instruction(function, -1, "BUILD_LIST")]
+            bytecode += [Instruction(function, -1, "BUILD_LIST", arg=0)]
 
             if self.is_partial:
                 bytecode += [
@@ -1337,9 +1620,9 @@ class CallAssembly(AbstractAssemblyInstruction):
                 bytecode += arg.source.emit_bytecodes(function, scope)
 
                 if isinstance(arg, CallAssembly.Arg):
-                    bytecode += [Instruction(function, -1, "LIST_APPEND")]
+                    bytecode += [Instruction(function, -1, "LIST_APPEND", arg=1)]
                 elif isinstance(arg, CallAssembly.StarArg):
-                    bytecode += [Instruction(function, -1, "LIST_EXTEND")]
+                    bytecode += [Instruction(function, -1, "LIST_EXTEND", arg=1)]
                 else:
                     break
 
@@ -1378,6 +1661,32 @@ class CallAssembly(AbstractAssemblyInstruction):
             bytecode += self.target.emit_store_bytecodes(function, scope)
 
         return bytecode
+
+    def emit_macro_bytecode(self, function: MutableFunction, scope: ParsingScope):
+        access = typing.cast(MacroAccessExpression, self.call_target)
+        name = access.name
+
+        macro_declaration = scope.lookup_name_in_scope(name[0].text)
+
+        if macro_declaration is None:
+            raise throw_positioned_syntax_error(
+                scope, typing.cast(MacroAccessExpression, self.call_target).name, f"Macro '{':'.join(map(lambda e: e.text, name))}' not found!", NameError
+            )
+
+        if len(name) > 1:
+            for e in name[1:]:
+                macro_declaration = macro_declaration[e.text]
+
+        if not isinstance(macro_declaration, MacroAssembly.MacroOverloadPage):
+            raise RuntimeError(
+                f"Expected Macro Declaration for '{':'.join(map(lambda e: e.text, name))}', got {macro_declaration}"
+            )
+
+        macro, args = macro_declaration.lookup([arg.source for arg in self.args], scope)
+        return macro.emit_call_bytecode(function, scope, args)
+
+
+MacroAssembly.consume_call = CallAssembly.consume_macro_call
 
 
 @Parser.register
@@ -1435,7 +1744,11 @@ class ReturnAssembly(AbstractAssemblyInstruction):
         ],
         parents: list,
     ):
-        return visitor(self, (self.expr.visit_parts(visitor) if self.expr else None,))
+        return visitor(
+            self,
+            (self.expr.visit_parts(visitor, parents + [self]) if self.expr else None,),
+            parents,
+        )
 
     def __eq__(self, other):
         return type(self) == type(other) and self.expr == other.expr
@@ -1456,7 +1769,7 @@ class ReturnAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class YieldAssembly(AbstractAssemblyInstruction):
-    # YIELD [*] [<expr>] [-> <taerget>]
+    # YIELD [*] [<expr>] [-> <target>]
     NAME = "YIELD"
 
     @classmethod
@@ -1475,7 +1788,9 @@ class YieldAssembly(AbstractAssemblyInstruction):
             )
 
             if target is None:
-                raise SyntaxError("expected writeable target")
+                raise throw_positioned_syntax_error(
+                    scope, parser.try_inspect(), "expected <expression>"
+                )
 
         else:
             target = None
@@ -1503,9 +1818,15 @@ class YieldAssembly(AbstractAssemblyInstruction):
         return visitor(
             self,
             (
-                self.expr.visit_parts(visitor) if self.expr else None,
-                self.target.visit_parts(visitor) if self.target else None,
+                self.expr.visit_parts(visitor, parents + [self]) if self.expr else None,
+                self.target.visit_parts(
+                    visitor,
+                    parents + [self],
+                )
+                if self.target
+                else None,
             ),
+            parents,
         )
 
     def __eq__(self, other):
@@ -1615,7 +1936,13 @@ class JumpAssembly(AbstractAssemblyInstruction):
         parents: list,
     ):
         return visitor(
-            self, (self.condition.visit_parts(visitor) if self.condition else None,)
+            self,
+            (
+                self.condition.visit_parts(visitor, parents + [self])
+                if self.condition
+                else None,
+            ),
+            parents,
         )
 
     def __eq__(self, other):
@@ -1667,7 +1994,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     NAME = "DEF"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope) -> "FunctionDefinitionAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
         bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []
         args = []
@@ -1739,7 +2066,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         if parser.try_consume(SpecialToken("-")) and parser.try_consume(
             SpecialToken(">")
         ):
-            target = parser.try_consume_access_to_value()
+            target = parser.try_consume_access_to_value(scope=scope)
         else:
             target = None
 
@@ -1839,8 +2166,10 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         inner_labels = self.body.collect_label_info()
         label_targets = {}
 
+        inner_scope = scope.copy()
+
         target = MutableFunction(lambda: None)
-        inner_bytecode = self.body.emit_bytecodes(target, inner_labels)
+        inner_bytecode = self.body.emit_bytecodes(target, inner_scope)
         inner_bytecode[-1].next_instruction = target.instructions[0]
 
         for i, instr in enumerate(inner_bytecode[:-1]):
@@ -1902,5 +2231,134 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)
+        else:
+            bytecode += [
+                Instruction(function, -1, Opcodes.STORE_FAST, self.func_name.text),
+            ]
 
         return bytecode
+
+
+@Parser.register
+class ClassDefinitionAssembly(AbstractAssemblyInstruction):
+    # CLASS <name> ['(' [<parent> {',' <parent>}] ')'] '{' ... '}'
+    NAME = "CLASS"
+
+    @classmethod
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "ClassDefinitionAssembly":
+        name_token = parser.consume(IdentifierToken, err_arg=scope)
+
+        parents = []
+
+        if parser.try_consume(SpecialToken("(")):
+            if parent := parser.try_consume_access_to_value():
+                parents.append(parent)
+
+                while parser.try_consume(SpecialToken(",")):
+                    if parser[0] == SpecialToken(")"):
+                        break
+
+                    parent = parser.try_consume_access_to_value()
+                    if parent is None:
+                        raise throw_positioned_syntax_error(
+                            scope,
+                            parser[0],
+                            "Expected <expression>",
+                        )
+                    parents.append(parent)
+
+            if not parser.try_consume(SpecialToken(")")):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    parser[0],
+                    "Expected ')'"
+                )
+
+        if not parents:
+            parents = [ConstantAccessExpression(object)]
+
+        code_block = parser.parse_body(namespace_part=name_token.text, scope=scope)
+        return cls(
+            name_token,
+            parents,
+            code_block,
+        )
+
+    def __init__(self, name_token: IdentifierToken, parents: typing.List[AbstractAccessExpression], code_block: CompoundExpression):
+        self.name_token = name_token
+        self.parents = parents
+        self.code_block = code_block
+
+    def __repr__(self):
+        return f"ClassAssembly::'{self.name_token.text}'({','.join(map(repr, self.parents))}){{{self.code_block}}}"
+
+    def copy(self):
+        return ClassDefinitionAssembly(
+            self.name_token,
+            [
+                parent.copy()
+                for parent in self.parents
+            ],
+            self.code_block.copy()
+        )
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.name_token == other.name_token and self.parents == other.parents and self.code_block == other.code_block
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        inner_scope = scope.copy(sub_scope_name=self.name_token.text)
+
+        target = MutableFunction(lambda: None)
+
+        inner_bytecode = [
+            Instruction(target, -1, Opcodes.LOAD_NAME, "__name__"),
+            Instruction(target, -1, Opcodes.STORE_NAME, "__module__"),
+            Instruction(target, -1, Opcodes.LOAD_CONST, self.name_token.text),
+            Instruction(target, -1, Opcodes.STORE_NAME, "__qualname__"),
+        ]
+
+        raw_inner_code = self.code_block.emit_bytecodes(target, inner_scope)
+
+        for instr in raw_inner_code:
+            if instr.opcode == Opcodes.LOAD_FAST:
+                instr.change_opcode(Opcodes.LOAD_NAME, arg_value=instr.arg_value)
+            elif instr.opcode == Opcodes.STORE_FAST:
+                instr.change_opcode(Opcodes.STORE_NAME, arg_value=instr.arg_value)
+            elif instr.opcode == Opcodes.DELETE_FAST:
+                instr.change_opcode(Opcodes.DELETE_NAME, arg_value=instr.arg_value)
+
+        inner_bytecode += raw_inner_code
+
+        if inner_bytecode:
+            inner_bytecode[-1].next_instruction = target.instructions[0]
+
+        for i, instr in enumerate(inner_bytecode[:-1]):
+            instr.next_instruction = inner_bytecode[i + 1]
+
+        target.assemble_instructions_from_tree(inner_bytecode[0])
+        target.reassign_to_function()
+
+        code_obj = target.target.__code__
+
+        bytecode = [
+            Instruction(function, -1, Opcodes.LOAD_BUILD_CLASS),
+            Instruction(function, -1, Opcodes.LOAD_CONST, code_obj),
+            Instruction(function, -1, Opcodes.LOAD_CONST, self.name_token.text),
+            Instruction(function, -1, Opcodes.MAKE_FUNCTION, arg=0),
+            Instruction(function, -1, Opcodes.LOAD_CONST, self.name_token.text),
+        ]
+
+        for parent in self.parents:
+            bytecode += parent.emit_bytecodes(
+                function,
+                scope,
+            )
+
+        bytecode += [
+            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2 + len(self.parents)),
+            Instruction(function, -1, Opcodes.STORE_FAST, self.name_token.text),
+        ]
+        return bytecode
+
