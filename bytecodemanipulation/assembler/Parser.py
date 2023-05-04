@@ -109,6 +109,7 @@ class ParsingScope:
         self.globals_dict = {}
         self.module_file: str = None
         self.last_base_token: AbstractToken = None
+        self.macro_parameter_namespace: typing.Dict[str] = {}
 
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
@@ -177,6 +178,7 @@ class ParsingScope:
         instance.global_scope = self.global_scope
         instance.scope_path = self.scope_path.copy()
         instance.module_file = self.module_file
+        instance.macro_parameter_namespace = self.macro_parameter_namespace.copy()
 
         if sub_scope_name is not None:
             if isinstance(sub_scope_name, str):
@@ -1841,6 +1843,12 @@ class MacroAssembly(AbstractAssemblyInstruction):
         scope.module_file = self.module_path
 
         bytecode = []
+
+        for arg_decl, arg_code in zip(self.args, args):
+            if arg_decl.is_static:
+                scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name
+            else:
+                scope.macro_parameter_namespace[arg_decl.name.text] = arg_code
 
         inner_bytecode = self.body.emit_bytecodes(function, scope)
 

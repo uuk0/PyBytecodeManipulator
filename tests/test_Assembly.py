@@ -1546,3 +1546,51 @@ CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
             pass
 
         self.assertRaises(RuntimeError, test_transform_to_macro)
+
+    def test_macro_capture_arg_in_inner_func(self):
+        def target():
+            tar = lambda: 0
+            assembly("""
+MACRO test_macro_capture_arg_in_inner_func(a)
+{
+    DEF tar()
+    {
+        RETURN §a
+    }
+}
+
+CALL MACRO test_macro_capture_arg_in_inner_func(2)
+""")
+            return tar
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(target()(), 2)
+
+    def test_macro_capture_arg_in_inner_func_2(self):
+        def target():
+            tar = lambda: 0
+            assembly("""
+MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
+{
+    DEF tar()
+    {
+        MACRO_PASTE a
+    }
+}
+
+CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
+""")
+            return tar
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(target()(), 2)

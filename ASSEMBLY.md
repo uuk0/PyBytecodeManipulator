@@ -124,7 +124,6 @@ Expressions can be added as certain parameters to instructions to use instead of
   - maybe also the possibility to define code for emitting assembly instructions
     - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
-- makro MACRO_PASTE should also work in subfunctions (so store it somewhere in the scope)
 - CLASS STRUCT ... '\<' \<attr name> {',' \<attr name>} '>' '{' ... '}' to declare a class with \_\_slots__ (and maybe compile-time checks that no other attributes are set on 'self' attributes on functions?)
 - CLASS ABSTRACT ... for abstract classes, which includes the abc.ABC baseclass
 - DEF ABSTRACT ... for defining abstract methods (no body to declare!)
