@@ -113,7 +113,7 @@ def apply_inline_assemblies(
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
                 invoke.insert_after(Instruction(target, -1, Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
-                print(type(arg))
+                # print(type(arg))
                 arg.change_opcode(Opcodes.NOP)
 
     if not insertion_points:
@@ -158,10 +158,10 @@ def apply_inline_assemblies(
         for i, ins in enumerate(bytecode[:-1]):
             ins.next_instruction = bytecode[i + 1]
 
-        print("---- start ----")
-        for e in bytecode:
-            print(e)
-        print("---- end ----")
+        # print("---- start ----")
+        # for e in bytecode:
+        #     print(e)
+        # print("---- end ----")
 
         if bytecode:
             stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
@@ -201,11 +201,11 @@ def apply_inline_assemblies(
 
             bytecode[-1].next_instruction = following_instr = instr.next_instruction
 
-            print("inserting AFTER", instr)
+            # print("inserting AFTER", instr)
             instr.insert_after(bytecode)
-        else:
-            print("empty bytecode block")
-            print(asm)
+        # else:
+        #     print("empty bytecode block")
+        #     print(asm)
 
         for i, ins in enumerate(bytecode):
             if ins.opcode == Opcodes.BYTECODE_LABEL:

@@ -422,7 +422,7 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(getattr(source, attr_name))
 
-                    print(instruction)
+                    # print(instruction)
 
                     use = next(instruction.trace_stack_position_use(0))
 

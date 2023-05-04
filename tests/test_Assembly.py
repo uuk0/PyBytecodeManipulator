@@ -934,7 +934,7 @@ RETURN OP (10 isinstance @float)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertFalse(target())
 
@@ -964,7 +964,7 @@ RETURN OP (@int issubclass @float)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertFalse(target())
 
@@ -994,7 +994,7 @@ RETURN OP ($t hasattr "no attr")
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertFalse(target(self))
 
@@ -1567,7 +1567,7 @@ CALL MACRO test_macro_capture_arg_in_inner_func(2)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target()(), 2)
 
@@ -1591,6 +1591,6 @@ CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target()(), 2)

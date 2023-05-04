@@ -268,7 +268,7 @@ def throw_positioned_syntax_error(
             _print_complex_token_location(scope, token, exc_type=exc_type)
         else:
             file = scope.module_file.replace("\\", "/")
-            print(f'File "{file}", line {token.line+1}')
+            print(f'File "{file}", line {token.line+1}', file=sys.stderr)
             with open(scope.module_file, mode="r", encoding="utf-8") as f:
                 content = f.readlines()
 
@@ -1387,7 +1387,7 @@ class Parser(AbstractParser):
             ):
                 return ConstantAccessExpression(boolean.text == "True", boolean)
 
-        print("failed", self.try_inspect())
+        # print("failed", self.try_inspect())
 
         self.rollback()
 

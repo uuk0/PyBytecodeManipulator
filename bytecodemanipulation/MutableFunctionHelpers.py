@@ -300,7 +300,7 @@ def insert_method_into(
     inline_access_to_global(to_insert, "capture_local", capture_local)
     inline_access_to_global(to_insert, "outer_return", outer_return)
 
-    MutableFunctionWithTree(to_insert).print_recursive()
+    # MutableFunctionWithTree(to_insert).print_recursive()
 
     instr = None
     previous = None
@@ -329,28 +329,28 @@ def insert_method_into(
             ),
         ),
     )
-    MutableFunctionWithTree(to_insert).print_recursive()
+    # MutableFunctionWithTree(to_insert).print_recursive()
     # to_insert.decode_instructions()
 
     for instr in to_insert.instructions:
         instr.update_owner(body.mutable, -1, False)
 
     to_insert_tree = MutableFunctionWithTree(to_insert)
-    to_insert_tree.print_recursive()
+    # to_insert_tree.print_recursive()
     replace_const_func_call_with_opcode(
         to_insert_tree,
         capture_local,
         Opcodes.LOAD_FAST,
         _inline_capture_local,
     )
-    to_insert_tree.print_recursive()
+    # to_insert_tree.print_recursive()
     replace_const_func_call_with_opcode(
         to_insert_tree,
         outer_return,
         Opcodes.RETURN_VALUE,
         _inline_outer_return,
     )
-    to_insert_tree.print_recursive()
+    # to_insert_tree.print_recursive()
 
     def visit(instruction: Instruction, path):
         if instruction is None:
@@ -375,8 +375,8 @@ def insert_method_into(
     HEAD_INSTRUCTION.next_instruction = to_insert_tree.root
     body.visitor(visit)
 
-    body.print_recursive()
+    # body.print_recursive()
 
     body.mutable.assemble_instructions_from_tree(body.root)
 
-    body.print_recursive()
+    # body.print_recursive()

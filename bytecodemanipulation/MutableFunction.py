@@ -623,7 +623,7 @@ class Instruction:
     def trace_stack_position_use(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        print(self, 0)
+        # print(self, 0)
 
         if not self.has_stop_flow():
             yield from self.next_instruction._trace_stack_position_use(

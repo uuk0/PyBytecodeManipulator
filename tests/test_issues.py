@@ -206,7 +206,7 @@ class TestIssue6(unittest.TestCase):
         def rotate_point(a, b):
             return math.cos(a) - math.sin(b)
 
-        dis.dis(rotate_point)
+        # dis.dis(rotate_point)
 
         self.assertEqual(
             Emulator.run_code(rotate_point, 1, 2), math.cos(1) - math.sin(2)

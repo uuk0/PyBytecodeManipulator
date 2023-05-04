@@ -1893,7 +1893,7 @@ class YieldAssembly(AbstractAssemblyInstruction):
         else:
             bytecode += [Instruction(function, -1, Opcodes.POP_TOP)]
 
-        print(bytecode)
+        # print(bytecode)
 
         return bytecode
 

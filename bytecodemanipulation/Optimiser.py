@@ -229,7 +229,7 @@ class _OptimisationContainer:
         if DISABLE_OPTIMISATION_APPLY:
             return
 
-        print("opt", self.target)
+        # print("opt", self.target)
         from bytecodemanipulation.optimiser_util import apply_specializations
 
         if self.children:

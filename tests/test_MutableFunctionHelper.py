@@ -28,7 +28,7 @@ class TestMethodInsert(TestCase):
         insert_method_into(main_mut, main_mut.instructions[0], insert_mut)
         main_mut.reassign_to_function()
 
-        dis.dis(main)
+        # dis.dis(main)
 
         main()
         self.assertTrue(INVOKED)
