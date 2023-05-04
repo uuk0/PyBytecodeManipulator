@@ -31,7 +31,11 @@ def jump(label_name: str):
     raise RuntimeError("Function must be annotated first!")
 
 
-def make_macro(export_name: str = None, /):
+def _raise_macro_direct_call_error():
+    raise RuntimeError("Cannot call <macro> with normal call!")
+
+
+def make_macro(export_name: str = None, /, prevent_direct_calls=False):
     """
     Makes the annotated function a macro function, making it possible to use as a macro
 
@@ -47,6 +51,7 @@ def make_macro(export_name: str = None, /):
         they will be changed into JUMP-TO-END-OF-MACRO!
 
     :param export_name: the name to export into the global namespace
+    :param prevent_direct_calls: if to prevent calls in non-macro form
     """
 
     def annotation(function):
@@ -77,20 +82,13 @@ def make_macro(export_name: str = None, /):
 
         namespace_obj[macro_name.split(":")[-1]].add_assembly(macro_asm)
 
-        # todo: store macro assembly into file namespace
+        if prevent_direct_calls:
+            mutable.copy_from(bytecodemanipulation.MutableFunction.MutableFunction(_raise_macro_direct_call_error))
+            mutable.reassign_to_function()
 
         return function
 
     return annotation
-
-
-def make_macro_not_callable(target: typing.Callable):
-    """
-    Makes the target to a macro-only thing, raising a RuntimeError when called directly.
-
-    WARNING: will prevent dynamic inlining from happening
-    """
-    return target
 
 
 def configurate_makro_parameter(name: str | int, config_pattern: typing.Type):

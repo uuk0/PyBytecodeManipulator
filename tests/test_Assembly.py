@@ -1539,3 +1539,10 @@ CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 3)
+
+    def test_transform_to_macro_or_else_error(self):
+        @make_macro("TestMacro:test_transform_to_macro_or_else_error", prevent_direct_calls=True)
+        def test_transform_to_macro():
+            pass
+
+        self.assertRaises(RuntimeError, test_transform_to_macro)
