@@ -93,6 +93,30 @@ NAMESPACE std
             CALL §var.extend(~map($MACRO_mapping, $MACRO_tmp)) -> \
         }
 
+        MACRO ASSEMBLY reduce(var VARIABLE, lhs VARIABLE, rhs VARIABLE, reducer CODE_BLOCK)
+        {
+            IF OP (~len(§var) == 0)
+            {
+                RETURN -1
+            }
+
+            LOAD §var[0] -> $MACRO_tmp
+
+            LOAD 1 -> $MACRO_index
+            LOAD ~len(§var) -> $MACRO_max_size
+
+            WHILE OP ($MACRO_index < $MACRO_max_size)
+            {
+                LOAD $MACRO_tmp -> §lhs
+                LOAD §var[$MACRO_index] -> §rhs
+                MACRO_PASTE §reducer
+                STORE $MACRO_tmp
+                OP $MACRO_index + 1 -> $MACRO_index
+            }
+
+            LOAD $MACRO_tmp
+        }
+
         MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)
         {
             LOAD §var.copy() -> §output

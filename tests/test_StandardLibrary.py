@@ -114,6 +114,27 @@ std:stream:to_list($stream, $output)
 
         self.assertEqual(target(), [0, 1, 2])
 
+    def test_stream_simple_reduce(self):
+        def target():
+            data = (0, 1, 2)
+            stream = None
+            output = None
+            assembly("""
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:reduce($stream, $lhs, $rhs, {
+    OP $lhs + $rhs
+})
+STORE $output
+""")
+            return output
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 3)
+
     def test_stream_simple_filter(self):
         def target():
             data = (0, 1, 2)
