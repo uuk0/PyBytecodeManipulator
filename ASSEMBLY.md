@@ -81,6 +81,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - %: top of stack (in most cases the default when not provided)
   - \<access>\[\<index or expression>]: value by \[] operator
   - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
+  - '\' for discarding the result of an expression (only when STORING)
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer or floating-point number
@@ -89,7 +90,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 
 
 # TODOs
-- float, list / tuple / set / map construction
+- list / tuple / set / map construction
   - CREATE \<type> '(' {\<expr>} ')' \['->' \<target>] where type can be list, tuple, set and dict
   - COMPREHENSION \<type> \['\<' \<capture locals> '>'] \<source> '{' \<code> '}' where type can be list, tuple, set, dict, generator and async generator; YIELD statements for emitting to the outside
 - can we use offsets as labels in JUMP's? (offsets in assembly instruction and bytecode instructions?)
@@ -99,7 +100,7 @@ Expressions can be added as certain parameters to instructions to use instead of
 - LABEL part for WHILE, FOREACH, FORRANGE and IF (jump to end of if or top if wanted)
 - make it IF ... {ELSEIF ...} \[ELSE ...] (single assembly meta instruction)
 - IMPORT \<item> \[\<item>] where 'item' is \<package> \['/' \<sub module>] \['->' \<target=sub module name OR package name>]
-- TRY '{' \<code> '}' CATCH \['\\'' \<label name> '\\''] \['->' \<exception target>] ('{' \<handle> '}') | \<label name>
+- TRY '{' \<code> '}' {EXCEPT \['\\'' \<label name> '\\''] \['->' \<exception target>] ('{' \<handle> '}')} \[FINALLY '{' \<code block> '}'] | \<label name>
 - CONVERT \<source type> \<target type> \[\<source=TOS>] \['->' \<target=TOS>]
 - DEF ASYNC ...
 - AWAIT \<expr> \['->' \<target>] and as an expression
@@ -109,8 +110,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - RESERVE \<value> \['->' \<internal name>]
 - CALL INLINE
 - CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
-- MACRO ASSEMBLY for creating assembly instructions from macros (so from a macro declaration an instruction is created)
-  - data types must be declared
+- More Macro Arg Types:
   - new data type: KEYWORD:'...' where ... is the keyword name to be required (and \' is the escaping for ')
   - new data type: OPTIONAL\<...> where ... is another data type
   - new data type: UNION\<...> where ... is a list of data types, separated by ','

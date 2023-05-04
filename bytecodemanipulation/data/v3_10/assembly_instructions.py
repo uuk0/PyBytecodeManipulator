@@ -1341,7 +1341,7 @@ class CallAssembly(AbstractCallAssembly):
 
     @classmethod
     def construct_from_partial(cls, access: AbstractAccessExpression, parser: "Parser", scope: ParsingScope):
-        return cls.consume_inner(parser, False, False, scope, call_target=access)
+        return cls.consume_inner(parser, False, False, scope, call_target=access, allow_target=False)
 
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "CallAssembly":
@@ -1351,7 +1351,7 @@ class CallAssembly(AbstractCallAssembly):
 
     @classmethod
     def consume_inner(
-        cls, parser: Parser, is_partial: bool, is_macro: bool, scope: ParsingScope, call_target=None
+        cls, parser: Parser, is_partial: bool, is_macro: bool, scope: ParsingScope, call_target=None, allow_target=True
     ) -> "CallAssembly":
         if call_target is None:
             if not is_macro:
@@ -1464,7 +1464,7 @@ class CallAssembly(AbstractCallAssembly):
                 scope, parser.try_inspect(), "expected ')'"
             )
 
-        if parser.try_consume_multi(
+        if allow_target and parser.try_consume_multi(
             [
                 SpecialToken("-"),
                 SpecialToken(">"),

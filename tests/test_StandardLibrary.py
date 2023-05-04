@@ -95,3 +95,63 @@ std:os:file_walker("{file_name}", $file, {{
                 )
             ),
         )
+
+    def test_stream_simple(self):
+        def target():
+            data = (0, 1, 2)
+            stream = None
+            output = None
+            assembly("""
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:to_list($stream, $output)
+""")
+            return output
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), [0, 1, 2])
+
+    def test_stream_simple_filter(self):
+        def target():
+            data = (0, 1, 2)
+            stream = None
+            output = None
+            assembly("""
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:filter($stream, $var, {
+    OP $var < 2 -> %
+})
+std:stream:to_list($stream, $output)
+""")
+            return output
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), [0, 1])
+
+    def test_stream_simple_map(self):
+        def target():
+            data = (0, 1, 2)
+            stream = None
+            output = None
+            assembly("""
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:map($stream, $var, {
+    OP $var + 1 -> $var
+})
+std:stream:to_list($stream, $output)
+""")
+            return output
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), [1, 2, 3])

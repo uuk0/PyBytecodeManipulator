@@ -52,4 +52,50 @@ NAMESPACE std
             }
         }
     }
+
+    NAMESPACE stream
+    {
+        MACRO ASSEMBLY initialize(var VARIABLE)
+        {
+            LOAD ~list() -> §var
+        }
+
+        MACRO ASSEMBLY extend(var VARIABLE, value)
+        {
+            CALL §var.extend(§value) -> \
+        }
+
+        MACRO ASSEMBLY filter(var VARIABLE, predicate_source VARIABLE, predicate CODE_BLOCK)
+        {
+            DEF MACRO_filtered(item)
+            {
+                LOAD $item -> §predicate_source
+                MACRO_PASTE predicate
+                RETURN %
+            }
+
+            LOAD §var.copy() -> $MACRO_tmp
+            CALL §var.clear() -> \
+            CALL §var.extend(~filter($MACRO_filtered, $MACRO_tmp)) -> \
+        }
+
+        MACRO ASSEMBLY map(var VARIABLE, predicate_source VARIABLE, predicate CODE_BLOCK)
+        {
+            DEF MACRO_mapping(item)
+            {
+                LOAD $item -> §predicate_source
+                MACRO_PASTE predicate
+                RETURN %
+            }
+
+            LOAD §var.copy() -> $MACRO_tmp
+            CALL §var.clear() -> \
+            CALL §var.extend(~map($MACRO_mapping, $MACRO_tmp)) -> \
+        }
+
+        MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)
+        {
+            LOAD §var.copy() -> §output
+        }
+    }
 }

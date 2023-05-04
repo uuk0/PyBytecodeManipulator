@@ -615,6 +615,9 @@ class DerefAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
+        if value in scope.macro_parameter_namespace and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes") and scope.macro_parameter_namespace[value] != self:
+            return scope.macro_parameter_namespace[value].emit_bytecodes(function, scope)
+
         if value.isdigit():
             value = int(value)
 
@@ -628,6 +631,11 @@ class DerefAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.name_token.text
+
+        if value in scope.macro_parameter_namespace and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes"):
+            return scope.macro_parameter_namespace[value].emit_store_bytecodes(function, scope)
+
+        print(scope.macro_parameter_namespace[value])
 
         if value.isdigit():
             value = int(value)
@@ -668,14 +676,15 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
 class ConstantAccessExpression(AbstractAccessExpression):
     IS_STATIC = True
 
-    def __init__(self, value):
+    def __init__(self, value, token: AbstractToken = None):
         self.value = value
+        self.token = token
 
     def __eq__(self, other):
-        return type(self) == type(other) or self.value == other.value
+        return isinstance(other, type(self)) and self.value == other.value
 
     def __repr__(self):
-        return f"CONSTANT({self.value})"
+        return f"CONSTANT({repr(self.value)})"
 
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(copy.deepcopy(self.value))
@@ -689,7 +698,7 @@ class ConstantAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise throw_positioned_syntax_error(
-            scope, self.name_token, "Cannot assign to a constant"
+            scope, self.token, f"Cannot assign to a constant: {self}"
         )
 
 
@@ -987,6 +996,23 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         raise NotImplementedError
 
 
+class DiscardValue(AbstractAccessExpression):
+    def __init__(self):
+        pass
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        raise RuntimeError
+
+    def emit_store_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        return [
+            Instruction(function, -1, Opcodes.POP_TOP)
+        ]
+
+
 class MacroAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -1191,13 +1217,14 @@ class Parser(AbstractParser):
 
         if allow_primitives:
             if string := self.try_consume(StringLiteralToken):
-                return ConstantAccessExpression(string.text)
+                return ConstantAccessExpression(string.text, string)
 
             if integer := self.try_consume(IntegerToken):
                 return ConstantAccessExpression(
                     int(integer.text)
                     if "." not in integer.text
-                    else float(integer.text)
+                    else float(integer.text),
+                    integer,
                 )
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
@@ -1230,6 +1257,10 @@ class Parser(AbstractParser):
         elif start_token.text == "~":
             self.consume(SpecialToken("~"))
             expr = ModuleAccessExpression(self.consume(IdentifierToken))
+
+        elif start_token.text == "\\":
+            self.consume(SpecialToken("\\"))
+            expr = DiscardValue()
 
         elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS:
             self.consume(start_token)
@@ -1310,7 +1341,6 @@ class Parser(AbstractParser):
                         expr = AttributeAccessExpression(expr, name)
 
                 elif self.try_inspect() == SpecialToken("(") and allow_calls:
-                    print(self[-2:2])
                     expr = AbstractCallAssembly.INSTANCE.construct_from_partial(expr, self, scope)
 
                 else:
@@ -1347,15 +1377,15 @@ class Parser(AbstractParser):
 
         if allow_primitives:
             if string := self.try_consume(StringLiteralToken):
-                return ConstantAccessExpression(string.text)
+                return ConstantAccessExpression(string.text, string)
 
             if integer := self.try_consume(IntegerToken):
-                return ConstantAccessExpression(int(integer.text))
+                return ConstantAccessExpression(int(integer.text), integer)
 
             if boolean := self.try_consume(
                 (IdentifierToken("True"), IdentifierToken("False"))
             ):
-                return ConstantAccessExpression(boolean.text == "True")
+                return ConstantAccessExpression(boolean.text == "True", boolean)
 
         print("failed", self.try_inspect())
 
@@ -1866,7 +1896,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         for arg_decl, arg_code in zip(self.args, args):
             if arg_decl.is_static:
-                scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name
+                scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name.text
             else:
                 scope.macro_parameter_namespace[arg_decl.name.text] = arg_code
 
@@ -1965,8 +1995,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             bytecode += instructions
                             continue
 
-                    raise RuntimeError(
-                        f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!"
+                    raise throw_positioned_syntax_error(
+                        scope,
+                        self.name,
+                        f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!",
+                        RuntimeError,
                     )
 
             elif instr.has_local() and instr.arg_value.startswith("MACRO_"):

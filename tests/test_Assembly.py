@@ -1100,22 +1100,22 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 2)
 
-    def test_macro_parameter_duplicated_access_static_invalid(self):
+    def test_macro_parameter_static_invalid(self):
         def target():
             assembly(
                 """
-        MACRO test_macro_parameter_duplicated_access_static_invalid (param) {
+        MACRO test_macro_parameter_static_invalid (param) {
             LOAD 2 -> §param
         }
 
-        CALL MACRO test_macro_parameter_duplicated_access_static_invalid(1)
+        CALL MACRO test_macro_parameter_static_invalid(1)
         RETURN $local
         """
             )
             return -1
 
         mutable = MutableFunction(target)
-        self.assertRaises(RuntimeError, lambda: apply_inline_assemblies(mutable))
+        self.assertRaises(SyntaxError, lambda: apply_inline_assemblies(mutable))
 
     def test_macro_local_name_override(self):
         def target():
