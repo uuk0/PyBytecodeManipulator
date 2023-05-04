@@ -92,7 +92,6 @@ Expressions can be added as certain parameters to instructions to use instead of
   - CREATE \<type> '(' {\<expr>} ')' \['->' \<target>] where type can be list, tuple, set and dict
   - COMPREHENSION \<type> \['\<' \<capture locals> '>'] \<source> '{' \<code> '}' where type can be list, tuple, set, dict, generator and async generator; YIELD statements for emitting to the outside
 - can we use offsets as labels in JUMP's? (offsets in assembly instruction and bytecode instructions?)
-- add singleton operators for OP
 - FOREACH \['ASYNC'] (\<expression> \['->' \<target>]) | ('(' \<expression> ')' \['->' \<target>] {\['&'] '(' \<expression> ')' \['->' \<target>]}) '{' \<code> '}' iterates over all iterator expressions; when prefixed with '&', it will be zip()-ed with the previous iterator in the expression list 
 - FORRANGE '(' \[\<start> ','] \<stop> \[',' \<step>] ')' \['->' \<target>] {'(' '(' \[\<start> ','] \<stop> \[ ',' \<step>] ')' \['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
   - \['PARALLEL'] prefixes for FOREACH and FORRANGE so threading / async gather can be used on them
@@ -124,7 +123,10 @@ Expressions can be added as certain parameters to instructions to use instead of
   - maybe also the possibility to define code for emitting assembly instructions
     - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
+  - allow macro parameters to be used in places where identifiers would be used (e.g. variable names, function names, class names, ...)
+    - compare against static parameter value at emit time
 - CLASS STRUCT ... '\<' \<attr name> {',' \<attr name>} '>' '{' ... '}' to declare a class with \_\_slots__ (and maybe compile-time checks that no other attributes are set on 'self' attributes on functions?)
+- CLASS STRUCT IMMUTABLE (for namedtuple stuff)
 - CLASS ABSTRACT ... for abstract classes, which includes the abc.ABC baseclass
 - DEF ABSTRACT ... for defining abstract methods (no body to declare!)
 - ATTR_TYPEDEF \<attr name> \<type definition> in class bodies
