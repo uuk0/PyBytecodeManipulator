@@ -199,7 +199,7 @@ def apply_inline_assemblies(
                 if not ins.has_stop_flow() and not ins.has_unconditional_jump():
                     ins.next_instruction = bytecode[i + 1]
 
-            bytecode[-1].next_instruction = instr.next_instruction
+            bytecode[-1].next_instruction = following_instr = instr.next_instruction
 
             print("inserting AFTER", instr)
             instr.insert_after(bytecode)
@@ -207,18 +207,21 @@ def apply_inline_assemblies(
             print("empty bytecode block")
             print(asm)
 
-        for ins in bytecode:
+        for i, ins in enumerate(bytecode):
             if ins.opcode == Opcodes.BYTECODE_LABEL:
                 label_targets[ins.arg_value] = ins.next_instruction
 
                 if not isinstance(ins, Instruction):
-                    print(ins)
+                    print("error: ", ins)
+
                 ins.change_opcode(Opcodes.NOP)
+                ins.next_instruction = bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
 
     for i, ins in enumerate(target.instructions):
         if ins.opcode == Opcodes.BYTECODE_LABEL:
             label_targets[ins.arg_value] = ins.next_instruction
             ins.change_opcode(Opcodes.NOP)
+            ins.next_instruction = target.instructions[i+1]
 
     def resolve_special_code(ins: Instruction):
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):

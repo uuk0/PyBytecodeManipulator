@@ -67,7 +67,40 @@ def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
 Instruction.create_with_token = create_instruction
 
 
+LOCAL_TO_DEREF_OPCODES = {Opcodes.LOAD_FAST: Opcodes.LOAD_DEREF, Opcodes.STORE_FAST: Opcodes.STORE_DEREF}
+
+
 class ParsingScope:
+    @classmethod
+    def create_for_module(cls, module: types.ModuleType):
+        scope = cls()
+        scope.globals_dict = module.__dict__
+        scope.module_file = module.__globals__
+
+        from bytecodemanipulation.assembler.Emitter import GLOBAL_SCOPE_CACHE
+
+        if module.__module__ in GLOBAL_SCOPE_CACHE:
+            scope.global_scope = GLOBAL_SCOPE_CACHE[module.__module__]
+        else:
+            GLOBAL_SCOPE_CACHE[module.__module__] = scope.global_scope
+
+        return scope
+
+    @classmethod
+    def create_for_function(cls, target: typing.Callable):
+        scope = cls()
+        scope.globals_dict = target.__globals__
+        scope.module_file = target.__globals__["__file__"]
+
+        from bytecodemanipulation.assembler.Emitter import GLOBAL_SCOPE_CACHE
+
+        if target.__module__ in GLOBAL_SCOPE_CACHE:
+            scope.global_scope = GLOBAL_SCOPE_CACHE[target.__module__]
+        else:
+            GLOBAL_SCOPE_CACHE[target.__module__] = scope.global_scope
+
+        return scope
+
     def __init__(self):
         self.labels: typing.Set[str] = set()
         self.global_scope = {}
@@ -1076,10 +1109,10 @@ class Parser(AbstractParser):
                 continue
 
             if not predicate():
-                if eof_error:
+                if eof_error and self.try_inspect() is None:
                     print(self.try_inspect())
                     print(repr(root))
-                    raise SyntaxError(eof_error)
+                    raise throw_positioned_syntax_error(scope, self[-1], eof_error)
 
                 break
 
@@ -1575,6 +1608,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self.name_token = name_token
             self.assemblies: typing.List[MacroAssembly] = []
 
+        def add_assembly(self, assembly: "MacroAssembly"):
+            self.assemblies.append(assembly)
+            return self
+
         def __repr__(self) -> str:
             return f"MACRO_OVERLOAD({'::'.join(self.name)}, [{', '.join(map(repr, self.assemblies))}])"
 
@@ -1930,16 +1967,29 @@ class MacroAssembly(AbstractAssemblyInstruction):
         page.add_definition(self)
 
     class Function2CompoundMapper(CompoundExpression):
-        def __init__(self, function: typing.Callable):
+        def __init__(self, function: typing.Callable, scoped_names: typing.List[str] = None):
             super().__init__([])
             self.function = MutableFunction(function)
+            self.scoped_names = scoped_names or []
 
         def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
+            macro_exit_label = scope.scope_name_generator("macro_exit")
             return [
-                instr.copy(owner=function)
+                (
+                    instr.copy(owner=function)
+                    if instr.opcode != Opcodes.RETURN_VALUE
+                    else
+                    instr.copy(owner=function).change_opcode(
+                        Opcodes.POP_TOP).insert_after(Instruction(
+                        function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(macro_exit_label)))
+                )
+                if not instr.has_local() or instr.arg_value not in self.scoped_names
+                else instr.copy(owner=function).change_opcode(LOCAL_TO_DEREF_OPCODES[instr.opcode])
                 for instr in self.function.instructions
+            ] + [
+                Instruction(function, -1, Opcodes.BYTECODE_LABEL, macro_exit_label)
             ]
 
 

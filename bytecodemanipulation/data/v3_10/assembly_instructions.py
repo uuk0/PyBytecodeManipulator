@@ -1361,7 +1361,7 @@ class CallAssembly(AbstractAssemblyInstruction):
             raise throw_positioned_syntax_error(
                 scope,
                 parser.try_inspect(),
-                "expected <expression> (did you forget the prefix?)"
+                "expected <expression> to be called (did you forget the prefix?)"
                 if not is_macro
                 else "expected <macro name>",
             )

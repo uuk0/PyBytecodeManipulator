@@ -1,5 +1,8 @@
 import typing
 
+import bytecodemanipulation.MutableFunction
+
+import bytecodemanipulation.assembler.Parser
 
 T = typing.TypeVar("T")
 
@@ -41,6 +44,7 @@ def make_macro(export_name: str = None, /):
     will be tried to be modified
 
     WARNING: returns are currently not allowed in macros!
+        they will be changed into JUMP-TO-END-OF-MACRO!
 
     :param export_name: the name to export into the global namespace
     """
@@ -49,16 +53,29 @@ def make_macro(export_name: str = None, /):
         from bytecodemanipulation.assembler.Parser import MacroAssembly
         from bytecodemanipulation.assembler.Lexer import IdentifierToken
 
+        macro_name = (export_name or function.__qualname__).replace(".", ":")
+
+        mutable = bytecodemanipulation.MutableFunction.MutableFunction(function)
+
         macro_asm = MacroAssembly(
-            [IdentifierToken(e) for e in export_name.split(":")]
-            if export_name
-            else [IdentifierToken(function.__name__)],
+            [IdentifierToken(macro_name[-1])],
             [
-                MacroAssembly.MacroArg(IdentifierToken(e))
-                for e in function.__code__.co_varnems[: function.__code__.co_argcount]
+                # todo: add data type here!
+                MacroAssembly.MacroArg(IdentifierToken(name))
+                for name in mutable.shared_variable_names[:mutable.argument_count]
             ],
-            MacroAssembly.Function2CompoundMapper(function),
+            MacroAssembly.Function2CompoundMapper(function, scoped_names=mutable.shared_variable_names[:mutable.argument_count]),
         )
+
+        namespace = macro_name.split(":")[:-1]
+
+        scope = bytecodemanipulation.assembler.Parser.ParsingScope.create_for_function(function)
+        namespace_obj = scope.lookup_namespace(namespace)
+
+        if macro_name.split(":")[-1] not in namespace_obj:
+            namespace_obj[macro_name.split(":")[-1]] = MacroAssembly.MacroOverloadPage(macro_name.split(":"))
+
+        namespace_obj[macro_name.split(":")[-1]].add_assembly(macro_asm)
 
         # todo: store macro assembly into file namespace
 

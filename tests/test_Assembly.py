@@ -10,7 +10,7 @@ import bytecodemanipulation.data_loader
 
 bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
 from bytecodemanipulation.assembler.Parser import *
-from bytecodemanipulation.assembler.target import assembly, label, jump as asm_jump
+from bytecodemanipulation.assembler.target import assembly, label, jump as asm_jump, make_macro
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
 
 try:
@@ -1475,3 +1475,67 @@ CALL MACRO test:test_macro()
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 1)
+
+    def test_transform_to_macro(self):
+        @make_macro("TestMacro:test_transform_to_macro")
+        def test_transform_to_macro():
+            test = 1
+
+        def target():
+            test = -1
+            assembly(
+                """
+LOAD 0 -> $test
+CALL MACRO TestMacro:test_transform_to_macro()
+"""
+            )
+            return test
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 1)
+
+    def test_transform_to_macro_2(self):
+        @make_macro("TestMacro:test_transform_to_macro_2")
+        def test_transform_to_macro(a):
+            test = a
+
+        def target():
+            test = -1
+            assembly(
+                """
+LOAD 0 -> $test
+CALL MACRO TestMacro:test_transform_to_macro_2(1)
+"""
+            )
+            return test
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 1)
+
+    def test_transform_to_macro_3(self):
+        @make_macro("TestMacro:test_transform_to_macro_3")
+        def test_transform_to_macro(a):
+            test = a + a
+
+        def target():
+            test = -1
+            value = [1, 2]
+            assembly(
+                """
+LOAD 0 -> $test
+CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
+"""
+            )
+            return test
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 3)

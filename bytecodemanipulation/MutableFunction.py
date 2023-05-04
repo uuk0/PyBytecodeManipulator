@@ -115,7 +115,7 @@ class Instruction:
         )
 
         if owner:
-            instance.update_owner(owner, -1)
+            instance.update_owner(owner, -1, force_change_arg_index=True)
 
         return instance
 
