@@ -2096,6 +2096,13 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
+        if self.name.text in scope.macro_parameter_namespace and hasattr(scope.macro_parameter_namespace[self.name.text], "emit_bytecodes"):
+            return scope.macro_parameter_namespace[self.name.text].emit_bytecodes(function, scope) + (
+                []
+                if self.target is None
+                else self.target.emit_store_bytecodes(function, scope)
+            )
+
         return [
             Instruction(function, -1, Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)
         ] + (
