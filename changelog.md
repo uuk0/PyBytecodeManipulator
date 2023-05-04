@@ -1,9 +1,13 @@
 
-# Version 0.2.3
+# Version 0.2.5
+
+# Version 0.2.4
 - added more assembly code
 - fixed some issues with the bytecode part
 - added some more specializations
 - added error locations to assembly code
+
+0.2.3: never released
 
 # Version 0.2.2
 - added assembly system, including macros
