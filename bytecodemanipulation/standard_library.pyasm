@@ -20,18 +20,15 @@ NAMESPACE std
 
     MACRO ASSEMBLY check_type(expected_type, value, error_message)
     {
-        CALL ~isinstance (§value, §expected_type) -> $MACRO_result
-        IF OP (not $MACRO_result)
+        IF OP (not ~isinstance(§value, §expected_type))
         {
-            CALL ~ValueError(§error_message)
-            RAISE
+            RAISE ~ValueError(§error_message)
         }
     }
 
     MACRO ASSEMBLY check_type(expected_type, value)
     {
-        CALL ~repr(§value) -> $MACRO_type_name
-        check_type(§expected_type, §value, OP ("Invalid type, expected " + $MACRO_type_name))
+        check_type(§expected_type, §value, OP ("Invalid type, expected " + ~repr(§value)))
     }
 
     NAMESPACE os
@@ -48,8 +45,7 @@ NAMESPACE std
                 LOAD $MACRO_files[$MACRO_counter] -> §file
                 OP $MACRO_counter + 1 -> $MACRO_counter
 
-                CALL ~os.path.isfile(§file)
-                IF %
+                IF ~os.path.isfile(§file)
                 {
                     MACRO_PASTE §code
                 }

@@ -203,7 +203,6 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
     def __init__(self, tokens: typing.List[AbstractToken]):
         super().__init__()
         self.tokens = tokens
-
     def __getitem__(
         self, item: int | slice
     ) -> AbstractToken | typing.List[AbstractToken] | None:
@@ -218,7 +217,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         elif isinstance(item, slice):
             start = self.cursor + item.start
             stop = (self.cursor + item.stop) if item.stop else None
-            step = item.step
+            step = item.step if item.step is not None else 1
 
             if (
                 start < 0

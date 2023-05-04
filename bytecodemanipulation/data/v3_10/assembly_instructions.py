@@ -21,6 +21,7 @@ from bytecodemanipulation.assembler.Parser import (
     MacroAccessExpression,
     MacroAssembly,
     throw_positioned_syntax_error,
+    AbstractCallAssembly,
 )
 from bytecodemanipulation.assembler.Lexer import (
     SpecialToken,
@@ -147,7 +148,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "StoreAssembly":
-        access = parser.try_consume_access_to_value(allow_tos=False, scope=scope)
+        access = parser.try_consume_access_to_value(allow_tos=False, scope=scope, allow_calls=False)
 
         if access is None:
             raise throw_positioned_syntax_error(
@@ -1250,7 +1251,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
 
 @Parser.register
-class CallAssembly(AbstractAssemblyInstruction):
+class CallAssembly(AbstractCallAssembly):
     # CALL ['PARTIAL' | 'MACRO'] <call target> (<args>) [-> <target>]
     NAME = "CALL"
 
@@ -1339,6 +1340,10 @@ class CallAssembly(AbstractAssemblyInstruction):
         pass
 
     @classmethod
+    def construct_from_partial(cls, access: AbstractAccessExpression, parser: "Parser", scope: ParsingScope):
+        return cls.consume_inner(parser, False, False, scope, call_target=access)
+
+    @classmethod
     def consume(cls, parser: "Parser", scope) -> "CallAssembly":
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
         is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
@@ -1346,17 +1351,22 @@ class CallAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume_inner(
-        cls, parser: Parser, is_partial: bool, is_macro: bool, scope: ParsingScope
+        cls, parser: Parser, is_partial: bool, is_macro: bool, scope: ParsingScope, call_target=None
     ) -> "CallAssembly":
-        if not is_macro:
-            call_target = parser.try_parse_data_source(include_bracket=False)
-        else:
-            name = [parser.consume(IdentifierToken, err_arg=scope)]
+        if call_target is None:
+            if not is_macro:
+                call_target = parser.try_parse_data_source(include_bracket=False, scope=scope, allow_calls=False)
 
-            while parser.try_consume(SpecialToken(":")):
-                name.append(parser.consume(IdentifierToken, err_arg=scope))
+                if isinstance(call_target, AbstractCallAssembly):
+                    raise RuntimeError
 
-            call_target = MacroAccessExpression(name)
+            else:
+                name = [parser.consume(IdentifierToken, err_arg=scope)]
+
+                while parser.try_consume(SpecialToken(":")):
+                    name.append(parser.consume(IdentifierToken, err_arg=scope))
+
+                call_target = MacroAccessExpression(name)
 
         if call_target is None:
             raise throw_positioned_syntax_error(

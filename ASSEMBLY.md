@@ -80,6 +80,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - §\<name>: access an variable from an outer scope, or a macro parameter
   - %: top of stack (in most cases the default when not provided)
   - \<access>\[\<index or expression>]: value by \[] operator
+  - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer or floating-point number

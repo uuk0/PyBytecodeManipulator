@@ -209,7 +209,7 @@ LOAD 19 --> $test
 
     def test_store(self):
         expr = Parser(
-            "STORE @test\nSTORE $test\nSTORE @global[10]\nSTORE $local[20]"
+            "STORE @test;\nSTORE $test;\nSTORE @global[10];\nSTORE $local[20]"
         ).parse()
 
         self.assertEqualList(
@@ -828,7 +828,7 @@ CALL PARTIAL @print ("Hello World!") -> $x
     def test_call_assembly(self):
         def target(x):
             assembly(
-                """
+"""
 CALL @print ("Hello World!") -> $x
 # LOAD $error -> @global
 """

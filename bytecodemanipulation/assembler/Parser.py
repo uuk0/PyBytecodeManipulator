@@ -280,6 +280,7 @@ def throw_positioned_syntax_error(
 
         print(f"-> {exc_type.__name__}: {message}", file=sys.stderr)
     else:
+        # print(scope, scope.module_file if scope else None, token)
         return exc_type(f"{token}: {message}")
 
     return exc_type(message)
@@ -974,6 +975,18 @@ class ModuleAccessExpression(AbstractAccessExpression):
         return self._cached_lookup(self.name_token.text)
 
 
+class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, ABC):
+    INSTANCE: typing.Type["AbstractCallAssembly"] | None = None
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        AbstractCallAssembly.INSTANCE = cls
+
+    @classmethod
+    def construct_from_partial(cls, access: AbstractAccessExpression, parser: "Parser", scope: ParsingScope):
+        raise NotImplementedError
+
+
 class MacroAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -1156,6 +1169,7 @@ class Parser(AbstractParser):
         allow_primitives=False,
         allow_op=True,
         allow_advanced_access=True,
+        allow_calls=True,
         scope=None,
     ) -> AbstractAccessExpression | None:
         """
@@ -1295,6 +1309,10 @@ class Parser(AbstractParser):
                         name = self.try_consume(IdentifierToken)
                         expr = AttributeAccessExpression(expr, name)
 
+                elif self.try_inspect() == SpecialToken("(") and allow_calls:
+                    print(self[-2:2])
+                    expr = AbstractCallAssembly.INSTANCE.construct_from_partial(expr, self, scope)
+
                 else:
                     break
 
@@ -1306,6 +1324,7 @@ class Parser(AbstractParser):
         allow_primitives=False,
         include_bracket=True,
         allow_op=True,
+        allow_calls=True,
         scope=None,
     ) -> AbstractSourceExpression | None:
         self.save()
@@ -1318,6 +1337,7 @@ class Parser(AbstractParser):
             allow_tos=allow_tos,
             allow_primitives=allow_primitives,
             allow_op=allow_op,
+            allow_calls=allow_calls,
             scope=scope,
         ):
             self.discard_save()

@@ -21,6 +21,7 @@ from bytecodemanipulation.assembler.Parser import (
     MacroAccessExpression,
     MacroAssembly,
     throw_positioned_syntax_error,
+    AbstractCallAssembly,
 )
 from bytecodemanipulation.assembler.Lexer import (
     SpecialToken,
@@ -1249,7 +1250,7 @@ class LoadConstAssembly(AbstractAssemblyInstruction):
 
 
 @Parser.register
-class CallAssembly(AbstractAssemblyInstruction):
+class CallAssembly(AbstractCallAssembly):
     # CALL ['PARTIAL' | 'MACRO'] <call target> (<args>) [-> <target>]
     NAME = "CALL"
 
