@@ -6,7 +6,7 @@ import types
 
 import typing
 
-import bytecodemanipulation.assembler.Emitter
+from bytecodemanipulation.assembler import Emitter
 
 
 class ASMFileFinder(importlib.machinery.SourceFileLoader):
@@ -43,7 +43,7 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         with open(self.path, encoding="utf-8") as fid:
             asm_code = fid.read()
 
-        bytecodemanipulation.assembler.Emitter.execute_module_in_instance(
+        Emitter.execute_module_in_instance(
             asm_code, module, self.path
         )
 

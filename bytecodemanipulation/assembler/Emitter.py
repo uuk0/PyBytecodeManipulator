@@ -3,7 +3,7 @@ import string
 import types
 import typing
 
-import bytecodemanipulation.assembler.Lexer
+from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import (
@@ -130,7 +130,7 @@ def apply_inline_assemblies(
 
     assemblies = [
         AssemblyParser(
-            bytecodemanipulation.assembler.Lexer.Lexer(code)
+            Lexer(code)
             .add_line_offset(instr.source_location[0] + 1)
             .lex(),
             scope.scope_path.clear() or scope,

@@ -705,6 +705,7 @@ class Instruction:
             Opcodes.LOAD_DEREF,
             Opcodes.LOAD_CLOSURE,
             Opcodes.LOAD_BUILD_CLASS,
+            Opcodes.LOAD_ASSERTION_ERROR,
         ):
             return 1, 0, None
 
@@ -755,6 +756,7 @@ class Instruction:
             Opcodes.DICT_MERGE,
             Opcodes.BINARY_FLOOR_DIVIDE,
             Opcodes.BINARY_ADD,
+            Opcodes.INPLACE_ADD,
             Opcodes.BINARY_SUBTRACT,
             Opcodes.BINARY_MULTIPLY,
             Opcodes.BINARY_TRUE_DIVIDE,
