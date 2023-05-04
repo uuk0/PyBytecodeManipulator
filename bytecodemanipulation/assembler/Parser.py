@@ -1929,6 +1929,20 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         page.add_definition(self)
 
+    class Function2CompoundMapper(CompoundExpression):
+        def __init__(self, function: typing.Callable):
+            super().__init__([])
+            self.function = MutableFunction(function)
+
+        def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+            return [
+                instr.copy(owner=function)
+                for instr in self.function.instructions
+            ]
+
+
 
 @Parser.register
 class MacroPasteAssembly(AbstractAssemblyInstruction):

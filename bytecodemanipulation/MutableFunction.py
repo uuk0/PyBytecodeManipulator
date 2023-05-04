@@ -106,6 +106,19 @@ class Instruction:
 
         self.previous_instructions: typing.List["Instruction"] | None = None
 
+    def copy(self, owner: "MutableFunction" = None) -> "Instruction":
+        instance = type(self)(
+            self.function,
+            self.offset,
+            self.opcode,
+            self.arg_value if self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST else self.arg,
+        )
+
+        if owner:
+            instance.update_owner(owner, -1)
+
+        return instance
+
     def apply_visitor(
         self,
         visitor: AbstractInstructionWalker,
