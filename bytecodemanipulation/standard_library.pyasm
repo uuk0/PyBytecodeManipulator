@@ -60,7 +60,7 @@ NAMESPACE std
             DEF MACRO_inner<&iterable>(iter_obj)
             {
                 LOAD ~list() -> $__unique
-                FOREACH &var IN &iterable
+                FOREACH &var IN §&iterable
                 {
                     MACRO_PASTE code
                     CALL $__unique.append(%) -> \

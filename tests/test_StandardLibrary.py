@@ -177,17 +177,17 @@ std:stream:to_list($stream, $output)
 
         self.assertEqual(target(), [1, 2, 3])
 
-#     def test_comprehension_list(self):
-#         def target():
-#             l = [1, 2, 3, 4]
-#             assembly("""
-# std:comprehension:list($l, $value, { OP $value + 1 -> % }) -> %
-# RETURN %""")
-#
-#         mutable = MutableFunction(target)
-#         apply_inline_assemblies(mutable)
-#         mutable.reassign_to_function()
-#
-#         dis.dis(target)
-#
-#         self.assertEqual(target(), [1, 2, 3])
+    def test_comprehension_list(self):
+        def target():
+            l = [1, 2, 3, 4]
+            assembly("""
+std:comprehension:list($l, $value, { OP $value + 1 -> % }) -> %
+RETURN %""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        self.assertEqual(target(), [1, 2, 3])

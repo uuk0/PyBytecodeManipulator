@@ -2,6 +2,8 @@
 # Version 0.2.5
 - added FOREACH loops with automatically zip() when multiple iterable are given
 - changed the macro prefix from § to &
+- using &\<name> in places for identifiers is now allowed in some places
+- added std:comprehension:list to feel like python list comprehension
 
 # Version 0.2.4
 - added more assembly code

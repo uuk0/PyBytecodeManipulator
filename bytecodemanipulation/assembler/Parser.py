@@ -1450,14 +1450,18 @@ class Parser(AbstractParser):
     def try_parse_identifier_like(self) -> typing.Callable[[ParsingScope], str] | None:
         if expr := self.try_consume_multi([SpecialToken("&"), IdentifierToken]):
             def get(scope: ParsingScope):
-                if expr[0].text not in scope.macro_parameter_namespace:
+                # If this is None, we are only inspecting
+                if scope is None:
+                    return str(get)
+
+                if expr[1].text not in scope.macro_parameter_namespace:
                     raise throw_positioned_syntax_error(
                         scope,
                         expr,
                         "Could not find name in macro parameter space",
                     )
 
-                value = scope.macro_parameter_namespace[expr[0].text]
+                value = scope.macro_parameter_namespace[expr[1].text]
 
                 if isinstance(value, ConstantAccessExpression):
                     if not isinstance(value.value, str):
@@ -1470,7 +1474,7 @@ class Parser(AbstractParser):
                     return value.value
 
                 if isinstance(value, (GlobalAccessExpression, LocalAccessExpression, DerefAccessExpression)):
-                    return value.name_token.text
+                    return value.get_name(scope)
 
                 raise throw_positioned_syntax_error(
                     scope,

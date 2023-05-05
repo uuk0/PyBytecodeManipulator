@@ -2075,34 +2075,24 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         cls, parser: "Parser", scope: ParsingScope
     ) -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
-        bound_variables: typing.List[typing.Tuple[int, IdentifierToken, bool]] = []
+        bound_variables: typing.List[typing.Tuple[typing.Callable[[ParsingScope], str], bool]] = []
         args = []
 
         if parser.try_consume(SpecialToken("<")):
             is_static = bool(parser.try_consume(SpecialToken("!")))
 
-            expr = parser.try_consume(IdentifierToken)
+            expr = parser.try_parse_identifier_like()
 
             if expr:
-                bound_variables.append((0, expr, is_static))
+                bound_variables.append((expr, is_static))
 
-            while True:
-                if parser.try_consume(SpecialToken("&")):
-                    if not (expr := parser.try_consume(IdentifierToken)):
-                        raise throw_positioned_syntax_error(
-                            scope,
-                            parser[0],
-                            "Expected <identifier> after '&'"
-                        )
+                while True:
+                    if not parser.try_consume(SpecialToken(",")) or not (
+                        expr := parser.try_parse_identifier_like()
+                    ):
+                        break
 
-                    bound_variables.append((1, expr, is_static))
-
-                if not parser.try_consume(SpecialToken(",")) or not (
-                    expr := parser.try_consume(IdentifierToken)
-                ):
-                    break
-
-                bound_variables.append((0, expr, is_static))
+                    bound_variables.append((expr, is_static))
 
             parser.consume(SpecialToken(">"), err_arg=scope)
 
@@ -2179,7 +2169,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     def __init__(
         self,
         func_name: IdentifierToken | str | None,
-        bound_variables: typing.List[typing.Tuple[int, IdentifierToken | str, bool] | str],
+        bound_variables: typing.List[typing.Tuple[IdentifierToken | str, bool] | str],
         args: typing.List[CallAssembly.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
@@ -2187,27 +2177,25 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         self.func_name = (
             func_name if not isinstance(func_name, str) else IdentifierToken(func_name)
         )
-        self.bound_variables: typing.List[typing.Tuple[int, IdentifierToken, bool]] = []
+        self.bound_variables: typing.List[typing.Tuple[typing.Callable[[ParsingScope], str], bool]] = []
         # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
+
+        def _create_lazy(name: str):
+            return lambda scope: name
 
         for element in bound_variables:
             if isinstance(element, str):
                 self.bound_variables.append(
                     (
-                        0,
-                        IdentifierToken(element.removeprefix("!")),
+                        _create_lazy(element.removeprefix("!")),
                         element.startswith("!"),
                     )
                 )
             elif isinstance(element, tuple):
-                if len(element) == 3:
-                    a_type, token, is_static = element
-                else:
-                    a_type = 0
-                    token, is_static = element
+                token, is_static = element
 
                 if isinstance(token, str):
-                    self.bound_variables.append((a_type, IdentifierToken(token), is_static))
+                    self.bound_variables.append((_create_lazy(token), is_static))
                 else:
                     self.bound_variables.append(element)
             else:
@@ -2238,14 +2226,15 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         return (
             type(self) == type(other)
             and self.func_name == other.func_name
-            and self.bound_variables == other.bound_variables
+            and len(self.bound_variables) == len(other.bound_variables)
+            and all((a[0](None) == b[0](None) and a[1] == b[1] for a, b in zip(self.bound_variables, other.bound_variables)))
             and self.args == other.args
             and self.body == other.body
             and self.target == other.target
         )
 
     def __repr__(self):
-        return f"DEF({self.func_name.text}<{repr(self.bound_variables)[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+        return f"DEF({self.func_name.text}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
 
     def copy(self) -> "FunctionDefinitionAssembly":
         return FunctionDefinitionAssembly(
@@ -2302,31 +2291,19 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
             raise NotImplementedError("Kwarg defaults")
 
         if self.bound_variables:
-            if any(map(lambda e: e[2], self.bound_variables)):
+            if any(map(lambda e: e[1], self.bound_variables)):
                 raise NotImplementedError("Static variables")
 
             flags |= 0x08
 
             macro_params = tuple()
 
-            for is_macro, name, is_static in self.bound_variables:
-                if is_macro == 0:
-                    if name not in scope.macro_parameter_namespace:
-                        raise RuntimeError
-
-                    param = scope.macro_parameter_namespace[name]
-
-                    if not isinstance(param, (GlobalAccessExpression, LocalAccessExpression)):
-                        raise RuntimeError(param)
-
-                    macro_params += (param.name_token.text,)
-
             bytecode += [
                 Instruction(
                     function,
                     -1,
                     "LOAD_CONST",
-                    tuple((e[1] for e in self.bound_variables if e[0] == 0)) + macro_params,
+                    tuple((e[0](scope) for e in self.bound_variables)) + macro_params,
                 ),
             ]
 
