@@ -2094,7 +2094,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        body = parser.parse_body()
+        body = parser.parse_body(scope=scope)
 
         if parser.try_consume(SpecialToken("-")):
             raise SyntaxError(

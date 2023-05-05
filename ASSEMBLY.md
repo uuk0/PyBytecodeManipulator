@@ -91,13 +91,11 @@ Expressions can be added as certain parameters to instructions to use instead of
 
 
 # TODOs
-- list / tuple / set / map construction
+- list / tuple / set / map construction (currently only via std)
   - CREATE \<type> '(' {\<expr>} ')' \['->' \<target>] where type can be list, tuple, set and dict
   - COMPREHENSION \<type> \['\<' \<capture locals> '>'] \<source> '{' \<code> '}' where type can be list, tuple, set, dict, generator and async generator; YIELD statements for emitting to the outside
 - can we use offsets as labels in JUMP's? (offsets in assembly instruction and bytecode instructions?)
-- FOREACH \['ASYNC'] 
-- FORRANGE '(' \[\<start> ','] \<stop> \[',' \<step>] ')' \['->' \<target>] {'(' '(' \[\<start> ','] \<stop> \[ ',' \<step>] ')' \['->' \<target>] ')'} '{' \<code> '}' iterates over the ranges one after each other ('&' like above makes no sense here)
-  - \['PARALLEL'] prefixes for FOREACH and FORRANGE so threading / async gather can be used on them
+- FOREACH \['ASYNC'] \['PARALLEL']
 - LABEL part for WHILE, FOREACH, FORRANGE and IF (jump to end of if or top if wanted)
 - make it IF ... {ELSEIF ...} \[ELSE ...] (single assembly meta instruction)
 - IMPORT \<item> \[\<item>] where 'item' is \<package> \['/' \<sub module>] \['->' \<target=sub module name OR package name>]

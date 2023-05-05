@@ -53,6 +53,25 @@ NAMESPACE std
         }
     }
 
+    NAMESPACE comprehension
+    {
+        MACRO ASSEMBLY list(iterable, var VARIABLE, code CODE_BLOCK)
+        {
+            DEF MACRO_inner(iter_obj)
+            {
+                LOAD ~list() -> $__unique
+                FOREACH §var IN $iter_obj
+                {
+                    MACRO_PASTE code
+                    CALL $__unique.append(%) -> \
+                }
+                RETURN $__unique
+            }
+
+            CALL $MACRO_inner(~iter(§iterable))
+        }
+    }
+
     NAMESPACE stream
     {
         MACRO ASSEMBLY initialize(var VARIABLE)
