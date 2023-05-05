@@ -2052,7 +2052,11 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
             if not identifier:
                 if star:
-                    raise SyntaxError
+                    raise throw_positioned_syntax_error(
+                        scope,
+                        [star, star_star],
+                        "Expected <expression> after '*'" if not star_star else "Expected <expression> after '**'"
+                    )
 
                 break
 
@@ -2082,9 +2086,11 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
         parser.consume(SpecialToken(")"))
 
-        if parser.try_consume(SpecialToken("<")):
-            raise SyntaxError(
-                "Respect ordering (got 'args' before 'captured'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }"
+        if expr := parser.try_consume(SpecialToken("<")):
+            raise throw_positioned_syntax_error(
+                scope,
+                expr,
+                "Respect ordering (got 'args' before 'captured'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
             )
 
         if parser.try_consume(SpecialToken("-")) and parser.try_consume(
@@ -2096,9 +2102,11 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
         body = parser.parse_body(scope=scope)
 
-        if parser.try_consume(SpecialToken("-")):
-            raise SyntaxError(
-                "Respect ordering (got 'code' before 'target'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }"
+        if expr := parser.try_consume(SpecialToken("-")):
+            raise throw_positioned_syntax_error(
+                scope,
+                expr,
+                "Respect ordering (got 'code' before 'target'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
             )
 
         return cls(func_name, bound_variables, args, body, target)
