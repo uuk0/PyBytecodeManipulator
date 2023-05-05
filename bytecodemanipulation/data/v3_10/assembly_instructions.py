@@ -2375,31 +2375,6 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
         for i, instr in enumerate(inner_bytecode[:-1]):
             instr.next_instruction = inner_bytecode[i + 1]
 
-        def transform(instruction: Instruction):
-            if instruction.opcode == Opcodes.LOAD_DEREF and instruction.arg_value in scope.macro_parameter_namespace:
-                value = scope.macro_parameter_namespace[instruction.arg_value]
-
-                if isinstance(value, str):
-                    raise NotImplementedError("Access to static macro parameter from inner functions")
-
-                arg_bytecode = value.emit_bytecodes(target, scope)
-                instruction.insert_after(arg_bytecode)
-                instruction.change_opcode(Opcodes.NOP)
-                instruction.next_instruction = arg_bytecode[0]
-
-            elif instruction.opcode == Opcodes.MACRO_PARAMETER_EXPANSION and instruction.arg_value in scope.macro_parameter_namespace:
-                value = scope.macro_parameter_namespace[instruction.arg_value]
-
-                if isinstance(value, str):
-                    raise NotImplementedError("Access to static macro parameter from inner functions")
-
-                arg_bytecode = value.emit_bytecodes(target, scope)
-                instruction.insert_after(arg_bytecode)
-                instruction.change_opcode(Opcodes.NOP)
-                instruction.next_instruction = arg_bytecode[0]
-
-        inner_bytecode[0].apply_visitor(LambdaInstructionWalker(transform))
-
         target.assemble_instructions_from_tree(inner_bytecode[0])
         target.reassign_to_function()
 
