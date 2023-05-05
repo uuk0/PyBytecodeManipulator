@@ -484,24 +484,24 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
     IS_STATIC = False
 
-    def __init__(self, name_token: IdentifierToken | IntegerToken | str):
-        self.name_token = (
-            name_token
-            if not isinstance(name_token, str)
-            else IdentifierToken(name_token)
-        )
+    def __init__(self, name: typing.Callable[[ParsingScope], str] | str, token: AbstractToken | typing.List[AbstractToken] = None):
+        self.name = name
+        self.token = token
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name_token == other.name_token
+        return type(self) == type(other) and self.get_name(None) == other.get_name(None)
 
     def __repr__(self):
-        return f"{self.PREFIX}{self.name_token.text}"
+        return f"{self.PREFIX}{self.get_name(None)}"
 
     def copy(self) -> "AbstractAccessExpression":
-        return type(self)(self.name_token)
+        return type(self)(self.name, self.token.copy() if isinstance(self.token, list) else self.token)
 
     def get_static_value(self, scope: ParsingScope) -> typing.Any:
         raise ValueError("not implemented")
+
+    def get_name(self, scope: ParsingScope):
+        return self.name(scope) if not isinstance(self.name, str) else self.name
 
 
 class GlobalAccessExpression(AbstractAccessExpression):
@@ -510,28 +510,28 @@ class GlobalAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "LOAD_GLOBAL", value
+                self.token, function, -1, "LOAD_GLOBAL", value
             )
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "STORE_GLOBAL", value
+                self.token, function, -1, "STORE_GLOBAL", value
             )
         ]
 
@@ -546,7 +546,7 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        key = self.name_token.text
+        key = self.get_name(scope)
         global_dict = function.target.__globals__
         if key not in global_dict and hasattr(builtins, key):
             value = getattr(builtins, key)
@@ -555,7 +555,7 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "LOAD_CONST", value
+                self.name, function, -1, "LOAD_CONST", value
             )
         ]
 
@@ -565,13 +565,13 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
         raise RuntimeError("Cannot assign to a constant global")
 
     def get_static_value(self, scope: ParsingScope) -> typing.Any:
-        if self.name_token.text in scope.globals_dict:
-            return scope.globals_dict[self.name_token]
+        if self.get_name(scope) in scope.globals_dict:
+            return scope.globals_dict[self.get_name(scope)]
 
         raise throw_positioned_syntax_error(
             scope,
-            self.name_token,
-            f"Name {self.name_token.text} not found!",
+            self.token,
+            f"Name {self.get_name(scope)} not found!",
             NameError,
         )
 
@@ -582,28 +582,28 @@ class LocalAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "LOAD_FAST", value, _decode_next=False
+                self.token, function, -1, "LOAD_FAST", value, _decode_next=False
             )
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "STORE_FAST", value
+                self.token, function, -1, "STORE_FAST", value
             )
         ]
 
@@ -614,28 +614,28 @@ class DerefAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "LOAD_DEREF", value, _decode_next=False
+                self.token, function, -1, "LOAD_DEREF", value, _decode_next=False
             )
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, "STORE_DEREF", value
+                self.token, function, -1, "STORE_DEREF", value
             )
         ]
 
@@ -646,12 +646,12 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value not in scope.macro_parameter_namespace:
             raise throw_positioned_syntax_error(
                 scope,
-                self.name_token,
+                self.token,
                 "Name not found in macro var space"
             )
 
@@ -660,19 +660,19 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, Opcodes.MACRO_LOAD_PARAMETER, value
+                self.token, function, -1, Opcodes.MACRO_LOAD_PARAMETER, value
             )
         ]
 
     def emit_store_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self.name_token.text
+        value = self.get_name(scope)
 
         if value not in scope.macro_parameter_namespace:
             raise throw_positioned_syntax_error(
                 scope,
-                self.name_token,
+                self.token,
                 "Name not found in macro var space"
             )
 
@@ -681,7 +681,7 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, Opcodes.MACRO_STORE_PARAMETER, value
+                self.token, function, -1, Opcodes.MACRO_STORE_PARAMETER, value
             )
         ]
 
@@ -689,8 +689,8 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
 class TopOfStackAccessExpression(AbstractAccessExpression):
     PREFIX = "%"
 
-    def __init__(self):
-        pass
+    def __init__(self, token=None):
+        self.token = token
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -699,7 +699,7 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
         return f"%"
 
     def copy(self) -> "AbstractAccessExpression":
-        return type(self)()
+        return type(self)(self.token)
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -746,9 +746,11 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         self,
         base_expr: "AbstractAccessExpression",
         index_expr: AbstractAccessExpression | IntegerToken,
+        token=None,
     ):
         self.base_expr = base_expr
         self.index_expr = index_expr
+        self.token = token
 
     def __eq__(self, other):
         return (
@@ -1007,10 +1009,10 @@ class ModuleAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self._cached_lookup(self.name_token.text)
+        value = self._cached_lookup(self.get_name(scope))
         return [
             Instruction.create_with_token(
-                self.name_token, function, -1, Opcodes.LOAD_CONST, value
+                self.token, function, -1, Opcodes.LOAD_CONST, value
             )
         ]
 
@@ -1020,7 +1022,7 @@ class ModuleAccessExpression(AbstractAccessExpression):
         raise RuntimeError
 
     def get_static_value(self, scope: ParsingScope) -> typing.Any:
-        return self._cached_lookup(self.name_token.text)
+        return self._cached_lookup(self.get_name(scope))
 
 
 class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, ABC):
@@ -1036,8 +1038,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
 
 class DiscardValue(AbstractAccessExpression):
-    def __init__(self):
-        pass
+    def __init__(self, token=None):
+        self.token = token
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -1288,25 +1290,21 @@ class Parser(AbstractParser):
             self.consume(SpecialToken("@"), err_arg=scope)
 
             if self.try_consume(SpecialToken("!")):
-                expr = GlobalStaticAccessExpression(
-                    self.consume([IdentifierToken, IntegerToken], err_arg=scope)
-                )
+                expr = GlobalStaticAccessExpression(self.parse_identifier_like(scope), start_token)
             else:
-                expr = GlobalAccessExpression(
-                    self.consume([IdentifierToken, IntegerToken], err_arg=scope)
-                )
+                expr = GlobalAccessExpression(self.parse_identifier_like(scope), start_token)
 
         elif start_token.text == "$":
             self.consume(SpecialToken("$"), err_arg=scope)
-            expr = LocalAccessExpression(self.consume([IdentifierToken, IntegerToken], err_arg=scope))
+            expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token)
 
         elif start_token.text == "§":
             self.consume(SpecialToken("§"), err_arg=scope)
-            expr = DerefAccessExpression(self.consume([IdentifierToken, IntegerToken], err_arg=scope))
+            expr = DerefAccessExpression(self.parse_identifier_like(scope), start_token)
 
         elif start_token.text == "&":
             self.consume(SpecialToken("&"), err_arg=scope)
-            expr = MacroParameterAccessExpression(self.consume(IdentifierToken, err_arg=scope))
+            expr = MacroParameterAccessExpression(self.parse_identifier_like(scope), start_token)
 
         elif start_token.text == "%" and allow_tos:
             self.consume(SpecialToken("%"), err_arg=scope)
@@ -1314,7 +1312,7 @@ class Parser(AbstractParser):
 
         elif start_token.text == "~":
             self.consume(SpecialToken("~"), err_arg=scope)
-            expr = ModuleAccessExpression(self.consume(IdentifierToken, err_arg=scope))
+            expr = ModuleAccessExpression(self.parse_identifier_like(scope), start_token)
 
         elif start_token.text == "\\":
             self.consume(SpecialToken("\\"), err_arg=scope)
@@ -1484,6 +1482,18 @@ class Parser(AbstractParser):
 
         if expr := self.try_consume(IdentifierToken):
             return lambda scope: expr.text
+
+    def parse_identifier_like(self, scope: ParsingScope) -> typing.Callable[[ParsingScope], str]:
+        identifier = self.try_parse_identifier_like()
+
+        if identifier is None:
+            raise throw_positioned_syntax_error(
+                scope,
+                self[0],
+                "expected <identifier> or &<identifier>",
+            )
+
+        return identifier
 
 
 @Parser.register

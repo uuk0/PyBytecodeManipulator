@@ -107,15 +107,15 @@ LOAD 19 --> $test
                     StoreGlobalAssembly(IdentifierToken("test")),
                     StoreGlobalAssembly(IdentifierToken("test")),
                     StoreGlobalAssembly(
-                        IdentifierToken("test"),
-                        GlobalAccessExpression(IdentifierToken("test")),
+                        "test",
+                        GlobalAccessExpression("test"),
                     ),
                     StoreGlobalAssembly(
-                        IdentifierToken("test"),
-                        LocalAccessExpression(IdentifierToken("test")),
+                        "test",
+                        LocalAccessExpression("test"),
                     ),
                     StoreGlobalAssembly(
-                        IdentifierToken("test"), TopOfStackAccessExpression()
+                        "test", TopOfStackAccessExpression()
                     ),
                 ]
             ),
