@@ -67,7 +67,7 @@ def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
 Instruction.create_with_token = create_instruction
 
 
-LOCAL_TO_DEREF_OPCODES = {Opcodes.LOAD_FAST: Opcodes.LOAD_DEREF, Opcodes.STORE_FAST: Opcodes.STORE_DEREF}
+LOCAL_TO_DEREF_OPCODES = {Opcodes.LOAD_FAST: Opcodes.MACRO_LOAD_PARAMETER, Opcodes.STORE_FAST: Opcodes.MACRO_STORE_PARAMETER}
 
 
 class ParsingScope:
@@ -616,9 +616,6 @@ class DerefAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
-        if value in scope.macro_parameter_namespace and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes") and scope.macro_parameter_namespace[value] != self:
-            return scope.macro_parameter_namespace[value].emit_bytecodes(function, scope)
-
         if value.isdigit():
             value = int(value)
 
@@ -633,17 +630,58 @@ class DerefAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.name_token.text
 
-        if value in scope.macro_parameter_namespace and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes"):
-            return scope.macro_parameter_namespace[value].emit_store_bytecodes(function, scope)
-
-        print(scope.macro_parameter_namespace[value])
-
         if value.isdigit():
             value = int(value)
 
         return [
             Instruction.create_with_token(
                 self.name_token, function, -1, "STORE_DEREF", value
+            )
+        ]
+
+
+class MacroParameterAccessExpression(AbstractAccessExpression):
+    PREFIX = "&"
+
+    def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value not in scope.macro_parameter_namespace:
+            raise throw_positioned_syntax_error(
+                scope,
+                self.name_token,
+                "Name not found in macro var space"
+            )
+
+        if scope.macro_parameter_namespace[value] != self and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes"):
+            return scope.macro_parameter_namespace[value].emit_bytecodes(function, scope)
+
+        return [
+            Instruction.create_with_token(
+                self.name_token, function, -1, Opcodes.MACRO_LOAD_PARAMETER, value
+            )
+        ]
+
+    def emit_store_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        value = self.name_token.text
+
+        if value not in scope.macro_parameter_namespace:
+            raise throw_positioned_syntax_error(
+                scope,
+                self.name_token,
+                "Name not found in macro var space"
+            )
+
+        if scope.macro_parameter_namespace[value] != self and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes"):
+            return scope.macro_parameter_namespace[value].emit_store_bytecodes(function, scope)
+
+        return [
+            Instruction.create_with_token(
+                self.name_token, function, -1, Opcodes.MACRO_STORE_PARAMETER, value
             )
         ]
 
@@ -1064,6 +1102,11 @@ class Parser(AbstractParser):
         self.scope = scope or ParsingScope()
 
     def parse(self, scope: ParsingScope = None) -> CompoundExpression:
+        """
+        Starts parsing the text, and returns the CompoundExpression holding everything
+
+        :param scope: the scope to use
+        """
         self.scope = scope or self.scope
         return self.parse_while_predicate(
             lambda: not self.is_empty(), scope=scope or self.scope
@@ -1072,11 +1115,21 @@ class Parser(AbstractParser):
     def parse_body(
         self, namespace_part: str | list | None = None, scope: ParsingScope = None
     ) -> CompoundExpression:
+        """
+        Parses the body of an expression, containing a list of assembly instructions
+
+        :param namespace_part: a suffix for the scope namespace
+        :param scope: optional, the scope to use
+        :return: the CompoundExpression representing the body
+        :raises: SyntaxError: if EOF is reached before finalizing, or '}' was not found at the end to end the body
+        """
+        scope = scope or self.scope
+
         if namespace_part is not None:
             if isinstance(namespace_part, str):
-                self.scope.scope_path.append(namespace_part)
+                scope.scope_path.append(namespace_part)
             else:
-                self.scope.scope_path += namespace_part
+                scope.scope_path += namespace_part
 
         if not self.try_consume(SpecialToken("{")):
             raise throw_positioned_syntax_error(
@@ -1236,20 +1289,24 @@ class Parser(AbstractParser):
 
             if self.try_consume(SpecialToken("!")):
                 expr = GlobalStaticAccessExpression(
-                    self.consume([IdentifierToken, IntegerToken])
+                    self.consume([IdentifierToken, IntegerToken], err_arg=scope)
                 )
             else:
                 expr = GlobalAccessExpression(
-                    self.consume([IdentifierToken, IntegerToken])
+                    self.consume([IdentifierToken, IntegerToken], err_arg=scope)
                 )
 
         elif start_token.text == "$":
             self.consume(SpecialToken("$"), err_arg=scope)
-            expr = LocalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
+            expr = LocalAccessExpression(self.consume([IdentifierToken, IntegerToken], err_arg=scope))
 
         elif start_token.text == "§":
             self.consume(SpecialToken("§"), err_arg=scope)
-            expr = DerefAccessExpression(self.consume([IdentifierToken, IntegerToken]))
+            expr = DerefAccessExpression(self.consume([IdentifierToken, IntegerToken], err_arg=scope))
+
+        elif start_token.text == "&":
+            self.consume(SpecialToken("&"), err_arg=scope)
+            expr = MacroParameterAccessExpression(self.consume(IdentifierToken, err_arg=scope))
 
         elif start_token.text == "%" and allow_tos:
             self.consume(SpecialToken("%"), err_arg=scope)
@@ -1257,7 +1314,7 @@ class Parser(AbstractParser):
 
         elif start_token.text == "~":
             self.consume(SpecialToken("~"), err_arg=scope)
-            expr = ModuleAccessExpression(self.consume(IdentifierToken))
+            expr = ModuleAccessExpression(self.consume(IdentifierToken, err_arg=scope))
 
         elif start_token.text == "\\":
             self.consume(SpecialToken("\\"), err_arg=scope)
@@ -1391,6 +1448,42 @@ class Parser(AbstractParser):
         # print("failed", self.try_inspect())
 
         self.rollback()
+
+    def try_parse_identifier_like(self) -> typing.Callable[[ParsingScope], str] | None:
+        if expr := self.try_consume_multi([SpecialToken("&"), IdentifierToken]):
+            def get(scope: ParsingScope):
+                if expr[0].text not in scope.macro_parameter_namespace:
+                    raise throw_positioned_syntax_error(
+                        scope,
+                        expr,
+                        "Could not find name in macro parameter space",
+                    )
+
+                value = scope.macro_parameter_namespace[expr[0].text]
+
+                if isinstance(value, ConstantAccessExpression):
+                    if not isinstance(value.value, str):
+                        raise throw_positioned_syntax_error(
+                            scope,
+                            expr,
+                            f"Expected 'string' for name de-referencing, got {value}",
+                        )
+
+                    return value.value
+
+                if isinstance(value, (GlobalAccessExpression, LocalAccessExpression, DerefAccessExpression)):
+                    return value.name_token.text
+
+                raise throw_positioned_syntax_error(
+                    scope,
+                    expr,
+                    f"Expected <static evaluated expression> for getting the name for storing, got {value}",
+                )
+
+            return get
+
+        if expr := self.try_consume(IdentifierToken):
+            return lambda scope: expr.text
 
 
 @Parser.register
@@ -1973,9 +2066,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
         for instr in inner_bytecode:
             bytecode.append(instr)
 
-            if instr.opcode in (Opcodes.LOAD_DEREF, Opcodes.MACRO_PARAMETER_EXPANSION):
+            if instr.opcode in (Opcodes.MACRO_LOAD_PARAMETER, Opcodes.MACRO_PARAMETER_EXPANSION):
                 if instr.arg_value not in arg_decl_lookup:
-                    continue
+                    raise throw_positioned_syntax_error(
+                        scope,
+                        self.name,
+                        f"macro name {instr.arg_value} not found in scope"
+                    )
 
                 arg_decl: MacroAssembly.MacroArg = arg_decl_lookup[instr.arg_value]
 
@@ -2007,9 +2104,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         instr.insert_after(instructions)
                         bytecode += instructions
 
-            elif instr.opcode == Opcodes.STORE_DEREF:
+            elif instr.opcode == Opcodes.MACRO_STORE_PARAMETER:
                 if instr.arg_value not in arg_decl_lookup:
-                    continue
+                    raise throw_positioned_syntax_error(
+                        scope,
+                        self.name,
+                        f"macro name {instr.arg_value} not found in scope"
+                    )
 
                 arg_decl = arg_decl_lookup[instr.arg_value]
 
@@ -2097,7 +2198,6 @@ class MacroAssembly(AbstractAssemblyInstruction):
             ]
 
 
-
 @Parser.register
 class MacroPasteAssembly(AbstractAssemblyInstruction):
     # MACRO_PASTE <macro param name> ['->' <target>]
@@ -2106,7 +2206,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "MacroPasteAssembly":
         # Parse an optional § infront of the name
-        parser.try_consume(SpecialToken("§"))
+        parser.try_consume(SpecialToken("&"))
 
         name = parser.consume(IdentifierToken)
 

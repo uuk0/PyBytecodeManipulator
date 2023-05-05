@@ -37,7 +37,7 @@ for cross-version support.
   some special handling at the lexer.
 * 'MACRO' \['ASSEMBLY'] \<name> \['(' \<param> \[{',' \<param>}] ')'] \['->' \<data type>]  '{' \<assembly code> '}', where param is \['!'] \['MACRO_'] \<name> \[' ' \<data type>] defines a macro in an assembly file, which can be used from outside
   * Call it by using 'CALL MACRO' with the name being the namespace
-  * Parameters can be accessed via the '§' prefix
+  * Parameters can be accessed via the '&' prefix
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
   * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
@@ -78,7 +78,8 @@ Expressions can be added as certain parameters to instructions to use instead of
   - @\<global name>: global variable
   - @!\<global name>: static global variable
   - $\<local name>: local variable
-  - §\<name>: access an variable from an outer scope, or a macro parameter
+  - §\<name>: access a variable from an outer scope
+  - &\<name>: access to a macro parameter
   - %: top of stack (in most cases the default when not provided)
   - \<access>\[\<index or expression>]: value by \[] operator
   - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
@@ -116,8 +117,8 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
   - new data type: CONSTANT\['\<' \<type name> '>']
   - new data type: LABEL exposing a label to the macro, which can be used in places were normal labels can be used (handed over only by name)
-  - new specialization for the § macro expansion system: index operator on result where parameter is list will access that item in the list
-  - new special case for len(...) on § macro parameter where list: returns len of parameter list
+  - new specialization for the & macro expansion system: index operator on result where parameter is list will access that item in the list
+  - new special case for len(...) on & macro parameter where list: returns len of parameter list
   - storing a list parameter in a local variable will create a list creation code
   - new assembly instruction ASSERT_STATIC (\<condition>) which asserts an expression statically, in this case at instantiation time
   - maybe also the possibility to define code for emitting assembly instructions
@@ -134,6 +135,10 @@ Expressions can be added as certain parameters to instructions to use instead of
 - ..._TYPEDEF_STRICT for enforcing types
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
+
+- create abstract classes for the assembly instructions, and force implement them in the versions
+  - parsing itself should be in the abstract base, only code emitting in the implementation
+- refactor assembly related classes into more files, it is really clustered in only a handful of files
 
 ## PyASM
 

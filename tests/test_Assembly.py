@@ -1063,8 +1063,8 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_resolver (!param) {
-            LOAD §param -> $local
-            LOAD 0 -> §param
+            LOAD &param -> $local
+            LOAD 0 -> &param
         }
 
         LOAD 0 -> $local
@@ -1085,9 +1085,9 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_duplicated_access_static (!param) {
-            LOAD §param -> $local
-            LOAD 2 -> §param
-            LOAD §param -> $local
+            LOAD &param -> $local
+            LOAD 2 -> &param
+            LOAD &param -> $local
         }
 
         LOAD 0 -> $local
@@ -1108,7 +1108,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_static_invalid (param) {
-            LOAD 2 -> §param
+            LOAD 2 -> &param
         }
 
         CALL MACRO test_macro_parameter_static_invalid(1)
@@ -1389,7 +1389,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_variable_macro_input (target VARIABLE) {
-            LOAD 1 -> §target
+            LOAD 1 -> &target
         }
 
         LOAD 0 -> $local
@@ -1558,7 +1558,7 @@ MACRO test_macro_capture_arg_in_inner_func(a)
 {
     DEF tar()
     {
-        RETURN §a
+        RETURN &a
     }
 }
 

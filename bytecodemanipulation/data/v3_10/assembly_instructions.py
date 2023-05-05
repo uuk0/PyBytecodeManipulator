@@ -2087,12 +2087,12 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
                 bound_variables.append((0, expr, is_static))
 
             while True:
-                if parser.try_consume(SpecialToken("§")):
+                if parser.try_consume(SpecialToken("&")):
                     if not (expr := parser.try_consume(IdentifierToken)):
                         raise throw_positioned_syntax_error(
                             scope,
                             parser[0],
-                            "Expected <identifier> after '§'"
+                            "Expected <identifier> after '&'"
                         )
 
                     bound_variables.append((1, expr, is_static))
