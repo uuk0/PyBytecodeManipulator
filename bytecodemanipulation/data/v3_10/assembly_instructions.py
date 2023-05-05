@@ -2518,9 +2518,12 @@ class ForEachAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        bytecode = [
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.LOAD_CONST, zip),
-        ]
+        if len(self.variables) != 1:
+            bytecode = [
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.LOAD_CONST, zip),
+            ]
+        else:
+            bytecode = []
 
         for source in self.sources:
             bytecode += source.emit_bytecodes(function, scope)
@@ -2528,14 +2531,20 @@ class ForEachAssembly(AbstractAssemblyInstruction):
         loop_label_name_enter = scope.scope_name_generator("foreach_loop_enter")
         loop_label_name_exit = scope.scope_name_generator("foreach_loop_exit")
 
-
-        bytecode += [
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.CALL_FUNCTION, arg=len(self.sources)),
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.GET_ITER),
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.BYTECODE_LABEL, loop_label_name_enter),
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.FOR_ITER, JumpToLabel(loop_label_name_exit)),
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.UNPACK_SEQUENCE, arg=len(self.sources)),
-        ]
+        if len(self.variables) != 1:
+            bytecode += [
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.CALL_FUNCTION, arg=len(self.sources)),
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.GET_ITER),
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.BYTECODE_LABEL, loop_label_name_enter),
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.FOR_ITER, JumpToLabel(loop_label_name_exit)),
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.UNPACK_SEQUENCE, arg=len(self.sources)),
+            ]
+        else:
+            bytecode += [
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.GET_ITER),
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.BYTECODE_LABEL, loop_label_name_enter),
+                Instruction.create_with_token(self.base_token, function, -1, Opcodes.FOR_ITER, JumpToLabel(loop_label_name_exit)),
+            ]
 
         for var in self.variables:
             bytecode += var.emit_store_bytecodes(function, scope)

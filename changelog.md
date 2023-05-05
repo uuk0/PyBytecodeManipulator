@@ -1,5 +1,6 @@
 
 # Version 0.2.5
+- added FOREACH loops with automatically zip() when multiple iterable are given
 
 # Version 0.2.4
 - added more assembly code
