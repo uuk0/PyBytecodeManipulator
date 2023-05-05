@@ -35,7 +35,7 @@ for cross-version support.
   using the args stored in 'signature', and optionally storing the result at 'target' (if not provided, at 'func name' if provided else TOS). 'body' is the code itself
 * PYTHON '{' \<code> '}': puts the python code in place; '{' and '}' is allowed in code, but the last not matched and not escaped '}' will be used at end of code by the Lexer; WARNING: f-strings are currently NOT supported as they require
   some special handling at the lexer.
-* 'MACRO' \['ASSEMBLY'] \<name> \['(' \<param> \[{',' \<param>}] ')'] '{' \<assembly code> '}', where param is \['!'] \['MACRO_'] \<name> \[' ' \<data type>] defines a macro in an assembly file, which can be used from outside
+* 'MACRO' \['ASSEMBLY'] \<name> \['(' \<param> \[{',' \<param>}] ')'] \['->' \<data type>]  '{' \<assembly code> '}', where param is \['!'] \['MACRO_'] \<name> \[' ' \<data type>] defines a macro in an assembly file, which can be used from outside
   * Call it by using 'CALL MACRO' with the name being the namespace
   * Parameters can be accessed via the '§' prefix
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)

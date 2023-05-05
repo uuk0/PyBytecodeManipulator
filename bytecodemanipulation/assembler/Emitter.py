@@ -230,9 +230,12 @@ def apply_inline_assemblies(
             ins.change_opcode(Opcodes.NOP)
             ins.next_instruction = target.instructions[i+1]
 
-    def resolve_special_code(ins: Instruction):
+    pending: typing.List[Instruction] = []
+    def resolve_special_code(ins: Instruction, *_):
+        # print(ins)
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
+            pending.append(ins.arg_value)
 
         elif ins.opcode == Opcodes.STATIC_ATTRIBUTE_ACCESS:
             source = next(ins.trace_stack_position(0))
@@ -241,10 +244,13 @@ def apply_inline_assemblies(
                 raise RuntimeError("expected 'constant' for constant attribute access!")
 
             obj = source.arg_value
-            source.change_opcode(Opcodes.NOP)
-            ins.change_opcode(Opcodes.LOAD_CONST, getattr(obj, ins.arg_value))
+            source.change_opcode(Opcodes.NOP, update_next=False)
+            ins.change_opcode(Opcodes.LOAD_CONST, getattr(obj, ins.arg_value), update_next=False)
 
-    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_special_code))
+    target.instructions[0].apply_value_visitor(resolve_special_code)
+
+    while pending:
+        pending.pop().apply_value_visitor(resolve_special_code)
 
     target.stack_size += max(max_stack_effects)
 

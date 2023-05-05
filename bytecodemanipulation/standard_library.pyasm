@@ -55,12 +55,12 @@ NAMESPACE std
 
     NAMESPACE comprehension
     {
-        MACRO ASSEMBLY list(iterable, var VARIABLE, code CODE_BLOCK)
+        MACRO ASSEMBLY list(iterable, var VARIABLE, code CODE_BLOCK) -> ANY
         {
-            DEF MACRO_inner(iter_obj)
+            DEF MACRO_inner<§iterable>(iter_obj)
             {
                 LOAD ~list() -> $__unique
-                FOREACH §var IN $iter_obj
+                FOREACH §var IN §iterable
                 {
                     MACRO_PASTE code
                     CALL $__unique.append(%) -> \
@@ -68,7 +68,7 @@ NAMESPACE std
                 RETURN $__unique
             }
 
-            CALL $MACRO_inner(~iter(§iterable))
+            MACRO_RETURN $MACRO_inner(~iter(§iterable))
         }
     }
 

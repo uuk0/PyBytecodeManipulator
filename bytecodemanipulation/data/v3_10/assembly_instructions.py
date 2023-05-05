@@ -1437,9 +1437,7 @@ class CallAssembly(AbstractCallAssembly):
                         parser.try_consume(SpecialToken("?"))
                     )
 
-                    expr = parser.try_parse_data_source(
-                        allow_primitives=True, include_bracket=False
-                    )
+                    expr = parser.try_consume_access_to_value(allow_primitives=True)
 
                     if expr is None:
                         if parser[0] == SpecialToken(")"):
@@ -1705,7 +1703,18 @@ class CallAssembly(AbstractCallAssembly):
             )
 
         macro, args = macro_declaration.lookup([arg.source for arg in self.args], scope)
-        return macro.emit_call_bytecode(function, scope, args)
+
+        if self.target is not None and macro.return_type is None:
+            raise RuntimeError(
+                f"Expected <return type> declaration at macro if using '->' in call"
+            )
+
+        bytecode = macro.emit_call_bytecode(function, scope, args)
+
+        if self.target:
+            bytecode += self.target.emit_bytecodes(function, scope)
+
+        return bytecode
 
 
 MacroAssembly.consume_call = CallAssembly.consume_macro_call
@@ -1787,6 +1796,52 @@ class ReturnAssembly(AbstractAssemblyInstruction):
         expr_bytecode = self.expr.emit_bytecodes(function, scope) if self.expr else []
 
         return expr_bytecode + [Instruction(function, -1, "RETURN_VALUE")]
+
+
+@Parser.register
+class MacroReturnAssembly(AbstractAssemblyInstruction):
+    NAME = "MACRO_RETURN"
+
+    @classmethod
+    def consume(cls, parser: "Parser", scope) -> "ReturnAssembly":
+        return cls(
+            parser.try_parse_data_source(
+                allow_primitives=True, allow_op=True, include_bracket=False
+            )
+        )
+
+    def __init__(self, expr: AbstractSourceExpression | None = None):
+        self.expr = expr
+
+    def visit_parts(
+        self,
+        visitor: typing.Callable[
+            [IAssemblyStructureVisitable, tuple, typing.List[AbstractExpression]],
+            typing.Any,
+        ],
+        parents: list,
+    ):
+        return visitor(
+            self,
+            (self.expr.visit_parts(visitor, parents + [self]) if self.expr else None,),
+            parents,
+        )
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.expr == other.expr
+
+    def __repr__(self):
+        return f"MACRO_RETURN({self.expr})"
+
+    def copy(self) -> "MacroReturnAssembly":
+        return MacroReturnAssembly(self.expr.copy())
+
+    def emit_bytecodes(
+        self, function: MutableFunction, scope: ParsingScope
+    ) -> typing.List[Instruction]:
+        expr_bytecode = self.expr.emit_bytecodes(function, scope) if self.expr else []
+
+        return expr_bytecode + [Instruction(function, -1, Opcodes.MACRO_RETURN_VALUE)]
 
 
 @Parser.register
@@ -2020,7 +2075,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         cls, parser: "Parser", scope: ParsingScope
     ) -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
-        bound_variables: typing.List[typing.Tuple[IdentifierToken, bool]] = []
+        bound_variables: typing.List[typing.Tuple[int, IdentifierToken, bool]] = []
         args = []
 
         if parser.try_consume(SpecialToken("<")):
@@ -2029,19 +2084,29 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
             expr = parser.try_consume(IdentifierToken)
 
             if expr:
-                bound_variables.append((expr, is_static))
+                bound_variables.append((0, expr, is_static))
 
             while True:
+                if parser.try_consume(SpecialToken("§")):
+                    if not (expr := parser.try_consume(IdentifierToken)):
+                        raise throw_positioned_syntax_error(
+                            scope,
+                            parser[0],
+                            "Expected <identifier> after '§'"
+                        )
+
+                    bound_variables.append((1, expr, is_static))
+
                 if not parser.try_consume(SpecialToken(",")) or not (
                     expr := parser.try_consume(IdentifierToken)
                 ):
                     break
 
-                bound_variables.append((expr, is_static))
+                bound_variables.append((0, expr, is_static))
 
-            parser.consume(SpecialToken(">"))
+            parser.consume(SpecialToken(">"), err_arg=scope)
 
-        parser.consume(SpecialToken("("))
+        parser.consume(SpecialToken("("), err_arg=scope)
 
         while parser.try_inspect() != SpecialToken(")"):
             arg = None
@@ -2114,7 +2179,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
     def __init__(
         self,
         func_name: IdentifierToken | str | None,
-        bound_variables: typing.List[typing.Tuple[IdentifierToken | str, bool] | str],
+        bound_variables: typing.List[typing.Tuple[int, IdentifierToken | str, bool] | str],
         args: typing.List[CallAssembly.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
@@ -2122,25 +2187,27 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         self.func_name = (
             func_name if not isinstance(func_name, str) else IdentifierToken(func_name)
         )
-        self.bound_variables: typing.List[
-            typing.Tuple[IdentifierToken, bool]
-        ] = (
-            []
-        )  # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
+        self.bound_variables: typing.List[typing.Tuple[int, IdentifierToken, bool]] = []
+        # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
 
         for element in bound_variables:
             if isinstance(element, str):
                 self.bound_variables.append(
                     (
+                        0,
                         IdentifierToken(element.removeprefix("!")),
                         element.startswith("!"),
                     )
                 )
             elif isinstance(element, tuple):
-                token, is_static = element
+                if len(element) == 3:
+                    a_type, token, is_static = element
+                else:
+                    a_type = 0
+                    token, is_static = element
 
                 if isinstance(token, str):
-                    self.bound_variables.append((IdentifierToken(token), is_static))
+                    self.bound_variables.append((a_type, IdentifierToken(token), is_static))
                 else:
                     self.bound_variables.append(element)
             else:
@@ -2207,21 +2274,22 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         for i, instr in enumerate(inner_bytecode[:-1]):
             instr.next_instruction = inner_bytecode[i + 1]
 
-        target.assemble_instructions_from_tree(inner_bytecode[0])
-        del inner_bytecode
+        def walk_label(instruction: Instruction):
+            if instruction.opcode == Opcodes.BYTECODE_LABEL:
+                # print(instruction, instruction.next_instruction)
+                label_targets[instruction.arg_value] = instruction.next_instruction if instruction.next_instruction is not None else instruction
+                instruction.change_opcode(Opcodes.NOP, update_next=False)
 
-        for ins in target.instructions:
-            if ins.opcode == Opcodes.BYTECODE_LABEL:
-                label_targets[ins.arg_value] = ins.next_instruction
-                ins.change_opcode(Opcodes.NOP)
+        inner_bytecode[0].apply_visitor(LambdaInstructionWalker(walk_label))
 
         def resolve_jump_to_label(ins: Instruction):
             if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
                 ins.change_arg_value(label_targets[ins.arg_value.name])
 
-        target.instructions[0].apply_visitor(
-            bytecodemanipulation.util.LambdaInstructionWalker(resolve_jump_to_label)
-        )
+        inner_bytecode[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
+
+        target.assemble_instructions_from_tree(inner_bytecode[0])
+        del inner_bytecode
 
         has_kwarg = False
         for arg in self.args:
@@ -2234,17 +2302,31 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
             raise NotImplementedError("Kwarg defaults")
 
         if self.bound_variables:
-            if any(map(lambda e: e[1], self.bound_variables)):
+            if any(map(lambda e: e[2], self.bound_variables)):
                 raise NotImplementedError("Static variables")
 
             flags |= 0x08
+
+            macro_params = tuple()
+
+            for is_macro, name, is_static in self.bound_variables:
+                if is_macro == 0:
+                    if name not in scope.macro_parameter_namespace:
+                        raise RuntimeError
+
+                    param = scope.macro_parameter_namespace[name]
+
+                    if not isinstance(param, (GlobalAccessExpression, LocalAccessExpression)):
+                        raise RuntimeError(param)
+
+                    macro_params += (param.name_token.text,)
 
             bytecode += [
                 Instruction(
                     function,
                     -1,
                     "LOAD_CONST",
-                    tuple(map(lambda e: e[0], self.bound_variables)),
+                    tuple((e[1] for e in self.bound_variables if e[0] == 0)) + macro_params,
                 ),
             ]
 

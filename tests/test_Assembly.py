@@ -1020,12 +1020,13 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
+    LOAD 1 -> $x
     MACRO test_basic {
-        RETURN 0
+        LOAD 0 -> $x
     }
     
     CALL MACRO test_basic()
-    RETURN 1
+    RETURN $x
     """
             )
             return -1

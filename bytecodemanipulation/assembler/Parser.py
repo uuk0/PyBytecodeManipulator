@@ -263,6 +263,7 @@ def throw_positioned_syntax_error(
     message: str,
     exc_type: typing.Type[Exception] = SyntaxError,
 ) -> Exception:
+    print("at", token, file=sys.stderr)
     if scope and scope.module_file and token:
         if isinstance(token, list):
             _print_complex_token_location(scope, token, exc_type=exc_type)
@@ -1538,7 +1539,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class MacroAssembly(AbstractAssemblyInstruction):
-    # 'MACRO' ['ASSEMBLY'] [{<namespace> ':'}] <name> ['(' <param> \[{',' <param>}] ')'] '{' <assembly code> '}', where param is ['!'] \<name> [<data type>]
+    # 'MACRO' ['ASSEMBLY'] [{<namespace> ':'}] <name> ['(' <param> \[{',' <param>}] ')'] ['->' <data type>] '{' <assembly code> '}', where param is ['!'] \<name> [<data type>]
     NAME = "MACRO"
 
     class AbstractDataType(ABC):
@@ -1565,7 +1566,17 @@ class MacroAssembly(AbstractAssemblyInstruction):
             function: MutableFunction,
             scope: ParsingScope,
         ) -> typing.List[Instruction] | None:
-            pass
+            raise RuntimeError
+
+    class AnyDataType(AbstractDataType):
+        IDENTIFIER = "ANY"
+
+        def is_match(
+            self,
+            arg: "MacroAssembly.MacroArg",
+            arg_accessor: AbstractAccessExpression | CompoundExpression,
+        ) -> bool:
+            return True
 
     class CodeBlockDataType(AbstractDataType):
         IDENTIFIER = "CODE_BLOCK"
@@ -1763,12 +1774,14 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def _try_parse_arg_data_type(cls, parser: Parser) -> AbstractDataType | None:
-        if identifier := parser.try_consume(IdentifierToken):
+        if identifier := parser.try_inspect(IdentifierToken):
             if identifier.text == "CODE_BLOCK":
+                parser.consume(identifier)
                 inst = cls.CodeBlockDataType()
                 return inst
 
             elif identifier.text == "VARIABLE_ARG":
+                parser.consume(identifier)
                 # todo: add check that it is the only * arg
                 if parser.try_consume(SpecialToken("[")):
                     inner_type = cls._try_parse_arg_data_type(parser)
@@ -1783,8 +1796,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 return inst
 
             elif identifier.text == "VARIABLE":
+                parser.consume(identifier)
                 inst = cls.VariableDataType()
                 return inst
+
+            elif identifier.text == "ANY":
+                parser.consume(identifier)
+                return cls.AnyDataType()
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "MacroAssembly":
@@ -1821,6 +1839,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     parser.consume(SpecialToken(")"))
                     break
 
+        if parser.try_consume(SpecialToken("-")):
+            parser.consume(SpecialToken(">"), err_arg=scope)
+
+            return_type = cls._try_parse_arg_data_type(parser)
+        else:
+            return_type = None
+
         body = parser.parse_body(scope=scope)
 
         return cls(
@@ -1830,6 +1855,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             allow_assembly_instr,
             scope_path=scope.scope_path.copy(),
             module_path=scope.module_file,
+            return_type=return_type,
         )
 
     @classmethod
@@ -1846,6 +1872,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         allow_assembly_instr=False,
         scope_path: typing.List[str] = None,
         module_path: str = None,
+        return_type = None,
     ):
         self.name = name
         self.args = args
@@ -1853,6 +1880,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         self.allow_assembly_instr = allow_assembly_instr
         self.scope_path = scope_path or []
         self.module_path = module_path
+        self.return_type = return_type
 
     def __repr__(self):
         return f"MACRO:{'ASSEMBLY' if self.allow_assembly_instr else ''}:'{':'.join(map(lambda e: e.text, self.name))}'({', '.join(map(repr, self.args))}) {{{repr(self.body)}}}"
@@ -1864,6 +1892,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             and self.args == other.args
             and self.body == other.body
             and self.allow_assembly_instr == other.allow_assembly_instr
+            and self.return_type == other.return_type
         )
 
     def copy(self) -> "MacroAssembly":
@@ -1872,6 +1901,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             [arg.copy() for arg in self.args],
             self.body.copy(),
             self.allow_assembly_instr,
+            return_type=self.return_type,
         )
 
     def emit_bytecodes(
@@ -1937,6 +1967,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 arg_names.append(None)
 
         local_prefix = scope.scope_name_generator("macro_local")
+        end_target = scope.scope_name_generator("macro_end")
+        requires_none_load = self.return_type is not None and not inner_bytecode[-1].has_unconditional_jump() and inner_bytecode[-1].opcode != Opcodes.RETURN_VALUE
 
         for instr in inner_bytecode:
             bytecode.append(instr)
@@ -2006,6 +2038,17 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 instr.change_arg_value(
                     local_prefix + ":" + instr.arg_value.removeprefix("MACRO_")
                 )
+
+            elif instr.opcode == Opcodes.MACRO_RETURN_VALUE:
+                if self.return_type is None:
+                    raise SyntaxError("'MACRO_RETURN' only allowed in assembly if return type declared!")
+
+                instr.change_opcode(Opcodes.JUMP_ABSOLUTE, JumpToLabel(end_target))
+
+        if requires_none_load:
+            bytecode.append(Instruction(function, -1, Opcodes.LOAD_CONST, None))
+
+        bytecode.append(Instruction(function, -1, Opcodes.BYTECODE_LABEL, end_target))
 
         return bytecode
 

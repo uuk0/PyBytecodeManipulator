@@ -275,18 +275,19 @@ class Instruction:
     def get_arg(self):
         return 0 if self.arg is None else self.arg
 
-    def change_opcode(self, opcode: int | str, arg_value=None):
+    def change_opcode(self, opcode: int | str, arg_value=None, update_next=True):
         self.opcode, self.opname = self._pair_instruction(opcode)
         # todo: what happens with the arg?
 
-        self.next_instruction = (
-            None
-            if self.function is None
-            or self.offset is None
-            or self.opcode in END_CONTROL_FLOW
-            or self.offset == -1
-            else self.function.instructions[self.offset + 1]
-        )
+        if update_next:
+            self.next_instruction = (
+                None
+                if self.function is None
+                or self.offset is None
+                or self.opcode in END_CONTROL_FLOW
+                or self.offset == -1
+                else self.function.instructions[self.offset + 1]
+            )
 
         if self.opcode < dis.HAVE_ARGUMENT:
             self.arg = 0
