@@ -1,5 +1,6 @@
 import abc
 import functools
+import itertools
 import typing
 
 import bytecodemanipulation.util
@@ -2419,8 +2420,27 @@ class ClassDefinitionAssembly(AbstractAssemblyInstruction):
 
 @Parser.register
 class ForEachAssembly(AbstractAssemblyInstruction):
-    # FOREACH <variable> {',' <variable>} IN <iterable> {',' <iterable>} '{' <block> '}'
+    # FOREACH <variable> {',' <variable>} IN <iterable> {(',' | '*') <iterable>} '{' <block> '}'
     NAME = "FOREACH"
+
+    class ForEachMultiplier(AbstractAccessExpression):
+        def __init__(self, *items: AbstractAccessExpression):
+            self.items = list(items)
+
+        def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
+            bytecode = [
+                Instruction(function, -1, Opcodes.LOAD_CONST, itertools.product),
+            ]
+
+            for item in self.items:
+                bytecode += item.emit_bytecodes(function, scope)
+
+            bytecode += [
+                Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=len(self.items)),
+            ]
+            return bytecode
 
     @classmethod
     def consume(
@@ -2465,7 +2485,8 @@ class ForEachAssembly(AbstractAssemblyInstruction):
             )
         sources = [source]
 
-        while parser.try_consume(SpecialToken(",")):
+        multi = None
+        while parser.try_consume(SpecialToken(",")) or (multi := parser.try_consume(SpecialToken("*"))):
             source = parser.try_consume_access_to_value()
             if not source:
                 raise throw_positioned_syntax_error(
@@ -2473,13 +2494,24 @@ class ForEachAssembly(AbstractAssemblyInstruction):
                     parser[0],
                     "<expression> expected"
                 )
-            sources.append(source)
+
+            if multi:
+                s = sources[-1]
+
+                if isinstance(s, cls.ForEachMultiplier):
+                    s.items.append(source)
+                else:
+                    sources[-1] = cls.ForEachMultiplier(s, source)
+
+                multi = None
+            else:
+                sources.append(source)
 
         if len(variables) != len(sources):
             raise throw_positioned_syntax_error(
                 scope,
                 scope.last_base_token,
-                "Number of Variables must equal number of Sources"
+                f"Number of Variables ({len(variables)}) must equal number of Sources ({len(sources)})"
             )
 
         body = parser.parse_body(scope=scope)

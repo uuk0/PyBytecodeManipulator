@@ -1633,3 +1633,22 @@ FOREACH $p, $q IN $iterable, $iterable_2
         mutable.reassign_to_function()
 
         self.assertEqual(target(), [1, 3, 5, 7])
+
+    def test_for_loop_product(self):
+        def target():
+            iterable = [0, 1]
+            iterable_2 = [1, 2]
+            result = []
+            assembly("""
+FOREACH $p IN $iterable * $iterable_2
+{
+    CALL $result.append(OP ($p[0] * $p[1])) -> \\
+}
+""")
+            return result
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), [0, 0, 1, 2])
