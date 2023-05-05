@@ -316,8 +316,8 @@ class Instruction:
                 if isinstance(value, Instruction):
                     self.arg = value.offset
             elif self.opcode == Opcodes.FOR_ITER:
-                assert isinstance(value, Instruction), value
-                self.arg = value.offset - self.offset
+                if isinstance(value, Instruction):
+                    self.arg = value.offset - self.offset
             elif self.opcode in HAS_JUMP_FORWARD:
                 assert isinstance(value, Instruction), value
                 self.arg = value.offset - self.offset
@@ -686,17 +686,20 @@ class Instruction:
             Opcodes.GEN_START,
             Opcodes.JUMP_ABSOLUTE,
             Opcodes.BYTECODE_LABEL,
-            Opcodes.CACHE,
-            Opcodes.PRECALL,
-            Opcodes.RESUME,
+            # Opcodes.CACHE,
+            # Opcodes.PRECALL,
+            # Opcodes.RESUME,
         ):
             return 0, 0, None
 
         if self.opcode == Opcodes.DUP_TOP:
             return 2, 1, None
 
-        if self.opcode in (Opcodes.GET_ITER, Opcodes.FOR_ITER):
+        if self.opcode == Opcodes.GET_ITER:
             return 1, 0, None
+
+        if self.opcode == Opcodes.FOR_ITER:
+            return 1, 1, None
 
         if self.opcode in (
             Opcodes.LOAD_CONST,
@@ -706,6 +709,7 @@ class Instruction:
             Opcodes.LOAD_CLOSURE,
             Opcodes.LOAD_BUILD_CLASS,
             Opcodes.LOAD_ASSERTION_ERROR,
+            Opcodes.LOAD_NAME,
         ):
             return 1, 0, None
 
@@ -728,7 +732,7 @@ class Instruction:
             Opcodes.CALL_FUNCTION,
             Opcodes.CALL_METHOD,
             Opcodes.CALL_FUNCTION_KW,
-            Opcodes.CALL,
+            # Opcodes.CALL,
         ):
             return 1, self.arg + 1, None
 
@@ -820,6 +824,12 @@ class Instruction:
             return 2, 4, None
 
         raise RuntimeError(self)
+
+    def special_stack_affect_when_followed_by(self, instr: "Instruction") -> int:
+        if self.opcode == Opcodes.FOR_ITER and instr == self.arg_value:
+            return -2
+
+        return 0
 
     def insert_after(self, *instructions: "Instruction" | typing.List["Instruction"]):
         if not instructions:
@@ -1029,7 +1039,81 @@ class MutableFunction:
 
         return bytes(items)
 
+    def calculate_max_stack_size(self) -> int:
+        stack_size_table = self.get_max_stack_size_table()
+
+        self.stack_size = max(max(stack_size_table), 0)
+        return self.stack_size
+
+    def get_max_stack_size_table(self, instructions: typing.List[Instruction] = None) -> typing.List[int]:
+        stack_size_table = [-1] * len(instructions or self.instructions)
+
+        if not instructions:
+            self.prepare_previous_instructions()
+
+        for i, instr in enumerate(instructions or self.instructions):
+            stack = -1
+            if i != 0:
+                prev = (instructions or self.instructions)[i - 1]
+
+                if not prev.has_stop_flow() and not prev.has_unconditional_jump():
+                    stack = stack_size_table[i - 1]
+            else:
+                stack = 0
+
+            if instr.previous_instructions:
+                for instruction in instr.previous_instructions:
+                    if stack_size_table[instruction.offset] != -1:
+                        stack = max(stack, stack_size_table[instruction.offset])
+                        stack += instruction.special_stack_affect_when_followed_by(instr)
+
+            if stack != -1:
+                add, sub, _ = instr.get_stack_affect()
+                stack += add
+                stack -= sub
+
+            stack_size_table[i] = stack
+
+        if -1 in stack_size_table:
+            pending = list(filter(lambda e: e[1] == -1, enumerate(stack_size_table)))
+            last_next = -1
+
+            while pending:
+                i, _ = pending.pop(0)
+                instr = (instructions or self.instructions)[i]
+                stack = -1
+
+                if i == last_next:
+                    break
+
+                if not instr.previous_instructions:
+                    print("WARN:", instr)
+                    continue
+
+                for instruction in instr.previous_instructions:
+                    if stack_size_table[instruction.offset] != -1:
+                        stack = max(stack, stack_size_table[instruction.offset])
+                        stack += instruction.special_stack_affect_when_followed_by(instr)
+
+                if stack != -1:
+                    add, sub, _ = instr.get_stack_affect()
+                    stack += add
+                    stack -= sub
+
+                    stack_size_table[i] = stack
+
+                    if pending:
+                        last_next = pending[0][0]
+                else:
+                    pending.append((i, -1))
+
+                if last_next == -1:
+                    last_next = i
+
+        return stack_size_table
+
     def reassign_to_function(self):
+        self.calculate_max_stack_size()
         self.target.__code__ = self.create_code_obj()
 
     def decode_instructions(self):

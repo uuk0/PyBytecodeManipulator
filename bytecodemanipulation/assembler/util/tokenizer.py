@@ -278,7 +278,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
                 for r in result if isinstance(result, list) else (result,):
                     newline_count = partial[:whitespace_count].count("\n")
-                    r.line = self.old_line_number + self._line_offset - 1
+                    r.line = self.old_line_number + self._line_offset
                     r.column = self.old_column_number - newline_count
                     r.span = self.cursor - old_cursor
 

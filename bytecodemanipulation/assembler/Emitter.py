@@ -20,6 +20,9 @@ def _visit_for_stack_effect(
     eff_a: typing.Tuple[int, int] | None,
     eff_b: typing.Tuple[int, int] | None,
 ) -> typing.Tuple[int, int]:
+    if ins.opcode == Opcodes.FOR_ITER:
+        raise RuntimeError
+
     eff = 0
     max_size = 0
 
@@ -164,9 +167,13 @@ def apply_inline_assemblies(
         # print("---- end ----")
 
         if bytecode:
-            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
-                _visit_for_stack_effect
-            )
+            try:
+                stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
+                    _visit_for_stack_effect
+                )
+            except RuntimeError:
+                stack_effect = 0
+                max_stack_effect = 0
         else:
             stack_effect = max_stack_effect = 0
 

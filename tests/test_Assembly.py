@@ -22,6 +22,8 @@ except ImportError:
 
 bytecodemanipulation.data_loader.load_assembly_instructions()
 
+from bytecodemanipulation.Emulator import run_code
+
 
 if typing.TYPE_CHECKING:
     from bytecodemanipulation.data.v3_10.assembly_instructions import *
@@ -1594,3 +1596,40 @@ CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
         # dis.dis(target)
 
         self.assertEqual(target()(), 2)
+
+    def test_for_loop_basic(self):
+        def target():
+            iterable = [0, 1, 2, 3]
+            result = []
+            assembly("""
+FOREACH $p IN $iterable
+{
+    CALL $result.append(OP ($p + 1)) -> \\
+}
+""")
+            return result
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), [1, 2, 3, 4])
+
+    def test_for_loop_double(self):
+        def target():
+            iterable = [0, 1, 2, 3]
+            iterable_2 = [1, 2, 3, 4]
+            result = []
+            assembly("""
+FOREACH $p, $q IN $iterable, $iterable_2
+{
+    CALL $result.append(OP ($p + $q)) -> \\
+}
+""")
+            return result
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), [1, 3, 5, 7])

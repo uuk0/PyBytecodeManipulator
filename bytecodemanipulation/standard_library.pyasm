@@ -119,7 +119,7 @@ NAMESPACE std
 
         MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)
         {
-            LOAD §var.copy() -> §output
+            LOAD ~list(§var) -> §output
         }
     }
 }

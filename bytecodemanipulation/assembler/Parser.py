@@ -1231,7 +1231,7 @@ class Parser(AbstractParser):
             return
 
         if start_token.text == "@":
-            self.consume(SpecialToken("@"))
+            self.consume(SpecialToken("@"), err_arg=scope)
 
             if self.try_consume(SpecialToken("!")):
                 expr = GlobalStaticAccessExpression(
@@ -1243,30 +1243,30 @@ class Parser(AbstractParser):
                 )
 
         elif start_token.text == "$":
-            self.consume(SpecialToken("$"))
+            self.consume(SpecialToken("$"), err_arg=scope)
             expr = LocalAccessExpression(self.consume([IdentifierToken, IntegerToken]))
 
         elif start_token.text == "§":
-            self.consume(SpecialToken("§"))
+            self.consume(SpecialToken("§"), err_arg=scope)
             expr = DerefAccessExpression(self.consume([IdentifierToken, IntegerToken]))
 
         elif start_token.text == "%" and allow_tos:
-            self.consume(SpecialToken("%"))
+            self.consume(SpecialToken("%"), err_arg=scope)
             expr = TopOfStackAccessExpression()
 
         elif start_token.text == "~":
-            self.consume(SpecialToken("~"))
+            self.consume(SpecialToken("~"), err_arg=scope)
             expr = ModuleAccessExpression(self.consume(IdentifierToken))
 
         elif start_token.text == "\\":
-            self.consume(SpecialToken("\\"))
+            self.consume(SpecialToken("\\"), err_arg=scope)
             expr = DiscardValue()
 
         elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS:
             self.consume(start_token)
-            self.consume(SpecialToken("("))
+            self.consume(SpecialToken("("), err_arg=scope)
             expr = self.INSTRUCTIONS["OP"].consume(self, scope)
-            self.consume(SpecialToken(")"))
+            self.consume(SpecialToken(")"), err_arg=scope)
 
         else:
             return

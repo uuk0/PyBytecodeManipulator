@@ -21,6 +21,10 @@ class YieldValue(Exception):
     pass
 
 
+class StackSizeIssue(Exception):
+    pass
+
+
 class EmulatorGeneratorContainer:
     def __init__(self, mutable: MutableFunction, args: typing.Sized = tuple()):
         self.mutable = mutable
@@ -85,6 +89,8 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
     if not isinstance(mutable, MutableFunction):
         mutable = MutableFunction(mutable)
 
+    mutable: MutableFunction
+
     if len(args) != mutable.argument_count:
         raise ValueError()
 
@@ -98,7 +104,8 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
     continue_stack = []
 
     while True:
-        # print(instruction)
+        print(instruction)
+        print(stack)
         target = OPCODE_FUNCS[instruction.opcode]
 
         if target is None:
@@ -121,6 +128,9 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
             return e.args[0]
         except YieldValue:
             raise RuntimeError("YIELD outside GENERATOR")
+
+        if len(stack) > mutable.stack_size:
+            raise StackSizeIssue(f"{len(stack)} > {mutable.stack_size}")
 
 
 OPCODE_FUNCS: typing.List[typing.Callable | None] = [None] * 256
@@ -757,7 +767,7 @@ def for_iter(
         stack.append(next(iterator))
     except StopIteration:
         stack.pop(-1)
-        return instr.arg_value, func
+        return typing.cast(Instruction, instr.arg_value), func
 
     return instr.next_instruction, func
 
