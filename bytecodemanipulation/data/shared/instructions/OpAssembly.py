@@ -207,7 +207,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             pass
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "OpAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractOpAssembly":
         if expr := cls.try_consume_single(parser):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 

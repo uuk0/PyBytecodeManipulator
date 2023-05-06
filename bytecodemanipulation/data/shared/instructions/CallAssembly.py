@@ -137,7 +137,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         return cls.consume_inner(parser, False, True, scope)
 
     @classmethod
-    def consume(cls, parser: "Parser", scope) -> "CallAssembly":
+    def consume(cls, parser: "Parser", scope) -> "AbstractCallAssembly":
         """
         The normal consumer for the instruction
         Optionally consumes the PARTIAL and MACRO prefixes
@@ -285,7 +285,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
     def __init__(
         self,
         call_target: AbstractSourceExpression,
-        args: typing.List["CallAssembly.IArg"],
+        args: typing.List["AbstractCallAssembly.IArg"],
         target: AbstractAccessExpression | None = None,
         is_partial: bool = False,
         is_macro: bool = False,

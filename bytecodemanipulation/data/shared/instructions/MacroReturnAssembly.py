@@ -18,7 +18,7 @@ class MacroReturnAssembly(AbstractAssemblyInstruction):
     NAME = "MACRO_RETURN"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope) -> "ReturnAssembly":
+    def consume(cls, parser: "Parser", scope) -> "MacroReturnAssembly":
         return cls(
             parser.try_parse_data_source(
                 allow_primitives=True, allow_op=True, include_bracket=False

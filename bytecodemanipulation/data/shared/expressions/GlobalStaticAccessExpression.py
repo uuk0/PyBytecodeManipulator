@@ -1,3 +1,4 @@
+import builtins
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression

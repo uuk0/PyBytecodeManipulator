@@ -88,7 +88,7 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
     def __repr__(self):
         return f"JUMP({self.label_name_token.text}{'' if self.condition is None else ', IF '+repr(self.condition)})"
 
-    def copy(self) -> "JumpAssembly":
-        return JumpAssembly(
+    def copy(self) -> "AbstractJumpAssembly":
+        return type(self)(
             self.label_name_token, self.condition.copy() if self.condition else None
         )
