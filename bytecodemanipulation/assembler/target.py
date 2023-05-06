@@ -1,5 +1,6 @@
 import typing
 
+import bytecodemanipulation.assembler.AbstractBase
 import bytecodemanipulation.MutableFunction
 
 import bytecodemanipulation.assembler.Parser
@@ -74,7 +75,7 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
 
         namespace = macro_name.split(":")[:-1]
 
-        scope = bytecodemanipulation.assembler.Parser.ParsingScope.create_for_function(function)
+        scope = bytecodemanipulation.assembler.AbstractBase.ParsingScope.create_for_function(function)
         namespace_obj = scope.lookup_namespace(namespace)
 
         if macro_name.split(":")[-1] not in namespace_obj:
