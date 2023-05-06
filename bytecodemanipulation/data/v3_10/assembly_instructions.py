@@ -1,3 +1,9 @@
+from bytecodemanipulation.data.shared.instructions import (
+    MacroAssembly,
+    MacroPasteAssembly,
+    NamespaceAssembly,
+    MacroImportAssembly,
+)
 from bytecodemanipulation.data.v3_10.instructions import (
     call_assembly,
     class_definition_assembly,
@@ -20,3 +26,9 @@ from bytecodemanipulation.data.v3_10.instructions import (
     while_assembly,
     yield_assembly,
 )
+
+
+MacroAssembly.MacroAssembly.register()
+MacroPasteAssembly.MacroPasteAssembly.register()
+NamespaceAssembly.NamespaceAssembly.register()
+MacroImportAssembly.MacroImportAssembly.register()

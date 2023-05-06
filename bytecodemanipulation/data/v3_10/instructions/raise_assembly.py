@@ -1,6 +1,6 @@
 import typing
 
-from bytecodemanipulation.assembler.Parser import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope

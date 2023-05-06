@@ -56,7 +56,7 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
     """
 
     def annotation(function):
-        from bytecodemanipulation.assembler.Parser import MacroAssembly
+        from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
         from bytecodemanipulation.assembler.Lexer import IdentifierToken
 
         macro_name = (export_name or function.__qualname__).replace(".", ":")

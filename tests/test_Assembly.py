@@ -2,6 +2,8 @@ import functools
 from unittest import TestCase
 
 import bytecodemanipulation.data_loader
+from bytecodemanipulation.data.shared.instructions.LabelAssembly import LabelAssembly
+from bytecodemanipulation.data.shared.instructions.PythonCodeAssembly import PythonCodeAssembly
 from bytecodemanipulation.data.v3_10.instructions.function_definition_assembly import FunctionDefinitionAssembly
 from bytecodemanipulation.data.v3_10.instructions.if_assembly import IFAssembly
 from bytecodemanipulation.data.v3_10.instructions.jump_assembly import JumpAssembly
@@ -18,6 +20,7 @@ from bytecodemanipulation.data.v3_10.instructions.while_assembly import WHILEAss
 from bytecodemanipulation.data.v3_10.instructions.yield_assembly import YieldAssembly
 from bytecodemanipulation.data.v3_10.instructions.op_assembly import OpAssembly
 from bytecodemanipulation.data.v3_10.instructions.call_assembly import CallAssembly
+from bytecodemanipulation.MutableFunction import MutableFunction
 
 bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
 from bytecodemanipulation.assembler.Parser import *
@@ -34,14 +37,14 @@ except ImportError:
 bytecodemanipulation.data_loader.load_assembly_instructions()
 
 if typing.TYPE_CHECKING:
-    from bytecodemanipulation.data.v3_10.assembly_instructions import *
+    pass
 
 from tests.test_issues import compare_optimized_results
 from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationContainer
 
 
 if bytecodemanipulation.data_loader.version == "3_10":
-    from bytecodemanipulation.data.v3_10.assembly_instructions import *
+    pass
 elif bytecodemanipulation.data_loader.version == "3_11":
     from bytecodemanipulation.data.v3_11.assembly_instructions import *
 else:

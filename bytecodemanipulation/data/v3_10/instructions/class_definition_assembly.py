@@ -2,12 +2,12 @@ import typing
 
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.assembler.Parser import AbstractAssemblyInstruction
-from bytecodemanipulation.assembler.Parser import CompoundExpression
-from bytecodemanipulation.assembler.Parser import ConstantAccessExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.Parser import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction

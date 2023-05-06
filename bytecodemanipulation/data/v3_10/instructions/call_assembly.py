@@ -4,14 +4,14 @@ import typing
 
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.assembler.Parser import AbstractCallAssembly
+from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.Parser import MacroAccessExpression
-from bytecodemanipulation.assembler.Parser import MacroAssembly
+from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import MacroAccessExpression
+from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.Parser import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.MutableFunction import Instruction

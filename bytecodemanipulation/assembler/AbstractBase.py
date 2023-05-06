@@ -213,3 +213,11 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
 
     def get_name(self, scope: ParsingScope):
         return self.name(scope) if not isinstance(self.name, str) else self.name
+
+
+class JumpToLabel:
+    def __init__(self, name: str):
+        self.name = name
+
+    def __repr__(self):
+        return f"-> Label('{self.name}')"
