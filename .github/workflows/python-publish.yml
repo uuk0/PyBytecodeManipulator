@@ -26,17 +26,17 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: '3.10'
+    - name: Find and Replace
+      uses: jacobtomlinson/gha-find-replace@v3
+      with:
+        find: "^version=\"[0-9]+\.[0-9]+\.[0-9]+\"$"
+        replace: "version=\"" & ${{ github.event.release.tag_name }} & "\""
+        include: "setup.py"
+        regex: true
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build twine
-    - name: Find and Replace
-        uses: jacobtomlinson/gha-find-replace@v3
-        with:
-          find: "^version=\"[0-9]+\.[0-9]+\.[0-9]+\"$"
-          replace: "version=\"" & ${{ github.event.release.tag_name }} & "\""
-          include: "setup.py"
-          regex: true
     - name: Build package
       run: python -m build
     - name: Publish package
