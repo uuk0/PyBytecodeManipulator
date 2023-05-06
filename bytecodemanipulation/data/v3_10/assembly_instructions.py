@@ -5,7 +5,7 @@ from bytecodemanipulation.data.shared.instructions import (
     MacroImportAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions import (
-    call_assembly,
+    CallAssembly,
     class_definition_assembly,
     for_each_assembly,
     function_definition_assembly,

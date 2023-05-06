@@ -4,6 +4,7 @@
 - changed the macro prefix from § to &
 - using &\<name> in places for identifiers is now allowed in some places
 - added std:comprehension:list to feel like python list comprehension
+- refactored assembly part of the project
 
 # Version 0.2.4
 - added more assembly code

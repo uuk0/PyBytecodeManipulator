@@ -250,7 +250,7 @@ class Parser(AbstractParser):
                 if macro.allow_assembly_instr:
                     self.rollback()
                     print(name)
-                    return AbstractCallAssembly.INSTANCE.consume_macro_call(self, scope)
+                    return AbstractCallAssembly.IMPLEMENTATION.consume_macro_call(self, scope)
 
         self.rollback()
 
@@ -406,7 +406,7 @@ class Parser(AbstractParser):
                         expr = AttributeAccessExpression(expr, name)
 
                 elif self.try_inspect() == SpecialToken("(") and allow_calls:
-                    expr = AbstractCallAssembly.INSTANCE.construct_from_partial(expr, self, scope)
+                    expr = AbstractCallAssembly.IMPLEMENTATION.construct_from_partial(expr, self, scope)
 
                 else:
                     break

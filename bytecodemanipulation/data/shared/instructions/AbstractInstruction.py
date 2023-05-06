@@ -14,6 +14,17 @@ if typing.TYPE_CHECKING:
 
 class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitable, ABC):
     NAME: str | None = None
+    IMPLEMENTATION: typing.Type["AbstractAssemblyInstruction"] | None = None
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        # copy the class definition into all superclasses inheriting from AbstractAssemblyInstruction
+        if ABC not in cls.__bases__:
+            for base in cls.__bases__:
+                if issubclass(base, AbstractAssemblyInstruction) and base != AbstractAssemblyInstruction:
+                    base.IMPLEMENTATION = cls
+
+            cls.IMPLEMENTATION = cls
 
     @classmethod
     def consume(

@@ -77,15 +77,15 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
                     if default_value is None:
                         raise SyntaxError
 
-                    arg = AbstractCallAssembly.INSTANCE.KwArg(identifier, default_value)
+                    arg = AbstractCallAssembly.IMPLEMENTATION.KwArg(identifier, default_value)
 
             if not arg:
                 if star_star:
-                    arg = AbstractCallAssembly.INSTANCE.KwArgStar(identifier)
+                    arg = AbstractCallAssembly.IMPLEMENTATION.KwArgStar(identifier)
                 elif star:
-                    arg = AbstractCallAssembly.INSTANCE.StarArg(identifier)
+                    arg = AbstractCallAssembly.IMPLEMENTATION.StarArg(identifier)
                 else:
-                    arg = AbstractCallAssembly.INSTANCE.Arg(identifier)
+                    arg = AbstractCallAssembly.IMPLEMENTATION.Arg(identifier)
 
             args.append(arg)
 
@@ -123,7 +123,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         self,
         func_name: IdentifierToken | str | None,
         bound_variables: typing.List[typing.Tuple[IdentifierToken | str, bool] | str],
-        args: typing.List[AbstractCallAssembly.INSTANCE.IArg],
+        args: typing.List[AbstractCallAssembly.IMPLEMENTATION.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
     ):
@@ -256,7 +256,7 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
         has_kwarg = False
         for arg in self.args:
-            if isinstance(arg, AbstractCallAssembly.INSTANCE.KwArg):
+            if isinstance(arg, AbstractCallAssembly.IMPLEMENTATION.KwArg):
                 has_kwarg = True
                 break
 
