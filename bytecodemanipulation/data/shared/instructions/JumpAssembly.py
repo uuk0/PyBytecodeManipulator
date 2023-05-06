@@ -1,30 +1,20 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
+from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.data.v3_10.instructions.op_assembly import OpAssembly
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.OpAssembly import OpAssembly
 
 
-@Parser.register
-class JumpAssembly(AbstractAssemblyInstruction):
-    # JUMP <label name> [(IF <condition access>) | ('(' <expression> | <op expression> ')')]
+class AbstractJumpAssembly(AbstractAssemblyInstruction):
     NAME = "JUMP"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope) -> "JumpAssembly":
+    def consume(cls, parser: "Parser", scope) -> "AbstractJumpAssembly":
         has_quotes = parser.try_consume(SpecialToken("'"))
 
         label_target = parser.consume(IdentifierToken)
@@ -45,7 +35,7 @@ class JumpAssembly(AbstractAssemblyInstruction):
 
             if condition is None or not parser.try_consume(SpecialToken(")")):
                 parser.rollback()
-                condition = OpAssembly.consume(parser, None)
+                condition = OpAssembly.IMPLEMENTATION.consume(parser, None)
                 parser.consume(SpecialToken(")"))
             else:
                 parser.discard_save()
@@ -99,30 +89,3 @@ class JumpAssembly(AbstractAssemblyInstruction):
         return JumpAssembly(
             self.label_name_token, self.condition.copy() if self.condition else None
         )
-
-    def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
-        if not scope.exists_label(self.label_name_token.text):
-            raise ValueError(
-                f"Label '{self.label_name_token.text}' is not valid in this context!"
-            )
-
-        if self.condition is None:
-            return [
-                Instruction(
-                    function,
-                    -1,
-                    Opcodes.JUMP_ABSOLUTE,
-                    JumpToLabel(self.label_name_token.text),
-                )
-            ]
-
-        return self.condition.emit_bytecodes(function, scope) + [
-            Instruction(
-                function,
-                -1,
-                Opcodes.POP_JUMP_IF_TRUE,
-                JumpToLabel(self.label_name_token.text),
-            )
-        ]

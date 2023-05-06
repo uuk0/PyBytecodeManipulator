@@ -10,7 +10,7 @@ from bytecodemanipulation.data.v3_10.instructions.FunctionDefinitionAssembly imp
     FunctionDefinitionAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions.IfAssembly import IFAssembly
-from bytecodemanipulation.data.v3_10.instructions.jump_assembly import JumpAssembly
+from bytecodemanipulation.data.v3_10.instructions.JumpAssembly import JumpAssembly
 from bytecodemanipulation.data.v3_10.instructions.load_assembly import LoadAssembly
 from bytecodemanipulation.data.v3_10.instructions.load_const_assembly import (
     LoadConstAssembly,

@@ -10,7 +10,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     ForEachAssembly,
     FunctionDefinitionAssembly,
     IfAssembly,
-    jump_assembly,
+    JumpAssembly,
     load_assembly,
     load_const_assembly,
     load_fast_assembly,
