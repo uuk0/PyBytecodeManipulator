@@ -33,7 +33,7 @@ from bytecodemanipulation.data.v3_10.instructions.StoreGlobalAssembly import (
     StoreGlobalAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions.WhileAssembly import WHILEAssembly
-from bytecodemanipulation.data.v3_10.instructions.yield_assembly import YieldAssembly
+from bytecodemanipulation.data.v3_10.instructions.YieldAssembly import YieldAssembly
 from bytecodemanipulation.data.v3_10.instructions.OpAssembly import OpAssembly
 from bytecodemanipulation.data.v3_10.instructions.CallAssembly import CallAssembly
 from bytecodemanipulation.MutableFunction import MutableFunction

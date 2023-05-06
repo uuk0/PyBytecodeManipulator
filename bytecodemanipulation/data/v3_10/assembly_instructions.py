@@ -24,7 +24,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     StoreFastAssembly,
     StoreGlobalAssembly,
     WhileAssembly,
-    yield_assembly,
+    YieldAssembly,
 )
 
 

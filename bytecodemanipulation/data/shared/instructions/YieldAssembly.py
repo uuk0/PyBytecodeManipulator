@@ -1,27 +1,30 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 
 
-@Parser.register
-class YieldAssembly(AbstractAssemblyInstruction):
+class AbstractYieldAssembly(AbstractAssemblyInstruction):
     # YIELD [*] [<expr>] [-> <target>]
     NAME = "YIELD"
 
+    def __init__(
+        self,
+        expr: AbstractSourceExpression | None = None,
+        is_star: bool = False,
+        target: AbstractSourceExpression | None = None,
+    ):
+        self.expr = expr
+        self.is_star = is_star
+        self.target = target
+
     @classmethod
-    def consume(cls, parser: "Parser", scope) -> "YieldAssembly":
+    def consume(cls, parser: "Parser", scope) -> "AbstractYieldAssembly":
         is_star = bool(parser.try_consume(SpecialToken("*")))
 
         expr = parser.try_parse_data_source(
@@ -44,16 +47,6 @@ class YieldAssembly(AbstractAssemblyInstruction):
             target = None
 
         return cls(expr, is_star, target)
-
-    def __init__(
-        self,
-        expr: AbstractSourceExpression | None = None,
-        is_star: bool = False,
-        target: AbstractSourceExpression | None = None,
-    ):
-        self.expr = expr
-        self.is_star = is_star
-        self.target = target
 
     def visit_parts(
         self,
@@ -88,39 +81,9 @@ class YieldAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"YIELD{'' if not self.is_star else '*'}({self.expr if self.expr else ''}{(', ' if self.expr else '->') + repr(self.target) if self.target else ''})"
 
-    def copy(self) -> "YieldAssembly":
-        return YieldAssembly(
+    def copy(self) -> "AbstractYieldAssembly":
+        return type(self)(
             self.expr.copy() if self.expr else None,
             self.is_star,
             self.target.copy() if self.target else None,
         )
-
-    def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
-        bytecode = []
-
-        if self.expr:
-            bytecode += self.expr.emit_bytecodes(function, scope)
-
-        if self.is_star:
-            bytecode += [
-                Instruction(function, -1, Opcodes.GET_YIELD_FROM_ITER),
-                Instruction(function, -1, Opcodes.LOAD_CONST, None),
-                Instruction(function, -1, Opcodes.YIELD_FROM),
-            ]
-
-        else:
-            bytecode += [
-                Instruction(function, -1, Opcodes.YIELD_VALUE),
-            ]
-
-        if self.target:
-            bytecode += self.target.emit_store_bytecodes(function, scope)
-
-        else:
-            bytecode += [Instruction(function, -1, Opcodes.POP_TOP)]
-
-        # print(bytecode)
-
-        return bytecode
