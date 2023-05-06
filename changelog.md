@@ -1,5 +1,5 @@
 
-# Version 0.2.5
+# Version 0.2.8
 - added FOREACH loops with automatically zip() when multiple iterable are given
 - changed the macro prefix from § to &
 - using &\<name> in places for identifiers is now allowed in some places
