@@ -24,7 +24,7 @@ from bytecodemanipulation.data.v3_10.instructions.LoadGlobalAssembly import (
 from bytecodemanipulation.data.v3_10.instructions.PopElementAssembly import (
     PopElementAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.return_assembly import ReturnAssembly
+from bytecodemanipulation.data.v3_10.instructions.ReturnAssembly import ReturnAssembly
 from bytecodemanipulation.data.v3_10.instructions.store_assembly import StoreAssembly
 from bytecodemanipulation.data.v3_10.instructions.store_fast_assembly import (
     StoreFastAssembly,

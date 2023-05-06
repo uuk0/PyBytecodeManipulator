@@ -19,7 +19,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     OpAssembly,
     PopElementAssembly,
     RaiseAssembly,
-    return_assembly,
+    ReturnAssembly,
     store_assembly,
     store_fast_assembly,
     store_global_assembly,
