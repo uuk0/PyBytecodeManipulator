@@ -3,19 +3,35 @@ from unittest import TestCase
 
 import bytecodemanipulation.data_loader
 from bytecodemanipulation.data.shared.instructions.LabelAssembly import LabelAssembly
-from bytecodemanipulation.data.shared.instructions.PythonCodeAssembly import PythonCodeAssembly
-from bytecodemanipulation.data.v3_10.instructions.function_definition_assembly import FunctionDefinitionAssembly
+from bytecodemanipulation.data.shared.instructions.PythonCodeAssembly import (
+    PythonCodeAssembly,
+)
+from bytecodemanipulation.data.v3_10.instructions.function_definition_assembly import (
+    FunctionDefinitionAssembly,
+)
 from bytecodemanipulation.data.v3_10.instructions.if_assembly import IFAssembly
 from bytecodemanipulation.data.v3_10.instructions.jump_assembly import JumpAssembly
 from bytecodemanipulation.data.v3_10.instructions.load_assembly import LoadAssembly
-from bytecodemanipulation.data.v3_10.instructions.load_const_assembly import LoadConstAssembly
-from bytecodemanipulation.data.v3_10.instructions.load_fast_assembly import LoadFastAssembly
-from bytecodemanipulation.data.v3_10.instructions.load_global_assembly import LoadGlobalAssembly
-from bytecodemanipulation.data.v3_10.instructions.pop_element_assembly import PopElementAssembly
+from bytecodemanipulation.data.v3_10.instructions.load_const_assembly import (
+    LoadConstAssembly,
+)
+from bytecodemanipulation.data.v3_10.instructions.load_fast_assembly import (
+    LoadFastAssembly,
+)
+from bytecodemanipulation.data.v3_10.instructions.load_global_assembly import (
+    LoadGlobalAssembly,
+)
+from bytecodemanipulation.data.v3_10.instructions.pop_element_assembly import (
+    PopElementAssembly,
+)
 from bytecodemanipulation.data.v3_10.instructions.return_assembly import ReturnAssembly
 from bytecodemanipulation.data.v3_10.instructions.store_assembly import StoreAssembly
-from bytecodemanipulation.data.v3_10.instructions.store_fast_assembly import StoreFastAssembly
-from bytecodemanipulation.data.v3_10.instructions.store_global_assembly import StoreGlobalAssembly
+from bytecodemanipulation.data.v3_10.instructions.store_fast_assembly import (
+    StoreFastAssembly,
+)
+from bytecodemanipulation.data.v3_10.instructions.store_global_assembly import (
+    StoreGlobalAssembly,
+)
 from bytecodemanipulation.data.v3_10.instructions.while_assembly import WHILEAssembly
 from bytecodemanipulation.data.v3_10.instructions.yield_assembly import YieldAssembly
 from bytecodemanipulation.data.v3_10.instructions.op_assembly import OpAssembly
@@ -24,7 +40,12 @@ from bytecodemanipulation.MutableFunction import MutableFunction
 
 bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
 from bytecodemanipulation.assembler.Parser import *
-from bytecodemanipulation.assembler.target import assembly, label, jump as asm_jump, make_macro
+from bytecodemanipulation.assembler.target import (
+    assembly,
+    label,
+    jump as asm_jump,
+    make_macro,
+)
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
 
 try:
@@ -121,9 +142,7 @@ LOAD 19 --> $test
                         "test",
                         LocalAccessExpression("test"),
                     ),
-                    StoreGlobalAssembly(
-                        "test", TopOfStackAccessExpression()
-                    ),
+                    StoreGlobalAssembly("test", TopOfStackAccessExpression()),
                 ]
             ),
             expr,
@@ -837,7 +856,7 @@ CALL PARTIAL @print ("Hello World!") -> $x
     def test_call_assembly(self):
         def target(x):
             assembly(
-"""
+                """
 CALL @print ("Hello World!") -> $x
 # LOAD $error -> @global
 """
@@ -1551,7 +1570,9 @@ CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
         self.assertEqual(target(), 3)
 
     def test_transform_to_macro_or_else_error(self):
-        @make_macro("TestMacro:test_transform_to_macro_or_else_error", prevent_direct_calls=True)
+        @make_macro(
+            "TestMacro:test_transform_to_macro_or_else_error", prevent_direct_calls=True
+        )
         def test_transform_to_macro():
             pass
 
@@ -1560,7 +1581,8 @@ CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
     def test_macro_capture_arg_in_inner_func(self):
         def target():
             tar = lambda: 0
-            assembly("""
+            assembly(
+                """
 MACRO test_macro_capture_arg_in_inner_func(a)
 {
     DEF tar()
@@ -1570,7 +1592,8 @@ MACRO test_macro_capture_arg_in_inner_func(a)
 }
 
 CALL MACRO test_macro_capture_arg_in_inner_func(2)
-""")
+"""
+            )
             return tar
 
         mutable = MutableFunction(target)
@@ -1584,7 +1607,8 @@ CALL MACRO test_macro_capture_arg_in_inner_func(2)
     def test_macro_capture_arg_in_inner_func_2(self):
         def target():
             tar = lambda: 0
-            assembly("""
+            assembly(
+                """
 MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
 {
     DEF tar()
@@ -1594,7 +1618,8 @@ MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
 }
 
 CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
-""")
+"""
+            )
             return tar
 
         mutable = MutableFunction(target)
@@ -1609,12 +1634,14 @@ CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
         def target():
             iterable = [0, 1, 2, 3]
             result = []
-            assembly("""
+            assembly(
+                """
 FOREACH $p IN $iterable
 {
     CALL $result.append(OP ($p + 1)) -> \\
 }
-""")
+"""
+            )
             return result
 
         mutable = MutableFunction(target)
@@ -1628,12 +1655,14 @@ FOREACH $p IN $iterable
             iterable = [0, 1, 2, 3]
             iterable_2 = [1, 2, 3, 4]
             result = []
-            assembly("""
+            assembly(
+                """
 FOREACH $p, $q IN $iterable, $iterable_2
 {
     CALL $result.append(OP ($p + $q)) -> \\
 }
-""")
+"""
+            )
             return result
 
         mutable = MutableFunction(target)
@@ -1647,12 +1676,14 @@ FOREACH $p, $q IN $iterable, $iterable_2
             iterable = [0, 1]
             iterable_2 = [1, 2]
             result = []
-            assembly("""
+            assembly(
+                """
 FOREACH $p IN $iterable * $iterable_2
 {
     CALL $result.append(OP ($p[0] * $p[1])) -> \\
 }
-""")
+"""
+            )
             return result
 
         mutable = MutableFunction(target)

@@ -203,6 +203,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
     def __init__(self, tokens: typing.List[AbstractToken]):
         super().__init__()
         self.tokens = tokens
+
     def __getitem__(
         self, item: int | slice
     ) -> AbstractToken | typing.List[AbstractToken] | None:

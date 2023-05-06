@@ -111,7 +111,9 @@ class Instruction:
             self.function,
             self.offset,
             self.opcode,
-            self.arg_value if self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST else self.arg,
+            self.arg_value
+            if self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST
+            else self.arg,
         )
 
         if owner:
@@ -1046,7 +1048,9 @@ class MutableFunction:
         self.stack_size = max(max(stack_size_table), 0)
         return self.stack_size
 
-    def get_max_stack_size_table(self, instructions: typing.List[Instruction] = None) -> typing.List[int]:
+    def get_max_stack_size_table(
+        self, instructions: typing.List[Instruction] = None
+    ) -> typing.List[int]:
         stack_size_table = [-1] * len(instructions or self.instructions)
 
         if not instructions:
@@ -1066,7 +1070,9 @@ class MutableFunction:
                 for instruction in instr.previous_instructions:
                     if stack_size_table[instruction.offset] != -1:
                         stack = max(stack, stack_size_table[instruction.offset])
-                        stack += instruction.special_stack_affect_when_followed_by(instr)
+                        stack += instruction.special_stack_affect_when_followed_by(
+                            instr
+                        )
 
             if stack != -1:
                 add, sub, _ = instr.get_stack_affect()
@@ -1094,7 +1100,9 @@ class MutableFunction:
                 for instruction in instr.previous_instructions:
                     if stack_size_table[instruction.offset] != -1:
                         stack = max(stack, stack_size_table[instruction.offset])
-                        stack += instruction.special_stack_affect_when_followed_by(instr)
+                        stack += instruction.special_stack_affect_when_followed_by(
+                            instr
+                        )
 
                 if stack != -1:
                     add, sub, _ = instr.get_stack_affect()

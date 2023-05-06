@@ -7,11 +7,21 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
-from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import DerefAccessExpression
-from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import GlobalAccessExpression
-from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
+from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import (
+    DerefAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import (
+    GlobalAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
+    LocalAccessExpression,
+)
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -21,7 +31,10 @@ if typing.TYPE_CHECKING:
     from bytecodemanipulation.assembler.Parser import Parser
 
 
-LOCAL_TO_DEREF_OPCODES = {Opcodes.LOAD_FAST: Opcodes.MACRO_LOAD_PARAMETER, Opcodes.STORE_FAST: Opcodes.MACRO_STORE_PARAMETER}
+LOCAL_TO_DEREF_OPCODES = {
+    Opcodes.LOAD_FAST: Opcodes.MACRO_LOAD_PARAMETER,
+    Opcodes.STORE_FAST: Opcodes.MACRO_STORE_PARAMETER,
+}
 
 
 class MacroAssembly(AbstractAssemblyInstruction):
@@ -358,7 +371,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         allow_assembly_instr=False,
         scope_path: typing.List[str] = None,
         module_path: str = None,
-        return_type = None,
+        return_type=None,
     ):
         self.name = name
         self.args = args
@@ -454,17 +467,24 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         local_prefix = scope.scope_name_generator("macro_local")
         end_target = scope.scope_name_generator("macro_end")
-        requires_none_load = self.return_type is not None and not inner_bytecode[-1].has_unconditional_jump() and inner_bytecode[-1].opcode != Opcodes.RETURN_VALUE
+        requires_none_load = (
+            self.return_type is not None
+            and not inner_bytecode[-1].has_unconditional_jump()
+            and inner_bytecode[-1].opcode != Opcodes.RETURN_VALUE
+        )
 
         for instr in inner_bytecode:
             bytecode.append(instr)
 
-            if instr.opcode in (Opcodes.MACRO_LOAD_PARAMETER, Opcodes.MACRO_PARAMETER_EXPANSION):
+            if instr.opcode in (
+                Opcodes.MACRO_LOAD_PARAMETER,
+                Opcodes.MACRO_PARAMETER_EXPANSION,
+            ):
                 if instr.arg_value not in arg_decl_lookup:
                     raise throw_positioned_syntax_error(
                         scope,
                         self.name,
-                        f"macro name {instr.arg_value} not found in scope"
+                        f"macro name {instr.arg_value} not found in scope",
                     )
 
                 arg_decl: MacroAssembly.MacroArg = arg_decl_lookup[instr.arg_value]
@@ -502,7 +522,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     raise throw_positioned_syntax_error(
                         scope,
                         self.name,
-                        f"macro name {instr.arg_value} not found in scope"
+                        f"macro name {instr.arg_value} not found in scope",
                     )
 
                 arg_decl = arg_decl_lookup[instr.arg_value]
@@ -535,7 +555,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
             elif instr.opcode == Opcodes.MACRO_RETURN_VALUE:
                 if self.return_type is None:
-                    raise SyntaxError("'MACRO_RETURN' only allowed in assembly if return type declared!")
+                    raise SyntaxError(
+                        "'MACRO_RETURN' only allowed in assembly if return type declared!"
+                    )
 
                 instr.change_opcode(Opcodes.JUMP_ABSOLUTE, JumpToLabel(end_target))
 
@@ -565,27 +587,35 @@ class MacroAssembly(AbstractAssemblyInstruction):
         page.add_definition(self)
 
     class Function2CompoundMapper(CompoundExpression):
-        def __init__(self, function: typing.Callable, scoped_names: typing.List[str] = None):
+        def __init__(
+            self, function: typing.Callable, scoped_names: typing.List[str] = None
+        ):
             super().__init__([])
             self.function = MutableFunction(function)
             self.scoped_names = scoped_names or []
 
         def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
             macro_exit_label = scope.scope_name_generator("macro_exit")
             return [
                 (
                     instr.copy(owner=function)
                     if instr.opcode != Opcodes.RETURN_VALUE
-                    else
-                    instr.copy(owner=function).change_opcode(
-                        Opcodes.POP_TOP).insert_after(Instruction(
-                        function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(macro_exit_label)))
+                    else instr.copy(owner=function)
+                    .change_opcode(Opcodes.POP_TOP)
+                    .insert_after(
+                        Instruction(
+                            function,
+                            -1,
+                            Opcodes.JUMP_ABSOLUTE,
+                            JumpToLabel(macro_exit_label),
+                        )
+                    )
                 )
                 if not instr.has_local() or instr.arg_value not in self.scoped_names
-                else instr.copy(owner=function).change_opcode(LOCAL_TO_DEREF_OPCODES[instr.opcode])
+                else instr.copy(owner=function).change_opcode(
+                    LOCAL_TO_DEREF_OPCODES[instr.opcode]
+                )
                 for instr in self.function.instructions
-            ] + [
-                Instruction(function, -1, Opcodes.BYTECODE_LABEL, macro_exit_label)
-            ]
+            ] + [Instruction(function, -1, Opcodes.BYTECODE_LABEL, macro_exit_label)]

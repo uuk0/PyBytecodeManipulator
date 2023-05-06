@@ -19,6 +19,4 @@ class DiscardValueExpression(AbstractAccessExpression):
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return [
-            Instruction(function, -1, Opcodes.POP_TOP)
-        ]
+        return [Instruction(function, -1, Opcodes.POP_TOP)]

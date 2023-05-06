@@ -1,8 +1,12 @@
 import functools
 import typing
 
-from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
-from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import MacroAccessExpression
+from bytecodemanipulation.data.shared.instructions.CallAssembly import (
+    AbstractCallAssembly,
+)
+from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
+    MacroAccessExpression,
+)
 from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope

@@ -21,7 +21,10 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
         # copy the class definition into all superclasses inheriting from AbstractAssemblyInstruction
         if ABC not in cls.__bases__:
             for base in cls.__bases__:
-                if issubclass(base, AbstractAssemblyInstruction) and base != AbstractAssemblyInstruction:
+                if (
+                    issubclass(base, AbstractAssemblyInstruction)
+                    and base != AbstractAssemblyInstruction
+                ):
                     base.IMPLEMENTATION = cls
 
             cls.IMPLEMENTATION = cls

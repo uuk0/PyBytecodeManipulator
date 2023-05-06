@@ -101,11 +101,13 @@ std:os:file_walker("{file_name}", $file, {{
             data = (0, 1, 2)
             stream = None
             output = None
-            assembly("""
+            assembly(
+                """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:stream:to_list($stream, $output)
-""")
+"""
+            )
             return output
 
         mutable = MutableFunction(target)
@@ -119,14 +121,16 @@ std:stream:to_list($stream, $output)
             data = (0, 1, 2)
             stream = None
             output = None
-            assembly("""
+            assembly(
+                """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:stream:reduce($stream, $lhs, $rhs, {
     OP $lhs + $rhs
 })
 STORE $output
-""")
+"""
+            )
             return output
 
         mutable = MutableFunction(target)
@@ -140,14 +144,16 @@ STORE $output
             data = (0, 1, 2)
             stream = None
             output = None
-            assembly("""
+            assembly(
+                """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:stream:filter($stream, $var, {
     OP $var < 2 -> %
 })
 std:stream:to_list($stream, $output)
-""")
+"""
+            )
             return output
 
         mutable = MutableFunction(target)
@@ -161,14 +167,16 @@ std:stream:to_list($stream, $output)
             data = (0, 1, 2)
             stream = None
             output = None
-            assembly("""
+            assembly(
+                """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:stream:map($stream, $var, {
     OP $var + 1 -> $var
 })
 std:stream:to_list($stream, $output)
-""")
+"""
+            )
             return output
 
         mutable = MutableFunction(target)
@@ -176,6 +184,7 @@ std:stream:to_list($stream, $output)
         mutable.reassign_to_function()
 
         self.assertEqual(target(), [1, 2, 3])
+
 
 #     def test_comprehension_list(self):
 #         def target():

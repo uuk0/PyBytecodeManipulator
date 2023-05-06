@@ -56,7 +56,9 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
     """
 
     def annotation(function):
-        from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
+        from bytecodemanipulation.data.shared.instructions.MacroAssembly import (
+            MacroAssembly,
+        )
         from bytecodemanipulation.assembler.Lexer import IdentifierToken
 
         macro_name = (export_name or function.__qualname__).replace(".", ":")
@@ -68,23 +70,34 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
             [
                 # todo: add data type here!
                 MacroAssembly.MacroArg(IdentifierToken(name))
-                for name in mutable.shared_variable_names[:mutable.argument_count]
+                for name in mutable.shared_variable_names[: mutable.argument_count]
             ],
-            MacroAssembly.Function2CompoundMapper(function, scoped_names=mutable.shared_variable_names[:mutable.argument_count]),
+            MacroAssembly.Function2CompoundMapper(
+                function,
+                scoped_names=mutable.shared_variable_names[: mutable.argument_count],
+            ),
         )
 
         namespace = macro_name.split(":")[:-1]
 
-        scope = bytecodemanipulation.assembler.AbstractBase.ParsingScope.create_for_function(function)
+        scope = bytecodemanipulation.assembler.AbstractBase.ParsingScope.create_for_function(
+            function
+        )
         namespace_obj = scope.lookup_namespace(namespace)
 
         if macro_name.split(":")[-1] not in namespace_obj:
-            namespace_obj[macro_name.split(":")[-1]] = MacroAssembly.MacroOverloadPage(macro_name.split(":"))
+            namespace_obj[macro_name.split(":")[-1]] = MacroAssembly.MacroOverloadPage(
+                macro_name.split(":")
+            )
 
         namespace_obj[macro_name.split(":")[-1]].add_assembly(macro_asm)
 
         if prevent_direct_calls:
-            mutable.copy_from(bytecodemanipulation.MutableFunction.MutableFunction(_raise_macro_direct_call_error))
+            mutable.copy_from(
+                bytecodemanipulation.MutableFunction.MutableFunction(
+                    _raise_macro_direct_call_error
+                )
+            )
             mutable.reassign_to_function()
 
         return function

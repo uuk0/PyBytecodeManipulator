@@ -146,7 +146,6 @@ class ParsingScope:
         scope[name[-1]] = data
 
 
-
 class IAssemblyStructureVisitable(ABC):
     def visit_parts(
         self,
@@ -195,7 +194,11 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
     IS_STATIC = False
 
-    def __init__(self, name: typing.Callable[[ParsingScope], str] | str, token: AbstractToken | typing.List[AbstractToken] = None):
+    def __init__(
+        self,
+        name: typing.Callable[[ParsingScope], str] | str,
+        token: AbstractToken | typing.List[AbstractToken] = None,
+    ):
         self.name = name
         self.token = token
 
@@ -206,7 +209,9 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
         return f"{self.PREFIX}{self.get_name(None)}"
 
     def copy(self) -> "AbstractAccessExpression":
-        return type(self)(self.name, self.token.copy() if isinstance(self.token, list) else self.token)
+        return type(self)(
+            self.name, self.token.copy() if isinstance(self.token, list) else self.token
+        )
 
     def get_static_value(self, scope: ParsingScope) -> typing.Any:
         raise ValueError("not implemented")

@@ -3,14 +3,18 @@ from abc import ABC
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import MacroAccessExpression
+from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
+    MacroAccessExpression,
+)
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 
@@ -28,6 +32,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         Abstract base class for argument-like for calls
         Nothing is abstract, but most requires a special subclass
         """
+
         __slots__ = ("source", "is_dynamic")
 
         def __init__(
@@ -112,12 +117,16 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         pass
 
     @classmethod
-    def construct_from_partial(cls, access: AbstractAccessExpression, parser: "Parser", scope: ParsingScope):
+    def construct_from_partial(
+        cls, access: AbstractAccessExpression, parser: "Parser", scope: ParsingScope
+    ):
         """
         Constructs an CallAssembly from an already parsed access expression.
         Used by the Parser when parsing an call as a expression to be used inline
         """
-        return cls.consume_inner(parser, False, False, scope, call_target=access, allow_target=False)
+        return cls.consume_inner(
+            parser, False, False, scope, call_target=access, allow_target=False
+        )
 
     @classmethod
     def consume_macro_call(cls, parser: "Parser", scope: ParsingScope):
@@ -139,15 +148,22 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
     @classmethod
     def consume_inner(
-        cls, parser: "Parser", is_partial: bool, is_macro: bool, scope: ParsingScope, call_target=None,
-        allow_target=True
+        cls,
+        parser: "Parser",
+        is_partial: bool,
+        is_macro: bool,
+        scope: ParsingScope,
+        call_target=None,
+        allow_target=True,
     ) -> "AbstractCallAssembly":
         """
         The real consumer, configurable to parse special parts
         """
         if call_target is None:
             if not is_macro:
-                call_target = parser.try_parse_data_source(include_bracket=False, scope=scope, allow_calls=False)
+                call_target = parser.try_parse_data_source(
+                    include_bracket=False, scope=scope, allow_calls=False
+                )
 
                 if isinstance(call_target, AbstractCallAssembly):
                     raise RuntimeError
@@ -177,9 +193,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
         while not (bracket := parser.try_consume(SpecialToken(")"))):
             if (
-                    isinstance(parser[0], IdentifierToken)
-                    and parser[1] == SpecialToken("=")
-                    and not is_macro
+                isinstance(parser[0], IdentifierToken)
+                and parser[1] == SpecialToken("=")
+                and not is_macro
             ):
                 key = parser.consume(IdentifierToken)
                 parser.consume(SpecialToken("="))
@@ -255,10 +271,10 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             )
 
         if allow_target and parser.try_consume_multi(
-                [
-                    SpecialToken("-"),
-                    SpecialToken(">"),
-                ]
+            [
+                SpecialToken("-"),
+                SpecialToken(">"),
+            ]
         ):
             target = parser.try_consume_access_to_value(scope=scope)
         else:
@@ -326,10 +342,10 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
     def __eq__(self, other):
         return (
-                type(self) == type(other)
-                and self.call_target == other.call_target
-                and self.args == other.args
-                and self.target == other.target
-                and self.is_partial == other.is_partial
-                and self.is_macro == other.is_macro
+            type(self) == type(other)
+            and self.call_target == other.call_target
+            and self.args == other.args
+            and self.target == other.target
+            and self.is_partial == other.is_partial
+            and self.is_macro == other.is_macro
         )

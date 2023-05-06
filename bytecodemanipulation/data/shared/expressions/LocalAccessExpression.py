@@ -32,7 +32,5 @@ class LocalAccessExpression(AbstractAccessExpression):
             value = int(value)
 
         return [
-            Instruction.create_with_token(
-                self.token, function, -1, "STORE_FAST", value
-            )
+            Instruction.create_with_token(self.token, function, -1, "STORE_FAST", value)
         ]

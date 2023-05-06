@@ -3,14 +3,20 @@ import typing
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
-from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
+from bytecodemanipulation.data.shared.instructions.CallAssembly import (
+    AbstractCallAssembly,
+)
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -28,7 +34,9 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         cls, parser: "Parser", scope: ParsingScope
     ) -> "FunctionDefinitionAssembly":
         func_name = parser.try_consume(IdentifierToken)
-        bound_variables: typing.List[typing.Tuple[typing.Callable[[ParsingScope], str], bool]] = []
+        bound_variables: typing.List[
+            typing.Tuple[typing.Callable[[ParsingScope], str], bool]
+        ] = []
         args = []
 
         if parser.try_consume(SpecialToken("<")):
@@ -63,7 +71,9 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
                     raise throw_positioned_syntax_error(
                         scope,
                         [star, star_star],
-                        "Expected <expression> after '*'" if not star_star else "Expected <expression> after '**'"
+                        "Expected <expression> after '*'"
+                        if not star_star
+                        else "Expected <expression> after '**'",
                     )
 
                 break
@@ -77,7 +87,9 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
                     if default_value is None:
                         raise SyntaxError
 
-                    arg = AbstractCallAssembly.IMPLEMENTATION.KwArg(identifier, default_value)
+                    arg = AbstractCallAssembly.IMPLEMENTATION.KwArg(
+                        identifier, default_value
+                    )
 
             if not arg:
                 if star_star:
@@ -130,7 +142,9 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         self.func_name = (
             func_name if not isinstance(func_name, str) else IdentifierToken(func_name)
         )
-        self.bound_variables: typing.List[typing.Tuple[typing.Callable[[ParsingScope], str], bool]] = []
+        self.bound_variables: typing.List[
+            typing.Tuple[typing.Callable[[ParsingScope], str], bool]
+        ] = []
         # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
 
         def _create_lazy(name: str):
@@ -180,7 +194,12 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
             type(self) == type(other)
             and self.func_name == other.func_name
             and len(self.bound_variables) == len(other.bound_variables)
-            and all((a[0](None) == b[0](None) and a[1] == b[1] for a, b in zip(self.bound_variables, other.bound_variables)))
+            and all(
+                (
+                    a[0](None) == b[0](None) and a[1] == b[1]
+                    for a, b in zip(self.bound_variables, other.bound_variables)
+                )
+            )
             and self.args == other.args
             and self.body == other.body
             and self.target == other.target
@@ -215,7 +234,9 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
             names = [e[0](scope) for e in self.bound_variables]
             s = {}
-            exec(f"{' = '.join(names)} = None\nresult = lambda: ({', '.join(names)})", s)
+            exec(
+                f"{' = '.join(names)} = None\nresult = lambda: ({', '.join(names)})", s
+            )
             tar = s["result"]
         else:
             tar = lambda: None
@@ -240,7 +261,11 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
         def walk_label(instruction: Instruction):
             if instruction.opcode == Opcodes.BYTECODE_LABEL:
                 # print(instruction, instruction.next_instruction)
-                label_targets[instruction.arg_value] = instruction.next_instruction if instruction.next_instruction is not None else instruction
+                label_targets[instruction.arg_value] = (
+                    instruction.next_instruction
+                    if instruction.next_instruction is not None
+                    else instruction
+                )
                 instruction.change_opcode(Opcodes.NOP, update_next=False)
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(walk_label))
@@ -273,15 +298,19 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
             for name, is_static in self.bound_variables:
                 bytecode += [
                     Instruction(function, -1, Opcodes.LOAD_FAST, name(scope)),
-                    Instruction(function, -1, Opcodes.STORE_DEREF, name(scope)+"%inner"),
+                    Instruction(
+                        function, -1, Opcodes.STORE_DEREF, name(scope) + "%inner"
+                    ),
                 ]
 
             bytecode += [
-                Instruction(function, -1, Opcodes.LOAD_CLOSURE, name(scope)+"%inner")
+                Instruction(function, -1, Opcodes.LOAD_CLOSURE, name(scope) + "%inner")
                 for name, is_static in self.bound_variables
             ]
             bytecode.append(
-                Instruction(function, -1, Opcodes.BUILD_TUPLE, arg=len(self.bound_variables))
+                Instruction(
+                    function, -1, Opcodes.BUILD_TUPLE, arg=len(self.bound_variables)
+                )
             )
 
         target.argument_count = len(self.args)

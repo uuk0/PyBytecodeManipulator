@@ -3,9 +3,13 @@ import typing
 
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
@@ -42,18 +46,13 @@ class ForEachAssembly(AbstractAssemblyInstruction):
             return bytecode
 
     @classmethod
-    def consume(
-        cls, parser: "Parser", scope: ParsingScope
-    ) -> "ForEachAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "ForEachAssembly":
         initial = parser.try_consume_access_to_value()
         if initial is None:
             raise throw_positioned_syntax_error(
-                scope,
-                parser[0],
-                "<expression> expected"
+                scope, parser[0], "<expression> expected"
             )
         variables = [initial]
-
 
         while parser.try_consume(SpecialToken(",")):
 
@@ -61,37 +60,29 @@ class ForEachAssembly(AbstractAssemblyInstruction):
 
             if expr is None:
                 raise throw_positioned_syntax_error(
-                    scope,
-                    parser[0],
-                    "<expression> expected"
+                    scope, parser[0], "<expression> expected"
                 )
 
             variables.append(expr)
 
         if not parser.try_consume(IdentifierToken("IN")):
-            raise throw_positioned_syntax_error(
-                scope,
-                parser[0],
-                "'IN' expected"
-            )
+            raise throw_positioned_syntax_error(scope, parser[0], "'IN' expected")
 
         source = parser.try_consume_access_to_value()
         if not source:
             raise throw_positioned_syntax_error(
-                scope,
-                parser[0],
-                "<expression> expected"
+                scope, parser[0], "<expression> expected"
             )
         sources = [source]
 
         multi = None
-        while parser.try_consume(SpecialToken(",")) or (multi := parser.try_consume(SpecialToken("*"))):
+        while parser.try_consume(SpecialToken(",")) or (
+            multi := parser.try_consume(SpecialToken("*"))
+        ):
             source = parser.try_consume_access_to_value()
             if not source:
                 raise throw_positioned_syntax_error(
-                    scope,
-                    parser[0],
-                    "<expression> expected"
+                    scope, parser[0], "<expression> expected"
                 )
 
             if multi:
@@ -110,7 +101,7 @@ class ForEachAssembly(AbstractAssemblyInstruction):
             raise throw_positioned_syntax_error(
                 scope,
                 scope.last_base_token,
-                f"Number of Variables ({len(variables)}) must equal number of Sources ({len(sources)})"
+                f"Number of Variables ({len(variables)}) must equal number of Sources ({len(sources)})",
             )
 
         body = parser.parse_body(scope=scope)
@@ -121,7 +112,13 @@ class ForEachAssembly(AbstractAssemblyInstruction):
             scope.last_base_token,
         )
 
-    def __init__(self, variables: typing.List[AbstractSourceExpression], sources: typing.List[AbstractSourceExpression], body: CompoundExpression, base_token: AbstractToken = None):
+    def __init__(
+        self,
+        variables: typing.List[AbstractSourceExpression],
+        sources: typing.List[AbstractSourceExpression],
+        body: CompoundExpression,
+        base_token: AbstractToken = None,
+    ):
         self.variables = variables
         self.sources = sources
         self.body = body
@@ -136,22 +133,26 @@ class ForEachAssembly(AbstractAssemblyInstruction):
 
     def __repr__(self):
         entries = ", ".join(
-            [
-                f"{source} -> {var}"
-                for var, source in zip(self.variables, self.sources)
-            ]
+            [f"{source} -> {var}" for var, source in zip(self.variables, self.sources)]
         )
         return f"FOREACH({entries})"
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.variables == other.variables and self.sources == other.sources and self.body == other.body
+        return (
+            type(self) == type(other)
+            and self.variables == other.variables
+            and self.sources == other.sources
+            and self.body == other.body
+        )
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         if len(self.variables) != 1:
             bytecode = [
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.LOAD_CONST, zip),
+                Instruction.create_with_token(
+                    self.base_token, function, -1, Opcodes.LOAD_CONST, zip
+                ),
             ]
         else:
             bytecode = []
@@ -164,17 +165,57 @@ class ForEachAssembly(AbstractAssemblyInstruction):
 
         if len(self.variables) != 1:
             bytecode += [
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.CALL_FUNCTION, arg=len(self.sources)),
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.GET_ITER),
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.BYTECODE_LABEL, loop_label_name_enter),
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.FOR_ITER, JumpToLabel(loop_label_name_exit)),
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.UNPACK_SEQUENCE, arg=len(self.sources)),
+                Instruction.create_with_token(
+                    self.base_token,
+                    function,
+                    -1,
+                    Opcodes.CALL_FUNCTION,
+                    arg=len(self.sources),
+                ),
+                Instruction.create_with_token(
+                    self.base_token, function, -1, Opcodes.GET_ITER
+                ),
+                Instruction.create_with_token(
+                    self.base_token,
+                    function,
+                    -1,
+                    Opcodes.BYTECODE_LABEL,
+                    loop_label_name_enter,
+                ),
+                Instruction.create_with_token(
+                    self.base_token,
+                    function,
+                    -1,
+                    Opcodes.FOR_ITER,
+                    JumpToLabel(loop_label_name_exit),
+                ),
+                Instruction.create_with_token(
+                    self.base_token,
+                    function,
+                    -1,
+                    Opcodes.UNPACK_SEQUENCE,
+                    arg=len(self.sources),
+                ),
             ]
         else:
             bytecode += [
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.GET_ITER),
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.BYTECODE_LABEL, loop_label_name_enter),
-                Instruction.create_with_token(self.base_token, function, -1, Opcodes.FOR_ITER, JumpToLabel(loop_label_name_exit)),
+                Instruction.create_with_token(
+                    self.base_token, function, -1, Opcodes.GET_ITER
+                ),
+                Instruction.create_with_token(
+                    self.base_token,
+                    function,
+                    -1,
+                    Opcodes.BYTECODE_LABEL,
+                    loop_label_name_enter,
+                ),
+                Instruction.create_with_token(
+                    self.base_token,
+                    function,
+                    -1,
+                    Opcodes.FOR_ITER,
+                    JumpToLabel(loop_label_name_exit),
+                ),
             ]
 
         for var in self.variables:
@@ -183,8 +224,20 @@ class ForEachAssembly(AbstractAssemblyInstruction):
         bytecode += self.body.emit_bytecodes(function, scope)
 
         bytecode += [
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.JUMP_ABSOLUTE, JumpToLabel(loop_label_name_enter)),
-            Instruction.create_with_token(self.base_token, function, -1, Opcodes.BYTECODE_LABEL, loop_label_name_exit),
+            Instruction.create_with_token(
+                self.base_token,
+                function,
+                -1,
+                Opcodes.JUMP_ABSOLUTE,
+                JumpToLabel(loop_label_name_enter),
+            ),
+            Instruction.create_with_token(
+                self.base_token,
+                function,
+                -1,
+                Opcodes.BYTECODE_LABEL,
+                loop_label_name_exit,
+            ),
         ]
 
         return bytecode

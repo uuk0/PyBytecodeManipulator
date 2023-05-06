@@ -1,7 +1,9 @@
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Parser import Parser
@@ -19,7 +21,9 @@ class StoreAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "StoreAssembly":
-        access = parser.try_consume_access_to_value(allow_tos=False, scope=scope, allow_calls=False)
+        access = parser.try_consume_access_to_value(
+            allow_tos=False, scope=scope, allow_calls=False
+        )
 
         if access is None:
             raise throw_positioned_syntax_error(

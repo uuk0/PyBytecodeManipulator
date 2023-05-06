@@ -4,23 +4,55 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import _syntax_wrapper
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.shared.expressions.AttributeAccessExpression import AttributeAccessExpression
-from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
-from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
-from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import DerefAccessExpression
-from bytecodemanipulation.data.shared.expressions.DiscardValueExpression import DiscardValueExpression
-from bytecodemanipulation.data.shared.expressions.DynamicAccessExpression import DynamicAttributeAccessExpression
-from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import GlobalAccessExpression
-from bytecodemanipulation.data.shared.expressions.GlobalStaticAccessExpression import GlobalStaticAccessExpression
-from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
+from bytecodemanipulation.data.shared.expressions.AttributeAccessExpression import (
+    AttributeAccessExpression,
+)
+from bytecodemanipulation.data.shared.instructions.CallAssembly import (
+    AbstractCallAssembly,
+)
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
+from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
+    ConstantAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import (
+    DerefAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.DiscardValueExpression import (
+    DiscardValueExpression,
+)
+from bytecodemanipulation.data.shared.expressions.DynamicAccessExpression import (
+    DynamicAttributeAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import (
+    GlobalAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.GlobalStaticAccessExpression import (
+    GlobalStaticAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
+    LocalAccessExpression,
+)
 from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
-from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
-from bytecodemanipulation.data.shared.expressions.ModuleAccessExpression import ModuleAccessExpression
-from bytecodemanipulation.data.shared.expressions.StaticAttributeAcccessExpression import StaticAttributeAccessExpression
-from bytecodemanipulation.data.shared.expressions.SubscriptionAccessExpression import SubscriptionAccessExpression
-from bytecodemanipulation.data.shared.expressions.TopOfStackAccessExpression import TopOfStackAccessExpression
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import (
+    MacroParameterAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.ModuleAccessExpression import (
+    ModuleAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.StaticAttributeAcccessExpression import (
+    StaticAttributeAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.SubscriptionAccessExpression import (
+    SubscriptionAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.TopOfStackAccessExpression import (
+    TopOfStackAccessExpression,
+)
 
 from bytecodemanipulation.Opcodes import Opcodes
 
@@ -250,7 +282,9 @@ class Parser(AbstractParser):
                 if macro.allow_assembly_instr:
                     self.rollback()
                     print(name)
-                    return AbstractCallAssembly.IMPLEMENTATION.consume_macro_call(self, scope)
+                    return AbstractCallAssembly.IMPLEMENTATION.consume_macro_call(
+                        self, scope
+                    )
 
         self.rollback()
 
@@ -299,9 +333,13 @@ class Parser(AbstractParser):
             self.consume(SpecialToken("@"), err_arg=scope)
 
             if self.try_consume(SpecialToken("!")):
-                expr = GlobalStaticAccessExpression(self.parse_identifier_like(scope), start_token)
+                expr = GlobalStaticAccessExpression(
+                    self.parse_identifier_like(scope), start_token
+                )
             else:
-                expr = GlobalAccessExpression(self.parse_identifier_like(scope), start_token)
+                expr = GlobalAccessExpression(
+                    self.parse_identifier_like(scope), start_token
+                )
 
         elif start_token.text == "$":
             self.consume(SpecialToken("$"), err_arg=scope)
@@ -313,7 +351,9 @@ class Parser(AbstractParser):
 
         elif start_token.text == "&":
             self.consume(SpecialToken("&"), err_arg=scope)
-            expr = MacroParameterAccessExpression(self.parse_identifier_like(scope), start_token)
+            expr = MacroParameterAccessExpression(
+                self.parse_identifier_like(scope), start_token
+            )
 
         elif start_token.text == "%" and allow_tos:
             self.consume(SpecialToken("%"), err_arg=scope)
@@ -321,7 +361,9 @@ class Parser(AbstractParser):
 
         elif start_token.text == "~":
             self.consume(SpecialToken("~"), err_arg=scope)
-            expr = ModuleAccessExpression(self.parse_identifier_like(scope), start_token)
+            expr = ModuleAccessExpression(
+                self.parse_identifier_like(scope), start_token
+            )
 
         elif start_token.text == "\\":
             self.consume(SpecialToken("\\"), err_arg=scope)
@@ -406,7 +448,9 @@ class Parser(AbstractParser):
                         expr = AttributeAccessExpression(expr, name)
 
                 elif self.try_inspect() == SpecialToken("(") and allow_calls:
-                    expr = AbstractCallAssembly.IMPLEMENTATION.construct_from_partial(expr, self, scope)
+                    expr = AbstractCallAssembly.IMPLEMENTATION.construct_from_partial(
+                        expr, self, scope
+                    )
 
                 else:
                     break
@@ -458,6 +502,7 @@ class Parser(AbstractParser):
 
     def try_parse_identifier_like(self) -> typing.Callable[[ParsingScope], str] | None:
         if expr := self.try_consume_multi([SpecialToken("&"), IdentifierToken]):
+
             def get(scope: ParsingScope):
                 # If this is None, we are only inspecting
                 if scope is None:
@@ -482,7 +527,14 @@ class Parser(AbstractParser):
 
                     return value.value
 
-                if isinstance(value, (GlobalAccessExpression, LocalAccessExpression, DerefAccessExpression)):
+                if isinstance(
+                    value,
+                    (
+                        GlobalAccessExpression,
+                        LocalAccessExpression,
+                        DerefAccessExpression,
+                    ),
+                ):
                     return value.get_name(scope)
 
                 raise throw_positioned_syntax_error(
@@ -496,7 +548,9 @@ class Parser(AbstractParser):
         if expr := self.try_consume(IdentifierToken):
             return lambda scope: expr.text
 
-    def parse_identifier_like(self, scope: ParsingScope) -> typing.Callable[[ParsingScope], str]:
+    def parse_identifier_like(
+        self, scope: ParsingScope
+    ) -> typing.Callable[[ParsingScope], str]:
         identifier = self.try_parse_identifier_like()
 
         if identifier is None:
@@ -507,5 +561,3 @@ class Parser(AbstractParser):
             )
 
         return identifier
-
-

@@ -3,7 +3,9 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -39,7 +41,9 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
             _,
             parents: typing.List[AbstractAccessExpression],
         ):
-            from bytecodemanipulation.data.shared.instructions.NamespaceAssembly import NamespaceAssembly
+            from bytecodemanipulation.data.shared.instructions.NamespaceAssembly import (
+                NamespaceAssembly,
+            )
 
             if (
                 hasattr(expression, "fill_scope")

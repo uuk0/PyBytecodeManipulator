@@ -133,9 +133,7 @@ def apply_inline_assemblies(
 
     assemblies = [
         AssemblyParser(
-            Lexer(code)
-            .add_line_offset(instr.source_location[0] + 1)
-            .lex(),
+            Lexer(code).add_line_offset(instr.source_location[0] + 1).lex(),
             scope.scope_path.clear() or scope,
         ).parse()
         for code, instr in insertion_points
@@ -222,15 +220,18 @@ def apply_inline_assemblies(
                     print("error: ", ins)
 
                 ins.change_opcode(Opcodes.NOP)
-                ins.next_instruction = bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
+                ins.next_instruction = (
+                    bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
+                )
 
     for i, ins in enumerate(target.instructions):
         if ins.opcode == Opcodes.BYTECODE_LABEL:
             label_targets[ins.arg_value] = ins.next_instruction
             ins.change_opcode(Opcodes.NOP)
-            ins.next_instruction = target.instructions[i+1]
+            ins.next_instruction = target.instructions[i + 1]
 
     pending: typing.List[Instruction] = []
+
     def resolve_special_code(ins: Instruction, *_):
         # print(ins)
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
@@ -245,7 +246,9 @@ def apply_inline_assemblies(
 
             obj = source.arg_value
             source.change_opcode(Opcodes.NOP, update_next=False)
-            ins.change_opcode(Opcodes.LOAD_CONST, getattr(obj, ins.arg_value), update_next=False)
+            ins.change_opcode(
+                Opcodes.LOAD_CONST, getattr(obj, ins.arg_value), update_next=False
+            )
 
     target.instructions[0].apply_value_visitor(resolve_special_code)
 

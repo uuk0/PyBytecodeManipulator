@@ -43,9 +43,7 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         with open(self.path, encoding="utf-8") as fid:
             asm_code = fid.read()
 
-        Emitter.execute_module_in_instance(
-            asm_code, module, self.path
-        )
+        Emitter.execute_module_in_instance(asm_code, module, self.path)
 
         return module
 

@@ -12,19 +12,21 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
     PREFIX = "&"
 
     def emit_bytecodes(
-            self, function: MutableFunction, scope: ParsingScope
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
         if value not in scope.macro_parameter_namespace:
             raise throw_positioned_syntax_error(
-                scope,
-                self.token,
-                "Name not found in macro var space"
+                scope, self.token, "Name not found in macro var space"
             )
 
-        if scope.macro_parameter_namespace[value] != self and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes"):
-            return scope.macro_parameter_namespace[value].emit_bytecodes(function, scope)
+        if scope.macro_parameter_namespace[value] != self and hasattr(
+            scope.macro_parameter_namespace[value], "emit_bytecodes"
+        ):
+            return scope.macro_parameter_namespace[value].emit_bytecodes(
+                function, scope
+            )
 
         return [
             Instruction.create_with_token(
@@ -33,19 +35,21 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         ]
 
     def emit_store_bytecodes(
-            self, function: MutableFunction, scope: ParsingScope
+        self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
         if value not in scope.macro_parameter_namespace:
             raise throw_positioned_syntax_error(
-                scope,
-                self.token,
-                "Name not found in macro var space"
+                scope, self.token, "Name not found in macro var space"
             )
 
-        if scope.macro_parameter_namespace[value] != self and hasattr(scope.macro_parameter_namespace[value], "emit_bytecodes"):
-            return scope.macro_parameter_namespace[value].emit_store_bytecodes(function, scope)
+        if scope.macro_parameter_namespace[value] != self and hasattr(
+            scope.macro_parameter_namespace[value], "emit_bytecodes"
+        ):
+            return scope.macro_parameter_namespace[value].emit_store_bytecodes(
+                function, scope
+            )
 
         return [
             Instruction.create_with_token(
