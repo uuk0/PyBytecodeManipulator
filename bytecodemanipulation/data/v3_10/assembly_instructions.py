@@ -4,6 +4,7 @@ from bytecodemanipulation.data.shared.instructions import (
     NamespaceAssembly,
     MacroImportAssembly,
     LoadAssembly,
+    MacroReturnAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions import (
     CallAssembly,
@@ -15,9 +16,8 @@ from bytecodemanipulation.data.v3_10.instructions import (
     LoadConstAssembly,
     LoadFastAssembly,
     LoadGlobalAssembly,
-    macro_return_assembly,
     OpAssembly,
-    pop_element_assembly,
+    PopElementAssembly,
     raise_assembly,
     return_assembly,
     store_assembly,
