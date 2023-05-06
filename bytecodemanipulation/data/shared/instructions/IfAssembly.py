@@ -1,31 +1,23 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
-    CompoundExpression,
-)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.Lexer import SpecialToken
+from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 
 
-@Parser.register
-class IFAssembly(AbstractAssemblyInstruction):
+class AbstractIFAssembly(AbstractAssemblyInstruction):
     # IF <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "IF"
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "IFAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractIFAssembly":
         source = parser.try_parse_data_source(
             allow_primitives=True, include_bracket=False, scope=scope
         )
@@ -80,43 +72,6 @@ class IFAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         c = "'"
         return f"IF({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
-
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
-
-        if self.label_name is None:
-            end = Instruction(function, -1, "NOP")
-        else:
-            end = Instruction(
-                function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END"
-            )
-
-        return (
-            (
-                []
-                if self.label_name is None
-                else [
-                    Instruction(
-                        function,
-                        -1,
-                        Opcodes.BYTECODE_LABEL,
-                        self.label_name.text + "_HEAD",
-                    )
-                ]
-            )
-            + self.source.emit_bytecodes(function, scope)
-            + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)]
-            + (
-                []
-                if self.label_name is None
-                else [
-                    Instruction(
-                        function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text
-                    )
-                ]
-            )
-            + self.body.emit_bytecodes(function, scope)
-            + [end]
-        )
 
     def visit_parts(
         self,

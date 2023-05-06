@@ -9,7 +9,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     ClassDefinitionAssembly,
     ForEachAssembly,
     FunctionDefinitionAssembly,
-    if_assembly,
+    IfAssembly,
     jump_assembly,
     load_assembly,
     load_const_assembly,
