@@ -6,7 +6,7 @@ from bytecodemanipulation.data.shared.instructions.LabelAssembly import LabelAss
 from bytecodemanipulation.data.shared.instructions.PythonCodeAssembly import (
     PythonCodeAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.function_definition_assembly import (
+from bytecodemanipulation.data.v3_10.instructions.FunctionDefinitionAssembly import (
     FunctionDefinitionAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions.if_assembly import IFAssembly

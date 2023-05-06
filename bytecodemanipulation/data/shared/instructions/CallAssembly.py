@@ -53,7 +53,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 and self.is_dynamic == other.is_dynamic
             )
 
-        def copy(self):
+        def copy(self) -> "AbstractCallAssembly.IArg":
             return type(self)(self.source.copy(), self.is_dynamic)
 
         def visit_parts(
