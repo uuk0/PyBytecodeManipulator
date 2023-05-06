@@ -35,6 +35,9 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     ) -> "AbstractAssemblyInstruction":
         raise NotImplementedError
 
+    def __init__(self, *_, **__):
+        raise NotImplementedError
+
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:

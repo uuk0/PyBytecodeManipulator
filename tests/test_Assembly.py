@@ -1,4 +1,5 @@
 import functools
+import itertools
 from unittest import TestCase
 
 import bytecodemanipulation.data_loader
@@ -6,36 +7,37 @@ from bytecodemanipulation.data.shared.instructions.LabelAssembly import LabelAss
 from bytecodemanipulation.data.shared.instructions.PythonCodeAssembly import (
     PythonCodeAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.FunctionDefinitionAssembly import (
-    FunctionDefinitionAssembly,
+
+from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
+    AbstractFunctionDefinitionAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.IfAssembly import IFAssembly
-from bytecodemanipulation.data.v3_10.instructions.JumpAssembly import JumpAssembly
+from bytecodemanipulation.data.shared.instructions.IfAssembly import AbstractIFAssembly
+from bytecodemanipulation.data.shared.instructions.JumpAssembly import AbstractJumpAssembly
 from bytecodemanipulation.data.shared.instructions.LoadAssembly import LoadAssembly
-from bytecodemanipulation.data.v3_10.instructions.LoadConstAssembly import (
-    LoadConstAssembly,
+from bytecodemanipulation.data.shared.instructions.LoadConstAssembly import (
+    AbstractLoadConstAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.LoadFastAssembly import (
-    LoadFastAssembly,
+from bytecodemanipulation.data.shared.instructions.LoadFastAssembly import (
+    AbstractLoadFastAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.LoadGlobalAssembly import (
-    LoadGlobalAssembly,
+from bytecodemanipulation.data.shared.instructions.LoadGlobalAssembly import (
+    AbstractLoadGlobalAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.PopElementAssembly import (
-    PopElementAssembly,
+from bytecodemanipulation.data.shared.instructions.PopElementAssembly import (
+    AbstractPopElementAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.ReturnAssembly import ReturnAssembly
+from bytecodemanipulation.data.shared.instructions.ReturnAssembly import AbstractReturnAssembly
 from bytecodemanipulation.data.shared.instructions.StoreAssembly import StoreAssembly
-from bytecodemanipulation.data.v3_10.instructions.StoreFastAssembly import (
-    StoreFastAssembly,
+from bytecodemanipulation.data.shared.instructions.StoreFastAssembly import (
+    AbstractStoreFastAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.StoreGlobalAssembly import (
-    StoreGlobalAssembly,
+from bytecodemanipulation.data.shared.instructions.StoreGlobalAssembly import (
+    AbstractStoreGlobalAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.WhileAssembly import WHILEAssembly
-from bytecodemanipulation.data.v3_10.instructions.YieldAssembly import YieldAssembly
-from bytecodemanipulation.data.v3_10.instructions.OpAssembly import OpAssembly
-from bytecodemanipulation.data.v3_10.instructions.CallAssembly import CallAssembly
+from bytecodemanipulation.data.shared.instructions.WhileAssembly import AbstractWhileAssembly
+from bytecodemanipulation.data.shared.instructions.YieldAssembly import AbstractYieldAssembly
+from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
+from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
@@ -65,9 +67,9 @@ from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationConta
 
 
 if bytecodemanipulation.data_loader.version == "3_10":
-    pass
+    import bytecodemanipulation.data.v3_10.assembly_instructions
 elif bytecodemanipulation.data_loader.version == "3_11":
-    from bytecodemanipulation.data.v3_11.assembly_instructions import *
+    import bytecodemanipulation.data.v3_11.assembly_instructions
 else:
     raise RuntimeError(
         f"Found not supported version: '{bytecodemanipulation.data_loader.version}'"
@@ -114,11 +116,11 @@ LOAD 19 --> $test
         self.assertEqualList(
             CompoundExpression(
                 [
-                    LoadGlobalAssembly("test"),
-                    LoadGlobalAssembly(10),
-                    LoadGlobalAssembly("test"),
-                    LoadGlobalAssembly(10),
-                    LoadGlobalAssembly("hello", LocalAccessExpression("test")),
+                    AbstractLoadGlobalAssembly.IMPLEMENTATION("test"),
+                    AbstractLoadGlobalAssembly.IMPLEMENTATION(10),
+                    AbstractLoadGlobalAssembly.IMPLEMENTATION("test"),
+                    AbstractLoadGlobalAssembly.IMPLEMENTATION(10),
+                    AbstractLoadGlobalAssembly.IMPLEMENTATION("hello", LocalAccessExpression("test")),
                 ]
             ),
             expr,
@@ -132,17 +134,17 @@ LOAD 19 --> $test
         self.assertEqualList(
             CompoundExpression(
                 [
-                    StoreGlobalAssembly(IdentifierToken("test")),
-                    StoreGlobalAssembly(IdentifierToken("test")),
-                    StoreGlobalAssembly(
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION(IdentifierToken("test")),
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION(IdentifierToken("test")),
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION(
                         "test",
                         GlobalAccessExpression("test"),
                     ),
-                    StoreGlobalAssembly(
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION(
                         "test",
                         LocalAccessExpression("test"),
                     ),
-                    StoreGlobalAssembly("test", TopOfStackAccessExpression()),
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION("test", TopOfStackAccessExpression()),
                 ]
             ),
             expr,
@@ -156,11 +158,11 @@ LOAD 19 --> $test
         self.assertEqualList(
             CompoundExpression(
                 [
-                    LoadFastAssembly("test"),
-                    LoadFastAssembly(10),
-                    LoadFastAssembly("test"),
-                    LoadFastAssembly(10),
-                    LoadFastAssembly("test", GlobalAccessExpression("test")),
+                    AbstractLoadFastAssembly.IMPLEMENTATION("test"),
+                    AbstractLoadFastAssembly.IMPLEMENTATION(10),
+                    AbstractLoadFastAssembly.IMPLEMENTATION("test"),
+                    AbstractLoadFastAssembly.IMPLEMENTATION(10),
+                    AbstractLoadFastAssembly.IMPLEMENTATION("test", GlobalAccessExpression("test")),
                 ]
             ),
             expr,
@@ -174,11 +176,11 @@ LOAD 19 --> $test
         self.assertEqualList(
             CompoundExpression(
                 [
-                    StoreFastAssembly("test"),
-                    StoreFastAssembly("test"),
-                    StoreFastAssembly("test", GlobalAccessExpression("test")),
-                    StoreFastAssembly("test", LocalAccessExpression("test")),
-                    StoreFastAssembly("test", TopOfStackAccessExpression()),
+                    AbstractStoreFastAssembly.IMPLEMENTATION("test"),
+                    AbstractStoreFastAssembly.IMPLEMENTATION("test"),
+                    AbstractStoreFastAssembly.IMPLEMENTATION("test", GlobalAccessExpression("test")),
+                    AbstractStoreFastAssembly.IMPLEMENTATION("test", LocalAccessExpression("test")),
+                    AbstractStoreFastAssembly.IMPLEMENTATION("test", TopOfStackAccessExpression()),
                 ]
             ),
             expr,
@@ -192,11 +194,11 @@ LOAD 19 --> $test
         self.assertEqualList(
             CompoundExpression(
                 [
-                    LoadConstAssembly(10),
-                    LoadConstAssembly("Hello World!"),
-                    LoadConstAssembly(10, GlobalAccessExpression("test")),
-                    LoadConstAssembly(GlobalAccessExpression("global")),
-                    LoadConstAssembly(
+                    AbstractLoadConstAssembly.IMPLEMENTATION(10),
+                    AbstractLoadConstAssembly.IMPLEMENTATION("Hello World!"),
+                    AbstractLoadConstAssembly.IMPLEMENTATION(10, GlobalAccessExpression("test")),
+                    AbstractLoadConstAssembly.IMPLEMENTATION(GlobalAccessExpression("global")),
+                    AbstractLoadConstAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"), LocalAccessExpression("test")
                     ),
                 ]
@@ -303,65 +305,65 @@ CALL @test.x (*$x, @b, *%)
         self.assertEqualList(
             CompoundExpression(
                 [
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("print"),
-                        [CallAssembly.Arg(ConstantAccessExpression("Hello World!"))],
+                        [AbstractCallAssembly.Arg(ConstantAccessExpression("Hello World!"))],
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("print"),
-                        [CallAssembly.Arg(ConstantAccessExpression("Hello World!"))],
+                        [AbstractCallAssembly.Arg(ConstantAccessExpression("Hello World!"))],
                         LocalAccessExpression("result"),
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("print"),
                         [
-                            CallAssembly.Arg(ConstantAccessExpression("Hello World!")),
-                            CallAssembly.Arg(ConstantAccessExpression("test")),
+                            AbstractCallAssembly.Arg(ConstantAccessExpression("Hello World!")),
+                            AbstractCallAssembly.Arg(ConstantAccessExpression("test")),
                         ],
                         LocalAccessExpression("result"),
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         SubscriptionAccessExpression(
                             LocalAccessExpression("print"),
                             GlobalAccessExpression("test"),
                         ),
                         [
-                            CallAssembly.Arg(GlobalAccessExpression("test")),
-                            CallAssembly.Arg(GlobalAccessExpression("hello")),
+                            AbstractCallAssembly.Arg(GlobalAccessExpression("test")),
+                            AbstractCallAssembly.Arg(GlobalAccessExpression("hello")),
                         ],
                         TopOfStackAccessExpression(),
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("test"),
-                        [CallAssembly.KwArg("key", GlobalAccessExpression("value"))],
+                        [AbstractCallAssembly.KwArg("key", GlobalAccessExpression("value"))],
                         GlobalAccessExpression("result"),
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("test"),
                         [
-                            CallAssembly.Arg(LocalAccessExpression("direct")),
-                            CallAssembly.KwArg("key", GlobalAccessExpression("value")),
+                            AbstractCallAssembly.Arg(LocalAccessExpression("direct")),
+                            AbstractCallAssembly.KwArg("key", GlobalAccessExpression("value")),
                         ],
                         GlobalAccessExpression("result"),
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("test"),
                         [
-                            CallAssembly.Arg(
+                            AbstractCallAssembly.Arg(
                                 AttributeAccessExpression(
                                     LocalAccessExpression("direct"), "test"
                                 )
                             ),
-                            CallAssembly.KwArg("key", GlobalAccessExpression("value")),
+                            AbstractCallAssembly.KwArg("key", GlobalAccessExpression("value")),
                         ],
                         GlobalAccessExpression("result"),
                     ),
-                    CallAssembly(
+                    AbstractCallAssembly.IMPLEMENTATION(
                         AttributeAccessExpression(GlobalAccessExpression("test"), "x"),
                         [
-                            CallAssembly.StarArg(LocalAccessExpression("x")),
-                            CallAssembly.Arg(GlobalAccessExpression("b")),
-                            CallAssembly.StarArg(TopOfStackAccessExpression()),
+                            AbstractCallAssembly.StarArg(LocalAccessExpression("x")),
+                            AbstractCallAssembly.Arg(GlobalAccessExpression("b")),
+                            AbstractCallAssembly.StarArg(TopOfStackAccessExpression()),
                         ],
                     ),
                 ]
@@ -379,16 +381,16 @@ OP @lhs[$local.attr] ** @rhs"""
         self.assertEqualList(
             CompoundExpression(
                 [
-                    OpAssembly(
-                        OpAssembly.BinaryOperation(
+                    AbstractOpAssembly.IMPLEMENTATION(
+                        AbstractOpAssembly.BinaryOperation(
                             GlobalAccessExpression("lhs"),
                             "+",
                             GlobalAccessExpression("rhs"),
                         ),
                         GlobalAccessExpression("result"),
                     ),
-                    OpAssembly(
-                        OpAssembly.BinaryOperation(
+                    AbstractOpAssembly.IMPLEMENTATION(
+                        AbstractOpAssembly.BinaryOperation(
                             SubscriptionAccessExpression(
                                 GlobalAccessExpression("lhs"),
                                 AttributeAccessExpression(
@@ -410,8 +412,8 @@ OP @lhs[$local.attr] ** @rhs"""
         self.assertEqualList(
             CompoundExpression(
                 [
-                    PopElementAssembly(IntegerToken("1")),
-                    PopElementAssembly(IntegerToken("10")),
+                    AbstractPopElementAssembly.IMPLEMENTATION(IntegerToken("1")),
+                    AbstractPopElementAssembly.IMPLEMENTATION(IntegerToken("10")),
                 ]
             ),
             expr,
@@ -423,8 +425,8 @@ OP @lhs[$local.attr] ** @rhs"""
         self.assertEqualList(
             CompoundExpression(
                 [
-                    ReturnAssembly(),
-                    ReturnAssembly(GlobalAccessExpression("global")),
+                    AbstractReturnAssembly.IMPLEMENTATION(),
+                    AbstractReturnAssembly.IMPLEMENTATION(GlobalAccessExpression("global")),
                 ]
             ),
             expr,
@@ -438,19 +440,19 @@ OP @lhs[$local.attr] ** @rhs"""
         self.assertEqualList(
             CompoundExpression(
                 [
-                    YieldAssembly(),
-                    YieldAssembly(GlobalAccessExpression("global")),
-                    YieldAssembly(is_star=True),
-                    YieldAssembly(LocalAccessExpression("local"), is_star=True),
-                    YieldAssembly(target=TopOfStackAccessExpression()),
-                    YieldAssembly(
+                    AbstractYieldAssembly.IMPLEMENTATION(),
+                    AbstractYieldAssembly.IMPLEMENTATION(GlobalAccessExpression("global")),
+                    AbstractYieldAssembly.IMPLEMENTATION(is_star=True),
+                    AbstractYieldAssembly.IMPLEMENTATION(LocalAccessExpression("local"), is_star=True),
+                    AbstractYieldAssembly.IMPLEMENTATION(target=TopOfStackAccessExpression()),
+                    AbstractYieldAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"),
                         target=LocalAccessExpression("local"),
                     ),
-                    YieldAssembly(
+                    AbstractYieldAssembly.IMPLEMENTATION(
                         is_star=True, target=GlobalAccessExpression("global")
                     ),
-                    YieldAssembly(
+                    AbstractYieldAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"),
                         True,
                         LocalAccessExpression("local"),
@@ -485,18 +487,18 @@ IF @global 'test'
         self.assertEqualList(
             CompoundExpression(
                 [
-                    IFAssembly(
+                    AbstractIFAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"), CompoundExpression([])
                     ),
-                    IFAssembly(
+                    AbstractIFAssembly.IMPLEMENTATION(
                         LocalAccessExpression("local"),
                         CompoundExpression(
                             [StoreAssembly(GlobalAccessExpression("global"))]
                         ),
                     ),
-                    IFAssembly(
-                        OpAssembly(
-                            OpAssembly.BinaryOperation(
+                    AbstractIFAssembly.IMPLEMENTATION(
+                        AbstractOpAssembly.IMPLEMENTATION(
+                            AbstractOpAssembly.BinaryOperation(
                                 LocalAccessExpression("a"),
                                 "==",
                                 LocalAccessExpression("b"),
@@ -506,9 +508,9 @@ IF @global 'test'
                             [StoreAssembly(GlobalAccessExpression("global"))]
                         ),
                     ),
-                    IFAssembly(
+                    AbstractIFAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"),
-                        CompoundExpression([JumpAssembly("test")]),
+                        CompoundExpression([AbstractJumpAssembly.IMPLEMENTATION("test")]),
                         "test",
                     ),
                 ]
@@ -540,18 +542,18 @@ WHILE $local 'test' {
         self.assertEqualList(
             CompoundExpression(
                 [
-                    WHILEAssembly(
+                    AbstractWhileAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"), CompoundExpression([])
                     ),
-                    WHILEAssembly(
+                    AbstractWhileAssembly.IMPLEMENTATION(
                         LocalAccessExpression("local"),
                         CompoundExpression(
                             [StoreAssembly(GlobalAccessExpression("global"))]
                         ),
                     ),
-                    WHILEAssembly(
-                        OpAssembly(
-                            OpAssembly.BinaryOperation(
+                    AbstractWhileAssembly.IMPLEMENTATION(
+                        AbstractOpAssembly.IMPLEMENTATION(
+                            AbstractOpAssembly.BinaryOperation(
                                 LocalAccessExpression("a"),
                                 "==",
                                 LocalAccessExpression("b"),
@@ -561,7 +563,7 @@ WHILE $local 'test' {
                             [StoreAssembly(GlobalAccessExpression("global"))]
                         ),
                     ),
-                    WHILEAssembly(
+                    AbstractWhileAssembly.IMPLEMENTATION(
                         LocalAccessExpression("local"),
                         CompoundExpression(
                             [StoreAssembly(GlobalAccessExpression("global"))]
@@ -582,33 +584,33 @@ WHILE $local 'test' {
             CompoundExpression(
                 [
                     LabelAssembly("test"),
-                    JumpAssembly("test"),
-                    JumpAssembly("test", GlobalAccessExpression("global")),
-                    JumpAssembly(
+                    AbstractJumpAssembly.IMPLEMENTATION("test"),
+                    AbstractJumpAssembly.IMPLEMENTATION("test", GlobalAccessExpression("global")),
+                    AbstractJumpAssembly.IMPLEMENTATION(
                         "test",
-                        OpAssembly(
-                            OpAssembly.BinaryOperation(
+                        AbstractOpAssembly.IMPLEMENTATION(
+                            AbstractOpAssembly.BinaryOperation(
                                 GlobalAccessExpression("a"),
                                 "==",
                                 GlobalAccessExpression("b"),
                             )
                         ),
                     ),
-                    JumpAssembly("test", GlobalAccessExpression("global")),
-                    JumpAssembly(
+                    AbstractJumpAssembly.IMPLEMENTATION("test", GlobalAccessExpression("global")),
+                    AbstractJumpAssembly.IMPLEMENTATION(
                         "test",
-                        OpAssembly(
-                            OpAssembly.BinaryOperation(
+                        AbstractOpAssembly.IMPLEMENTATION(
+                            AbstractOpAssembly.BinaryOperation(
                                 GlobalAccessExpression("a"),
                                 "==",
                                 GlobalAccessExpression("b"),
                             )
                         ),
                     ),
-                    JumpAssembly(
+                    AbstractJumpAssembly.IMPLEMENTATION(
                         "test",
-                        OpAssembly(
-                            OpAssembly.BinaryOperation(
+                        AbstractOpAssembly.IMPLEMENTATION(
+                            AbstractOpAssembly.BinaryOperation(
                                 GlobalAccessExpression("a"),
                                 "==",
                                 GlobalAccessExpression("b"),
@@ -637,38 +639,38 @@ DEF test <test> () -> @target {}
         self.assertEqualList(
             CompoundExpression(
                 [
-                    FunctionDefinitionAssembly("test", [], [], CompoundExpression([])),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION("test", [], [], CompoundExpression([])),
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test", ["test"], [], CompoundExpression([])
                     ),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test", [("test", True)], [], CompoundExpression([])
                     ),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test", ["test", "test2"], [], CompoundExpression([])
                     ),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test",
                         ["test"],
-                        [CallAssembly.Arg(IdentifierToken("a"))],
+                        [AbstractCallAssembly.Arg(IdentifierToken("a"))],
                         CompoundExpression([]),
                     ),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test",
                         ["test"],
                         [
-                            CallAssembly.Arg(IdentifierToken("a")),
-                            CallAssembly.Arg(IdentifierToken("b")),
+                            AbstractCallAssembly.Arg(IdentifierToken("a")),
+                            AbstractCallAssembly.Arg(IdentifierToken("b")),
                         ],
                         CompoundExpression([]),
                     ),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test",
                         ["test"],
-                        [CallAssembly.KwArg("c", GlobalAccessExpression("d"))],
+                        [AbstractCallAssembly.KwArg("c", GlobalAccessExpression("d"))],
                         CompoundExpression([]),
                     ),
-                    FunctionDefinitionAssembly(
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test",
                         ["test"],
                         [],
