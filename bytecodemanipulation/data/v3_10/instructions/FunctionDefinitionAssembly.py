@@ -1,6 +1,8 @@
 import typing
 
-from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import AbstractFunctionDefinitionAssembly
+from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
+    AbstractFunctionDefinitionAssembly,
+)
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.Parser import Parser

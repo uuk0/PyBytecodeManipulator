@@ -3,9 +3,15 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
+    ConstantAccessExpression,
+)
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
 
 
 class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction):
@@ -50,7 +56,9 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction):
             code_block,
         )
 
-    def __init__(self, name_token: IdentifierToken, parents, code_block: CompoundExpression):
+    def __init__(
+        self, name_token: IdentifierToken, parents, code_block: CompoundExpression
+    ):
         self.name_token = name_token
         self.parents = parents
         self.code_block = code_block

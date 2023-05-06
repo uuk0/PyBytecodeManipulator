@@ -4,7 +4,9 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 
 
 class AbstractReturnAssembly(AbstractAssemblyInstruction):

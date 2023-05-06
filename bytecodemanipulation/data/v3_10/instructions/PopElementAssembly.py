@@ -2,7 +2,9 @@ import typing
 
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.data.shared.instructions.PopElementAssembly import AbstractPopElementAssembly
+from bytecodemanipulation.data.shared.instructions.PopElementAssembly import (
+    AbstractPopElementAssembly,
+)
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 

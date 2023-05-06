@@ -3,7 +3,9 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.data.shared.instructions.JumpAssembly import AbstractJumpAssembly
+from bytecodemanipulation.data.shared.instructions.JumpAssembly import (
+    AbstractJumpAssembly,
+)
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes

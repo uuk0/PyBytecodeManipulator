@@ -5,7 +5,9 @@ from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression impor
 )
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.data.shared.instructions.LoadConstAssembly import AbstractLoadConstAssembly
+from bytecodemanipulation.data.shared.instructions.LoadConstAssembly import (
+    AbstractLoadConstAssembly,
+)
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 

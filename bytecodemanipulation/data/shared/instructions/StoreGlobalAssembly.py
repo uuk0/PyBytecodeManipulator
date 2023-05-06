@@ -8,7 +8,9 @@ from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 
 
 class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction):
@@ -56,9 +58,7 @@ class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction):
         return f"STORE_GLOBAL({self.name_token}, source={self.source or 'TOS'})"
 
     def copy(self) -> "AbstractStoreGlobalAssembly":
-        return type(self)(
-            self.name_token, self.source.copy() if self.source else None
-        )
+        return type(self)(self.name_token, self.source.copy() if self.source else None)
 
     def visit_parts(
         self,

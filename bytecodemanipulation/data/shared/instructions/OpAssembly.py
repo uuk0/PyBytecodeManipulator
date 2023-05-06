@@ -9,7 +9,9 @@ from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.MutableFunction import Instruction
@@ -21,6 +23,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr <expr>
     - -|+|~|not|! <expr>
     """
+
     NAME = "OP"
 
     BINARY_OPS: typing.Dict[
@@ -347,4 +350,3 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             ),
             parents,
         )
-

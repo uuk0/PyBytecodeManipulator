@@ -7,9 +7,15 @@ from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
+from bytecodemanipulation.data.shared.instructions.CallAssembly import (
+    AbstractCallAssembly,
+)
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 
 
@@ -75,9 +81,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction):
                     if default_value is None:
                         raise SyntaxError
 
-                    arg = AbstractCallAssembly.KwArg(
-                        identifier, default_value
-                    )
+                    arg = AbstractCallAssembly.KwArg(identifier, default_value)
 
             if not arg:
                 if star_star:
@@ -122,7 +126,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction):
     def __init__(
         self,
         func_name: IdentifierToken | str | None,
-        bound_variables: typing.List[typing.Tuple[typing.Callable[[ParsingScope], str], bool] | str],
+        bound_variables: typing.List[
+            typing.Tuple[typing.Callable[[ParsingScope], str], bool] | str
+        ],
         args: typing.List[AbstractCallAssembly.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,

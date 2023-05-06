@@ -6,9 +6,15 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
-from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
-from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import GlobalAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
+    ConstantAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import (
+    GlobalAccessExpression,
+)
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 
 
 class AbstractLoadConstAssembly(AbstractAssemblyInstruction):

@@ -6,12 +6,16 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
 
 
 class AbstractForEachAssembly(AbstractAssemblyInstruction):
@@ -38,7 +42,9 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction):
             return bytecode
 
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractForEachAssembly":
+    def consume(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> "AbstractForEachAssembly":
         initial = parser.try_consume_access_to_value()
         if initial is None:
             raise throw_positioned_syntax_error(
@@ -104,7 +110,13 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction):
             scope.last_base_token,
         )
 
-    def __init__(self, variables: typing.List[AbstractAccessExpression], sources: typing.List[AbstractAccessExpression], body: CompoundExpression, base_token: IdentifierToken):
+    def __init__(
+        self,
+        variables: typing.List[AbstractAccessExpression],
+        sources: typing.List[AbstractAccessExpression],
+        body: CompoundExpression,
+        base_token: IdentifierToken,
+    ):
         self.variables = variables
         self.sources = sources
         self.body = body
