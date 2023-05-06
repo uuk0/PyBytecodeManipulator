@@ -1,33 +1,18 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 
 
-@Parser.register
-class StoreFastAssembly(AbstractAssemblyInstruction):
+class AbstractStoreFastAssembly(AbstractAssemblyInstruction):
     # STORE_FAST <name> [<source>]
     NAME = "STORE_FAST"
-
-    @classmethod
-    def consume(cls, parser: "Parser", scope) -> "StoreFastAssembly":
-        parser.try_consume(SpecialToken("$"))
-        name = parser.consume([IdentifierToken, IntegerToken])
-
-        source = parser.try_parse_data_source()
-
-        return cls(name, source)
 
     def __init__(
         self,
@@ -45,6 +30,15 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
         )
         self.source = source
 
+    @classmethod
+    def consume(cls, parser: "Parser", scope) -> "AbstractStoreFastAssembly":
+        parser.try_consume(SpecialToken("$"))
+        name = parser.consume([IdentifierToken, IntegerToken])
+
+        source = parser.try_parse_data_source()
+
+        return cls(name, source)
+
     def __eq__(self, other):
         return (
             type(self) == type(other)
@@ -55,20 +49,8 @@ class StoreFastAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"STORE_FAST({self.name_token}, source={self.source or 'TOS'})"
 
-    def copy(self) -> "StoreFastAssembly":
-        return StoreFastAssembly(self.name, self.source.copy() if self.source else None)
-
-    def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
-        value = self.name_token.text
-
-        if value.isdigit():
-            value = int(value)
-
-        return (
-            [] if self.source is None else self.source.emit_bytecodes(function, scope)
-        ) + [Instruction(function, -1, "STORE_FAST", value)]
+    def copy(self) -> "AbstractStoreFastAssembly":
+        return type(self)(self.name, self.source.copy() if self.source else None)
 
     def visit_parts(
         self,
