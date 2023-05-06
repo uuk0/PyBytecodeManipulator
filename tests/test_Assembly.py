@@ -34,7 +34,7 @@ from bytecodemanipulation.data.v3_10.instructions.store_global_assembly import (
 )
 from bytecodemanipulation.data.v3_10.instructions.while_assembly import WHILEAssembly
 from bytecodemanipulation.data.v3_10.instructions.yield_assembly import YieldAssembly
-from bytecodemanipulation.data.v3_10.instructions.op_assembly import OpAssembly
+from bytecodemanipulation.data.v3_10.instructions.OpAssembly import OpAssembly
 from bytecodemanipulation.data.v3_10.instructions.CallAssembly import CallAssembly
 from bytecodemanipulation.MutableFunction import MutableFunction
 

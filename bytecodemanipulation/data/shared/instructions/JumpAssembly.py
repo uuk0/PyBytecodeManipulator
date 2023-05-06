@@ -7,7 +7,7 @@ from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.shared.instructions.OpAssembly import OpAssembly
+from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
 
 
 class AbstractJumpAssembly(AbstractAssemblyInstruction):
@@ -35,7 +35,7 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction):
 
             if condition is None or not parser.try_consume(SpecialToken(")")):
                 parser.rollback()
-                condition = OpAssembly.IMPLEMENTATION.consume(parser, None)
+                condition = AbstractOpAssembly.IMPLEMENTATION.consume(parser, None)
                 parser.consume(SpecialToken(")"))
             else:
                 parser.discard_save()

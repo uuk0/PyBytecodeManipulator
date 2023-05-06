@@ -1,30 +1,26 @@
+import typing
 import abc
 import typing
 
 from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.MutableFunction import Instruction
 
 
-@Parser.register
-class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
+class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
     """
     OP ... [-> <target>]
     - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr <expr>
     - -|+|~|not|! <expr>
     """
-
     NAME = "OP"
 
     BINARY_OPS: typing.Dict[
@@ -40,63 +36,8 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             ],
             Instruction | typing.List[Instruction],
         ],
-    ] = {
-        "+": Opcodes.BINARY_ADD,
-        "-": Opcodes.BINARY_SUBTRACT,
-        "*": Opcodes.BINARY_MULTIPLY,
-        "/": Opcodes.BINARY_TRUE_DIVIDE,
-        "//": Opcodes.BINARY_FLOOR_DIVIDE,
-        "**": Opcodes.BINARY_MULTIPLY,
-        "%": Opcodes.BINARY_MODULO,
-        "&": Opcodes.BINARY_AND,
-        "|": Opcodes.BINARY_OR,
-        "^": Opcodes.BINARY_XOR,
-        ">>": Opcodes.BINARY_RSHIFT,
-        "<<": Opcodes.BINARY_LSHIFT,
-        "@": Opcodes.BINARY_MATRIX_MULTIPLY,
-        "is": (Opcodes.IS_OP, 0),
-        "!is": (Opcodes.IS_OP, 1),
-        "in": (Opcodes.CONTAINS_OP, 0),
-        "!in": (Opcodes.CONTAINS_OP, 1),
-        "<": (Opcodes.COMPARE_OP, 0),
-        "<=": (Opcodes.COMPARE_OP, 1),
-        "==": (Opcodes.COMPARE_OP, 2),
-        "!=": (Opcodes.COMPARE_OP, 3),
-        ">": (Opcodes.COMPARE_OP, 4),
-        ">=": (Opcodes.COMPARE_OP, 5),
-        # todo: is there a better way?
-        "xor": (Opcodes.COMPARE_OP, 3),
-        "!xor": (Opcodes.COMPARE_OP, 2),
-        ":=": lambda lhs, rhs, function, scope: rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.DUP_TOP)]
-        + lhs.emit_store_bytecodes(function, scope),
-        "isinstance": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)
-        ]
-        + lhs.emit_bytecodes(function, scope)
-        + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-        "issubclass": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, issubclass)
-        ]
-        + lhs.emit_bytecodes(function, scope)
-        + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-        "hasattr": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)
-        ]
-        + lhs.emit_bytecodes(function, scope)
-        + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-        "getattr": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, getattr)
-        ]
-        + lhs.emit_bytecodes(function, scope)
-        + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
-    }
+    ] = {}
 
-    # todo: parse and implement
     SINGLE_OPS: typing.Dict[
         str,
         typing.Tuple[int, int]
@@ -105,15 +46,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             [AbstractAccessExpression, MutableFunction, ParsingScope],
             Instruction | typing.List[Instruction],
         ],
-    ] = {
-        "-": Opcodes.UNARY_NEGATIVE,
-        "+": Opcodes.UNARY_POSITIVE,
-        "~": Opcodes.UNARY_INVERT,
-        "not": Opcodes.UNARY_NOT,
-        "!": Opcodes.UNARY_NOT,
-    }
-
-    # todo: and, or, nand, nor, inplace variants
+    ] = {}
 
     class IOperation(IAssemblyStructureVisitable, abc.ABC):
         def copy(self):
@@ -135,9 +68,11 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             self,
             operator: str,
             expression: AbstractAccessExpression,
+            base: typing.Type["AbstractOpAssembly"] = None,
         ):
             self.operator = operator
             self.expression = expression
+            self.base = base
 
         def __eq__(self, other):
             return (
@@ -155,7 +90,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
-            opcode_info = OpAssembly.SINGLE_OPS[self.operator]
+            opcode_info = self.base.SINGLE_OPS[self.operator]
 
             if callable(opcode_info):
                 result = opcode_info(self.expression, function, scope)
@@ -199,7 +134,9 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             lhs: AbstractAccessExpression,
             operator: str,
             rhs: AbstractAccessExpression,
+            base: typing.Type["AbstractOpAssembly"] = None,
         ):
+            self.base = base
             self.lhs = lhs
             self.operator = operator
             self.rhs = rhs
@@ -221,7 +158,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
-            opcode_info = OpAssembly.BINARY_OPS[self.operator]
+            opcode_info = self.base.BINARY_OPS[self.operator]
 
             if callable(opcode_info):
                 result = opcode_info(self.lhs, self.rhs, function, scope)
@@ -309,7 +246,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             if expression is None:
                 parser.rollback()
 
-            return cls.SingleOperation(expr.text, expression)
+            return cls.SingleOperation(expr.text, expression, base=cls)
 
     @classmethod
     def try_consume_binary(cls, parser: "Parser") -> typing.Optional[IOperation]:
@@ -349,7 +286,7 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
 
         parser.discard_save()
 
-        return OpAssembly.BinaryOperation(lhs, OP_NAME, rhs)
+        return AbstractOpAssembly.BinaryOperation(lhs, OP_NAME, rhs, base=cls)
 
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None
@@ -360,8 +297,8 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
         self.operation = operation
         self.target = target
 
-    def copy(self) -> "OpAssembly":
-        return OpAssembly(
+    def copy(self) -> "AbstractOpAssembly":
+        return type(self)(
             self.operation.copy(), self.target.copy() if self.target else None
         )
 
@@ -410,3 +347,4 @@ class OpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
             ),
             parents,
         )
+

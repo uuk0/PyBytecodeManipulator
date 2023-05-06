@@ -16,7 +16,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     load_fast_assembly,
     load_global_assembly,
     macro_return_assembly,
-    op_assembly,
+    OpAssembly,
     pop_element_assembly,
     raise_assembly,
     return_assembly,
