@@ -1,41 +1,18 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 
 
-@Parser.register
-class LoadFastAssembly(AbstractAssemblyInstruction):
-    # LOAD_FAST <name> [-> <target>]
+class AbstractLoadFastAssembly(AbstractAssemblyInstruction):
+    # # LOAD_FAST <name> [-> <target>]
     NAME = "LOAD_FAST"
-
-    @classmethod
-    def consume(cls, parser: "Parser", scope) -> "LoadFastAssembly":
-        parser.try_consume(SpecialToken("$"))
-        name = parser.consume([IdentifierToken, IntegerToken])
-
-        if parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
-            target = parser.try_consume_access_to_value(scope=scope)
-        else:
-            target = None
-
-        return cls(name, target)
 
     def __init__(
         self,
@@ -53,6 +30,23 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
         )
         self.target = target
 
+    @classmethod
+    def consume(cls, parser: "Parser", scope) -> "AbstractLoadFastAssembly":
+        parser.try_consume(SpecialToken("$"))
+        name = parser.consume([IdentifierToken, IntegerToken])
+
+        if parser.try_consume_multi(
+            [
+                SpecialToken("-"),
+                SpecialToken(">"),
+            ]
+        ):
+            target = parser.try_consume_access_to_value(scope=scope)
+        else:
+            target = None
+
+        return cls(name, target)
+
     def __eq__(self, other):
         return (
             type(self) == type(other)
@@ -63,20 +57,8 @@ class LoadFastAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"LOAD_GLOBAL({self.name_token}{', ' + repr(self.target) if self.target else ''})"
 
-    def copy(self) -> "LoadFastAssembly":
-        return LoadFastAssembly(self.name_token, self.target)
-
-    def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
-        value = self.name_token.text
-
-        if value.isdigit():
-            value = int(value)
-
-        return [Instruction(function, -1, "LOAD_FAST", value)] + (
-            self.target.emit_bytecodes(function, scope) if self.target else []
-        )
+    def copy(self) -> "AbstractLoadFastAssembly":
+        return type(self)(self.name_token, self.target)
 
     def visit_parts(
         self,

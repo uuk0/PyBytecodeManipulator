@@ -11,14 +11,14 @@ from bytecodemanipulation.data.v3_10.instructions.FunctionDefinitionAssembly imp
 )
 from bytecodemanipulation.data.v3_10.instructions.IfAssembly import IFAssembly
 from bytecodemanipulation.data.v3_10.instructions.JumpAssembly import JumpAssembly
-from bytecodemanipulation.data.v3_10.instructions.load_assembly import LoadAssembly
-from bytecodemanipulation.data.v3_10.instructions.load_const_assembly import (
+from bytecodemanipulation.data.shared.instructions.LoadAssembly import LoadAssembly
+from bytecodemanipulation.data.v3_10.instructions.LoadConstAssembly import (
     LoadConstAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.load_fast_assembly import (
+from bytecodemanipulation.data.v3_10.instructions.LoadFastAssembly import (
     LoadFastAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.load_global_assembly import (
+from bytecodemanipulation.data.v3_10.instructions.LoadGlobalAssembly import (
     LoadGlobalAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions.pop_element_assembly import (

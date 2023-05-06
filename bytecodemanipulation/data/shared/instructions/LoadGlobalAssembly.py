@@ -1,28 +1,38 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 
 
-@Parser.register
-class LoadGlobalAssembly(AbstractAssemblyInstruction):
-    # LOAD_GLOBAL <name> [-> <target>]
+class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction):
+    # # LOAD_GLOBAL <name> [-> <target>]
     NAME = "LOAD_GLOBAL"
 
+    def __init__(
+        self,
+        name_token: IdentifierToken | IntegerToken | str | int,
+        target: AbstractAccessExpression | None = None,
+    ):
+        self.name_token = (
+            name_token
+            if not isinstance(name_token, (str, int))
+            else (
+                IdentifierToken(name_token)
+                if isinstance(name_token, str)
+                else IntegerToken(str(name_token))
+            )
+        )
+        self.target = target
+
     @classmethod
-    def consume(cls, parser: "Parser", scope) -> "LoadGlobalAssembly":
+    def consume(cls, parser: "Parser", scope) -> "AbstractLoadGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
 
         name = parser.try_consume([IdentifierToken, IntegerToken])
@@ -51,22 +61,6 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
 
         return cls(name, target)
 
-    def __init__(
-        self,
-        name_token: IdentifierToken | IntegerToken | str | int,
-        target: AbstractAccessExpression | None = None,
-    ):
-        self.name_token = (
-            name_token
-            if not isinstance(name_token, (str, int))
-            else (
-                IdentifierToken(name_token)
-                if isinstance(name_token, str)
-                else IntegerToken(str(name_token))
-            )
-        )
-        self.target = target
-
     def __eq__(self, other):
         return (
             type(self) == type(other)
@@ -77,20 +71,8 @@ class LoadGlobalAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"LOAD_GLOBAL({self.name_token}{', ' + repr(self.target) if self.target else ''})"
 
-    def copy(self) -> "LoadGlobalAssembly":
-        return LoadGlobalAssembly(self.name_token, self.target)
-
-    def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
-        value = self.name_token.text
-
-        if value.isdigit():
-            value = int(value)
-
-        return [Instruction(function, -1, "LOAD_GLOBAL", value)] + (
-            self.target.emit_bytecodes(function, scope) if self.target else []
-        )
+    def copy(self) -> "AbstractLoadGlobalAssembly":
+        return type(self)(self.name_token, self.target)
 
     def visit_parts(
         self,
