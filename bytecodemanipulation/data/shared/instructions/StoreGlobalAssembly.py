@@ -9,7 +9,6 @@ from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
-from bytecodemanipulation.data.v3_10.instructions.StoreGlobalAssembly import StoreGlobalAssembly
 
 
 class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction):

@@ -1,31 +1,37 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
-    CompoundExpression,
-)
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.Lexer import SpecialToken
+from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
 
 
-@Parser.register
-class WHILEAssembly(AbstractAssemblyInstruction):
-    # WHILE <expression> ['\'' <label name> '\''] '{' <body> '}'
+class AbstractWhileAssembly(AbstractAssemblyInstruction):
+    # # WHILE <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "WHILE"
 
+    def __init__(
+        self,
+        source: AbstractSourceExpression,
+        body: CompoundExpression,
+        label_name: IdentifierToken | str | None = None,
+    ):
+        self.source = source
+        self.body = body
+        self.label_name = (
+            label_name
+            if not isinstance(label_name, str)
+            else IdentifierToken(label_name)
+        )
+
     @classmethod
-    def consume(cls, parser: "Parser", scope: ParsingScope) -> "WHILEAssembly":
+    def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractWhileAssembly":
         condition = parser.try_parse_data_source(
             allow_primitives=True, include_bracket=False, scope=scope
         )
@@ -52,20 +58,6 @@ class WHILEAssembly(AbstractAssemblyInstruction):
             label_name,
         )
 
-    def __init__(
-        self,
-        source: AbstractSourceExpression,
-        body: CompoundExpression,
-        label_name: IdentifierToken | str | None = None,
-    ):
-        self.source = source
-        self.body = body
-        self.label_name = (
-            label_name
-            if not isinstance(label_name, str)
-            else IdentifierToken(label_name)
-        )
-
     def copy(self):
         return type(self)(self.source.copy(), self.body.copy(), self.label_name)
 
@@ -80,41 +72,6 @@ class WHILEAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         c = "'"
         return f"WHILE({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
-
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
-        if self.label_name is None:
-            end = Instruction(function, -1, "NOP")
-        else:
-            end = Instruction(
-                function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END"
-            )
-
-        CONDITION = self.source.emit_bytecodes(function, scope)
-
-        if self.label_name:
-            CONDITION.insert(
-                0,
-                Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text),
-            )
-
-        HEAD = Instruction(function, -1, "POP_JUMP_IF_FALSE", end)
-
-        BODY = self.body.emit_bytecodes(function, scope)
-
-        if self.label_name:
-            BODY.insert(
-                0,
-                Instruction(
-                    function,
-                    -1,
-                    Opcodes.BYTECODE_LABEL,
-                    self.label_name.text + "_INNER",
-                ),
-            )
-
-        JUMP_BACK = Instruction(function, -1, "JUMP_ABSOLUTE", CONDITION[0])
-
-        return CONDITION + [HEAD] + BODY + [JUMP_BACK, end]
 
     def visit_parts(
         self,
