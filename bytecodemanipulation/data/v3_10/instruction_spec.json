@@ -69,6 +69,7 @@
   "HAS_CELL_VARIABLE": [
     "LOAD_DEREF",
     "STORE_DEREF",
-    "DELETE_DEREF"
+    "DELETE_DEREF",
+    "LOAD_CLOSURE"
   ]
 }

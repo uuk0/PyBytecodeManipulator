@@ -2256,8 +2256,29 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
         inner_scope = scope.copy()
 
-        target = MutableFunction(lambda: None)
-        inner_bytecode = self.body.emit_bytecodes(target, inner_scope)
+        if self.bound_variables:
+            if any(map(lambda e: e[1], self.bound_variables)):
+                raise NotImplementedError("Static variables")
+
+            names = [e[0](scope) for e in self.bound_variables]
+            s = {}
+            exec(f"{' = '.join(names)} = None\nresult = lambda: ({', '.join(names)})", s)
+            tar = s["result"]
+        else:
+            tar = lambda: None
+
+        target = MutableFunction(tar)
+        inner_bytecode = []
+
+        if self.bound_variables:
+            for name, is_static in self.bound_variables:
+                print(name, name(scope), is_static)
+                inner_bytecode += [
+                    Instruction(target, -1, Opcodes.LOAD_DEREF, name(scope) + "%inner"),
+                    Instruction(target, -1, Opcodes.STORE_DEREF, name(scope)),
+                ]
+
+        inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
         inner_bytecode[-1].next_instruction = target.instructions[0]
 
         for i, instr in enumerate(inner_bytecode[:-1]):
@@ -2296,16 +2317,19 @@ class FunctionDefinitionAssembly(AbstractAssemblyInstruction):
 
             flags |= 0x08
 
-            macro_params = tuple()
+            for name, is_static in self.bound_variables:
+                bytecode += [
+                    Instruction(function, -1, Opcodes.LOAD_FAST, name(scope)),
+                    Instruction(function, -1, Opcodes.STORE_DEREF, name(scope)+"%inner"),
+                ]
 
             bytecode += [
-                Instruction(
-                    function,
-                    -1,
-                    "LOAD_CONST",
-                    tuple((e[0](scope) for e in self.bound_variables)) + macro_params,
-                ),
+                Instruction(function, -1, Opcodes.LOAD_CLOSURE, name(scope)+"%inner")
+                for name, is_static in self.bound_variables
             ]
+            bytecode.append(
+                Instruction(function, -1, Opcodes.BUILD_TUPLE, arg=len(self.bound_variables))
+            )
 
         target.argument_count = len(self.args)
         code_object = target.create_code_obj()
