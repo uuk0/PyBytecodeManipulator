@@ -8,7 +8,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 
 
 class AbstractRaiseAssembly(AbstractAssemblyInstruction, abc.ABC):
-    # # RAISE [<source>]
+    # RAISE [<source>]
     NAME = "RAISE"
 
     def __init__(self, source):

@@ -1693,3 +1693,33 @@ FOREACH $p IN $iterable * $iterable_2
         mutable.reassign_to_function()
 
         self.assertEqual(target(), [0, 0, 1, 2])
+
+    def test_raw_assembly_by_id(self):
+        def target():
+            assembly("""
+LOAD 10
+LOAD 5
+RAW 2
+RETURN %
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 10)
+
+    def test_raw_assembly_by_name(self):
+        def target():
+            assembly("""
+LOAD 10
+LOAD 5
+RAW ROT_TWO
+RETURN %
+""")
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        self.assertEqual(target(), 10)

@@ -6,6 +6,7 @@ from bytecodemanipulation.data.shared.instructions import (
     LoadAssembly,
     StoreAssembly,
     MacroReturnAssembly,
+    RawAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions import (
     CallAssembly,
