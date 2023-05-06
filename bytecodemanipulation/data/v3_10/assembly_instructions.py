@@ -7,7 +7,7 @@ from bytecodemanipulation.data.shared.instructions import (
 from bytecodemanipulation.data.v3_10.instructions import (
     CallAssembly,
     ClassDefinitionAssembly,
-    for_each_assembly,
+    ForEachAssembly,
     function_definition_assembly,
     if_assembly,
     jump_assembly,
