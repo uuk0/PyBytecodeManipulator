@@ -64,6 +64,7 @@ for cross-version support.
 * POP \[\<count = 1>]: Pops 'count' elements from the stack and discards them
 * RETURN \[\<expression>]: Returns the value from TOS or from 'expression'
 * YIELD \[*] \[\<expression>] \['->' \<target>]: Yields the value from TOS or from 'expression'; Writes the result into 'target', default is discard; * means 'yield from'
+* RAW \<opcode> \[\<arg>]
 
 ## Python opcodes not having a corresponding assembly instruction
 
@@ -106,8 +107,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - AWAIT \<expr> \['->' \<target>] and as an expression
 - AWAIT '\*' ('(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')') | ('(' \<expr> {\<expr>} ')' \['->' \<target>]) | (\<expr> \['->' \<target>]) (* = asyncio.gather(...))
 - WITH '(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')' '{' \<body> '}' with special handling for jumps (trigger exit or disable exit)
-- RAW \<opcode> \[\<arg> | \<arg value> | \<internal name>]
-  - RESERVE \<value> \['->' \<internal name>]
 - CALL INLINE
 - CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
 - More Macro Arg Types:
