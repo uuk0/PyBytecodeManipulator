@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
@@ -16,7 +17,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractIFAssembly(AbstractAssemblyInstruction):
+class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
     # IF <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "IF"
 

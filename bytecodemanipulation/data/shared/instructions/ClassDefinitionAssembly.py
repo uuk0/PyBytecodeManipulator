@@ -1,3 +1,5 @@
+import abc
+
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
@@ -14,7 +16,7 @@ from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
 )
 
 
-class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction):
+class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     # CLASS <name> ['(' [<parent> {',' <parent>}] ')'] '{' ... '}'
     NAME = "CLASS"
 

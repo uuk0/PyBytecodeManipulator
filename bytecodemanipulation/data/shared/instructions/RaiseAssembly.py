@@ -1,3 +1,5 @@
+import abc
+
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -5,7 +7,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractRaiseAssembly(AbstractAssemblyInstruction):
+class AbstractRaiseAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # RAISE [<source>]
     NAME = "RAISE"
 

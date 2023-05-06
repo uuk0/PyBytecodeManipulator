@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
@@ -9,7 +10,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractReturnAssembly(AbstractAssemblyInstruction):
+class AbstractReturnAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # RETURN [<expr>]
     NAME = "RETURN"
 

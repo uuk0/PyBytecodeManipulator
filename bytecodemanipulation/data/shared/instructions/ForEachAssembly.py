@@ -1,3 +1,4 @@
+import abc
 import itertools
 import typing
 
@@ -18,7 +19,7 @@ from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
 )
 
 
-class AbstractForEachAssembly(AbstractAssemblyInstruction):
+class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
     # FOREACH <variable> {',' <variable>} IN <iterable> {(',' | '*') <iterable>} '{' <block> '}'
     NAME = "FOREACH"
 

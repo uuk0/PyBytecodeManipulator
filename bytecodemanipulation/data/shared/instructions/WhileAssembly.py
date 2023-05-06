@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
@@ -16,7 +17,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractWhileAssembly(AbstractAssemblyInstruction):
+class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # WHILE <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "WHILE"
 

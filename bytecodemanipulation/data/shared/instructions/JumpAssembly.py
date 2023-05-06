@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
@@ -12,7 +13,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
 
 
-class AbstractJumpAssembly(AbstractAssemblyInstruction):
+class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
     NAME = "JUMP"
 
     @classmethod

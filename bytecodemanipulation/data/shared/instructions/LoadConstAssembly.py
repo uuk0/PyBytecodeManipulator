@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
@@ -17,7 +18,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractLoadConstAssembly(AbstractAssemblyInstruction):
+class AbstractLoadConstAssembly(AbstractAssemblyInstruction, abc.ABC):
     # LOAD_CONST <expression> | @<global const source> [-> <target>]
     NAME = "LOAD_CONST"
 

@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
@@ -13,7 +14,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction):
+class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # LOAD_GLOBAL <name> [-> <target>]
     NAME = "LOAD_GLOBAL"
 

@@ -1,3 +1,5 @@
+import abc
+
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -5,7 +7,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractPopElementAssembly(AbstractAssemblyInstruction):
+class AbstractPopElementAssembly(AbstractAssemblyInstruction, abc.ABC):
     # POP [<count>]
     NAME = "POP"
 

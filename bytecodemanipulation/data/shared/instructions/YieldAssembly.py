@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
@@ -11,7 +12,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractYieldAssembly(AbstractAssemblyInstruction):
+class AbstractYieldAssembly(AbstractAssemblyInstruction, abc.ABC):
     # YIELD [*] [<expr>] [-> <target>]
     NAME = "YIELD"
 

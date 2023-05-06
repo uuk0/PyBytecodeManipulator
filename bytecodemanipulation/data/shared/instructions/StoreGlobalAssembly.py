@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
@@ -13,7 +14,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction):
+class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
     # STORE_GLOBAL <name> [<source>]
     NAME = "STORE_GLOBAL"
 

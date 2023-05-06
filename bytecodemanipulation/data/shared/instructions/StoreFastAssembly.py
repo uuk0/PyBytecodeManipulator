@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
@@ -12,7 +13,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractStoreFastAssembly(AbstractAssemblyInstruction):
+class AbstractStoreFastAssembly(AbstractAssemblyInstruction, abc.ABC):
     # STORE_FAST <name> [<source>]
     NAME = "STORE_FAST"
 

@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
@@ -19,7 +20,7 @@ from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 
 
-class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction):
+class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     # DEF [<func name>] ['<' ['!'] <bound variables\> '>'] '(' <signature> ')' ['->' <target>] '{' <body> '}'
     NAME = "DEF"
 

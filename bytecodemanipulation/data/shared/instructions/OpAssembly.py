@@ -17,7 +17,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.MutableFunction import Instruction
 
 
-class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression):
+class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, abc.ABC):
     """
     OP ... [-> <target>]
     - <expr> +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr <expr>

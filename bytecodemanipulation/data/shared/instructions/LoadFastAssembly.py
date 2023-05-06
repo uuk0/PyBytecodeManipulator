@@ -1,3 +1,4 @@
+import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
@@ -12,7 +13,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 )
 
 
-class AbstractLoadFastAssembly(AbstractAssemblyInstruction):
+class AbstractLoadFastAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # LOAD_FAST <name> [-> <target>]
     NAME = "LOAD_FAST"
 
