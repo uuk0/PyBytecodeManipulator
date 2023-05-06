@@ -1,39 +1,20 @@
 import typing
 
-from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
-    AbstractAssemblyInstruction,
-)
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
-from bytecodemanipulation.MutableFunction import Instruction
-from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.v3_10.instructions.StoreGlobalAssembly import StoreGlobalAssembly
 
 
-@Parser.register
-class StoreGlobalAssembly(AbstractAssemblyInstruction):
+class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction):
     # STORE_GLOBAL <name> [<source>]
     NAME = "STORE_GLOBAL"
-
-    @classmethod
-    def consume(cls, parser: "Parser", scope) -> "StoreGlobalAssembly":
-        parser.try_consume(SpecialToken("@"))
-        name = parser.try_consume([IdentifierToken, IntegerToken])
-
-        if name is None:
-            raise throw_positioned_syntax_error(
-                scope, parser.try_inspect(), "expected <name> or <integer>"
-            )
-
-        source = parser.try_parse_data_source()
-
-        return cls(name, source)
 
     def __init__(
         self,
@@ -51,6 +32,20 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         )
         self.source = source
 
+    @classmethod
+    def consume(cls, parser: "Parser", scope) -> "AbstractStoreGlobalAssembly":
+        parser.try_consume(SpecialToken("@"))
+        name = parser.try_consume([IdentifierToken, IntegerToken])
+
+        if name is None:
+            raise throw_positioned_syntax_error(
+                scope, parser.try_inspect(), "expected <name> or <integer>"
+            )
+
+        source = parser.try_parse_data_source()
+
+        return cls(name, source)
+
     def __eq__(self, other):
         return (
             type(self) == type(other)
@@ -61,22 +56,10 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
     def __repr__(self):
         return f"STORE_GLOBAL({self.name_token}, source={self.source or 'TOS'})"
 
-    def copy(self) -> "StoreGlobalAssembly":
-        return StoreGlobalAssembly(
-            self.name, self.source.copy() if self.source else None
+    def copy(self) -> "AbstractStoreGlobalAssembly":
+        return type(self)(
+            self.name_token, self.source.copy() if self.source else None
         )
-
-    def emit_bytecodes(
-        self, function: MutableFunction, scope: ParsingScope
-    ) -> typing.List[Instruction]:
-        value = self.name_token.text
-
-        if value.isdigit():
-            value = int(value)
-
-        return (
-            [] if self.source is None else self.source.emit_bytecodes(function, scope)
-        ) + [Instruction(function, -1, "STORE_GLOBAL", value)]
 
     def visit_parts(
         self,
@@ -87,5 +70,5 @@ class StoreGlobalAssembly(AbstractAssemblyInstruction):
         parents: list,
     ):
         return visitor(
-            self, (self.source.visit_parts(visitor) if self.target else None,)
+            self, (self.source.visit_parts(visitor, []) if self.source else None,)
         )

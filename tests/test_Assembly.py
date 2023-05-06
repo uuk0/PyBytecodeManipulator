@@ -29,7 +29,7 @@ from bytecodemanipulation.data.shared.instructions.StoreAssembly import StoreAss
 from bytecodemanipulation.data.v3_10.instructions.StoreFastAssembly import (
     StoreFastAssembly,
 )
-from bytecodemanipulation.data.v3_10.instructions.store_global_assembly import (
+from bytecodemanipulation.data.v3_10.instructions.StoreGlobalAssembly import (
     StoreGlobalAssembly,
 )
 from bytecodemanipulation.data.v3_10.instructions.while_assembly import WHILEAssembly

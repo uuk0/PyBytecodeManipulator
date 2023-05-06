@@ -22,7 +22,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     RaiseAssembly,
     ReturnAssembly,
     StoreFastAssembly,
-    store_global_assembly,
+    StoreGlobalAssembly,
     while_assembly,
     yield_assembly,
 )
