@@ -117,3 +117,13 @@ def configurate_makro_parameter(name: str | int, config_pattern: typing.Type):
         return function
 
     return annotation
+
+
+def apply_operations(target: typing.Callable):
+    from bytecodemanipulation.MutableFunction import MutableFunction
+    from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
+
+    mutable = MutableFunction(target)
+    apply_inline_assemblies(mutable)
+    mutable.reassign_to_function()
+    return target
