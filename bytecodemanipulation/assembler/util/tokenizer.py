@@ -1,5 +1,6 @@
 import abc
 import typing
+from collections import namedtuple
 
 from .CommonUtil import AbstractCursorStateItem
 

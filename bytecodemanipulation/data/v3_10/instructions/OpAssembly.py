@@ -168,6 +168,45 @@ class ProdOperator(AbstractOperator):
         return bytecode
 
 
+class AvgOperator(AbstractOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> typing.List[Instruction]:
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        bytecode = parameters[0].emit_bytecodes(function, scope)
+
+        for param in parameters[1:]:
+            bytecode += param.emit_bytecodes(function, scope)
+            bytecode.append(Instruction(function, -1, Opcodes.BINARY_ADD))
+
+        bytecode += [
+            Instruction(function, -1, Opcodes.LOAD_CONST, len(parameters)),
+            Instruction(function, -1, Opcodes.BINARY_TRUE_DIVIDE),
+        ]
+
+        return bytecode
+
+
+class AvgIOperator(AbstractOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> \
+    typing.List[Instruction]:
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        bytecode = parameters[0].emit_bytecodes(function, scope)
+
+        for param in parameters[1:]:
+            bytecode += param.emit_bytecodes(function, scope)
+            bytecode.append(Instruction(function, -1, Opcodes.BINARY_ADD))
+
+        bytecode += [
+            Instruction(function, -1, Opcodes.LOAD_CONST, len(parameters)),
+            Instruction(function, -1, Opcodes.BINARY_FLOOR_DIVIDE),
+        ]
+
+        return bytecode
+
+
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
@@ -223,6 +262,8 @@ class OpAssembly(AbstractOpAssembly):
     PREFIX_OPERATORS = {
         "sum": (SumOperator(), None, True, True),
         "prod": (ProdOperator(), None, True, True),
+        "avg": (AvgOperator(), None, True, True),
+        "avgi": (AvgIOperator(), None, True, True),
     }
 
     # todo: inplace variants

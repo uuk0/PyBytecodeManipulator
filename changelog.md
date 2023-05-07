@@ -2,7 +2,7 @@
 # Version 0.2.9
 - added RAW assembly instruction
 - refactored operator system
-- added new operators: and, or, nand, nor, =:, sum, prod 
+- added new operators: and, or, nand, nor, =:, sum, prod, avg, avgi
 - removed operator: getattr
 - rewritten operator: xor, xnor (now using \_\_bool__ instead of \_\_eq__)
 - classes do no longer have their own namespace, if you still want a namespace, you may use '\<' \<namespace name> '\>' after the class name
