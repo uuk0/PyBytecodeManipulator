@@ -117,6 +117,17 @@ class SubclassOfChecker(AbstractCustomOperator):
         return bytecode
 
 
+class HasattrChecker(AbstractCustomOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.LOAD_CONST, hasattr),
+            Instruction(function, -1, Opcodes.ROT_THREE),
+            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2),
+        ]
+        return bytecode
+
+
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
@@ -151,12 +162,7 @@ class OpAssembly(AbstractOpAssembly):
         "instanceof": InstanceOfChecker(),
         "issubclass": SubclassOfChecker(),
         "subclassof": SubclassOfChecker(),
-        "hasattr": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)
-        ]
-        + lhs.emit_bytecodes(function, scope)
-        + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        "hasattr": HasattrChecker(),
         "getattr": lambda lhs, rhs, function, scope: [
             Instruction(function, -1, Opcodes.LOAD_CONST, getattr)
         ]

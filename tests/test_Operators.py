@@ -299,3 +299,17 @@ class TestOperators(TestCase):
 
         self.assertFalse(target())
 
+    def test_hasattr_operator_true(self):
+        @apply_operations
+        def target():
+            assembly('RETURN OP ("test" hasattr "upper")')
+
+        self.assertTrue(target())
+
+    def test_hasattr_operator_false(self):
+        @apply_operations
+        def target():
+            assembly('RETURN OP ("test" hasattr "uper")')
+
+        self.assertFalse(target())
+
