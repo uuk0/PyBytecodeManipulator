@@ -271,6 +271,15 @@ class TestOperators(TestCase):
 
         self.assertEqual(target(), 1)
 
+    def test_walrus_operator_inverse_simple(self):
+        @apply_operations
+        def target():
+            a = 0
+            assembly("OP 1 =: $a -> \\")
+            return a
+
+        self.assertEqual(target(), 1)
+
     def test_instanceof_operator_true(self):
         @apply_operations
         def target():

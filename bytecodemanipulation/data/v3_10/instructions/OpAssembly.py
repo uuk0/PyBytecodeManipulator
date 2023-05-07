@@ -95,6 +95,17 @@ class WalrusOperator(AbstractCustomOperator):
         return bytecode
 
 
+class InverseWalrusOperator(AbstractCustomOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        bytecode = lhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.DUP_TOP),
+        ]
+        bytecode += rhs.emit_store_bytecodes(function, scope)
+        return bytecode
+
+
+
 class InstanceOfChecker(AbstractCustomOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
@@ -158,6 +169,7 @@ class OpAssembly(AbstractOpAssembly):
         "!xor": XNOROperator(),
         "xnor": XNOROperator(),
         ":=": WalrusOperator(),
+        "=:": InverseWalrusOperator(),
         "isinstance": InstanceOfChecker(),
         "instanceof": InstanceOfChecker(),
         "issubclass": SubclassOfChecker(),
