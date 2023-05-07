@@ -85,6 +85,16 @@ class XNOROperator(AbstractCustomOperator):
         return bytecode
 
 
+class WalrusOperator(AbstractCustomOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        bytecode = rhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.DUP_TOP),
+        ]
+        bytecode += lhs.emit_store_bytecodes(function, scope)
+        return bytecode
+
+
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
@@ -114,9 +124,7 @@ class OpAssembly(AbstractOpAssembly):
         "xor": XOROperator(),
         "!xor": XNOROperator(),
         "xnor": XNOROperator(),
-        ":=": lambda lhs, rhs, function, scope: rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.DUP_TOP)]
-        + lhs.emit_store_bytecodes(function, scope),
+        ":=": WalrusOperator(),
         "isinstance": lambda lhs, rhs, function, scope: [
             Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)
         ]

@@ -262,3 +262,12 @@ class TestOperators(TestCase):
 
         self.assertTrue(target())
 
+    def test_walrus_operator_simple(self):
+        @apply_operations
+        def target():
+            a = 0
+            assembly("OP $a := 1 -> \\")
+            return a
+
+        self.assertEqual(target(), 1)
+
