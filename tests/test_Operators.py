@@ -322,3 +322,17 @@ class TestOperators(TestCase):
 
         self.assertFalse(target())
 
+    def test_sum_operator_basic(self):
+        @apply_operations
+        def target():
+            assembly('RETURN OP (sum (1, 1))')
+
+        self.assertEqual(target(), 2)
+
+    def test_sum_operator_advanced(self):
+        @apply_operations
+        def target(a):
+            assembly('RETURN OP (sum ($a, $a, $a, $a))')
+
+        self.assertEqual(target(2), 8)
+

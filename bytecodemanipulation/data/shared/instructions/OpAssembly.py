@@ -68,6 +68,17 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
 
     BINARY_OPS: typing.Dict[str, AbstractOperator] = {}
     SINGLE_OPS: typing.Dict[str, AbstractOperator] = {}
+    PREFIX_OPERATORS: typing.Dict[str, typing.Tuple[AbstractOperator, int | None, bool | None, bool | None]] = {}
+
+    @classmethod
+    def register_prefix_operator(cls, name: str, operator: AbstractOperator, arg_count: int = None, include_brackets: bool = None, has_coma_sep: bool = None):
+        if arg_count is None:
+            if include_brackets is False:
+                raise ValueError("If 'include_brackets' is False, 'arg_count' must be set")
+
+            include_brackets = True
+
+        cls.PREFIX_OPERATORS[name] = operator, arg_count, include_brackets, has_coma_sep
 
     class IOperation(IAssemblyStructureVisitable, abc.ABC):
         def copy(self):
@@ -108,7 +119,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             return f"{self.operator} {self.expression}"
 
         def copy(self):
-            return type(self)(self.operator, self.expression.copy())
+            return type(self)(self.operator, self.operator_token, self.expression.copy(), self.base)
 
         def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
@@ -168,7 +179,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             return f"{self.lhs} {self.operator} {self.rhs}"
 
         def copy(self):
-            return type(self)(self.lhs.copy(), self.operator, self.rhs.copy())
+            return type(self)(self.lhs.copy(), self.operator, self.operator_token, self.rhs.copy(), self.base)
 
         def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
@@ -202,6 +213,64 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         ):
             pass
 
+    class PrefixOperator(IOperation):
+        def __init__(
+            self,
+            operator: str,
+            operator_token: typing.List[AbstractToken],
+            args: typing.List[AbstractSourceExpression],
+            base: typing.Type["AbstractOpAssembly"] = None,
+        ):
+            self.base = base
+            self.operator = operator
+            self.operator_token = operator_token
+            self.args = args
+
+        def __eq__(self, other):
+            return (
+                type(self) == type(other)
+                and self.args == other.args
+                and self.operator == other.operator
+            )
+
+        def __repr__(self):
+            return f"{self.operator} {repr(self.args)[1:-1]}"
+
+        def copy(self):
+            return type(self)(self.operator, self.operator_token, [arg.copy() for arg in self.args])
+
+        def emit_bytecodes(
+            self, function: MutableFunction, scope: ParsingScope
+        ) -> typing.List[Instruction]:
+            try:
+                return self.base.PREFIX_OPERATORS[self.operator][0].emit_bytecodes(function, scope, *self.args)
+            except:
+                raise throw_positioned_syntax_error(
+                    scope,
+                    self.operator_token,
+                    "during emitting bytecode of binary operation"
+                )
+
+        def visit_parts(
+            self,
+            visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+            parents: list,
+        ):
+            return visitor(
+                self,
+                tuple([
+                    arg.visit_parts(visitor, parents + [self])
+                    for arg in self.args
+                ]),
+                parents,
+            )
+
+        def visit_assembly_instructions(
+            self,
+            visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
+        ):
+            pass
+
     MAX_TOKENS_FOR_OPERATORS = 3
 
     @classmethod
@@ -210,6 +279,9 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
         if expr := cls.try_consume_single(parser, scope):
+            return cls(expr, cls.try_consume_arrow(parser, scope))
+
+        if expr := cls.try_consume_prefix(parser, scope):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
         raise throw_positioned_syntax_error(
@@ -285,7 +357,60 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
 
         parser.discard_save()
 
-        return AbstractOpAssembly.BinaryOperation(lhs, "".join(map(lambda e: e.text, operator_tokens)), operator_tokens,  rhs, base=cls)
+        return cls.BinaryOperation(lhs, "".join(map(lambda e: e.text, operator_tokens)), operator_tokens,  rhs, base=cls)
+
+    @classmethod
+    def try_consume_prefix(cls, parser: "Parser", scope: ParsingScope) -> typing.Optional[IOperation]:
+        operator_tokens = cls.try_consume_operator_name(parser, scope, cls.PREFIX_OPERATORS)
+        operator = "".join(map(lambda e: e.text, operator_tokens))
+        operator_def, arg_count, has_brackets, has_coma_sep = cls.PREFIX_OPERATORS[operator]
+
+        bracket = parser.try_consume(SpecialToken("("))
+
+        if bracket is None and has_brackets is True:
+            raise throw_positioned_syntax_error(scope, parser[0], "expected '('")
+        elif bracket is not None and has_brackets is False:
+            raise throw_positioned_syntax_error(scope, operator_tokens + [parser[0]], "did not expect '(' after operator name")
+
+        args = []
+
+        if arg_count is not None:
+            for _ in range(arg_count):
+                expr = parser.try_consume_access_to_value(scope=scope, allow_calls=True, allow_tos=True, allow_primitives=True, allow_op=True, allow_advanced_access=True)
+
+                if expr is None:
+                    raise throw_positioned_syntax_error(scope, parser[0], "expected <expression>")
+
+                args.append(expr)
+
+                coma = parser.try_consume(SpecialToken(","))
+
+                if coma is None and has_coma_sep is True:
+                    raise throw_positioned_syntax_error(scope, parser[0], "expected ','")
+
+                elif coma is not None and has_coma_sep is False:
+                    raise throw_positioned_syntax_error(scope, coma, "did not expect ',' for separation of args")
+        else:
+            while not parser.try_inspect() == SpecialToken(")"):
+                expr = parser.try_consume_access_to_value(scope=scope, allow_calls=True, allow_tos=True, allow_primitives=True, allow_op=True, allow_advanced_access=True)
+
+                if expr is None:
+                    raise throw_positioned_syntax_error(scope, parser[0], "expected <expression>")
+
+                args.append(expr)
+
+                coma = parser.try_consume(SpecialToken(","))
+
+                if coma is None and has_coma_sep is True and parser[0] != SpecialToken(")"):
+                    raise throw_positioned_syntax_error(scope, parser[0], "expected ','")
+
+                elif coma is not None and has_coma_sep is False:
+                    raise throw_positioned_syntax_error(scope, coma, "did not expect ',' for separation of args")
+
+        if bracket and not parser.try_consume(SpecialToken(")")):
+            raise throw_positioned_syntax_error(scope, parser[0], "expected ')'")
+
+        return cls.PrefixOperator(operator, operator_tokens, args, base=cls)
 
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None

@@ -1,6 +1,10 @@
 
 # Version 0.2.9
 - added RAW assembly instruction
+- refactored operator system
+- added new operators: and, or, nand, nor, =:, sum, prod 
+- removed operator: getattr
+- rewritten operator: xor, xnor (now using \_\_bool__ instead of \_\_eq__)
 
 # Version 0.2.8
 - added FOREACH loops with automatically zip() when multiple iterable are given

@@ -21,7 +21,7 @@ class AbstractReturnAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(cls, parser: "Parser", scope) -> "AbstractReturnAssembly":
         return cls(
             parser.try_parse_data_source(
-                allow_primitives=True, allow_op=True, include_bracket=False
+                allow_primitives=True, allow_op=True, include_bracket=False, scope=scope
             )
         )
 

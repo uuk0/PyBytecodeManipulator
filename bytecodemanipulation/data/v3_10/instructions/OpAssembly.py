@@ -1,6 +1,6 @@
 import typing
 
-from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
+from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.data.shared.instructions.OpAssembly import OpcodeBaseOperator
@@ -13,7 +13,7 @@ from bytecodemanipulation.Opcodes import Opcodes
 
 
 class NandOperator(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("and_skip_second")
 
         bytecode = lhs.emit_bytecodes(function, scope)
@@ -31,12 +31,12 @@ class NandOperator(AbstractOperator):
 
 
 class AndOperator(NandOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         return super().emit_bytecodes(function, scope, lhs, rhs) + [Instruction(function, -1, Opcodes.UNARY_NOT, bool)]
 
 
 class NorOperator(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("or_skip_second")
 
         bytecode = lhs.emit_bytecodes(function, scope)
@@ -54,12 +54,12 @@ class NorOperator(AbstractOperator):
 
 
 class OrOperator(NorOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         return super().emit_bytecodes(function, scope, lhs, rhs) + [Instruction(function, -1, Opcodes.UNARY_NOT, bool)]
 
 
 class XOROperator(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.UNARY_NOT),
@@ -73,7 +73,7 @@ class XOROperator(AbstractOperator):
 
 
 class XNOROperator(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.UNARY_NOT),
@@ -87,7 +87,7 @@ class XNOROperator(AbstractOperator):
 
 
 class WalrusOperator(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.DUP_TOP),
@@ -97,7 +97,7 @@ class WalrusOperator(AbstractOperator):
 
 
 class InverseWalrusOperator(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.DUP_TOP),
@@ -108,7 +108,7 @@ class InverseWalrusOperator(AbstractOperator):
 
 
 class InstanceOfChecker(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.LOAD_CONST, isinstance),
@@ -119,7 +119,7 @@ class InstanceOfChecker(AbstractOperator):
 
 
 class SubclassOfChecker(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.LOAD_CONST, issubclass),
@@ -130,13 +130,41 @@ class SubclassOfChecker(AbstractOperator):
 
 
 class HasattrChecker(AbstractOperator):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.LOAD_CONST, hasattr),
             Instruction(function, -1, Opcodes.ROT_THREE),
             Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2),
         ]
+        return bytecode
+
+
+class SumOperator(AbstractOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> typing.List[Instruction]:
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        bytecode = parameters[0].emit_bytecodes(function, scope)
+
+        for param in parameters[1:]:
+            bytecode += param.emit_bytecodes(function, scope)
+            bytecode.append(Instruction(function, -1, Opcodes.BINARY_ADD))
+
+        return bytecode
+
+
+class ProdOperator(AbstractOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> typing.List[Instruction]:
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        bytecode = parameters[0].emit_bytecodes(function, scope)
+
+        for param in parameters[1:]:
+            bytecode += param.emit_bytecodes(function, scope)
+            bytecode.append(Instruction(function, -1, Opcodes.BINARY_MULTIPLY))
+
         return bytecode
 
 
@@ -190,6 +218,11 @@ class OpAssembly(AbstractOpAssembly):
         "~": OpcodeBaseOperator(Opcodes.UNARY_INVERT),
         "not": OpcodeBaseOperator(Opcodes.UNARY_NOT),
         "!": OpcodeBaseOperator(Opcodes.UNARY_NOT),
+    }
+
+    PREFIX_OPERATORS = {
+        "sum": (SumOperator(), None, True, True),
+        "prod": (ProdOperator(), None, True, True),
     }
 
     # todo: inplace variants
