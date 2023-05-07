@@ -36,15 +36,6 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         str,
         typing.Tuple[int, int]
         | int
-        | typing.Callable[
-            [
-                AbstractAccessExpression,
-                AbstractAccessExpression,
-                MutableFunction,
-                ParsingScope,
-            ],
-            Instruction | typing.List[Instruction],
-        ]
         | AbstractCustomOperator,
     ] = {}
 
@@ -52,10 +43,6 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         str,
         typing.Tuple[int, int]
         | int
-        | typing.Callable[
-            [AbstractAccessExpression, MutableFunction, ParsingScope],
-            Instruction | typing.List[Instruction],
-        ]
         | AbstractCustomOperator,
     ] = {}
 
@@ -105,14 +92,6 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         ) -> typing.List[Instruction]:
             try:
                 opcode_info = self.base.SINGLE_OPS[self.operator]
-
-                if callable(opcode_info):
-                    result = opcode_info(self.expression, function, scope)
-
-                    if isinstance(result, Instruction):
-                        return self.expression.emit_bytecodes(function, scope) + [result]
-
-                    return result
 
                 if isinstance(opcode_info, int):
                     opcode, arg = opcode_info, 0
@@ -184,18 +163,6 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         ) -> typing.List[Instruction]:
             try:
                 opcode_info = self.base.BINARY_OPS[self.operator]
-
-                if callable(opcode_info):
-                    result = opcode_info(self.lhs, self.rhs, function, scope)
-
-                    if isinstance(result, Instruction):
-                        return (
-                            self.lhs.emit_bytecodes(function, scope)
-                            + self.rhs.emit_bytecodes(function, scope)
-                            + [result]
-                        )
-
-                    return result
 
                 if isinstance(opcode_info, int):
                     opcode, arg = opcode_info, 0
