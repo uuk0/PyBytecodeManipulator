@@ -1,3 +1,4 @@
+import dis
 from unittest import TestCase
 
 from bytecodemanipulation.assembler.target import apply_operations
@@ -204,4 +205,60 @@ class TestOperators(TestCase):
             assembly("""RETURN OP (1 nor $tar())""")
 
         self.assertFalse(target(self.fail))
+
+    def test_xor_1_1(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 xor 1)""")
+
+        self.assertFalse(target())
+
+    def test_xor_1_0(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 xor 0)""")
+
+        self.assertTrue(target())
+
+    def test_xor_0_1(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 xor 1)""")
+
+        self.assertTrue(target())
+
+    def test_xor_0_0(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 xor 0)""")
+
+        self.assertFalse(target())
+
+    def test_xnor_1_1(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 xnor 1)""")
+
+        self.assertTrue(target())
+
+    def test_xnor_1_0(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 xnor 0)""")
+
+        self.assertFalse(target())
+
+    def test_xnor_0_1(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 xnor 1)""")
+
+        self.assertFalse(target())
+
+    def test_xnor_0_0(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 xnor 0)""")
+
+        self.assertTrue(target())
 

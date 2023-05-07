@@ -11,9 +11,6 @@ from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 
 
-# todo: or, nand, nor
-# todo: rewrite xor and xnor
-
 class NandOperator(AbstractCustomOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("and_skip_second")
@@ -60,6 +57,34 @@ class OrOperator(NorOperator):
         return super().emit_bytecodes(function, scope, lhs, rhs) + [Instruction(function, -1, Opcodes.UNARY_NOT, bool)]
 
 
+class XOROperator(AbstractCustomOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        bytecode = lhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.UNARY_NOT),
+        ]
+        bytecode += rhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.UNARY_NOT),
+            Instruction(function, -1, Opcodes.COMPARE_OP, arg=3)
+        ]
+        return bytecode
+
+
+class XNOROperator(AbstractCustomOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        bytecode = lhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.UNARY_NOT),
+        ]
+        bytecode += rhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.UNARY_NOT),
+            Instruction(function, -1, Opcodes.COMPARE_OP, arg=2)
+        ]
+        return bytecode
+
+
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
@@ -86,9 +111,9 @@ class OpAssembly(AbstractOpAssembly):
         "!=": (Opcodes.COMPARE_OP, 3),
         ">": (Opcodes.COMPARE_OP, 4),
         ">=": (Opcodes.COMPARE_OP, 5),
-        # todo: instead use boolean values, not __eq__ result!
-        "xor": (Opcodes.COMPARE_OP, 3),
-        "!xor": (Opcodes.COMPARE_OP, 2),
+        "xor": XOROperator(),
+        "!xor": XNOROperator(),
+        "xnor": XNOROperator(),
         ":=": lambda lhs, rhs, function, scope: rhs.emit_bytecodes(function, scope)
         + [Instruction(function, -1, Opcodes.DUP_TOP)]
         + lhs.emit_store_bytecodes(function, scope),
@@ -117,8 +142,10 @@ class OpAssembly(AbstractOpAssembly):
         + rhs.emit_bytecodes(function, scope)
         + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "and": AndOperator(),
+        "!and": NandOperator(),
         "nand": NandOperator(),
         "or": OrOperator(),
+        "!or": NorOperator(),
         "nor": NorOperator(),
     }
 
