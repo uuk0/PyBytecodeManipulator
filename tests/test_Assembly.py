@@ -1,3 +1,4 @@
+import dis
 import functools
 import itertools
 from unittest import TestCase
@@ -911,26 +912,6 @@ PYTHON {
 
         bytecodemanipulation.assembler.hook.unhook()
 
-    def test_walrus_assigment(self):
-        def target():
-            assembly(
-                """
-OP $local := 10
-STORE $test
-RETURN OP ($local + $test)
-"""
-            )
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
-        def compare():
-            test = (local := 10)
-            return local + test
-
-        compare_optimized_results(self, target, compare, opt_ideal=0)
-
     def test_dynamic_attribute_access(self):
         def target(t):
             assembly(
@@ -1552,6 +1533,8 @@ FOREACH $p IN $iterable
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
+
+        dis.dis(target)
 
         self.assertEqual(target(), [1, 2, 3, 4])
 

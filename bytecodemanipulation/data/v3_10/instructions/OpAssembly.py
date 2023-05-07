@@ -3,15 +3,16 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.data.shared.instructions.OpAssembly import OpcodeBaseOperator
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly, AbstractCustomOperator
+from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly, AbstractOperator
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 
 
-class NandOperator(AbstractCustomOperator):
+class NandOperator(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("and_skip_second")
 
@@ -34,7 +35,7 @@ class AndOperator(NandOperator):
         return super().emit_bytecodes(function, scope, lhs, rhs) + [Instruction(function, -1, Opcodes.UNARY_NOT, bool)]
 
 
-class NorOperator(AbstractCustomOperator):
+class NorOperator(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("or_skip_second")
 
@@ -57,7 +58,7 @@ class OrOperator(NorOperator):
         return super().emit_bytecodes(function, scope, lhs, rhs) + [Instruction(function, -1, Opcodes.UNARY_NOT, bool)]
 
 
-class XOROperator(AbstractCustomOperator):
+class XOROperator(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -71,7 +72,7 @@ class XOROperator(AbstractCustomOperator):
         return bytecode
 
 
-class XNOROperator(AbstractCustomOperator):
+class XNOROperator(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -85,7 +86,7 @@ class XNOROperator(AbstractCustomOperator):
         return bytecode
 
 
-class WalrusOperator(AbstractCustomOperator):
+class WalrusOperator(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = rhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -95,7 +96,7 @@ class WalrusOperator(AbstractCustomOperator):
         return bytecode
 
 
-class InverseWalrusOperator(AbstractCustomOperator):
+class InverseWalrusOperator(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -106,7 +107,7 @@ class InverseWalrusOperator(AbstractCustomOperator):
 
 
 
-class InstanceOfChecker(AbstractCustomOperator):
+class InstanceOfChecker(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -117,7 +118,7 @@ class InstanceOfChecker(AbstractCustomOperator):
         return bytecode
 
 
-class SubclassOfChecker(AbstractCustomOperator):
+class SubclassOfChecker(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -128,7 +129,7 @@ class SubclassOfChecker(AbstractCustomOperator):
         return bytecode
 
 
-class HasattrChecker(AbstractCustomOperator):
+class HasattrChecker(AbstractOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -142,29 +143,29 @@ class HasattrChecker(AbstractCustomOperator):
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
-        "+": Opcodes.BINARY_ADD,
-        "-": Opcodes.BINARY_SUBTRACT,
-        "*": Opcodes.BINARY_MULTIPLY,
-        "/": Opcodes.BINARY_TRUE_DIVIDE,
-        "//": Opcodes.BINARY_FLOOR_DIVIDE,
-        "**": Opcodes.BINARY_MULTIPLY,
-        "%": Opcodes.BINARY_MODULO,
-        "&": Opcodes.BINARY_AND,
-        "|": Opcodes.BINARY_OR,
-        "^": Opcodes.BINARY_XOR,
-        ">>": Opcodes.BINARY_RSHIFT,
-        "<<": Opcodes.BINARY_LSHIFT,
-        "@": Opcodes.BINARY_MATRIX_MULTIPLY,
-        "is": (Opcodes.IS_OP, 0),
-        "!is": (Opcodes.IS_OP, 1),
-        "in": (Opcodes.CONTAINS_OP, 0),
-        "!in": (Opcodes.CONTAINS_OP, 1),
-        "<": (Opcodes.COMPARE_OP, 0),
-        "<=": (Opcodes.COMPARE_OP, 1),
-        "==": (Opcodes.COMPARE_OP, 2),
-        "!=": (Opcodes.COMPARE_OP, 3),
-        ">": (Opcodes.COMPARE_OP, 4),
-        ">=": (Opcodes.COMPARE_OP, 5),
+        "+": OpcodeBaseOperator(Opcodes.BINARY_ADD),
+        "-": OpcodeBaseOperator(Opcodes.BINARY_SUBTRACT),
+        "*": OpcodeBaseOperator(Opcodes.BINARY_MULTIPLY),
+        "/": OpcodeBaseOperator(Opcodes.BINARY_TRUE_DIVIDE),
+        "//": OpcodeBaseOperator(Opcodes.BINARY_FLOOR_DIVIDE),
+        "**": OpcodeBaseOperator(Opcodes.BINARY_MULTIPLY),
+        "%": OpcodeBaseOperator(Opcodes.BINARY_MODULO),
+        "&": OpcodeBaseOperator(Opcodes.BINARY_AND),
+        "|": OpcodeBaseOperator(Opcodes.BINARY_OR),
+        "^": OpcodeBaseOperator(Opcodes.BINARY_XOR),
+        ">>": OpcodeBaseOperator(Opcodes.BINARY_RSHIFT),
+        "<<": OpcodeBaseOperator(Opcodes.BINARY_LSHIFT),
+        "@": OpcodeBaseOperator(Opcodes.BINARY_MATRIX_MULTIPLY),
+        "is": OpcodeBaseOperator((Opcodes.IS_OP, 0)),
+        "!is": OpcodeBaseOperator((Opcodes.IS_OP, 1)),
+        "in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 0)),
+        "!in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 1)),
+        "<": OpcodeBaseOperator((Opcodes.COMPARE_OP, 0)),
+        "<=": OpcodeBaseOperator((Opcodes.COMPARE_OP, 1)),
+        "==": OpcodeBaseOperator((Opcodes.COMPARE_OP, 2)),
+        "!=": OpcodeBaseOperator((Opcodes.COMPARE_OP, 3)),
+        ">": OpcodeBaseOperator((Opcodes.COMPARE_OP, 4)),
+        ">=": OpcodeBaseOperator((Opcodes.COMPARE_OP, 5)),
         "xor": XOROperator(),
         "!xor": XNOROperator(),
         "xnor": XNOROperator(),
@@ -184,11 +185,11 @@ class OpAssembly(AbstractOpAssembly):
     }
 
     SINGLE_OPS = {
-        "-": Opcodes.UNARY_NEGATIVE,
-        "+": Opcodes.UNARY_POSITIVE,
-        "~": Opcodes.UNARY_INVERT,
-        "not": Opcodes.UNARY_NOT,
-        "!": Opcodes.UNARY_NOT,
+        "-": OpcodeBaseOperator(Opcodes.UNARY_NEGATIVE),
+        "+": OpcodeBaseOperator(Opcodes.UNARY_POSITIVE),
+        "~": OpcodeBaseOperator(Opcodes.UNARY_INVERT),
+        "not": OpcodeBaseOperator(Opcodes.UNARY_NOT),
+        "!": OpcodeBaseOperator(Opcodes.UNARY_NOT),
     }
 
     # todo: inplace variants

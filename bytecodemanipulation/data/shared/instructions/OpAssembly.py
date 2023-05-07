@@ -1,6 +1,7 @@
 import typing
 import abc
 import typing
+from collections import namedtuple
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
@@ -8,7 +9,6 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
-from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -21,9 +21,40 @@ if typing.TYPE_CHECKING:
     from bytecodemanipulation.assembler.Parser import Parser
 
 
-class AbstractCustomOperator(abc.ABC):
+class AbstractOperator(abc.ABC):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> typing.List[Instruction]:
         raise NotImplementedError
+
+
+OperatorArgValue = namedtuple('OperatorArgValue', "index")
+
+
+class OpcodeBaseOperator(AbstractOperator):
+    def __init__(self, *opcodes: int | str | typing.Tuple[int | str, int] | typing.Tuple[int | str, typing.Callable[[MutableFunction, ParsingScope, typing.List[AbstractSourceExpression]], typing.Any]] | OperatorArgValue):
+        self.opcodes = opcodes
+
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> typing.List[Instruction]:
+        bytecode = []
+        if not any(isinstance(param, OperatorArgValue) for param in self.opcodes):
+            for param in parameters:
+                bytecode += param.emit_bytecodes(function, scope)
+
+        for opcode in self.opcodes:
+            if isinstance(opcode, (int, str)):
+                bytecode.append(Instruction(function, -1, opcode))
+            elif isinstance(opcode, tuple):
+                if isinstance(opcode[1], typing.Callable):
+                    bytecode.append(Instruction(function, -1, opcode[0], arg=opcode[1](function, scope, list(parameters))))
+                else:
+                    bytecode.append(Instruction(function, -1, opcode[0], arg=opcode[1]))
+            elif isinstance(opcode, OperatorArgValue):
+                bytecode += parameters[opcode.index].emit_bytecodes(function, scope)
+            elif hasattr(opcode, "emit_bytecodes"):
+                bytecode += opcode.emit_bytecodes(function, scope)
+            else:
+                raise ValueError(opcode)
+
+        return bytecode
 
 
 class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, abc.ABC):
@@ -35,19 +66,8 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
 
     NAME = "OP"
 
-    BINARY_OPS: typing.Dict[
-        str,
-        typing.Tuple[int, int]
-        | int
-        | AbstractCustomOperator,
-    ] = {}
-
-    SINGLE_OPS: typing.Dict[
-        str,
-        typing.Tuple[int, int]
-        | int
-        | AbstractCustomOperator,
-    ] = {}
+    BINARY_OPS: typing.Dict[str, AbstractOperator] = {}
+    SINGLE_OPS: typing.Dict[str, AbstractOperator] = {}
 
     class IOperation(IAssemblyStructureVisitable, abc.ABC):
         def copy(self):
@@ -94,18 +114,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
             try:
-                opcode_info = self.base.SINGLE_OPS[self.operator]
-
-                if isinstance(opcode_info, int):
-                    opcode, arg = opcode_info, 0
-                elif isinstance(opcode_info, AbstractCustomOperator):
-                    return opcode_info.emit_bytecodes(function, scope, self.expression)
-                else:
-                    opcode, arg = opcode_info
-
-                return self.expression.emit_bytecodes(function, scope) + [
-                    Instruction(function, -1, opcode, arg=arg)
-                ]
+                return self.base.SINGLE_OPS[self.operator].emit_bytecodes(function, scope, self.expression)
             except:
                 raise throw_positioned_syntax_error(
                     scope,
@@ -165,20 +174,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
             try:
-                opcode_info = self.base.BINARY_OPS[self.operator]
-
-                if isinstance(opcode_info, int):
-                    opcode, arg = opcode_info, 0
-                elif isinstance(opcode_info, AbstractCustomOperator):
-                    return opcode_info.emit_bytecodes(function, scope, self.lhs, self.rhs)
-                else:
-                    opcode, arg = opcode_info
-
-                return (
-                    self.lhs.emit_bytecodes(function, scope)
-                    + self.rhs.emit_bytecodes(function, scope)
-                    + [Instruction(function, -1, opcode, arg=arg)]
-                )
+                return self.base.BINARY_OPS[self.operator].emit_bytecodes(function, scope, self.lhs, self.rhs)
             except:
                 raise throw_positioned_syntax_error(
                     scope,
