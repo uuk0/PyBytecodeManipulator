@@ -1,4 +1,7 @@
 
+# Version 0.2.9
+- added RAW assembly instruction
+
 # Version 0.2.8
 - added FOREACH loops with automatically zip() when multiple iterable are given
 - changed the macro prefix from § to &

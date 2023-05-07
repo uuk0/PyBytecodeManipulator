@@ -1,6 +1,8 @@
 import abc
 
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+import typing
+
+from bytecodemanipulation.assembler.AbstractBase import ParsingScope, IAssemblyStructureVisitable, AbstractExpression
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error

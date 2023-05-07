@@ -184,7 +184,7 @@ class Parser(AbstractParser):
 
         if namespace_part:
             if isinstance(namespace_part, str):
-                if self.scope.scope_path.pop() != namespace_part:
+                if self.scope.scope_path.pop(-1) != namespace_part:
                     raise RuntimeError
             else:
                 if self.scope.scope_path[-len(namespace_part) :] != namespace_part:

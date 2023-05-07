@@ -119,7 +119,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
     @classmethod
     def construct_from_partial(
         cls, access: AbstractAccessExpression, parser: "Parser", scope: ParsingScope
-    ):
+    ) -> "AbstractCallAssembly":
         """
         Constructs an CallAssembly from an already parsed access expression.
         Used by the Parser when parsing an call as a expression to be used inline
@@ -129,7 +129,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         )
 
     @classmethod
-    def consume_macro_call(cls, parser: "Parser", scope: ParsingScope):
+    def consume_macro_call(cls, parser: "Parser", scope: ParsingScope) -> "AbstractCallAssembly":
         """
         Consumes a call to a macro
         Used by the Parser when finding macros to be used like assembly instructions
