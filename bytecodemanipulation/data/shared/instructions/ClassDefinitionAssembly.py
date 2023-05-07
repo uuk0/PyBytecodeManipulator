@@ -19,7 +19,7 @@ from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
 
 
 class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
-    # CLASS <name> ['(' [<parent> {',' <parent>}] ')'] '{' ... '}'
+    # CLASS <name> '<' <exposed namespace> '>' ['(' [<parent> {',' <parent>}] ')'] '{' ... '}'
     NAME = "CLASS"
 
     @classmethod
@@ -27,6 +27,16 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractClassDefinitionAssembly":
         name = parser.try_parse_identifier_like()
+
+        namespace = None
+
+        if parser.try_consume(SpecialToken("<")):
+            namespace = [parser.consume(IdentifierToken, err_arg=scope).text]
+
+            while parser.try_consume(SpecialToken(":")):
+                namespace.append(parser.consume(IdentifierToken, err_arg=scope).text)
+
+            parser.consume(SpecialToken(">"), err_arg=scope)
 
         parents = []
 
@@ -53,7 +63,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         if not parents:
             parents = [ConstantAccessExpression(object)]
 
-        code_block = parser.parse_body(scope=scope)
+        code_block = parser.parse_body(scope=scope, namespace_part=namespace)
         return cls(
             name,
             parents,

@@ -52,7 +52,7 @@ for cross-version support.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 * 'RAISE' \[\<source>]: raises the exception at TOS or source 
-* CLASS \<name> \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
+* CLASS \<name> '\<' \<exposed namespace> '\>' \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 

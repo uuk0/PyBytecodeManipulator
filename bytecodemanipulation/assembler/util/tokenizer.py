@@ -19,6 +19,9 @@ class AbstractToken(abc.ABC):
     def __repr__(self):
         return f"{type(self).__name__}({repr(self.text)})"
 
+    def __hash__(self):
+        return hash((type(self).__name__, self.text))
+
 
 class IntegerToken(AbstractToken):
     pass
