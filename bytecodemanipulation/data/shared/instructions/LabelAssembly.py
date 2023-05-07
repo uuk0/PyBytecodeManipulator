@@ -52,5 +52,5 @@ class LabelAssembly(AbstractAssemblyInstruction):
     def copy(self) -> "LabelAssembly":
         return type(self)(self.name)
 
-    def get_labels(self, scope: ParsingScope) -> typing.Set[str]:
-        return {self.name(scope)}
+    def get_labels(self, scope: ParsingScope) -> typing.Set[StaticIdentifier]:
+        return {StaticIdentifier(self.name(scope))}

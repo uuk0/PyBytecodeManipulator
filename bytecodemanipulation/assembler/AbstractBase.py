@@ -40,7 +40,7 @@ class ParsingScope:
         return scope
 
     def __init__(self):
-        self.labels: typing.Set[str] = set()
+        self.labels: typing.Set["IIdentifierAccessor"] = set()
         self.global_scope = {}
         self.scope_path: typing.List[str] = []
         self._name_counter = 1
@@ -104,9 +104,6 @@ class ParsingScope:
     def exists_label(self, name: str) -> bool:
         for entry in self.labels:
             if entry == name:
-                return True
-
-            if callable(entry) and entry(self) == name:
                 return True
 
         return False

@@ -3,6 +3,7 @@ import string
 import types
 import typing
 
+from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -112,7 +113,7 @@ def apply_inline_assemblies(
                     arg.opcode == Opcodes.LOAD_CONST
                 ), "only constant label names are allowed!"
 
-                labels.add(arg.arg_value)
+                labels.add(StaticIdentifier(arg.arg_value))
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
                 invoke.insert_after(Instruction(target, -1, Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
