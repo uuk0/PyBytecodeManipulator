@@ -13,7 +13,8 @@ from bytecodemanipulation.Opcodes import Opcodes
 
 # todo: or, nand, nor
 # todo: rewrite xor and xnor
-class AndOperator(AbstractCustomOperator):
+
+class NandOperator(AbstractCustomOperator):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("and_skip_second")
 
@@ -26,11 +27,14 @@ class AndOperator(AbstractCustomOperator):
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.BYTECODE_LABEL, label_name),
-            Instruction(function, -1, Opcodes.LOAD_CONST, bool),
-            Instruction(function, -1, Opcodes.ROT_TWO),
-            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(function, -1, Opcodes.UNARY_NOT, bool),
         ]
         return bytecode
+
+
+class AndOperator(NandOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        return super().emit_bytecodes(function, scope, lhs, rhs) + [Instruction(function, -1, Opcodes.UNARY_NOT, bool)]
 
 
 class OrOperator(AbstractCustomOperator):
@@ -110,6 +114,7 @@ class OpAssembly(AbstractOpAssembly):
         + rhs.emit_bytecodes(function, scope)
         + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "and": AndOperator(),
+        "nand": NandOperator(),
         "or": OrOperator(),
     }
 

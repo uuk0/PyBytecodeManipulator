@@ -55,6 +55,56 @@ class TestOperators(TestCase):
 
         self.assertFalse(target(self.fail))
 
+    def test_simple_nand_true(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 nand 1)""")
+
+        self.assertFalse(target())
+
+    def test_simple_nand_false_lhs(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 nand 1)""")
+
+        self.assertTrue(target())
+
+    def test_simple_nand_false_rhs(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 nand 0)""")
+
+        self.assertTrue(target())
+
+    def test_simple_nand_false_lhs_rhs(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 nand 0)""")
+
+        self.assertTrue(target())
+
+    def test_nand_eval(self):
+        @apply_operations
+        def target(m):
+            assembly("""RETURN OP ($m() nand $m())""")
+
+        i = 0
+
+        def incr():
+            nonlocal i
+            i += 1
+            return 1
+
+        self.assertFalse(target(incr))
+        self.assertEqual(i, 2)
+
+    def test_nand_short(self):
+        @apply_operations
+        def target(tar):
+            assembly("""RETURN OP (0 nand $tar())""")
+
+        self.assertTrue(target(self.fail))
+
     def test_simple_or_true_true(self):
         @apply_operations
         def target():
