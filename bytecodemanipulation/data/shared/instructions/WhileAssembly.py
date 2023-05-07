@@ -3,7 +3,9 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
@@ -21,20 +23,6 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # WHILE <expression> ['\'' <label name> '\''] '{' <body> '}'
     NAME = "WHILE"
 
-    def __init__(
-        self,
-        source: AbstractSourceExpression,
-        body: CompoundExpression,
-        label_name: IdentifierToken | str | None = None,
-    ):
-        self.source = source
-        self.body = body
-        self.label_name = (
-            label_name
-            if not isinstance(label_name, str)
-            else IdentifierToken(label_name)
-        )
-
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractWhileAssembly":
         condition = parser.try_parse_data_source(
@@ -47,7 +35,7 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
             )
 
         if parser.try_consume(SpecialToken("'")):
-            label_name = parser.consume(IdentifierToken)
+            label_name = parser.parse_identifier_like(scope)
             if not parser.try_consume(SpecialToken("'")):
                 raise throw_positioned_syntax_error(
                     scope, parser.try_inspect(), "expected '"
@@ -63,6 +51,20 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
             label_name,
         )
 
+    def __init__(
+        self,
+        source: AbstractSourceExpression,
+        body: CompoundExpression,
+        label_name: IIdentifierAccessor | None = None,
+    ):
+        self.source = source
+        self.body = body
+        self.label_name = (
+            label_name
+            if not isinstance(label_name, str)
+            else StaticIdentifier(label_name)
+        )
+
     def copy(self):
         return type(self)(self.source.copy(), self.body.copy(), self.label_name)
 
@@ -76,7 +78,7 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     def __repr__(self):
         c = "'"
-        return f"WHILE({self.source}{'' if self.label_name is None else ', label='+c+self.label_name.text+c}) -> {{{self.body}}}"
+        return f"WHILE({self.source}{'' if self.label_name is None else ', label='+c+repr(self.label_name)+c}) -> {{{self.body}}}"
 
     def visit_parts(
         self,
@@ -100,8 +102,8 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
             set()
             if self.label_name is None
             else {
-                self.label_name.text,
-                self.label_name.text + "_END",
-                self.label_name.text + "_INNER",
+                self.label_name(scope),
+                self.label_name(scope) + "_END",
+                self.label_name(scope) + "_INNER",
             }
         ) | self.body.get_labels(scope)

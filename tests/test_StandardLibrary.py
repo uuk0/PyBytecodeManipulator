@@ -189,7 +189,6 @@ std:stream:to_list($stream, $output)
 
         self.assertEqual(target(), [1, 2, 3])
 
-
 #     def test_comprehension_list(self):
 #         def target():
 #             l = [1, 2, 3, 4]
