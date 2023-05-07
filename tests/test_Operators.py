@@ -271,3 +271,17 @@ class TestOperators(TestCase):
 
         self.assertEqual(target(), 1)
 
+    def test_instanceof_operator_true(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (10 instanceof ~int)")
+
+        self.assertTrue(target())
+
+    def test_instanceof_operator_false(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (10 instanceof ~list)")
+
+        self.assertFalse(target())
+

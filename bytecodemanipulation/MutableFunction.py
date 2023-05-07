@@ -826,6 +826,9 @@ class Instruction:
         if self.opcode == Opcodes.DUP_TOP_TWO:
             return 2, 4, None
 
+        if self.opcode == Opcodes.ROT_THREE:
+            return 3, 3, None
+
         raise RuntimeError(self)
 
     def special_stack_affect_when_followed_by(self, instr: "Instruction") -> int:
