@@ -6,7 +6,6 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
@@ -18,8 +17,12 @@ from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 
 
+if typing.TYPE_CHECKING:
+    from bytecodemanipulation.assembler.Parser import Parser
+
+
 class AbstractCustomOperator(abc.ABC):
-    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractAccessExpression) -> typing.List[Instruction]:
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractSourceExpression) -> typing.List[Instruction]:
         raise NotImplementedError
 
 
@@ -65,8 +68,8 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         def __init__(
             self,
             operator: str,
-            operator_token: AbstractToken,
-            expression: AbstractAccessExpression,
+            operator_token: typing.List[AbstractToken],
+            expression: AbstractSourceExpression,
             base: typing.Type["AbstractOpAssembly"] = None,
         ):
             self.operator = operator
@@ -203,12 +206,14 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         ):
             pass
 
+    MAX_TOKENS_FOR_OPERATORS = 3
+
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractOpAssembly":
-        if expr := cls.try_consume_single(parser):
+        if expr := cls.try_consume_binary(parser, scope):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
-        if expr := cls.try_consume_binary(parser):
+        if expr := cls.try_consume_single(parser, scope):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
         raise throw_positioned_syntax_error(
@@ -216,6 +221,17 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             parser.try_inspect(),
             "expected <operator> or <expression> <operator> ...",
         )
+
+    @classmethod
+    def try_consume_operator_name(cls, parser: "Parser", scope: ParsingScope, source: typing.Dict[str, typing.Any]) -> typing.List[AbstractToken] | None:
+        for count in range(cls.MAX_TOKENS_FOR_OPERATORS - 1, 0, -1):
+            operator = parser[0:count]
+
+            if operator and "".join(map(lambda e: e.text, operator)) in source:
+                if not parser.try_consume_multi(operator):
+                    raise RuntimeError
+
+                return operator
 
     @classmethod
     def try_consume_arrow(
@@ -232,24 +248,24 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             return parser.try_consume_access_to_value(scope=scope)
 
     @classmethod
-    def try_consume_single(cls, parser: "Parser") -> typing.Optional[IOperation]:
-        parser.save()
-        if not (operator := parser.try_consume(IdentifierToken)):
+    def try_consume_single(cls, parser: "Parser", scope: ParsingScope) -> typing.Optional[IOperation]:
+        operator_tokens = cls.try_consume_operator_name(parser, scope, cls.SINGLE_OPS)
+
+        if operator_tokens is None:
+            return
+
+        expression = parser.try_parse_data_source(
+            allow_primitives=True, include_bracket=False
+        )
+
+        if expression is None:
             parser.rollback()
             return
 
-        if operator.text in cls.SINGLE_OPS:
-            expression = parser.try_parse_data_source(
-                allow_primitives=True, include_bracket=False
-            )
-
-            if expression is None:
-                parser.rollback()
-
-            return cls.SingleOperation(operator.text, operator, expression, base=cls)
+        return cls.SingleOperation("".join(map(lambda e: e.text, operator_tokens)), operator_tokens, expression, base=cls)
 
     @classmethod
-    def try_consume_binary(cls, parser: "Parser") -> typing.Optional[IOperation]:
+    def try_consume_binary(cls, parser: "Parser", scope: ParsingScope) -> typing.Optional[IOperation]:
         parser.save()
 
         lhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
@@ -258,35 +274,22 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             parser.rollback()
             return
 
-        part = parser[0:2]
+        operator_tokens = cls.try_consume_operator_name(parser, scope, cls.BINARY_OPS)
 
-        if part:
-            first, second = part
-        else:
-            first, second = parser[0], None
-
-        if first and second and (first.text + second.text) in cls.BINARY_OPS:
-            OP_NAME = first.text + second.text
-            parser.consume(first)
-            parser.consume(second)
-
-        elif first and first.text in cls.BINARY_OPS:
-            OP_NAME = first.text
-            parser.consume(first)
-
-        else:
+        if operator_tokens is None:
+            parser.rollback()
             return
 
         rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
 
         if rhs is None:
-            print("rhs is None")
+            print("rhs is invalid")
             parser.rollback()
             return
 
         parser.discard_save()
 
-        return AbstractOpAssembly.BinaryOperation(lhs, OP_NAME, [first, second] if second else [first],  rhs, base=cls)
+        return AbstractOpAssembly.BinaryOperation(lhs, "".join(map(lambda e: e.text, operator_tokens)), operator_tokens,  rhs, base=cls)
 
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None

@@ -53,6 +53,7 @@ from bytecodemanipulation.data.shared.expressions.SubscriptionAccessExpression i
 from bytecodemanipulation.data.shared.expressions.TopOfStackAccessExpression import (
     TopOfStackAccessExpression,
 )
+from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
 
 from bytecodemanipulation.Opcodes import Opcodes
 
@@ -369,10 +370,10 @@ class Parser(AbstractParser):
             self.consume(SpecialToken("\\"), err_arg=scope)
             expr = DiscardValueExpression()
 
-        elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS:
+        elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS and AbstractOpAssembly.IMPLEMENTATION is not None:
             self.consume(start_token)
             self.consume(SpecialToken("("), err_arg=scope)
-            expr = self.INSTRUCTIONS["OP"].consume(self, scope)
+            expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
             self.consume(SpecialToken(")"), err_arg=scope)
 
         else:

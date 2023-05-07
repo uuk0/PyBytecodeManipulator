@@ -265,7 +265,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         "T", AbstractToken, typing.List[typing.Type[AbstractToken] | AbstractToken]
     )
 
-    def consume(self, expected: T | typing.Type[T], err_arg=None) -> T:
+    def consume(self, expected: T | typing.Type[T] = None, err_arg=None) -> T:
         """
         Consumes a token and compares it against the 'expected' (which is an instance or the expected type of token)
 
@@ -303,7 +303,7 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
 
         return token
 
-    def try_consume(self, expected: T | typing.Type[T]) -> T | None:
+    def try_consume(self, expected: T | typing.Type[T] = None) -> T | None:
         """
         Tries to consume a token from the token stream
 
