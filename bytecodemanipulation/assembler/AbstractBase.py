@@ -102,7 +102,14 @@ class ParsingScope:
             return scope
 
     def exists_label(self, name: str) -> bool:
-        return name in self.labels
+        for entry in self.labels:
+            if entry == name:
+                return True
+
+            if callable(entry) and entry(self) == name:
+                return True
+
+        return False
 
     def copy(
         self,

@@ -139,6 +139,8 @@ Expressions can be added as certain parameters to instructions to use instead of
   - parsing itself should be in the abstract base, only code emitting in the implementation
 - refactor assembly related classes into more files, it is really clustered in only a handful of files
 
+- make macro expanded names comparable (so we can use them as temporary labels)
+
 ## PyASM
 
 - a syntax highlighter plugin

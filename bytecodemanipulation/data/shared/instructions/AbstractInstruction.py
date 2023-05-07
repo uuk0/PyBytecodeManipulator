@@ -105,5 +105,5 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     ):
         return visitor(self, tuple())
 
-    def get_labels(self) -> typing.Set[str]:
+    def get_labels(self, scope: ParsingScope) -> typing.Set[str]:
         return set()

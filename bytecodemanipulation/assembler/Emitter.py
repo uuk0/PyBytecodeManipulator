@@ -140,7 +140,7 @@ def apply_inline_assemblies(
     ]
 
     for asm in assemblies:
-        labels.update(asm.collect_label_info())
+        labels.update(asm.collect_label_info(scope))
 
     scope.labels |= labels
 
@@ -283,7 +283,7 @@ def execute_module_in_instance(
         GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
     asm = AssemblyParser(asm_code, scope).parse()
-    scope.labels = asm.get_labels()
+    scope.labels = asm.get_labels(scope)
     # asm.fill_scope_complete(scope)
     scope.scope_path.clear()
     create_function = lambda m: None

@@ -92,14 +92,14 @@ class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
             ),
         )
 
-    def collect_label_info(self) -> typing.Set[str]:
-        return self.get_labels()
+    def collect_label_info(self, scope: ParsingScope) -> typing.Set[str]:
+        return self.get_labels(scope)
 
-    def get_labels(self) -> typing.Set[str]:
+    def get_labels(self, scope: ParsingScope) -> typing.Set[str]:
         result = set()
 
         for instr in self.children:
-            result.update(instr.get_labels())
+            result.update(instr.get_labels(scope))
 
         return result
 

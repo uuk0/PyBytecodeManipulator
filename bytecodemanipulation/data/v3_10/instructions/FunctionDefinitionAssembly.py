@@ -23,7 +23,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         flags = 0
         bytecode = []
 
-        inner_labels = self.body.collect_label_info()
+        inner_labels = self.body.collect_label_info(scope)
         label_targets = {}
 
         inner_scope = scope.copy()

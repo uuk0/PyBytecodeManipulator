@@ -95,7 +95,7 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
     ):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
 
-    def get_labels(self) -> typing.Set[str]:
+    def get_labels(self, scope: ParsingScope) -> typing.Set[str]:
         return (
             set()
             if self.label_name is None
@@ -104,4 +104,4 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
                 self.label_name.text + "_END",
                 self.label_name.text + "_HEAD",
             }
-        ) | self.body.get_labels()
+        ) | self.body.get_labels(scope)
