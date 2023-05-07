@@ -33,6 +33,26 @@ class AndOperator(AbstractCustomOperator):
         return bytecode
 
 
+class OrOperator(AbstractCustomOperator):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, lhs: AbstractAccessExpression, rhs: AbstractAccessExpression) -> typing.List[Instruction]:
+        label_name = scope.scope_name_generator("or_skip_second")
+
+        bytecode = lhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(label_name)),
+            Instruction(function, -1, Opcodes.POP_TOP),
+        ]
+        bytecode += rhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.BYTECODE_LABEL, label_name),
+            Instruction(function, -1, Opcodes.LOAD_CONST, bool),
+            Instruction(function, -1, Opcodes.ROT_TWO),
+            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=1),
+        ]
+        return bytecode
+
+
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
@@ -90,6 +110,7 @@ class OpAssembly(AbstractOpAssembly):
         + rhs.emit_bytecodes(function, scope)
         + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "and": AndOperator(),
+        "or": OrOperator(),
     }
 
     SINGLE_OPS = {
