@@ -2,6 +2,7 @@ import abc
 
 import typing
 
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope, IAssemblyStructureVisitable, AbstractExpression
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
@@ -78,14 +79,14 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __init__(
-        self, name: typing.Callable[[ParsingScope], str], parents, code_block: CompoundExpression
+        self, name: IIdentifierAccessor, parents, code_block: CompoundExpression
     ):
         self.name = name
         self.parents = parents
         self.code_block = code_block
 
     def __repr__(self):
-        return f"ClassAssembly::'{self.name(None)}'({','.join(map(repr, self.parents))}){{{self.code_block}}}"
+        return f"ClassAssembly::'{self.name}'({','.join(map(repr, self.parents))}){{{self.code_block}}}"
 
     def copy(self):
         return AbstractClassDefinitionAssembly(
@@ -97,7 +98,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def __eq__(self, other):
         return (
             isinstance(other, type(self))
-            and self.name(None) == other.name(None)
+            and self.name == other.name
             and self.parents == other.parents
             and self.code_block == other.code_block
         )

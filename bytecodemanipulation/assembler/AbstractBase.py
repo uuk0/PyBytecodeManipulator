@@ -203,17 +203,17 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
 
     def __init__(
         self,
-        name: typing.Callable[[ParsingScope], str] | str,
+        name: "MacroExpandedIdentifier | str",
         token: AbstractToken | typing.List[AbstractToken] = None,
     ):
         self.name = name
         self.token = token
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.get_name(None) == other.get_name(None)
+        return type(self) == type(other) and self.name == other.name
 
     def __repr__(self):
-        return f"{self.PREFIX}{self.get_name(None)}"
+        return f"{self.PREFIX}{self.name}"
 
     def copy(self) -> "AbstractAccessExpression":
         return type(self)(
@@ -233,3 +233,87 @@ class JumpToLabel:
 
     def __repr__(self):
         return f"-> Label('{self.name}')"
+
+
+class IIdentifierAccessor:
+    def __call__(self, scope: ParsingScope):
+        raise NotImplementedError
+
+
+class MacroExpandedIdentifier(IIdentifierAccessor):
+    def __init__(self, macro_name: typing.Union[str, "IIdentifierAccessor"], token: typing.List[AbstractToken] = None):
+        self.macro_name = macro_name
+        self.token = token
+
+    def __hash__(self):
+        return hash(self.macro_name)
+
+    def __eq__(self, other):
+        if isinstance(other, MacroExpandedIdentifier):
+            return self.macro_name == other.macro_name
+        return False
+
+    def __repr__(self):
+        return f"&{self.macro_name}"
+
+    def __call__(self, scope: ParsingScope):
+        from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+        from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
+        from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import DerefAccessExpression
+        from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import GlobalAccessExpression
+        from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+
+        if scope is None:
+            raise SyntaxError("no scope provided")
+
+        if self.token[1].text not in scope.macro_parameter_namespace:
+            raise throw_positioned_syntax_error(
+                scope,
+                self.token,
+                "Could not find name in macro parameter space",
+            )
+
+        value = scope.macro_parameter_namespace[self.token[1].text]
+
+        if isinstance(value, ConstantAccessExpression):
+            if not isinstance(value.value, str):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    self.token,
+                    f"Expected 'string' for name de-referencing, got {value}",
+                )
+
+            return value.value
+
+        if isinstance(
+            value,
+            (
+                GlobalAccessExpression,
+                LocalAccessExpression,
+                DerefAccessExpression,
+            ),
+        ):
+            return value.get_name(scope)
+
+        raise throw_positioned_syntax_error(
+            scope,
+            self.token,
+            f"Expected <static evaluated expression> for getting the name for storing, got {value}",
+        )
+
+
+class StaticIdentifier(IIdentifierAccessor):
+    def __init__(self, name: str):
+        self.name = name
+
+    def __eq__(self, other):
+        return (isinstance(other, StaticIdentifier) and self.name == other.name) or self.name == other
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __repr__(self):
+        return repr(self.name)
+
+    def __call__(self, scope: ParsingScope):
+        return self.name

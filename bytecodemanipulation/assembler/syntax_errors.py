@@ -2,10 +2,6 @@ import sys
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
-from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
-from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 
 

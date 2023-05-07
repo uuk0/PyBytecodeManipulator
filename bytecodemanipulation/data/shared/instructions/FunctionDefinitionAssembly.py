@@ -2,7 +2,9 @@ import abc
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
@@ -38,7 +40,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             )
 
         bound_variables: typing.List[
-            typing.Tuple[typing.Callable[[ParsingScope], str], bool]
+            typing.Tuple[IIdentifierAccessor, bool]
         ] = []
         args = []
 
@@ -134,19 +136,19 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     def __init__(
         self,
-        func_name: typing.Callable[[ParsingScope], str] | str | None,
+        func_name: IIdentifierAccessor | str | None,
         bound_variables: typing.List[
-            typing.Tuple[typing.Callable[[ParsingScope], str], bool] | str
-        ],
+            typing.Tuple[IIdentifierAccessor, bool] | str
+            ],
         args: typing.List[AbstractCallAssembly.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
     ):
         self.func_name = (
-            func_name if not isinstance(func_name, str) else lambda _: func_name
+            func_name if not isinstance(func_name, str) else StaticIdentifier(func_name)
         )
         self.bound_variables: typing.List[
-            typing.Tuple[typing.Callable[[ParsingScope], str], bool]
+            typing.Tuple[IIdentifierAccessor, bool]
         ] = []
         # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
 
@@ -157,7 +159,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             if isinstance(element, str):
                 self.bound_variables.append(
                     (
-                        _create_lazy(element.removeprefix("!")),
+                        StaticIdentifier(element.removeprefix("!")),
                         element.startswith("!"),
                     )
                 )
@@ -165,7 +167,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 token, is_static = element
 
                 if isinstance(token, str):
-                    self.bound_variables.append((_create_lazy(token), is_static))
+                    self.bound_variables.append((StaticIdentifier(token), is_static))
                 else:
                     self.bound_variables.append(element)
             else:
@@ -195,21 +197,15 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def __eq__(self, other):
         return (
             type(self) == type(other)
-            and self.func_name(None) == other.func_name(None)
-            and len(self.bound_variables) == len(other.bound_variables)
-            and all(
-                (
-                    a[0](None) == b[0](None) and a[1] == b[1]
-                    for a, b in zip(self.bound_variables, other.bound_variables)
-                )
-            )
+            and self.func_name == other.func_name
+            and self.bound_variables == other.bound_variables
             and self.args == other.args
             and self.body == other.body
             and self.target == other.target
         )
 
     def __repr__(self):
-        return f"DEF({self.func_name(None)}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+        return f"DEF({self.func_name}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
 
     def copy(self) -> "AbstractFunctionDefinitionAssembly":
         return type(self)(

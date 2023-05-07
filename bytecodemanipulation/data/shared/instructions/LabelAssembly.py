@@ -1,9 +1,10 @@
 import typing
 
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
-from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -30,18 +31,18 @@ class LabelAssembly(AbstractAssemblyInstruction):
 
         return cls(name)
 
-    def __init__(self, name: typing.Callable[[ParsingScope], str] | str):
+    def __init__(self, name: IIdentifierAccessor | str):
         self.name = (
             name
             if not isinstance(name, str)
-            else lambda _: name
+            else StaticIdentifier(name)
         )
 
     def __repr__(self):
-        return f"LABEL({self.name(None)})"
+        return f"LABEL({self.name})"
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.name(None) == other.name(None)
+        return type(self) == type(other) and self.name == other.name
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope

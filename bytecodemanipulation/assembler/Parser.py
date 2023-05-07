@@ -1,6 +1,7 @@
 import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, MacroExpandedIdentifier, StaticIdentifier
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import _syntax_wrapper
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
@@ -54,8 +55,6 @@ from bytecodemanipulation.data.shared.expressions.TopOfStackAccessExpression imp
     TopOfStackAccessExpression,
 )
 from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
-
-from bytecodemanipulation.Opcodes import Opcodes
 
 from bytecodemanipulation.MutableFunction import Instruction
 
@@ -501,57 +500,16 @@ class Parser(AbstractParser):
 
         self.rollback()
 
-    def try_parse_identifier_like(self) -> typing.Callable[[ParsingScope], str] | None:
+    def try_parse_identifier_like(self) -> IIdentifierAccessor | None:
         if expr := self.try_consume_multi([SpecialToken("&"), IdentifierToken]):
-
-            def get(scope: ParsingScope):
-                # If this is None, we are only inspecting
-                if scope is None:
-                    return str(get)
-
-                if expr[1].text not in scope.macro_parameter_namespace:
-                    raise throw_positioned_syntax_error(
-                        scope,
-                        expr,
-                        "Could not find name in macro parameter space",
-                    )
-
-                value = scope.macro_parameter_namespace[expr[1].text]
-
-                if isinstance(value, ConstantAccessExpression):
-                    if not isinstance(value.value, str):
-                        raise throw_positioned_syntax_error(
-                            scope,
-                            expr,
-                            f"Expected 'string' for name de-referencing, got {value}",
-                        )
-
-                    return value.value
-
-                if isinstance(
-                    value,
-                    (
-                        GlobalAccessExpression,
-                        LocalAccessExpression,
-                        DerefAccessExpression,
-                    ),
-                ):
-                    return value.get_name(scope)
-
-                raise throw_positioned_syntax_error(
-                    scope,
-                    expr,
-                    f"Expected <static evaluated expression> for getting the name for storing, got {value}",
-                )
-
-            return get
+            return MacroExpandedIdentifier(expr[1].text, expr)
 
         if expr := self.try_consume(IdentifierToken):
-            return lambda scope: expr.text
+            return StaticIdentifier(expr.text)
 
     def parse_identifier_like(
         self, scope: ParsingScope
-    ) -> typing.Callable[[ParsingScope], str]:
+    ) -> IIdentifierAccessor:
         identifier = self.try_parse_identifier_like()
 
         if identifier is None:

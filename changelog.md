@@ -7,6 +7,7 @@
 - rewritten operator: xor, xnor (now using \_\_bool__ instead of \_\_eq__)
 - classes do no longer have their own namespace, if you still want a namespace, you may use '\<' \<namespace name> '\>' after the class name
 - functions and classes support now macro expansions for their names
+- macro expanded names can now be correctly compared, hashed, etc.
 
 # Version 0.2.8
 - added FOREACH loops with automatically zip() when multiple iterable are given
