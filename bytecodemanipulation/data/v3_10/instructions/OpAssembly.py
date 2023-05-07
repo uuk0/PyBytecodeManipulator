@@ -163,12 +163,6 @@ class OpAssembly(AbstractOpAssembly):
         "issubclass": SubclassOfChecker(),
         "subclassof": SubclassOfChecker(),
         "hasattr": HasattrChecker(),
-        "getattr": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, getattr)
-        ]
-        + lhs.emit_bytecodes(function, scope)
-        + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
         "and": AndOperator(),
         "!and": NandOperator(),
         "nand": NandOperator(),
