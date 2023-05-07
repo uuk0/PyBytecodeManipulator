@@ -2,6 +2,8 @@ import typing
 import abc
 import typing
 
+from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Parser import Parser
@@ -12,9 +14,13 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
-from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.MutableFunction import Instruction
+
+
+class AbstractCustomOperator(abc.ABC):
+    def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope, *parameters: AbstractAccessExpression) -> typing.List[Instruction]:
+        raise NotImplementedError
 
 
 class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, abc.ABC):
@@ -38,7 +44,8 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
                 ParsingScope,
             ],
             Instruction | typing.List[Instruction],
-        ],
+        ]
+        | AbstractCustomOperator,
     ] = {}
 
     SINGLE_OPS: typing.Dict[
@@ -48,7 +55,8 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         | typing.Callable[
             [AbstractAccessExpression, MutableFunction, ParsingScope],
             Instruction | typing.List[Instruction],
-        ],
+        ]
+        | AbstractCustomOperator,
     ] = {}
 
     class IOperation(IAssemblyStructureVisitable, abc.ABC):
@@ -70,10 +78,12 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         def __init__(
             self,
             operator: str,
+            operator_token: AbstractToken,
             expression: AbstractAccessExpression,
             base: typing.Type["AbstractOpAssembly"] = None,
         ):
             self.operator = operator
+            self.operator_token = operator_token
             self.expression = expression
             self.base = base
 
@@ -93,24 +103,33 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
-            opcode_info = self.base.SINGLE_OPS[self.operator]
+            try:
+                opcode_info = self.base.SINGLE_OPS[self.operator]
 
-            if callable(opcode_info):
-                result = opcode_info(self.expression, function, scope)
+                if callable(opcode_info):
+                    result = opcode_info(self.expression, function, scope)
 
-                if isinstance(result, Instruction):
-                    return self.expression.emit_bytecodes(function, scope) + [result]
+                    if isinstance(result, Instruction):
+                        return self.expression.emit_bytecodes(function, scope) + [result]
 
-                return result
+                    return result
 
-            if isinstance(opcode_info, int):
-                opcode, arg = opcode_info, 0
-            else:
-                opcode, arg = opcode_info
+                if isinstance(opcode_info, int):
+                    opcode, arg = opcode_info, 0
+                elif isinstance(opcode_info, AbstractCustomOperator):
+                    return opcode_info.emit_bytecodes(function, scope, self.expression)
+                else:
+                    opcode, arg = opcode_info
 
-            return self.expression.emit_bytecodes(function, scope) + [
-                Instruction(function, -1, opcode, arg=arg)
-            ]
+                return self.expression.emit_bytecodes(function, scope) + [
+                    Instruction(function, -1, opcode, arg=arg)
+                ]
+            except:
+                raise throw_positioned_syntax_error(
+                    scope,
+                    self.operator_token,
+                    "during emitting bytecode of singleton operator",
+                )
 
         def visit_parts(
             self,
@@ -134,14 +153,16 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
     class BinaryOperation(IOperation):
         def __init__(
             self,
-            lhs: AbstractAccessExpression,
+            lhs: AbstractSourceExpression,
             operator: str,
-            rhs: AbstractAccessExpression,
+            operator_token: typing.List[AbstractToken],
+            rhs: AbstractSourceExpression,
             base: typing.Type["AbstractOpAssembly"] = None,
         ):
             self.base = base
             self.lhs = lhs
             self.operator = operator
+            self.operator_token = operator_token
             self.rhs = rhs
 
         def __eq__(self, other):
@@ -161,30 +182,39 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
         def emit_bytecodes(
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
-            opcode_info = self.base.BINARY_OPS[self.operator]
+            try:
+                opcode_info = self.base.BINARY_OPS[self.operator]
 
-            if callable(opcode_info):
-                result = opcode_info(self.lhs, self.rhs, function, scope)
+                if callable(opcode_info):
+                    result = opcode_info(self.lhs, self.rhs, function, scope)
 
-                if isinstance(result, Instruction):
-                    return (
-                        self.lhs.emit_bytecodes(function, scope)
-                        + self.rhs.emit_bytecodes(function, scope)
-                        + [result]
-                    )
+                    if isinstance(result, Instruction):
+                        return (
+                            self.lhs.emit_bytecodes(function, scope)
+                            + self.rhs.emit_bytecodes(function, scope)
+                            + [result]
+                        )
 
-                return result
+                    return result
 
-            if isinstance(opcode_info, int):
-                opcode, arg = opcode_info, 0
-            else:
-                opcode, arg = opcode_info
+                if isinstance(opcode_info, int):
+                    opcode, arg = opcode_info, 0
+                elif isinstance(opcode_info, AbstractCustomOperator):
+                    return opcode_info.emit_bytecodes(function, scope, self.lhs, self.rhs)
+                else:
+                    opcode, arg = opcode_info
 
-            return (
-                self.lhs.emit_bytecodes(function, scope)
-                + self.rhs.emit_bytecodes(function, scope)
-                + [Instruction(function, -1, opcode, arg=arg)]
-            )
+                return (
+                    self.lhs.emit_bytecodes(function, scope)
+                    + self.rhs.emit_bytecodes(function, scope)
+                    + [Instruction(function, -1, opcode, arg=arg)]
+                )
+            except:
+                raise throw_positioned_syntax_error(
+                    scope,
+                    self.operator_token,
+                    "during emitting bytecode of binary operation"
+                )
 
         def visit_parts(
             self,
@@ -237,11 +267,11 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
     @classmethod
     def try_consume_single(cls, parser: "Parser") -> typing.Optional[IOperation]:
         parser.save()
-        if not (expr := parser.try_consume(IdentifierToken)):
+        if not (operator := parser.try_consume(IdentifierToken)):
             parser.rollback()
             return
 
-        if expr.text in cls.SINGLE_OPS:
+        if operator.text in cls.SINGLE_OPS:
             expression = parser.try_parse_data_source(
                 allow_primitives=True, include_bracket=False
             )
@@ -249,7 +279,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             if expression is None:
                 parser.rollback()
 
-            return cls.SingleOperation(expr.text, expression, base=cls)
+            return cls.SingleOperation(operator.text, operator, expression, base=cls)
 
     @classmethod
     def try_consume_binary(cls, parser: "Parser") -> typing.Optional[IOperation]:
@@ -278,7 +308,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
             parser.consume(first)
 
         else:
-            raise SyntaxError(f"No valid operator found: {first}, {second}")
+            return
 
         rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
 
@@ -289,7 +319,7 @@ class AbstractOpAssembly(AbstractAssemblyInstruction, AbstractAccessExpression, 
 
         parser.discard_save()
 
-        return AbstractOpAssembly.BinaryOperation(lhs, OP_NAME, rhs, base=cls)
+        return AbstractOpAssembly.BinaryOperation(lhs, OP_NAME, [first, second] if second else [first],  rhs, base=cls)
 
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None

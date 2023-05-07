@@ -385,6 +385,7 @@ OP @lhs[$local.attr] ** @rhs"""
                         AbstractOpAssembly.BinaryOperation(
                             GlobalAccessExpression("lhs"),
                             "+",
+                            [SpecialToken("+")],
                             GlobalAccessExpression("rhs"),
                         ),
                         GlobalAccessExpression("result"),
@@ -398,6 +399,7 @@ OP @lhs[$local.attr] ** @rhs"""
                                 ),
                             ),
                             "**",
+                            [SpecialToken("*"), SpecialToken("*")],
                             GlobalAccessExpression("rhs"),
                         )
                     ),
@@ -501,6 +503,7 @@ IF @global 'test'
                             AbstractOpAssembly.BinaryOperation(
                                 LocalAccessExpression("a"),
                                 "==",
+                                [SpecialToken("="), SpecialToken("=")],
                                 LocalAccessExpression("b"),
                             )
                         ),
@@ -556,6 +559,7 @@ WHILE $local 'test' {
                             AbstractOpAssembly.BinaryOperation(
                                 LocalAccessExpression("a"),
                                 "==",
+                                [SpecialToken("="), SpecialToken("=")],
                                 LocalAccessExpression("b"),
                             )
                         ),
@@ -592,6 +596,7 @@ WHILE $local 'test' {
                             AbstractOpAssembly.BinaryOperation(
                                 GlobalAccessExpression("a"),
                                 "==",
+                                [SpecialToken("="), SpecialToken("=")],
                                 GlobalAccessExpression("b"),
                             )
                         ),
@@ -603,6 +608,7 @@ WHILE $local 'test' {
                             AbstractOpAssembly.BinaryOperation(
                                 GlobalAccessExpression("a"),
                                 "==",
+                                [SpecialToken("="), SpecialToken("=")],
                                 GlobalAccessExpression("b"),
                             )
                         ),
@@ -613,6 +619,7 @@ WHILE $local 'test' {
                             AbstractOpAssembly.BinaryOperation(
                                 GlobalAccessExpression("a"),
                                 "==",
+                                [SpecialToken("="), SpecialToken("=")],
                                 GlobalAccessExpression("b"),
                             )
                         ),
