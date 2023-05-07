@@ -8,6 +8,8 @@
 - classes do no longer have their own namespace, if you still want a namespace, you may use '\<' \<namespace name> '\>' after the class name
 - functions and classes support now macro expansions for their names
 - macro expanded names can now be correctly compared, hashed, etc.
+- setting ASSERT_TYPE_CASTS in builtin_spec to True will now enforce types in specialization,
+not like a no-op like default 
 
 # Version 0.2.8
 - added FOREACH loops with automatically zip() when multiple iterable are given

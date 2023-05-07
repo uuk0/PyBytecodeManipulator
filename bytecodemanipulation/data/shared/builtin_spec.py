@@ -16,8 +16,48 @@ def specialize_typing_cast(container: SpecializationContainer):
     data_type, value = container.get_arg_specifications()
 
     if ASSERT_TYPE_CASTS:
-        # todo: add check type
-        pass
+        nop = Instruction(container.target, -1, Opcodes.NOP)
+
+        bytecode = [
+            value,
+            Instruction(container.target, -1, Opcodes.DUP_TOP),
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, isinstance),
+            Instruction(container.target, -1, Opcodes.ROT_TWO),
+            data_type,
+            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=2),
+            Instruction(container.target, -1, Opcodes.POP_JUMP_IF_TRUE, nop),
+
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, "expected data type '"),
+
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, repr),
+            data_type,
+            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(container.target, -1, Opcodes.BINARY_ADD),
+
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, "', but got '"),
+            Instruction(container.target, -1, Opcodes.BINARY_ADD),
+
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, repr),
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, type),
+            value,
+            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(container.target, -1, Opcodes.BINARY_ADD),
+
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, "'"),
+            Instruction(container.target, -1, Opcodes.BINARY_ADD),
+
+            Instruction(container.target, -1, Opcodes.LOAD_CONST, ValueError),
+            Instruction(container.target, -1, Opcodes.ROT_TWO),
+            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(container.target, -1, Opcodes.RAISE_VARARGS, arg=1),
+            nop,
+        ]
+
+        container.replace_call_with_opcodes(
+            bytecode
+        )
+        return
 
     container.replace_call_with_arg(value)
 
