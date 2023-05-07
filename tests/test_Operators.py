@@ -285,3 +285,17 @@ class TestOperators(TestCase):
 
         self.assertFalse(target())
 
+    def test_subclassof_operator_true(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (~int subclassof ~object)")
+
+        self.assertTrue(target())
+
+    def test_subclassof_operator_false(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (~int subclassof ~list)")
+
+        self.assertFalse(target())
+
