@@ -15,14 +15,14 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        inner_scope = scope.copy(sub_scope_name=self.name_token.text)
+        inner_scope = scope.copy(sub_scope_name=self.name(scope))
 
         target = MutableFunction(lambda: None)
 
         inner_bytecode = [
             Instruction(target, -1, Opcodes.LOAD_NAME, "__name__"),
             Instruction(target, -1, Opcodes.STORE_NAME, "__module__"),
-            Instruction(target, -1, Opcodes.LOAD_CONST, self.name_token.text),
+            Instruction(target, -1, Opcodes.LOAD_CONST, self.name(scope)),
             Instruction(target, -1, Opcodes.STORE_NAME, "__qualname__"),
         ]
 
@@ -52,9 +52,9 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
         bytecode = [
             Instruction(function, -1, Opcodes.LOAD_BUILD_CLASS),
             Instruction(function, -1, Opcodes.LOAD_CONST, code_obj),
-            Instruction(function, -1, Opcodes.LOAD_CONST, self.name_token.text),
+            Instruction(function, -1, Opcodes.LOAD_CONST, self.name(scope)),
             Instruction(function, -1, Opcodes.MAKE_FUNCTION, arg=0),
-            Instruction(function, -1, Opcodes.LOAD_CONST, self.name_token.text),
+            Instruction(function, -1, Opcodes.LOAD_CONST, self.name(scope)),
         ]
 
         for parent in self.parents:
@@ -65,6 +65,6 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
 
         bytecode += [
             Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2 + len(self.parents)),
-            Instruction(function, -1, Opcodes.STORE_FAST, self.name_token.text),
+            Instruction(function, -1, Opcodes.STORE_FAST, self.name(scope)),
         ]
         return bytecode

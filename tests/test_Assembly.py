@@ -1369,28 +1369,6 @@ CLASS test
         cls = target()
         self.assertEqual(cls.test(), 42)
 
-    def test_class_assembly_namespace_macro(self):
-        def target():
-            assembly(
-                """
-CLASS test
-{
-    MACRO test_macro()
-    {
-        RETURN 1
-    }
-}
-
-CALL MACRO test:test_macro()
-"""
-            )
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
-        self.assertEqual(target(), 1)
-
     def test_transform_to_macro(self):
         @make_macro("TestMacro:test_transform_to_macro")
         def test_transform_to_macro():

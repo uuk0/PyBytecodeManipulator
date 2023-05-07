@@ -26,7 +26,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractClassDefinitionAssembly":
-        name_token = parser.consume(IdentifierToken, err_arg=scope)
+        name = parser.try_parse_identifier_like()
 
         parents = []
 
@@ -53,26 +53,26 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         if not parents:
             parents = [ConstantAccessExpression(object)]
 
-        code_block = parser.parse_body(namespace_part=name_token.text, scope=scope)
+        code_block = parser.parse_body(scope=scope)
         return cls(
-            name_token,
+            name,
             parents,
             code_block,
         )
 
     def __init__(
-        self, name_token: IdentifierToken, parents, code_block: CompoundExpression
+        self, name: typing.Callable[[ParsingScope], str], parents, code_block: CompoundExpression
     ):
-        self.name_token = name_token
+        self.name = name
         self.parents = parents
         self.code_block = code_block
 
     def __repr__(self):
-        return f"ClassAssembly::'{self.name_token.text}'({','.join(map(repr, self.parents))}){{{self.code_block}}}"
+        return f"ClassAssembly::'{self.name(None)}'({','.join(map(repr, self.parents))}){{{self.code_block}}}"
 
     def copy(self):
         return AbstractClassDefinitionAssembly(
-            self.name_token,
+            self.name,
             [parent.copy() for parent in self.parents],
             self.code_block.copy(),
         )
@@ -80,7 +80,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def __eq__(self, other):
         return (
             isinstance(other, type(self))
-            and self.name_token == other.name_token
+            and self.name(None) == other.name(None)
             and self.parents == other.parents
             and self.code_block == other.code_block
         )
