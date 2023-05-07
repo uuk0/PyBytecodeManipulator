@@ -155,3 +155,53 @@ class TestOperators(TestCase):
 
         self.assertTrue(target(self.fail))
 
+    def test_simple_nor_true_true(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 nor 1)""")
+
+        self.assertFalse(target())
+
+    def test_simple_nor_false_lhs(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 nor 1)""")
+
+        self.assertFalse(target())
+
+    def test_simple_nor_false_rhs(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (1 nor 0)""")
+
+        self.assertFalse(target())
+
+    def test_simple_nor_false_lhs_rhs(self):
+        @apply_operations
+        def target():
+            assembly("""RETURN OP (0 nor 0)""")
+
+        self.assertTrue(target())
+
+    def test_nor_eval(self):
+        @apply_operations
+        def target(m):
+            assembly("""RETURN OP ($m() nor $m())""")
+
+        i = 0
+
+        def incr():
+            nonlocal i
+            i += 1
+            return 0
+
+        self.assertTrue(target(incr))
+        self.assertEqual(i, 2)
+
+    def test_nor_short(self):
+        @apply_operations
+        def target(tar):
+            assembly("""RETURN OP (1 nor $tar())""")
+
+        self.assertFalse(target(self.fail))
+
