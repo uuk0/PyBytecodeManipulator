@@ -28,6 +28,13 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     ) -> "AbstractClassDefinitionAssembly":
         name = parser.try_parse_identifier_like()
 
+        if name is None:
+            raise throw_positioned_syntax_error(
+                scope,
+                parser[0],
+                "expected <identifier like>"
+            )
+
         namespace = None
 
         if parser.try_consume(SpecialToken("<")):

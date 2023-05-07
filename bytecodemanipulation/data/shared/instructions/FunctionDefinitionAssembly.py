@@ -21,14 +21,22 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 
 
 class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
-    # DEF [<func name>] ['<' ['!'] <bound variables\> '>'] '(' <signature> ')' ['->' <target>] '{' <body> '}'
+    # DEF [<func name>] ['<' ['!'] <bound variables> '>'] '(' <signature> ')' ['->' <target>] '{' <body> '}'
     NAME = "DEF"
 
     @classmethod
     def consume(
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractFunctionDefinitionAssembly":
-        func_name = parser.try_consume(IdentifierToken)
+        func_name = parser.try_parse_identifier_like()
+
+        if func_name is None:
+            raise throw_positioned_syntax_error(
+                scope,
+                parser[0],
+                "expected <identifier like>"
+            )
+
         bound_variables: typing.List[
             typing.Tuple[typing.Callable[[ParsingScope], str], bool]
         ] = []
@@ -126,7 +134,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     def __init__(
         self,
-        func_name: IdentifierToken | str | None,
+        func_name: typing.Callable[[ParsingScope], str] | str | None,
         bound_variables: typing.List[
             typing.Tuple[typing.Callable[[ParsingScope], str], bool] | str
         ],
@@ -135,7 +143,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         target: AbstractAccessExpression | None = None,
     ):
         self.func_name = (
-            func_name if not isinstance(func_name, str) else IdentifierToken(func_name)
+            func_name if not isinstance(func_name, str) else lambda _: func_name
         )
         self.bound_variables: typing.List[
             typing.Tuple[typing.Callable[[ParsingScope], str], bool]
@@ -187,7 +195,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def __eq__(self, other):
         return (
             type(self) == type(other)
-            and self.func_name == other.func_name
+            and self.func_name(None) == other.func_name(None)
             and len(self.bound_variables) == len(other.bound_variables)
             and all(
                 (
@@ -201,7 +209,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __repr__(self):
-        return f"DEF({self.func_name.text}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+        return f"DEF({self.func_name(None)}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
 
     def copy(self) -> "AbstractFunctionDefinitionAssembly":
         return type(self)(

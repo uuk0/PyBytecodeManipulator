@@ -122,7 +122,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                 function,
                 -1,
                 "LOAD_CONST",
-                self.func_name.text if self.func_name else "<lambda>",
+                self.func_name(scope) if self.func_name else "<lambda>",
             ),
             Instruction(function, -1, "MAKE_FUNCTION", arg=flags),
         ]
@@ -131,7 +131,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             bytecode += self.target.emit_store_bytecodes(function, scope)
         else:
             bytecode += [
-                Instruction(function, -1, Opcodes.STORE_FAST, self.func_name.text),
+                Instruction(function, -1, Opcodes.STORE_FAST, self.func_name(scope)),
             ]
 
         return bytecode
