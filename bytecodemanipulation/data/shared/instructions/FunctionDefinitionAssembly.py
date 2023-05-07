@@ -30,14 +30,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractFunctionDefinitionAssembly":
-        func_name = parser.try_parse_identifier_like()
-
-        if func_name is None:
-            raise throw_positioned_syntax_error(
-                scope,
-                parser[0],
-                "expected <identifier like>"
-            )
+        func_name = parser.parse_identifier_like(scope)
 
         bound_variables: typing.List[
             typing.Tuple[IIdentifierAccessor, bool]
