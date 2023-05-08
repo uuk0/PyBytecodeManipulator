@@ -1,96 +1,13 @@
-import dis
 import math
-import os
-import random
-import traceback
-import types
 import typing
 import unittest
 
-import asyncio
-
 from bytecodemanipulation import Emulator
 
-from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.Optimiser import apply_now
-from bytecodemanipulation.Optimiser import BUILTIN_CACHE
 from bytecodemanipulation.Optimiser import cache_global_name
-from bytecodemanipulation.Optimiser import guarantee_builtin_names_are_protected
-
-BUILTIN_INLINE = _OptimisationContainer(None)
-BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
-
-
-def compare_optimized_results(
-    case: unittest.TestCase, target, ideal, opt_ideal=1, msg=...
-):
-    if hasattr(target, "_debug_wrapper"):
-        mutable = target._debug_wrapper
-        mutable.reassign_to_function()
-    else:
-        mutable = MutableFunction(target)
-
-    BUILTIN_INLINE._inline_load_globals(mutable)
-
-    if not hasattr(target, "_debug_wrapper"):
-        mutable.reassign_to_function()
-
-    _OptimisationContainer.get_for_target(mutable.target).run_optimisers()
-
-    if opt_ideal > 0:
-        mutable = MutableFunction(ideal)
-        BUILTIN_INLINE._inline_load_globals(mutable)
-        mutable.reassign_to_function()
-
-    if opt_ideal > 1:
-        _OptimisationContainer.get_for_target(ideal).run_optimisers()
-
-    mutable = MutableFunction(target)
-    mutable2 = MutableFunction(ideal)
-
-    eq = len(mutable.instructions) == len(mutable2.instructions)
-
-    if eq:
-        eq = all(
-            a.lossy_eq(b) for a, b in zip(mutable.instructions, mutable2.instructions)
-        )
-
-    if not eq:
-        local = os.path.dirname(__file__)
-        mutable.dump_info(local + "/target.json")
-        mutable.dump_info(local + "/ideal.json")
-
-        print("target")
-        if hasattr(target, "_debug_wrapper"):
-            for instr in target._debug_wrapper.instructions:
-                print(instr)
-        else:
-            dis.dis(target)
-
-        print("compare")
-        dis.dis(ideal)
-
-    case.assertEqual(
-        len(mutable.instructions),
-        len(mutable2.instructions),
-        msg=(msg if msg is not ... else "...") + ": Instruction count !=",
-    )
-
-    for a, b in zip(mutable.instructions, mutable2.instructions):
-        if isinstance(a.arg_value, Exception):
-            case.assertTrue(
-                isinstance(b.arg_value, Exception)
-                and a.arg_value.args == b.arg_value.args,
-                msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}",
-            )
-        else:
-            case.assertTrue(
-                a.lossy_eq(b),
-                msg=f"{msg if msg is not ... else '...'}: Instruction {a} != {b}",
-            )
+from tests.util import compare_optimized_results
 
 
 class TestIssue2(unittest.TestCase):

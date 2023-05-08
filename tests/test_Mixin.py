@@ -4,8 +4,7 @@ from unittest import TestCase
 
 
 from bytecodemanipulation.Mixin import *
-from tests.test_issues import compare_optimized_results
-
+from tests.util import compare_optimized_results
 
 FLAG = False
 

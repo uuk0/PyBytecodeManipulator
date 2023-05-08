@@ -63,7 +63,7 @@ bytecodemanipulation.data_loader.load_assembly_instructions()
 if typing.TYPE_CHECKING:
     pass
 
-from tests.test_issues import compare_optimized_results
+from tests.util import compare_optimized_results
 from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationContainer
 
 

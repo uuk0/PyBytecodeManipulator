@@ -5,7 +5,7 @@ import typing
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 from bytecodemanipulation.Optimiser import _OptimisationContainer
-from tests.test_issues import BUILTIN_INLINE
+from tests.util import BUILTIN_INLINE
 
 
 def optimise(target: typing.Callable):
