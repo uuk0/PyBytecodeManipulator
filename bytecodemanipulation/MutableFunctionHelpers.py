@@ -266,6 +266,7 @@ def insert_method_into(
     offset: typing.Union[Instruction, int],
     to_insert: MutableFunction | MutableFunctionWithTree,
     protected_locals: typing.List[str] = tuple(),
+    drop_return_result=True,
 ):
     """
     Inserts the function AFTER the given offset / Instruction.
@@ -309,12 +310,12 @@ def insert_method_into(
             previous.next_instruction = instr
 
         if instr.opcode == Opcodes.INTERMEDIATE_INNER_RETURN:
-            previous.next_instruction = Instruction.create(Opcodes.POP_TOP)
-            previous.next_instruction.update_owner(to_insert, -1)
-            previous.next_instruction.next_instruction = instr
+            if drop_return_result:
+                previous.insert_after(
+                    Instruction(to_insert, -1, Opcodes.POP_TOP)
+                )
 
-            instr.change_opcode(Opcodes.JUMP_ABSOLUTE)
-            instr.change_arg_value(HEAD_INSTRUCTION.next_instruction)
+            instr.change_opcode(Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction)
 
         previous = instr
 
@@ -380,3 +381,24 @@ def insert_method_into(
     body.mutable.assemble_instructions_from_tree(body.root)
 
     # body.print_recursive()
+
+
+def inline_calls_to_const_functions(mutable: MutableFunction):
+    from bytecodemanipulation.Optimiser import _OptimisationContainer
+
+    for instr in mutable.instructions[:]:
+        if instr.opcode == Opcodes.CALL_FUNCTION:
+            source = next(instr.trace_stack_position(instr.arg))
+
+            if source.opcode != Opcodes.LOAD_CONST:
+                continue
+
+            target = source.arg_value
+
+            container = _OptimisationContainer.get_for_target(target)
+            if not container.try_inline_calls:
+                continue
+
+            instr.change_opcode(Opcodes.NOP)
+            insert_method_into(mutable, instr.offset, MutableFunction(target), drop_return_result=False)
+            source.change_opcode(Opcodes.NOP)

@@ -132,6 +132,8 @@ class _OptimisationContainer:
 
         self.static_attributes: typing.Set[str] = set()
 
+        self.try_inline_calls = False
+
         # Exceptions that can be raised from here
         self.may_raise_exceptions: typing.Set[
             typing.Type[Exception] | Exception
@@ -231,6 +233,7 @@ class _OptimisationContainer:
 
         # print("opt", self.target)
         from bytecodemanipulation.optimiser_util import apply_specializations
+        from bytecodemanipulation.MutableFunctionHelpers import inline_calls_to_const_functions
 
         if self.children:
             self._walk_children_and_copy_attributes()
@@ -300,6 +303,9 @@ class _OptimisationContainer:
 
             # Remove conditional jumps no longer required
             if remove_branch_on_constant(mutable):
+                continue
+
+            if inline_calls_to_const_functions(mutable):
                 continue
 
             break
@@ -726,19 +732,32 @@ def guarantee_static_attributes(*attributes: str):
     return annotate
 
 
-def apply_now():
+def inline_calls(target: typing.Callable = None):
+    def annot(tar):
+        container = _OptimisationContainer.get_for_target(target)
+        container.try_inline_calls = True
+        return tar
+
+    if target:
+        return annot(target)
+    return annot
+
+
+def apply_now(target: typing.Callable = None):
     """
     Applies the optimisations NOW
     """
 
-    def annotate(target):
+    def annotate(tar):
         # dis.dis(target)
 
-        container = _OptimisationContainer.get_for_target(target)
+        container = _OptimisationContainer.get_for_target(tar)
         container.run_optimisers()
 
-        return target
+        return tar
 
+    if target:
+        return annotate(target)
     return annotate
 
 
