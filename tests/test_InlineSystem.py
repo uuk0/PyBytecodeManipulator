@@ -1,11 +1,9 @@
 import dis
 from unittest import TestCase
 
-from bytecodemanipulation.Optimiser import cache_global_name
-
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.MutableFunctionHelpers import *
-from bytecodemanipulation.Optimiser import inline_calls, apply_now
+from bytecodemanipulation.Optimiser import inline_calls, apply_now, cache_global_name
 from tests.util import compare_optimized_results
 
 INVOKED = False
@@ -49,4 +47,23 @@ class TestMethodInsert(TestCase):
         apply_now()(target)
 
         compare_optimized_results(self, target, call)
+        self.assertEqual(target(), 1)
+
+    def test_inline_call_protect_local(self):
+        global call
+
+        @inline_calls
+        def call():
+            x = 2
+
+        @cache_global_name("call", lambda: call)
+        def target():
+            x = 1
+            call()
+            return x
+
+        apply_now()(target)
+
+        dis.dis(target)
+
         self.assertEqual(target(), 1)

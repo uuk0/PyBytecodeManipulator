@@ -131,7 +131,25 @@ class MutableFunctionWithTree:
             self.print_recursive(root.arg_value, visited, level + 1)
 
 
-def prefix_all_locals_with(
+def prefix_all_locals_with_all(
+    mutable: MutableFunction | MutableFunctionWithTree,
+    prefix: str,
+):
+    if isinstance(mutable, MutableFunctionWithTree):
+        mutable.mutable.assemble_instructions_from_tree(mutable.root)
+        mutable = mutable.mutable
+
+    mutable.shared_variable_names = [
+        prefix + e
+        for e in mutable.shared_variable_names
+    ]
+
+    for instruction in mutable.instructions:
+        if instruction.has_local():
+            instruction.change_arg(instruction.arg)
+
+
+def prefix_all_locals_with_specified(
     mutable: MutableFunction | MutableFunctionWithTree,
     prefix: str,
     protected_locals: typing.List[str] = tuple(),
@@ -144,8 +162,6 @@ def prefix_all_locals_with(
         prefix + e if e not in protected_locals else e
         for e in mutable.shared_variable_names
     ]
-
-    print(mutable.shared_variable_names)
 
     for instruction in mutable.instructions:
         if instruction.has_local():
@@ -294,7 +310,11 @@ def insert_method_into(
     for instr in to_insert.instructions:
         instr.offset = -1
 
-    prefix_all_locals_with(to_insert, to_insert.function_name + ":", protected_locals)
+    if protected_locals is not None:
+        prefix_all_locals_with_specified(to_insert, to_insert.function_name + ":", protected_locals)
+    else:
+        prefix_all_locals_with_all(to_insert, to_insert.function_name + ":")
+
     replace_opcode_with_other(
         to_insert, Opcodes.RETURN_VALUE, Opcodes.INTERMEDIATE_INNER_RETURN
     )
@@ -400,5 +420,5 @@ def inline_calls_to_const_functions(mutable: MutableFunction):
                 continue
 
             instr.change_opcode(Opcodes.NOP)
-            insert_method_into(mutable, instr.offset, MutableFunction(target), drop_return_result=False)
+            insert_method_into(mutable, instr.offset, MutableFunction(target), drop_return_result=False, protected_locals=None)
             source.change_opcode(Opcodes.NOP)
