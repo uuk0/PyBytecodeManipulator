@@ -77,6 +77,9 @@ else:
     )
 
 
+from bytecodemanipulation.assembler.target import apply_operations
+
+
 GLOBAL = None
 
 
@@ -1609,3 +1612,30 @@ RETURN %
         mutable.reassign_to_function()
 
         self.assertEqual(target(), 10)
+
+    def test_assert(self):
+        @apply_operations
+        def target(x):
+            assembly("""
+ASSERT $x
+""")
+
+        target(1)
+        self.assertRaises(AssertionError, lambda: target(0))
+
+    def test_assert_with_message(self):
+        @apply_operations
+        def target(x):
+            assembly("""
+ASSERT $x \"Test Message\"
+""")
+
+        target(1)
+        self.assertRaises(AssertionError, lambda: target(0))
+
+        try:
+            target(0)
+        except AssertionError as e:
+            self.assertEqual(e.args, ("Test Message",))
+        else:
+            self.assertTrue(False)

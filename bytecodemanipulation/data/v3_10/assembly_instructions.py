@@ -26,6 +26,7 @@ from bytecodemanipulation.data.v3_10.instructions import (
     StoreGlobalAssembly,
     WhileAssembly,
     YieldAssembly,
+    AssertAssembly,
 )
 
 

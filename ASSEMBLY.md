@@ -53,6 +53,7 @@ for cross-version support.
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 * 'RAISE' \[\<source>]: raises the exception at TOS or source 
 * CLASS \<name> '\<' \<exposed namespace> '\>' \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
+* ASSERT \<expression> \[\<message>]: asserts that 'expression' evaluates to True, if not, evaluates 'message' or uses the default message and raises an AssertionError
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 
