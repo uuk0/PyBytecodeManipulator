@@ -20,21 +20,28 @@ for cross-version support.
 
 * LOAD \<expression> \['->' \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> \['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
+
 * CALL \['PARTIAL' | 'MACRO'] \<call target> '(' \<args> ')' \['-> '\<target>]: invokes the target found at 'call target' with the given 'args'
   (like python, but with access expressions for values and constant identifiers for keys), and stores it at TOS or 'target';
   * 'PARTIAL' is a wrapper like functools.partial. If used, each arg expression can be prefixed with '?' for dynamic evaluation, otherwise static evaluation (like the real functools.partial)
   * 'MACRO' calls macro code, meaning inlining; Parameters of the macro NOT prefixed with '!' will be evaluated on each access by the macro
     * also enables the use of code blocks as parameters (by using '{' \<expressions> '}'' as a parameter)
+
 * OP (\<lhs> \<binary operator> \<rhs>) \['->' \<target>]: uses the given operator
   * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
+
 * IF \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' only if 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the IF statement and 'label name'+"_HEAD" the real HEAD, so before the condition check
 * WHILE \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' while 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the WHILE statement and 'label name'+"_INNER" the inner HEAD, without condition check
-* FOREACH \<variable> {',' \<variable>} 'IN' \<iterable> {(',' | '\*') \<iterable>}: iterates over the given iterables, using itertools.product on items chained by '*' 
+* FOREACH \<variable> {',' \<variable>} 'IN' \<iterable> {(',' | '\*') \<iterable>}: iterates over the given iterables, using itertools.product on items chained by '*'
 * JUMP \<label name> \[(IF \<condition access>) | ('(' \<expression> | \<op expression> ')')] : jumps to the label named 'label name'; if a condition is provided, jumps only if it evals to True
+
+* CLASS \<name> '\<' \<exposed namespace> '\>' \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
 * DEF \[\<func name>] \['<' \['!'] \<bound variables\> '>'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}': creates a method named 'func name' (lambda-like if not provided), capturing the outer locals in 'bound variables' (or none)
   using the args stored in 'signature', and optionally storing the result at 'target' (if not provided, at 'func name' if provided else TOS). 'body' is the code itself
+
 * PYTHON '{' \<code> '}': puts the python code in place; '{' and '}' is allowed in code, but the last not matched and not escaped '}' will be used at end of code by the Lexer; WARNING: f-strings are currently NOT supported as they require
   some special handling at the lexer.
+
 * 'MACRO' \['ASSEMBLY'] \<name> \['(' \<param> \[{',' \<param>}] ')'] \['->' \<data type>]  '{' \<assembly code> '}', where param is \['!'] \['MACRO_'] \<name> \[' ' \<data type>] defines a macro in an assembly file, which can be used from outside
   * Call it by using 'CALL MACRO' with the name being the namespace
   * Parameters can be accessed via the '&' prefix
@@ -50,9 +57,11 @@ for cross-version support.
 * MACRO_PASTE \<macro param name> \['->' \<target>]: pastes the code for a macro-parameter, and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
 * MACRO_IMPORT \<module name with '.'> \['->' \['.'\] \<namespace with '.'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
+
 * 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
+
 * 'RAISE' \[\<source>]: raises the exception at TOS or source 
-* CLASS \<name> '\<' \<exposed namespace> '\>' \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
+
 * ASSERT \<expression> \[\<message>]: asserts that 'expression' evaluates to True, if not, evaluates 'message' or uses the default message and raises an AssertionError
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
