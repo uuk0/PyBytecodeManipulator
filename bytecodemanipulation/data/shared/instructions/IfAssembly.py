@@ -88,7 +88,11 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         parents: list,
     ):
         return visitor(
-            self, (self.source.visit_parts(visitor, parents+[self]), self.body.visit_parts(visitor, parents+[self])),
+            self,
+            (
+                self.source.visit_parts(visitor, parents + [self]),
+                self.body.visit_parts(visitor, parents + [self]),
+            ),
             parents,
         )
 

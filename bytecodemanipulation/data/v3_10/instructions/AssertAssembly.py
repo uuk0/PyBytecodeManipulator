@@ -6,7 +6,9 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.data.shared.instructions.AssertAssembly import AbstractAssertAssembly
+from bytecodemanipulation.data.shared.instructions.AssertAssembly import (
+    AbstractAssertAssembly,
+)
 
 
 @Parser.register

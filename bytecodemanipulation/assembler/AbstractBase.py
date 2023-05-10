@@ -238,7 +238,11 @@ class IIdentifierAccessor:
 
 
 class MacroExpandedIdentifier(IIdentifierAccessor):
-    def __init__(self, macro_name: typing.Union[str, "IIdentifierAccessor"], token: typing.List[AbstractToken] = None):
+    def __init__(
+        self,
+        macro_name: typing.Union[str, "IIdentifierAccessor"],
+        token: typing.List[AbstractToken] = None,
+    ):
         self.macro_name = macro_name
         self.token = token
 
@@ -254,11 +258,21 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         return f"&{self.macro_name}"
 
     def __call__(self, scope: ParsingScope):
-        from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
-        from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
-        from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import DerefAccessExpression
-        from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import GlobalAccessExpression
-        from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+        from bytecodemanipulation.assembler.syntax_errors import (
+            throw_positioned_syntax_error,
+        )
+        from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
+            ConstantAccessExpression,
+        )
+        from bytecodemanipulation.data.shared.expressions.DerefAccessExpression import (
+            DerefAccessExpression,
+        )
+        from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import (
+            GlobalAccessExpression,
+        )
+        from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
+            LocalAccessExpression,
+        )
 
         if scope is None:
             raise SyntaxError("no scope provided")
@@ -304,7 +318,9 @@ class StaticIdentifier(IIdentifierAccessor):
         self.name = name
 
     def __eq__(self, other):
-        return (isinstance(other, StaticIdentifier) and self.name == other.name) or self.name == other
+        return (
+            isinstance(other, StaticIdentifier) and self.name == other.name
+        ) or self.name == other
 
     def __hash__(self):
         return hash(self.name)

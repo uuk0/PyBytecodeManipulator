@@ -36,8 +36,9 @@ class TestSpecializations(TestCase):
         try:
             target()
         except ValueError as e:
-            self.assertEqual(("expected data type '<class 'int'>', but got '<class 'list'>'",), e.args)
+            self.assertEqual(
+                ("expected data type '<class 'int'>', but got '<class 'list'>'",),
+                e.args,
+            )
 
         builtin_spec.ASSERT_TYPE_CASTS = False
-
-

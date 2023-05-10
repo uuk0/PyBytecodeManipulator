@@ -24,19 +24,13 @@ class LabelAssembly(AbstractAssemblyInstruction):
 
         if name is None:
             raise throw_positioned_syntax_error(
-                scope,
-                parser[0],
-                "expected <identifier like>"
+                scope, parser[0], "expected <identifier like>"
             )
 
         return cls(name)
 
     def __init__(self, name: IIdentifierAccessor | str):
-        self.name = (
-            name
-            if not isinstance(name, str)
-            else StaticIdentifier(name)
-        )
+        self.name = name if not isinstance(name, str) else StaticIdentifier(name)
 
     def __repr__(self):
         return f"LABEL({self.name})"

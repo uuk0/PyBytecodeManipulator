@@ -26,27 +26,23 @@ def specialize_typing_cast(container: SpecializationContainer):
             data_type,
             Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=2),
             Instruction(container.target, -1, Opcodes.POP_JUMP_IF_TRUE, nop),
-
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, "expected data type '"),
-
+            Instruction(
+                container.target, -1, Opcodes.LOAD_CONST, "expected data type '"
+            ),
             Instruction(container.target, -1, Opcodes.LOAD_CONST, repr),
             data_type,
             Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
             Instruction(container.target, -1, Opcodes.BINARY_ADD),
-
             Instruction(container.target, -1, Opcodes.LOAD_CONST, "', but got '"),
             Instruction(container.target, -1, Opcodes.BINARY_ADD),
-
             Instruction(container.target, -1, Opcodes.LOAD_CONST, repr),
             Instruction(container.target, -1, Opcodes.LOAD_CONST, type),
             value,
             Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
             Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
             Instruction(container.target, -1, Opcodes.BINARY_ADD),
-
             Instruction(container.target, -1, Opcodes.LOAD_CONST, "'"),
             Instruction(container.target, -1, Opcodes.BINARY_ADD),
-
             Instruction(container.target, -1, Opcodes.LOAD_CONST, ValueError),
             Instruction(container.target, -1, Opcodes.ROT_TWO),
             Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
@@ -54,9 +50,7 @@ def specialize_typing_cast(container: SpecializationContainer):
             nop,
         ]
 
-        container.replace_call_with_opcodes(
-            bytecode
-        )
+        container.replace_call_with_opcodes(bytecode)
         return
 
     container.replace_call_with_arg(value)

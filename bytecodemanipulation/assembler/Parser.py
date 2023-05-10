@@ -1,7 +1,11 @@
 import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
-from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, MacroExpandedIdentifier, StaticIdentifier
+from bytecodemanipulation.assembler.AbstractBase import (
+    IIdentifierAccessor,
+    MacroExpandedIdentifier,
+    StaticIdentifier,
+)
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import _syntax_wrapper
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
@@ -369,7 +373,12 @@ class Parser(AbstractParser):
             self.consume(SpecialToken("\\"), err_arg=scope)
             expr = DiscardValueExpression()
 
-        elif start_token.text == "OP" and allow_op and "OP" in self.INSTRUCTIONS and AbstractOpAssembly.IMPLEMENTATION is not None:
+        elif (
+            start_token.text == "OP"
+            and allow_op
+            and "OP" in self.INSTRUCTIONS
+            and AbstractOpAssembly.IMPLEMENTATION is not None
+        ):
             self.consume(start_token)
             self.consume(SpecialToken("("), err_arg=scope)
             expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
@@ -507,9 +516,7 @@ class Parser(AbstractParser):
         if expr := self.try_consume(IdentifierToken):
             return StaticIdentifier(expr.text)
 
-    def parse_identifier_like(
-        self, scope: ParsingScope
-    ) -> IIdentifierAccessor:
+    def parse_identifier_like(self, scope: ParsingScope) -> IIdentifierAccessor:
         identifier = self.try_parse_identifier_like()
 
         if identifier is None:

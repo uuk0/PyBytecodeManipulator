@@ -10,4 +10,3 @@ data[8] = f'    version="{sys.argv[1]}",'
 
 with open("setup.py", mode="w") as f:
     f.write("\n".join(data))
-

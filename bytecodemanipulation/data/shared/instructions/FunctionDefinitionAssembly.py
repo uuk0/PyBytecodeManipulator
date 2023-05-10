@@ -32,9 +32,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     ) -> "AbstractFunctionDefinitionAssembly":
         func_name = parser.parse_identifier_like(scope)
 
-        bound_variables: typing.List[
-            typing.Tuple[IIdentifierAccessor, bool]
-        ] = []
+        bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []
         args = []
 
         if parser.try_consume(SpecialToken("<")):
@@ -130,9 +128,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def __init__(
         self,
         func_name: IIdentifierAccessor | str | None,
-        bound_variables: typing.List[
-            typing.Tuple[IIdentifierAccessor, bool] | str
-            ],
+        bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool] | str],
         args: typing.List[AbstractCallAssembly.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
@@ -140,9 +136,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.func_name = (
             func_name if not isinstance(func_name, str) else StaticIdentifier(func_name)
         )
-        self.bound_variables: typing.List[
-            typing.Tuple[IIdentifierAccessor, bool]
-        ] = []
+        self.bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []
         # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
 
         def _create_lazy(name: str):

@@ -139,10 +139,7 @@ def prefix_all_locals_with_all(
         mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
-    mutable.shared_variable_names = [
-        prefix + e
-        for e in mutable.shared_variable_names
-    ]
+    mutable.shared_variable_names = [prefix + e for e in mutable.shared_variable_names]
 
     for instruction in mutable.instructions:
         if instruction.has_local():
@@ -311,7 +308,9 @@ def insert_method_into(
         instr.offset = -1
 
     if protected_locals is not None:
-        prefix_all_locals_with_specified(to_insert, to_insert.function_name + ":", protected_locals)
+        prefix_all_locals_with_specified(
+            to_insert, to_insert.function_name + ":", protected_locals
+        )
     else:
         prefix_all_locals_with_all(to_insert, to_insert.function_name + ":")
 
@@ -331,11 +330,11 @@ def insert_method_into(
 
         if instr.opcode == Opcodes.INTERMEDIATE_INNER_RETURN:
             if drop_return_result:
-                previous.insert_after(
-                    Instruction(to_insert, -1, Opcodes.POP_TOP)
-                )
+                previous.insert_after(Instruction(to_insert, -1, Opcodes.POP_TOP))
 
-            instr.change_opcode(Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction)
+            instr.change_opcode(
+                Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction
+            )
 
         previous = instr
 
@@ -420,5 +419,11 @@ def inline_calls_to_const_functions(mutable: MutableFunction):
                 continue
 
             instr.change_opcode(Opcodes.NOP)
-            insert_method_into(mutable, instr.offset, MutableFunction(target), drop_return_result=False, protected_locals=None)
+            insert_method_into(
+                mutable,
+                instr.offset,
+                MutableFunction(target),
+                drop_return_result=False,
+                protected_locals=None,
+            )
             source.change_opcode(Opcodes.NOP)

@@ -233,7 +233,9 @@ class _OptimisationContainer:
 
         # print("opt", self.target)
         from bytecodemanipulation.optimiser_util import apply_specializations
-        from bytecodemanipulation.MutableFunctionHelpers import inline_calls_to_const_functions
+        from bytecodemanipulation.MutableFunctionHelpers import (
+            inline_calls_to_const_functions,
+        )
 
         if self.children:
             self._walk_children_and_copy_attributes()

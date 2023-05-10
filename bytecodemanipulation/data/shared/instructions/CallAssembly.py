@@ -129,7 +129,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         )
 
     @classmethod
-    def consume_macro_call(cls, parser: "Parser", scope: ParsingScope) -> "AbstractCallAssembly":
+    def consume_macro_call(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> "AbstractCallAssembly":
         """
         Consumes a call to a macro
         Used by the Parser when finding macros to be used like assembly instructions

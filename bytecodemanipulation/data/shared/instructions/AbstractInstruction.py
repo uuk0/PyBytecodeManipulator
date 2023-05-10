@@ -24,6 +24,7 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     (this is used in the core instructions, as the bytecode emitter is version dependent, the parsing code
     not)
     """
+
     NAME: str | None = None
     IMPLEMENTATION: typing.Type["AbstractAssemblyInstruction"] | None = None
 

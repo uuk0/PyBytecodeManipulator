@@ -185,4 +185,3 @@ class JsonTestEntry:
 
 BUILTIN_INLINE = _OptimisationContainer(None)
 BUILTIN_INLINE.dereference_global_name_cache.update(BUILTIN_CACHE)
-

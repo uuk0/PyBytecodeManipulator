@@ -13,7 +13,9 @@ from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly im
     AbstractFunctionDefinitionAssembly,
 )
 from bytecodemanipulation.data.shared.instructions.IfAssembly import AbstractIFAssembly
-from bytecodemanipulation.data.shared.instructions.JumpAssembly import AbstractJumpAssembly
+from bytecodemanipulation.data.shared.instructions.JumpAssembly import (
+    AbstractJumpAssembly,
+)
 from bytecodemanipulation.data.shared.instructions.LoadAssembly import LoadAssembly
 from bytecodemanipulation.data.shared.instructions.LoadConstAssembly import (
     AbstractLoadConstAssembly,
@@ -27,7 +29,9 @@ from bytecodemanipulation.data.shared.instructions.LoadGlobalAssembly import (
 from bytecodemanipulation.data.shared.instructions.PopElementAssembly import (
     AbstractPopElementAssembly,
 )
-from bytecodemanipulation.data.shared.instructions.ReturnAssembly import AbstractReturnAssembly
+from bytecodemanipulation.data.shared.instructions.ReturnAssembly import (
+    AbstractReturnAssembly,
+)
 from bytecodemanipulation.data.shared.instructions.StoreAssembly import StoreAssembly
 from bytecodemanipulation.data.shared.instructions.StoreFastAssembly import (
     AbstractStoreFastAssembly,
@@ -35,10 +39,16 @@ from bytecodemanipulation.data.shared.instructions.StoreFastAssembly import (
 from bytecodemanipulation.data.shared.instructions.StoreGlobalAssembly import (
     AbstractStoreGlobalAssembly,
 )
-from bytecodemanipulation.data.shared.instructions.WhileAssembly import AbstractWhileAssembly
-from bytecodemanipulation.data.shared.instructions.YieldAssembly import AbstractYieldAssembly
+from bytecodemanipulation.data.shared.instructions.WhileAssembly import (
+    AbstractWhileAssembly,
+)
+from bytecodemanipulation.data.shared.instructions.YieldAssembly import (
+    AbstractYieldAssembly,
+)
 from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
-from bytecodemanipulation.data.shared.instructions.CallAssembly import AbstractCallAssembly
+from bytecodemanipulation.data.shared.instructions.CallAssembly import (
+    AbstractCallAssembly,
+)
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
@@ -124,7 +134,9 @@ LOAD 19 --> $test
                     AbstractLoadGlobalAssembly.IMPLEMENTATION(10),
                     AbstractLoadGlobalAssembly.IMPLEMENTATION("test"),
                     AbstractLoadGlobalAssembly.IMPLEMENTATION(10),
-                    AbstractLoadGlobalAssembly.IMPLEMENTATION("hello", LocalAccessExpression("test")),
+                    AbstractLoadGlobalAssembly.IMPLEMENTATION(
+                        "hello", LocalAccessExpression("test")
+                    ),
                 ]
             ),
             expr,
@@ -148,7 +160,9 @@ LOAD 19 --> $test
                         "test",
                         LocalAccessExpression("test"),
                     ),
-                    AbstractStoreGlobalAssembly.IMPLEMENTATION("test", TopOfStackAccessExpression()),
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION(
+                        "test", TopOfStackAccessExpression()
+                    ),
                 ]
             ),
             expr,
@@ -166,7 +180,9 @@ LOAD 19 --> $test
                     AbstractLoadFastAssembly.IMPLEMENTATION(10),
                     AbstractLoadFastAssembly.IMPLEMENTATION("test"),
                     AbstractLoadFastAssembly.IMPLEMENTATION(10),
-                    AbstractLoadFastAssembly.IMPLEMENTATION("test", GlobalAccessExpression("test")),
+                    AbstractLoadFastAssembly.IMPLEMENTATION(
+                        "test", GlobalAccessExpression("test")
+                    ),
                 ]
             ),
             expr,
@@ -182,9 +198,15 @@ LOAD 19 --> $test
                 [
                     AbstractStoreFastAssembly.IMPLEMENTATION("test"),
                     AbstractStoreFastAssembly.IMPLEMENTATION("test"),
-                    AbstractStoreFastAssembly.IMPLEMENTATION("test", GlobalAccessExpression("test")),
-                    AbstractStoreFastAssembly.IMPLEMENTATION("test", LocalAccessExpression("test")),
-                    AbstractStoreFastAssembly.IMPLEMENTATION("test", TopOfStackAccessExpression()),
+                    AbstractStoreFastAssembly.IMPLEMENTATION(
+                        "test", GlobalAccessExpression("test")
+                    ),
+                    AbstractStoreFastAssembly.IMPLEMENTATION(
+                        "test", LocalAccessExpression("test")
+                    ),
+                    AbstractStoreFastAssembly.IMPLEMENTATION(
+                        "test", TopOfStackAccessExpression()
+                    ),
                 ]
             ),
             expr,
@@ -200,8 +222,12 @@ LOAD 19 --> $test
                 [
                     AbstractLoadConstAssembly.IMPLEMENTATION(10),
                     AbstractLoadConstAssembly.IMPLEMENTATION("Hello World!"),
-                    AbstractLoadConstAssembly.IMPLEMENTATION(10, GlobalAccessExpression("test")),
-                    AbstractLoadConstAssembly.IMPLEMENTATION(GlobalAccessExpression("global")),
+                    AbstractLoadConstAssembly.IMPLEMENTATION(
+                        10, GlobalAccessExpression("test")
+                    ),
+                    AbstractLoadConstAssembly.IMPLEMENTATION(
+                        GlobalAccessExpression("global")
+                    ),
                     AbstractLoadConstAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"), LocalAccessExpression("test")
                     ),
@@ -311,17 +337,27 @@ CALL @test.x (*$x, @b, *%)
                 [
                     AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("print"),
-                        [AbstractCallAssembly.Arg(ConstantAccessExpression("Hello World!"))],
+                        [
+                            AbstractCallAssembly.Arg(
+                                ConstantAccessExpression("Hello World!")
+                            )
+                        ],
                     ),
                     AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("print"),
-                        [AbstractCallAssembly.Arg(ConstantAccessExpression("Hello World!"))],
+                        [
+                            AbstractCallAssembly.Arg(
+                                ConstantAccessExpression("Hello World!")
+                            )
+                        ],
                         LocalAccessExpression("result"),
                     ),
                     AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("print"),
                         [
-                            AbstractCallAssembly.Arg(ConstantAccessExpression("Hello World!")),
+                            AbstractCallAssembly.Arg(
+                                ConstantAccessExpression("Hello World!")
+                            ),
                             AbstractCallAssembly.Arg(ConstantAccessExpression("test")),
                         ],
                         LocalAccessExpression("result"),
@@ -339,14 +375,20 @@ CALL @test.x (*$x, @b, *%)
                     ),
                     AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("test"),
-                        [AbstractCallAssembly.KwArg("key", GlobalAccessExpression("value"))],
+                        [
+                            AbstractCallAssembly.KwArg(
+                                "key", GlobalAccessExpression("value")
+                            )
+                        ],
                         GlobalAccessExpression("result"),
                     ),
                     AbstractCallAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("test"),
                         [
                             AbstractCallAssembly.Arg(LocalAccessExpression("direct")),
-                            AbstractCallAssembly.KwArg("key", GlobalAccessExpression("value")),
+                            AbstractCallAssembly.KwArg(
+                                "key", GlobalAccessExpression("value")
+                            ),
                         ],
                         GlobalAccessExpression("result"),
                     ),
@@ -358,7 +400,9 @@ CALL @test.x (*$x, @b, *%)
                                     LocalAccessExpression("direct"), "test"
                                 )
                             ),
-                            AbstractCallAssembly.KwArg("key", GlobalAccessExpression("value")),
+                            AbstractCallAssembly.KwArg(
+                                "key", GlobalAccessExpression("value")
+                            ),
                         ],
                         GlobalAccessExpression("result"),
                     ),
@@ -432,7 +476,9 @@ OP @lhs[$local.attr] ** @rhs"""
             CompoundExpression(
                 [
                     AbstractReturnAssembly.IMPLEMENTATION(),
-                    AbstractReturnAssembly.IMPLEMENTATION(GlobalAccessExpression("global")),
+                    AbstractReturnAssembly.IMPLEMENTATION(
+                        GlobalAccessExpression("global")
+                    ),
                 ]
             ),
             expr,
@@ -447,10 +493,16 @@ OP @lhs[$local.attr] ** @rhs"""
             CompoundExpression(
                 [
                     AbstractYieldAssembly.IMPLEMENTATION(),
-                    AbstractYieldAssembly.IMPLEMENTATION(GlobalAccessExpression("global")),
+                    AbstractYieldAssembly.IMPLEMENTATION(
+                        GlobalAccessExpression("global")
+                    ),
                     AbstractYieldAssembly.IMPLEMENTATION(is_star=True),
-                    AbstractYieldAssembly.IMPLEMENTATION(LocalAccessExpression("local"), is_star=True),
-                    AbstractYieldAssembly.IMPLEMENTATION(target=TopOfStackAccessExpression()),
+                    AbstractYieldAssembly.IMPLEMENTATION(
+                        LocalAccessExpression("local"), is_star=True
+                    ),
+                    AbstractYieldAssembly.IMPLEMENTATION(
+                        target=TopOfStackAccessExpression()
+                    ),
                     AbstractYieldAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"),
                         target=LocalAccessExpression("local"),
@@ -517,7 +569,9 @@ IF @global 'test'
                     ),
                     AbstractIFAssembly.IMPLEMENTATION(
                         GlobalAccessExpression("global"),
-                        CompoundExpression([AbstractJumpAssembly.IMPLEMENTATION("test")]),
+                        CompoundExpression(
+                            [AbstractJumpAssembly.IMPLEMENTATION("test")]
+                        ),
                         "test",
                     ),
                 ]
@@ -593,7 +647,9 @@ WHILE $local 'test' {
                 [
                     LabelAssembly("test"),
                     AbstractJumpAssembly.IMPLEMENTATION("test"),
-                    AbstractJumpAssembly.IMPLEMENTATION("test", GlobalAccessExpression("global")),
+                    AbstractJumpAssembly.IMPLEMENTATION(
+                        "test", GlobalAccessExpression("global")
+                    ),
                     AbstractJumpAssembly.IMPLEMENTATION(
                         "test",
                         AbstractOpAssembly.IMPLEMENTATION(
@@ -605,7 +661,9 @@ WHILE $local 'test' {
                             )
                         ),
                     ),
-                    AbstractJumpAssembly.IMPLEMENTATION("test", GlobalAccessExpression("global")),
+                    AbstractJumpAssembly.IMPLEMENTATION(
+                        "test", GlobalAccessExpression("global")
+                    ),
                     AbstractJumpAssembly.IMPLEMENTATION(
                         "test",
                         AbstractOpAssembly.IMPLEMENTATION(
@@ -650,7 +708,9 @@ DEF test <test> () -> @target {}
         self.assertEqualList(
             CompoundExpression(
                 [
-                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION("test", [], [], CompoundExpression([])),
+                    AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
+                        "test", [], [], CompoundExpression([])
+                    ),
                     AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test", ["test"], [], CompoundExpression([])
                     ),
@@ -1585,12 +1645,14 @@ FOREACH $p IN $iterable * $iterable_2
 
     def test_raw_assembly_by_id(self):
         def target():
-            assembly("""
+            assembly(
+                """
 LOAD 10
 LOAD 5
 RAW 2
 RETURN %
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -1600,12 +1662,14 @@ RETURN %
 
     def test_raw_assembly_by_name(self):
         def target():
-            assembly("""
+            assembly(
+                """
 LOAD 10
 LOAD 5
 RAW ROT_TWO
 RETURN %
-""")
+"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -1616,9 +1680,11 @@ RETURN %
     def test_assert(self):
         @apply_operations
         def target(x):
-            assembly("""
+            assembly(
+                """
 ASSERT $x
-""")
+"""
+            )
 
         target(1)
         self.assertRaises(AssertionError, lambda: target(0))
@@ -1626,9 +1692,11 @@ ASSERT $x
     def test_assert_with_message(self):
         @apply_operations
         def target(x):
-            assembly("""
+            assembly(
+                """
 ASSERT $x \"Test Message\"
-""")
+"""
+            )
 
         target(1)
         self.assertRaises(AssertionError, lambda: target(0))
