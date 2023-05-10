@@ -64,6 +64,26 @@ class TestMethodInsert(TestCase):
 
         apply_now()(target)
 
-        dis.dis(target)
-
         self.assertEqual(target(), 1)
+
+    def test_apply_duplicate_call(self):
+        global call
+        global counter
+        counter = 0
+
+        @inline_calls
+        def call():
+            global counter
+            counter += 1
+
+        @cache_global_name("call", lambda: call)
+        def target():
+            call()
+            call()
+
+        apply_now()(target)
+
+        call = None
+
+        target()
+        self.assertEqual(counter, 2)
