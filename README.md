@@ -63,8 +63,42 @@ that exact method.
 
 # Examples
 
-TODO
+Replacing global access with constant value
 
+```python
+from bytecodemanipulation.Optimiser import cache_global_name, apply_now
+
+@cache_global_name("min", lambda: min)
+def test(x, y):
+    return min(x, y)
+
+apply_now(test)
+```
+
+Inlining method calls
+
+```python
+from bytecodemanipulation.Optimiser import cache_global_name, inline_calls, apply_now
+
+@inline_calls
+def call(a, b):
+     return a + b
+
+@cache_global_name("call", lambda: call)
+def test(x, y):
+    return call(x, y)
+
+apply_now(test)
+```
+
+will result in bytecode which could be represented with:
+
+```python
+def test(x, y):
+    return x + y
+```
+
+(there might be extra local variables generated for parameters)
 
 # Applied Optimisations
 
@@ -73,16 +107,17 @@ TODO
 - standard library inlining (if enabled)
 - specialization of methods based on arguments, e.g. constant arguments (when already resolved before, requires one of above options)
 - branch elimination when jumping on a constant (TODO: also if condition can be inferred ahead-of-time, see specialization)
-- local variable elimination
+- local variable elimination (TODO: add more cases)
 
 
 # Currently Limitations
 
 - Line Numbers get mixed up, we need some way to assign meaningful line numbers
-- With python 3.11 (?), exception table exists, and this breaks our current concept of one big flow diagram,
+- With python 3.11, exception table exists, and this breaks our current concept of one big flow diagram,
   as exception handling code might exist outside the default flow
+- Also python 3.11 introduces CACHE-s for instructions, which will require some work in order to work
 - During optimization, a lot of stuff is being recomputed each optimisation pass, we need to cache that drastically
-- Method inlining is not working properly and needs a lot more testing
+- Method inlining is not working properly and needs a lot more testing (WIP)
 - If the exact type is known at optimisation time (e.g. object creation via class call, or type annotation), we can try to
   inline method accesses for further optimisation
 - Python 3.12 will likely break how certain operations are stored in instructions, combing opcodes-without-args into a single
@@ -96,6 +131,8 @@ TODO
 - See ASSEMBLY.md for more information on instructions
 - We provide an import system hook for importing .pyasm files via bytecodemanipulation.assembler.hook
 - You may use the functions from bytecodemanipulation.assembler.target for creating inline-assembly
+  - assembly(\<code>) can be used for inline assembly
+  - this also includes macro, which may be also created from python-defined methods
 
 
 ## Code Formatting
