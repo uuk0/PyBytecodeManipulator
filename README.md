@@ -1,15 +1,15 @@
 # PyBytecodeManipulator
-A high level cross-version python bytecode manipulation library build ontop 
-of 'dis' and 'inspect' 
+A high level cross-version python bytecode manipulation library build ontop
+of 'dis' and 'inspect'
 
-Supports code inlining, branch removing and arbitrary code injection into 
+Supports code inlining, branch removing and arbitrary code injection into
 existing functions.
 
-WARNING: using bytecode manipulation on a so low level as we do can break 
-the python runtime at any point without a warning. We circumvent a lot of 
-safety checks normally done. 
+WARNING: using bytecode manipulation on a so low level as we do can break
+the python runtime at any point without a warning. We circumvent a lot of
+safety checks normally done.
 
-WARNING: We cannot make sure that everything works as it should, expect broken code 
+WARNING: We cannot make sure that everything works as it should, expect broken code
 at runtime!
 
 
@@ -25,39 +25,39 @@ so you may need to provide your own .json config files for the version you need.
 
 ## Why are there so many print()-s?
 
-Due to the breaking nature of anything this code touches, and the absents of any traces 
-in the function itself, we decided to add a lot of "debug" statements indicating 
-mostly the who-has-done-what-to-which-method for the runtime. 
+Due to the breaking nature of anything this code touches, and the absents of any traces
+in the function itself, we decided to add a lot of "debug" statements indicating
+mostly the who-has-done-what-to-which-method for the runtime.
 This makes debugging broken code easier, as it is more clear what happened to each transformed function.
 
 If you want them removed, create your own Fork of this and remove them, on your own risk.
 
-We may use in the future the logging library, so you can disable our logger instance, but we 
+We may use in the future the logging library, so you can disable our logger instance, but we
 are currently in an inter-stage of the code, so other stuff has priority.
 
-## Compatibility with other libraries 
+## Compatibility with other libraries
 
-- Nuitka (https://github.com/Nuitka/Nuitka): Incompatible; will break as nuitka removes the \_\_code__ attribute 
+- Nuitka (https://github.com/Nuitka/Nuitka): Incompatible; will break as nuitka removes the \_\_code__ attribute
   we modify
 - Other bytecode modification / analysers: Should work as long as you as the user does NOT expose intermediate
   results which might contain internal instructions
 
 
-## Debugging your injections 
+## Debugging your injections
 
 There is the possibility to "debug" functions using the execution emulator.
 It will be able to give you more information about a crash than the python core interpreter,
-but will be a lot slower than it. 
+but will be a lot slower than it.
 
-It comes also with the possibility to run your bytecode in another interpreter version, so 
+It comes also with the possibility to run your bytecode in another interpreter version, so
 you can experiment with some stuff.
-In theory, it is also possible to run in python versions not supported by the 
+In theory, it is also possible to run in python versions not supported by the
 bytecode manipulation system, but it is not recommended.
 
 TransformationHandler() takes as an arg debug_code and debug_further_calls
-for activating it for all accessed methods. 
+for activating it for all accessed methods.
 
-BytecodePatchHelper() contains a method enable_verbose_exceptions() for activating it on 
+BytecodePatchHelper() contains a method enable_verbose_exceptions() for activating it on
 that exact method.
 
 
@@ -82,7 +82,7 @@ from bytecodemanipulation.Optimiser import cache_global_name, inline_calls, appl
 
 @inline_calls
 def call(a, b):
-     return a + b
+    return a + b
 
 @cache_global_name("call", lambda: call)
 def test(x, y):
@@ -116,7 +116,7 @@ def test(x, y):
 - With python 3.11, exception table exists, and this breaks our current concept of one big flow diagram,
   as exception handling code might exist outside the default flow
 - Also python 3.11 introduces CACHE-s for instructions, which will require some work in order to work
-- During optimization, a lot of stuff is being recomputed each optimisation pass, we need to cache that drastically
+- During optimization, a lot of stuff is being recomputed each optimization pass, we need to cache that drastically
 - Method inlining is not working properly and needs a lot more testing (WIP)
 - If the exact type is known at optimisation time (e.g. object creation via class call, or type annotation), we can try to
   inline method accesses for further optimisation
@@ -131,11 +131,11 @@ def test(x, y):
 - See ASSEMBLY.md for more information on instructions
 - We provide an import system hook for importing .pyasm files via bytecodemanipulation.assembler.hook
 - You may use the functions from bytecodemanipulation.assembler.target for creating inline-assembly
-  - assembly(\<code>) can be used for inline assembly
-  - this also includes macro, which may be also created from python-defined methods
+    - assembly(\<code>) can be used for inline assembly
+    - this also includes macro, which may be also created from python-defined methods
 
 
-## Code Formatting
+# Code Formatting
 
 We use the python formatting library "black" on our code
 
@@ -145,5 +145,5 @@ We use the python formatting library "black" on our code
 - create a json file for defining certain bytecode sequences
 - write more library-specific optimisations
 - write generating bytecode system for emulator, constructing a function pointing to the
-.json file for exception printing, and optimizing wherever possible
+  .json file for exception printing, and optimizing wherever possible
 
