@@ -29,6 +29,13 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
     IMPLEMENTATION: typing.Type["AbstractAssemblyInstruction"] | None = None
 
     @classmethod
+    def register(cls):
+        from bytecodemanipulation.assembler.Parser import Parser
+
+        Parser.register(cls)
+        return cls
+
+    @classmethod
     def __init_subclass__(cls, **kwargs):
         # copy the class definition into all superclasses inheriting from AbstractAssemblyInstruction
         if ABC not in cls.__bases__:

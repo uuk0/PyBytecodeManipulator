@@ -285,7 +285,7 @@ class Parser(AbstractParser):
             ).assemblies:
                 if macro.allow_assembly_instr:
                     self.rollback()
-                    print(name)
+                    # print(name)
                     return AbstractCallAssembly.IMPLEMENTATION.consume_macro_call(
                         self, scope
                     )

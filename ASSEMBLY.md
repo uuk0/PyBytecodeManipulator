@@ -16,7 +16,7 @@ for cross-version support.
 
 ## Meta Instructions (dynamically decide what to use)
 
-* LABEL \<name>: an bytecode label, can be used for jumps (use bytecodemanipulation.assembler.target.label(\<name>) when trying to jump to a instruction not in ASM, but in pure python)
+* LABEL \<name>: a bytecode label, can be used for jumps (use bytecodemanipulation.assembler.target.label(\<name>) when trying to jump to a instruction not in ASM, but in pure python)
 
 * LOAD \<expression> \['->' \<target>]: Pushes the global or local variable to the stack
 * STORE \<expression> \['(' \<expression> ')']: stores TOS or value of 'expression' in the local or global variable
