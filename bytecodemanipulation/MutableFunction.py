@@ -689,6 +689,8 @@ class Instruction:
             Opcodes.GEN_START,
             Opcodes.JUMP_ABSOLUTE,
             Opcodes.BYTECODE_LABEL,
+            Opcodes.JUMP_FORWARD,
+            Opcodes.RERAISE,
             # Opcodes.CACHE,
             # Opcodes.PRECALL,
             # Opcodes.RESUME,
@@ -703,6 +705,9 @@ class Instruction:
 
         if self.opcode == Opcodes.FOR_ITER:
             return 1, 1, None
+
+        if self.opcode == Opcodes.BUILD_CONST_KEY_MAP:
+            return 1, self.arg + 1, None
 
         if self.opcode in (
             Opcodes.LOAD_CONST,
@@ -808,6 +813,7 @@ class Instruction:
             Opcodes.STORE_DEREF,
             Opcodes.STORE_GLOBAL,
             Opcodes.RETURN_VALUE,
+            Opcodes.JUMP_IF_TRUE_OR_POP,
         ):
             return 0, 1, None
 
@@ -834,6 +840,9 @@ class Instruction:
     def special_stack_affect_when_followed_by(self, instr: "Instruction") -> int:
         if self.opcode == Opcodes.FOR_ITER and instr == self.arg_value:
             return -2
+
+        if self.opcode == Opcodes.JUMP_IF_TRUE_OR_POP and instr == self.arg_value:
+            return -1
 
         return 0
 

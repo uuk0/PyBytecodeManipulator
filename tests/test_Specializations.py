@@ -1,3 +1,4 @@
+import dis
 from unittest import TestCase
 
 import typing
@@ -5,6 +6,7 @@ import typing
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 from bytecodemanipulation.Optimiser import _OptimisationContainer
+from tests.util import compare_optimized_results
 from tests.util import BUILTIN_INLINE
 
 
@@ -42,3 +44,48 @@ class TestSpecializations(TestCase):
             )
 
         builtin_spec.ASSERT_TYPE_CASTS = False
+
+    def test_sum_operator(self):
+        def target():
+            return sum((1, 2, 3))
+
+        def compare():
+            return 6
+
+        compare_optimized_results(self, target, compare)
+
+    def test_specialization_all(self):
+        def target(a):
+            return all((a, True, True))
+
+        def compare(a):
+            return a
+
+        compare_optimized_results(self, target, compare)
+
+    def test_specialization_all_false(self):
+        def target(a):
+            return all((a, True, False))
+
+        def compare(a):
+            return False
+
+        compare_optimized_results(self, target, compare)
+
+    def test_specialization_any(self):
+        def target(a):
+            return any((a, False, False))
+
+        def compare(a):
+            return a
+
+        compare_optimized_results(self, target, compare)
+
+    def test_specialization_any_false(self):
+        def target(a):
+            return any((a, True, False))
+
+        def compare(a):
+            return True
+
+        compare_optimized_results(self, target, compare)

@@ -433,19 +433,32 @@ def specialize_any(container: SpecializationContainer):
 
 
 @register(sum)
-def specialize_any(container: SpecializationContainer):
+def specialize_sum(container: SpecializationContainer):
     args = container.get_arg_specifications()
 
     if len(args) == 1:
         if args[0].get_normalized_data_instr().opcode == Opcodes.LOAD_CONST:
-            container.replace_with_constant_value(
-                sum(args[0].get_normalized_data_instr().arg_value)
-            )
+            obj = args[0].get_normalized_data_instr().arg_value
+
+            if None in obj:
+                container.replace_with_raise_exception(TypeError("TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'"))
+                return
+
+            container.replace_with_constant_value(sum(obj))
+
         elif args[0].get_normalized_data_instr().opcode in (
             Opcodes.BUILD_LIST,
             Opcodes.BUILD_TUPLE,
             Opcodes.BUILD_SET,
         ):
+            for source in [
+                next(args[0].get_normalized_data_instr().trace_stack_position(i))
+                for i in range(args[0].get_normalized_data_instr().arg)
+            ]:
+                if source.opcode == Opcodes.LOAD_CONST and source.arg_value is None:
+                    container.replace_with_raise_exception(TypeError("TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'"))
+                    return
+
             count = args[0].get_normalized_data_instr().arg
             args[0].get_normalized_data_instr().change_opcode(Opcodes.NOP)
             container.replace_call_with_opcodes(

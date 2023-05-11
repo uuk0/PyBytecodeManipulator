@@ -1,4 +1,7 @@
 
+# Version 0.2.10
+- added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like
+
 # Version 0.2.9
 - added RAW assembly instruction
 - refactored operator system

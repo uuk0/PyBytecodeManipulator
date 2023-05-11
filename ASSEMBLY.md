@@ -27,8 +27,12 @@ for cross-version support.
   * 'MACRO' calls macro code, meaning inlining; Parameters of the macro NOT prefixed with '!' will be evaluated on each access by the macro
     * also enables the use of code blocks as parameters (by using '{' \<expressions> '}'' as a parameter)
 
-* OP (\<lhs> \<binary operator> \<rhs>) \['->' \<target>]: uses the given operator
-  * binary operator might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
+* OP \<operation> \['->' \<target>]: uses the given operator
+  * where 'operation' might be
+  * \<expr> \<operator> \<expression>: binary operator, might be any of +|-|*|/|//|**|%|&|"|"|^|>>|<<|@|is|!is|in|!in|<|<=|==|!=|>|>=|xor|!xor|:=|isinstance|issubclass|hasattr|getattr
+  * \<operator> <expression>: singleton operator
+  * \<operator> \['('] \<expr> {\[','] \<expr>} \[')']: advanced operators with possible multiple parameters, dynamic
+    parameter count, etc.
 
 * IF \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' only if 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the IF statement and 'label name'+"_HEAD" the real HEAD, so before the condition check
 * WHILE \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' while 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the WHILE statement and 'label name'+"_INNER" the inner HEAD, without condition check

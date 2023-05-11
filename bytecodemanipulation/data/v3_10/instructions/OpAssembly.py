@@ -93,6 +93,31 @@ class OrOperator(NorOperator):
         ]
 
 
+class OrEvalOperator(AbstractOperator):
+    def emit_bytecodes(
+        self,
+        function: MutableFunction,
+        scope: ParsingScope,
+        lhs: AbstractSourceExpression,
+        rhs: AbstractSourceExpression,
+    ) -> typing.List[Instruction]:
+        label_name = scope.scope_name_generator("or_skip_second")
+
+        bytecode = lhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(
+                function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(label_name)
+            ),
+            Instruction(function, -1, Opcodes.POP_TOP),
+        ]
+        bytecode += rhs.emit_bytecodes(function, scope)
+        bytecode += [
+            Instruction(function, -1, Opcodes.BYTECODE_LABEL, label_name),
+        ]
+        return bytecode
+
+
 class XOROperator(AbstractOperator):
     def emit_bytecodes(
         self,
@@ -348,6 +373,7 @@ class OpAssembly(AbstractOpAssembly):
         "!and": NandOperator(),
         "nand": NandOperator(),
         "or": OrOperator(),
+        "oreval": OrEvalOperator(),
         "!or": NorOperator(),
         "nor": NorOperator(),
     }
