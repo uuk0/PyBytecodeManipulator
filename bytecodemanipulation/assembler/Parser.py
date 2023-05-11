@@ -312,6 +312,7 @@ class Parser(AbstractParser):
         :param allow_op: if operations are allowed, starting with OP
         :param allow_advanced_access: if expressions like @global[$index].attribute are allowed
         :param scope: the parsing scope instance
+        :param allow_calls: if True, calls will be allowed as expressions
         """
         start_token = self.try_inspect()
 
@@ -329,6 +330,14 @@ class Parser(AbstractParser):
                     else float(integer.text),
                     integer,
                 )
+
+            if isinstance(start_token, IdentifierToken):
+                if start_token.text == "None":
+                    return ConstantAccessExpression(None, start_token)
+                elif start_token.text == "True":
+                    return ConstantAccessExpression(True, start_token)
+                elif start_token.text == "False":
+                    return ConstantAccessExpression(False, start_token)
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
             return

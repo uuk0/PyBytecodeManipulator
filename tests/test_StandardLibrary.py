@@ -162,7 +162,7 @@ std:stream:to_list($stream, $output)
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), [0, 1])
 
