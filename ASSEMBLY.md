@@ -91,7 +91,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - $\<local name>: local variable
   - §\<name>: access a variable from an outer scope
   - &\<name>: access to a macro parameter
-  - %: top of stack (in most cases the default when not provided)
+  - %\[\<n>]: top of stack, or the n-th item from TOS
   - \<access>\[\<index or expression>]: value by \[] operator
   - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
   - '\' for discarding the result of an expression (only when STORING)

@@ -200,7 +200,7 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
 
     def __init__(
         self,
-        name: "MacroExpandedIdentifier | str",
+        name: "IIdentifierAccessor | str",
         token: AbstractToken | typing.List[AbstractToken] = None,
     ):
         self.name = name

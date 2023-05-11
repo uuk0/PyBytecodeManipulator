@@ -370,7 +370,13 @@ class Parser(AbstractParser):
 
         elif start_token.text == "%" and allow_tos:
             self.consume(SpecialToken("%"), err_arg=scope)
-            expr = TopOfStackAccessExpression()
+
+            offset = self.try_consume(IntegerToken)
+
+            if offset is not None:
+                return TopOfStackAccessExpression(start_token, int(offset.text))
+
+            expr = TopOfStackAccessExpression(start_token)
 
         elif start_token.text == "~":
             self.consume(SpecialToken("~"), err_arg=scope)
@@ -388,10 +394,23 @@ class Parser(AbstractParser):
             and "OP" in self.INSTRUCTIONS
             and AbstractOpAssembly.IMPLEMENTATION is not None
         ):
-            self.consume(start_token)
-            self.consume(SpecialToken("("), err_arg=scope)
+            self.consume(start_token, err_arg=scope)
+
+            if not (opening := self.try_consume(SpecialToken("("))):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    self[-1:1],
+                    "expected '(' after OP when used in expressions",
+                )
+
             expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
-            self.consume(SpecialToken(")"), err_arg=scope)
+
+            if not self.try_consume(SpecialToken(")")):
+                raise throw_positioned_syntax_error(
+                    scope,
+                    [opening, self[0]],
+                    "expected ')' after operation",
+                )
 
         else:
             return
@@ -430,13 +449,14 @@ class Parser(AbstractParser):
                     )
 
                 elif self.try_consume(SpecialToken(".")):
-                    if self.try_consume(SpecialToken("(")):
+                    if opening_bracket := self.try_consume(SpecialToken("(")):
                         if not (
                             index := self.try_consume_access_to_value(
                                 allow_primitives=True,
                                 allow_tos=allow_tos,
                                 allow_op=allow_op,
                                 scope=scope,
+                                allow_calls=allow_calls,
                             )
                         ):
                             raise throw_positioned_syntax_error(
@@ -454,15 +474,19 @@ class Parser(AbstractParser):
 
                         if not self.try_consume(SpecialToken(")")):
                             raise throw_positioned_syntax_error(
-                                scope, self.try_inspect() or self[-1], "expected ')'"
+                                scope,
+                                [opening_bracket, self.try_inspect()],
+                                "expected ')'",
                             )
 
                         expr = DynamicAttributeAccessExpression(expr, index)
+
                     elif self.try_consume(SpecialToken("!")):
-                        name = self.try_consume(IdentifierToken)
+                        name = self.parse_identifier_like(scope)
                         expr = StaticAttributeAccessExpression(expr, name)
+
                     else:
-                        name = self.try_consume(IdentifierToken)
+                        name = self.parse_identifier_like(scope)
                         expr = AttributeAccessExpression(expr, name)
 
                 elif self.try_inspect() == SpecialToken("(") and allow_calls:

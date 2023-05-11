@@ -1530,6 +1530,13 @@ class MutableFunction:
             if not (0 <= arg <= 255 and 0 <= instruction.opcode <= 255):
                 print("error", instruction)
 
+                print("----")
+
+                for ins in instructions:
+                    print(repr(ins))
+
+                print("----")
+
             self.__raw_code += bytes([instruction.opcode, arg])
 
     def get_raw_code(self):
