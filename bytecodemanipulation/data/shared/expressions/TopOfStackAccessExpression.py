@@ -1,5 +1,6 @@
 import typing
 
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.Opcodes import Opcodes
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
@@ -46,3 +47,6 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
             raise NotImplementedError("%<n> as store target")
 
         return []
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return self.token,

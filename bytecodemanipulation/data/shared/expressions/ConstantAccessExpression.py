@@ -36,3 +36,9 @@ class ConstantAccessExpression(AbstractAccessExpression):
         raise throw_positioned_syntax_error(
             scope, self.token, f"Cannot assign to a constant: {self}"
         )
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return self.token,
+
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+        return self.value

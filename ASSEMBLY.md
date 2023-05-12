@@ -62,11 +62,12 @@ for cross-version support.
 * MACRO_IMPORT \<module name with '.'> \['->' \['.'\] \<namespace with '.'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
 
-* 'NAMESPACE' \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
+* NAMESPACE \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)
 
-* 'RAISE' \[\<source>]: raises the exception at TOS or source 
+* RAISE \[\<source>]: raises the exception at TOS or source 
 
 * ASSERT \<expression> \[\<message>]: asserts that 'expression' evaluates to True, if not, evaluates 'message' or uses the default message and raises an AssertionError
+* ASSERT_STATIC \<expression> \[\<message>]: asserts a given expression statically; requires 'expression' to be static-evulate-able during code emitting
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 

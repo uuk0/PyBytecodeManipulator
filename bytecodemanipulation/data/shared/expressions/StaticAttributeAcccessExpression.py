@@ -4,6 +4,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -65,3 +66,14 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
         return visitor(
             self, (self.root.visit_parts(visitor, parents + [self]),), parents
         )
+
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+        base = self.root.evaluate_static_value(scope)
+
+        if not hasattr(base, self.name(scope)):
+            raise NotImplementedError
+
+        return getattr(base, self.name(scope))
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return list(self.root.get_tokens()) + [self.token]

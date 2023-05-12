@@ -3,6 +3,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -56,3 +57,14 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
                 self.token, function, -1, Opcodes.MACRO_STORE_PARAMETER, value
             )
         ]
+
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+        name = self.name(scope)
+
+        if name not in scope.macro_parameter_namespace:
+            raise NotImplementedError
+
+        return scope.macro_parameter_namespace[name].evaluate_static_value(scope)
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return self.token,

@@ -193,6 +193,12 @@ class AbstractSourceExpression(AbstractExpression, IAssemblyStructureVisitable, 
     ):
         pass
 
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+        raise NotImplementedError
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return tuple()
+
 
 class AbstractAccessExpression(AbstractSourceExpression, ABC):
     PREFIX: str | None = None
@@ -236,6 +242,9 @@ class IIdentifierAccessor:
     def __call__(self, scope: ParsingScope):
         raise NotImplementedError
 
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return tuple()
+
 
 class MacroExpandedIdentifier(IIdentifierAccessor):
     def __init__(
@@ -245,6 +254,9 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
     ):
         self.macro_name = macro_name
         self.token = token
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return self.token
 
     def __hash__(self):
         return hash(self.macro_name)
@@ -314,7 +326,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
 
 
 class StaticIdentifier(IIdentifierAccessor):
-    def __init__(self, name: str):
+    def __init__(self, name: str, token: AbstractToken = None):
         self.name = name
 
     def __eq__(self, other):
@@ -330,3 +342,6 @@ class StaticIdentifier(IIdentifierAccessor):
 
     def __call__(self, scope: ParsingScope):
         return self.name
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return self.token,

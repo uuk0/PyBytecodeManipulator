@@ -547,7 +547,7 @@ class Parser(AbstractParser):
             return MacroExpandedIdentifier(expr[1].text, expr)
 
         if expr := self.try_consume(IdentifierToken):
-            return StaticIdentifier(expr.text)
+            return StaticIdentifier(expr.text, expr)
 
     def parse_identifier_like(self, scope: ParsingScope) -> IIdentifierAccessor:
         identifier = self.try_parse_identifier_like()

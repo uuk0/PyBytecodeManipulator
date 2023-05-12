@@ -1707,3 +1707,76 @@ ASSERT $x \"Test Message\"
             self.assertEqual(e.args, ("Test Message",))
         else:
             self.assertTrue(False)
+
+    def test_assert_static(self):
+        @apply_operations
+        def target():
+            assembly("ASSERT_STATIC 1")
+
+        target()
+
+    def test_assert_static_fail(self):
+        def target():
+            assembly("ASSERT_STATIC 0")
+
+        try:
+            apply_operations(target)
+        except AssertionError as e:
+            self.assertEqual(e.args, ("assertion failed: expected <true-ish value>",))
+
+    def test_assert_static_fail_message(self):
+        def target():
+            assembly("ASSERT_STATIC 0 \"hello world\"")
+
+        try:
+            apply_operations(target)
+        except AssertionError as e:
+            self.assertEqual(e.args, ("assertion failed: hello world",))
+
+    def test_assert_static_fail_message_invalid(self):
+        def target():
+            assembly("ASSERT_STATIC 0 $x")
+
+        try:
+            apply_operations(target)
+        except AssertionError as e:
+            self.assertEqual(e.args, ("assertion failed: expected <true-ish value> (message not arrival)",))
+
+    def test_assert_static_dynamic_expression(self):
+        def target():
+            assembly("ASSERT_STATIC $a")
+
+        try:
+            apply_operations(target)
+        except SyntaxError as e:
+            self.assertEqual(e.args, ("Expected <static evaluate-able>",))
+
+    def test_assert_static_macro_static_parameter(self):
+        @apply_operations
+        def target():
+            assembly("""
+MACRO test_assert_static_macro_static_parameter(a)
+{
+    ASSERT_STATIC &a
+}
+
+CALL MACRO test_assert_static_macro_static_parameter(1)
+""")
+
+        target()
+
+    def test_assert_static_macro_static_parameter_fail(self):
+        def target():
+            assembly("""
+MACRO test_assert_static_macro_static_parameter_fail(a)
+{
+    ASSERT_STATIC &a
+}
+
+CALL MACRO test_assert_static_macro_static_parameter_fail(0)
+""")
+
+        try:
+            apply_operations(target)
+        except AssertionError as e:
+            self.assertEqual(e.args, ("assertion failed: expected <true-ish value>",))

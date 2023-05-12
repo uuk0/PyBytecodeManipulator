@@ -4,6 +4,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -75,7 +76,7 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
             )
             + [
                 Instruction.create_with_token(
-                    self.name_token, function, -1, Opcodes.STORE_SUBSCR
+                    self.name(scope), function, -1, Opcodes.STORE_SUBSCR
                 )
             ]
         )
@@ -90,5 +91,19 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
     ):
         return visitor(
             self,
-            (self.base_expr.visit_parts(visitor), self.index_expr.visit_parts(visitor)),
+            (self.base_expr.visit_parts(visitor, parents+[self]), self.index_expr.visit_parts(visitor, parents+[self])),
+            parents,
         )
+
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+        base = self.base_expr.evaluate_static_value(scope)
+        index = self.index_expr.evaluate_static_value(scope)
+
+        try:
+            return base[index]
+        except (IndexError, KeyError):
+            raise NotImplementedError from None
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return list(self.base_expr.get_tokens()) + list(self.index_expr.get_tokens()) + [self.token]
+

@@ -1,6 +1,7 @@
 
 # Version 0.2.10
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like
+- added ASSERT_STATIC assembly
 
 # Version 0.2.9
 - added RAW assembly instruction

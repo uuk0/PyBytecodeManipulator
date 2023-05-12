@@ -3,6 +3,7 @@ from bytecodemanipulation.data.shared.instructions import (
     MacroPasteAssembly,
     NamespaceAssembly,
     MacroImportAssembly,
+    AssertStaticInstruction,
     LoadAssembly,
     StoreAssembly,
     MacroReturnAssembly,
@@ -34,3 +35,4 @@ MacroAssembly.MacroAssembly.register()
 MacroPasteAssembly.MacroPasteAssembly.register()
 NamespaceAssembly.NamespaceAssembly.register()
 MacroImportAssembly.MacroImportAssembly.register()
+AssertStaticInstruction.AssertStaticInstruction.register()

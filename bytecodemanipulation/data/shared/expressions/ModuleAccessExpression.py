@@ -4,6 +4,7 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
@@ -37,5 +38,8 @@ class ModuleAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         raise RuntimeError
 
-    def get_static_value(self, scope: ParsingScope) -> typing.Any:
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
         return self._cached_lookup(self.get_name(scope))
+
+    def get_tokens(self) -> typing.Iterable[AbstractToken]:
+        return self.token,
