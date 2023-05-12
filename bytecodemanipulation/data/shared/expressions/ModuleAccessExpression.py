@@ -42,4 +42,4 @@ class ModuleAccessExpression(AbstractAccessExpression):
         return self._cached_lookup(self.get_name(scope))
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return self.token,
+        return (self.token,)

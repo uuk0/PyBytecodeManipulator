@@ -67,7 +67,7 @@ for cross-version support.
 * RAISE \[\<source>]: raises the exception at TOS or source 
 
 * ASSERT \<expression> \[\<message>]: asserts that 'expression' evaluates to True, if not, evaluates 'message' or uses the default message and raises an AssertionError
-* ASSERT_STATIC \<expression> \[\<message>]: asserts a given expression statically; requires 'expression' to be static-evulate-able during code emitting
+* ASSERT_STATIC \<expression> \[\<message>]: asserts a given expression statically; requires 'expression' and 'message' to be static-evaluate-able during code emitting
 
 ## Python-Pure Instructions (correspond to single opcodes with optional magic)
 

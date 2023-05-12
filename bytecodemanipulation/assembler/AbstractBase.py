@@ -344,4 +344,4 @@ class StaticIdentifier(IIdentifierAccessor):
         return self.name
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return self.token,
+        return (self.token,)

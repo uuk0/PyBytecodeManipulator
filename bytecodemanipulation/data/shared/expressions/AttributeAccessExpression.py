@@ -8,19 +8,16 @@ from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, StaticIdentifier
+from bytecodemanipulation.assembler.AbstractBase import (
+    IIdentifierAccessor,
+    StaticIdentifier,
+)
 
 
 class AttributeAccessExpression(AbstractAccessExpression):
-    def __init__(
-        self, root: AbstractAccessExpression, name: IIdentifierAccessor | str
-    ):
+    def __init__(self, root: AbstractAccessExpression, name: IIdentifierAccessor | str):
         self.root = root
-        self.name = (
-            name
-            if not isinstance(name, str)
-            else StaticIdentifier(name)
-        )
+        self.name = name if not isinstance(name, str) else StaticIdentifier(name)
 
     def __eq__(self, other):
         return (
@@ -39,18 +36,14 @@ class AttributeAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, scope) + [
-            Instruction(
-                function, -1, "LOAD_ATTR", self.name(scope)
-            )
+            Instruction(function, -1, "LOAD_ATTR", self.name(scope))
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, scope) + [
-            Instruction(
-                function, -1, "STORE_ATTR", self.name(scope)
-            )
+            Instruction(function, -1, "STORE_ATTR", self.name(scope))
         ]
 
     def visit_parts(
@@ -66,7 +59,9 @@ class AttributeAccessExpression(AbstractAccessExpression):
         )
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return list(self.root.get_tokens()) + list(self.name.get_tokens()) + [self.token]
+        return (
+            list(self.root.get_tokens()) + list(self.name.get_tokens()) + [self.token]
+        )
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
         base = self.root.evaluate_static_value(scope)

@@ -8,21 +8,22 @@ from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, StaticIdentifier
+from bytecodemanipulation.assembler.AbstractBase import (
+    IIdentifierAccessor,
+    StaticIdentifier,
+)
 
 
 class StaticAttributeAccessExpression(AbstractAccessExpression):
     IS_STATIC = True
 
     def __init__(
-        self, root: AbstractAccessExpression, name: typing.Union["IIdentifierAccessor", str],
+        self,
+        root: AbstractAccessExpression,
+        name: typing.Union["IIdentifierAccessor", str],
     ):
         self.root = root
-        self.name = (
-            name
-            if not isinstance(name, str)
-            else StaticIdentifier(name)
-        )
+        self.name = name if not isinstance(name, str) else StaticIdentifier(name)
 
     def __eq__(self, other):
         return (

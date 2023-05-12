@@ -441,7 +441,11 @@ def specialize_sum(container: SpecializationContainer):
             obj = args[0].get_normalized_data_instr().arg_value
 
             if None in obj:
-                container.replace_with_raise_exception(TypeError("TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'"))
+                container.replace_with_raise_exception(
+                    TypeError(
+                        "TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'"
+                    )
+                )
                 return
 
             container.replace_with_constant_value(sum(obj))
@@ -456,7 +460,11 @@ def specialize_sum(container: SpecializationContainer):
                 for i in range(args[0].get_normalized_data_instr().arg)
             ]:
                 if source.opcode == Opcodes.LOAD_CONST and source.arg_value is None:
-                    container.replace_with_raise_exception(TypeError("TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'"))
+                    container.replace_with_raise_exception(
+                        TypeError(
+                            "TypeError: unsupported operand type(s) for +: 'int' and 'NoneType'"
+                        )
+                    )
                     return
 
             count = args[0].get_normalized_data_instr().arg

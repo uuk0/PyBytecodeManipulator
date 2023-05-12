@@ -38,7 +38,7 @@ class ConstantAccessExpression(AbstractAccessExpression):
         )
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return self.token,
+        return (self.token,)
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
         return self.value

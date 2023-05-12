@@ -49,4 +49,4 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
         return []
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return self.token,
+        return (self.token,)

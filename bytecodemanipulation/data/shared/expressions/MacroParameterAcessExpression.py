@@ -67,4 +67,4 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         return scope.macro_parameter_namespace[name].evaluate_static_value(scope)
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return self.token,
+        return (self.token,)

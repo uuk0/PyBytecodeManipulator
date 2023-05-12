@@ -3,7 +3,9 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
-from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+    AbstractAssemblyInstruction,
+)
 from bytecodemanipulation.MutableFunction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 
@@ -37,9 +39,9 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
 
     def __eq__(self, other):
         return (
-                type(self) == type(other)
-                and self.source == other.source
-                and self.text == other.text
+            type(self) == type(other)
+            and self.source == other.source
+            and self.text == other.text
         )
 
     def copy(self):
@@ -59,9 +61,13 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
 
         if not value:
             try:
-                message = 'expected <true-ish value>' if self.text is None else self.text.evaluate_static_value(scope)
+                message = (
+                    "expected <true-ish value>"
+                    if self.text is None
+                    else self.text.evaluate_static_value(scope)
+                )
             except NotImplementedError:
-                message = 'expected <true-ish value> (message not arrival)'
+                message = "expected <true-ish value> (message not arrival)"
 
             raise throw_positioned_syntax_error(
                 scope,
@@ -71,4 +77,3 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
             )
 
         return []
-

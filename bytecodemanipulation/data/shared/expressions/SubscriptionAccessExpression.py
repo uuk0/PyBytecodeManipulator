@@ -91,7 +91,10 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
     ):
         return visitor(
             self,
-            (self.base_expr.visit_parts(visitor, parents+[self]), self.index_expr.visit_parts(visitor, parents+[self])),
+            (
+                self.base_expr.visit_parts(visitor, parents + [self]),
+                self.index_expr.visit_parts(visitor, parents + [self]),
+            ),
             parents,
         )
 
@@ -105,5 +108,8 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
             raise NotImplementedError from None
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return list(self.base_expr.get_tokens()) + list(self.index_expr.get_tokens()) + [self.token]
-
+        return (
+            list(self.base_expr.get_tokens())
+            + list(self.index_expr.get_tokens())
+            + [self.token]
+        )

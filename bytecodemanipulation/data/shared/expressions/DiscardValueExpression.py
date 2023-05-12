@@ -23,4 +23,4 @@ class DiscardValueExpression(AbstractAccessExpression):
         return [Instruction(function, -1, Opcodes.POP_TOP)]
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return self.token,
+        return (self.token,)
