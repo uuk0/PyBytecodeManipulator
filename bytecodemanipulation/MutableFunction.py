@@ -5,7 +5,8 @@ import types
 import typing
 import simplejson
 
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import InstructionDecoder
 from bytecodemanipulation.opcodes.Opcodes import (
     Opcodes,
 )
@@ -702,6 +703,9 @@ class MutableFunction:
 
         return self.__raw_code
 
+    def get_raw_code_unsafe(self):
+        return self.__raw_code
+
     def set_raw_code(self, raw_code: bytearray):
         self.__raw_code = raw_code
 
@@ -720,9 +724,13 @@ class MutableFunction:
         # Update the ownerships of the instructions, so they point to us now
         # todo: do we want to copy in some cases?
         self.__instructions = [
-            instruction.update_owner(self, i)
+            instruction.update_owner(self, i, update_following=False)
             for i, instruction in enumerate(instructions)
         ]
+
+        for i, instruction in enumerate(instructions[:-1]):
+            if not instruction.has_stop_flow():
+                instruction.set_next_instruction_unsafe(instructions[i+1])
 
     instructions = property(get_instructions, set_instructions)
 

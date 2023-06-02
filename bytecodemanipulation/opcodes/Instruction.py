@@ -213,6 +213,9 @@ class Instruction:
         if instruction is not None:
             instruction.add_previous_instruction(self)
 
+    def set_next_instruction_unsafe(self, instruction: typing.Optional["Instruction"]):
+        self._next_instruction = instruction
+
     def get_next_instruction(self) -> typing.Optional["Instruction"]:
         return self._next_instruction
 

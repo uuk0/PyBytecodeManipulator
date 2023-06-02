@@ -22,7 +22,7 @@ from bytecodemanipulation.data.shared.expressions.GlobalAccessExpression import 
 from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
     LocalAccessExpression,
 )
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 

@@ -3,7 +3,7 @@ import random
 
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.Specialization import SpecializationContainer, register
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 
 ASSERT_TYPE_CASTS = False
 DISCARD_ALL_ANY_WITHOUT_SIDE_EFFECT_CHECK = True
