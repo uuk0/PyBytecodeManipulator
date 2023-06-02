@@ -939,6 +939,8 @@ CALL @print ("Hello World!") -> $x
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
+        dis.dis(target)
+
         target(self)
 
         def compare():

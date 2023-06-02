@@ -257,11 +257,9 @@ def apply_inline_assemblies(
     while pending:
         pending.pop().apply_value_visitor(resolve_special_code)
 
-    target.stack_size += max(max_stack_effects)
-
     # target.instructions[0].apply_value_visitor(lambda instr, *_: print(instr))
 
-    target.assemble_instructions_from_tree(target.instructions[0])
+    # target.assemble_instructions_from_tree(target.instructions[0])
 
     if store_at_target:
         target.reassign_to_function()

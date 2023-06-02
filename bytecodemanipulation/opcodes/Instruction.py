@@ -298,32 +298,9 @@ class Instruction:
 
         return self
 
+    # todo: remove
     def change_arg_value(self, value: object):
         self.arg_value = value
-
-        if self.function is not None:
-            if self.opcode in HAS_NAME:
-                assert isinstance(value, str)
-                self.arg = self.function.allocate_shared_name(value)
-            elif self.opcode in HAS_CELL_VARIABLE:
-                assert isinstance(value, str)
-                self.arg = self.function.allocate_shared_cell(value)
-            elif self.opcode in HAS_CONST:
-                self.arg = self.function.allocate_shared_constant(value)
-            elif self.opcode in HAS_LOCAL:
-                assert isinstance(value, str), (value, self.opname)
-                self.arg = self.function.allocate_shared_variable_name(value)
-            elif self.opcode in HAS_JUMP_ABSOLUTE:
-                if isinstance(value, Instruction):
-                    self.arg = value.offset
-            elif self.opcode == Opcodes.FOR_ITER:
-                if isinstance(value, Instruction):
-                    self.arg = value.offset - self.offset
-            elif self.opcode in HAS_JUMP_FORWARD:
-                assert isinstance(value, Instruction), value
-                self.arg = value.offset - self.offset
-        else:
-            self.arg = None
 
     def change_arg(self, arg: int):
         self.arg = arg
@@ -398,6 +375,7 @@ class Instruction:
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
 
+    # todo: remove args not required
     def update_owner(
         self,
         function: "MutableFunction",
@@ -405,36 +383,8 @@ class Instruction:
         update_following=True,
         force_change_arg_index=False,
     ):
-        previous_function = self.function
-
         self.function = function
         self.offset = offset
-
-        # If previously the ownership was unset, and we have not fully referenced args, do it now!
-        # todo: when previous owner was set, and arg is not None, we might need to de-ref the value
-        #    and re-ref afterwards, so the value lives in the new owner
-        if (
-            self.arg is not None
-            and self.arg_value is None
-            and (not force_change_arg_index or self.opcode != Opcodes.LOAD_CONST)
-        ):
-            self.change_arg(self.arg)
-        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and (
-            self.arg is None or force_change_arg_index
-        ):
-            self.change_arg_value(self.arg_value)
-
-        if update_following:
-            self.next_instruction = (
-                (None if previous_function != function else self.next_instruction)
-                if function is None
-                or offset is None
-                or self.opcode in END_CONTROL_FLOW
-                or offset == -1
-                or offset + 1 >= len(function.instructions)
-                else function.instructions[offset + 1]
-            )
-
         return self
 
     def optimise_tree(self, visited: typing.Set["Instruction"] = None) -> "Instruction":
