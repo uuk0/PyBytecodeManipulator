@@ -24,7 +24,7 @@ def load_opcode_data():
     valid_opcode_names = [
         key
         for key, value in Opcodes.__dict__.items()
-        if isinstance(value, int) and not key.startswith("__") and value < 256
+        if isinstance(value, int) and not key.startswith("__") and value != -1
     ]
 
     for key, opcode in opcode_data.items():
@@ -36,6 +36,12 @@ def load_opcode_data():
     for key in valid_opcode_names:
         if key not in opcode_data:
             setattr(Opcodes, key, -1)
+
+    virtual_opcode = 256
+    for key, value in Opcodes.__dict__.items():
+        if not key.startswith("__") and value == -1:
+            setattr(Opcodes, key, virtual_opcode)
+            virtual_opcode += 1
 
 
 def load_instruction_spec():
