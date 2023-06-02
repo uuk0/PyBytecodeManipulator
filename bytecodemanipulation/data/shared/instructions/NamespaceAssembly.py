@@ -11,7 +11,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
     CompoundExpression,
 )
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 

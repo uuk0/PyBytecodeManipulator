@@ -1,7 +1,7 @@
 import typing
 import warnings
 
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 

@@ -1,7 +1,7 @@
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.data.shared.instructions.IfAssembly import AbstractIFAssembly
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 

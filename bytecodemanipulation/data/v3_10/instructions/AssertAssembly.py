@@ -4,7 +4,7 @@ from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.data.shared.instructions.AssertAssembly import (
     AbstractAssertAssembly,

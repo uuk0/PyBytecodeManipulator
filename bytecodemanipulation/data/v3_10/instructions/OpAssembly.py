@@ -11,7 +11,7 @@ from bytecodemanipulation.data.shared.instructions.OpAssembly import (
     AbstractOpAssembly,
     AbstractOperator,
 )
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 
 

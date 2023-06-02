@@ -60,7 +60,7 @@ from bytecodemanipulation.data.shared.expressions.TopOfStackAccessExpression imp
 )
 from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
 
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 
 from bytecodemanipulation.assembler.Lexer import (
     Lexer,

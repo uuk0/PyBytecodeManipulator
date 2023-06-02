@@ -5,7 +5,7 @@ import unittest
 
 import typing
 
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 
 from bytecodemanipulation.Optimiser import BUILTIN_CACHE
 

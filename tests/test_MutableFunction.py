@@ -1,6 +1,7 @@
 import dis
 from unittest import TestCase
-from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
+from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Instruction import Instruction
 
 
 class TestMutableFunction(TestCase):

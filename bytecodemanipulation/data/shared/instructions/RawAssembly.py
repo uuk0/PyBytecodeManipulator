@@ -6,7 +6,8 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken, IntegerToken
-from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
+from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Instruction import Instruction
 
 
 @Parser.register

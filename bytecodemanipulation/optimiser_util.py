@@ -3,7 +3,7 @@ import typing
 from bytecodemanipulation.annotated_std import CONSTANT_BUILTIN_TYPES
 from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.Opcodes import SIDE_EFFECT_FREE_LOADS

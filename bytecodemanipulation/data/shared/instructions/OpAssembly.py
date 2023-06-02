@@ -13,7 +13,8 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
-from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
+from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 
 

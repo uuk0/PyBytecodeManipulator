@@ -11,7 +11,7 @@ from bytecodemanipulation.MutableFunctionHelpers import insert_method_into
 from bytecodemanipulation.MutableFunctionHelpers import MutableFunctionWithTree
 from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.util import AbstractInstructionWalker
-from bytecodemanipulation.MutableFunction import Instruction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 
 

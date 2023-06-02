@@ -5,7 +5,8 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
-from bytecodemanipulation.MutableFunction import MutableFunction, Instruction
+from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import (
     Parser as AssemblyParser,
