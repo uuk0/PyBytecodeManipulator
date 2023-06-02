@@ -1,7 +1,7 @@
 import typing
 
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope

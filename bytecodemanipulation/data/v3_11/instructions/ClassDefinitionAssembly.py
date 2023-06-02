@@ -7,7 +7,7 @@ from bytecodemanipulation.data.shared.instructions.ClassDefinitionAssembly impor
 )
 from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 @Parser.register

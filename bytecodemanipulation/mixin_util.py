@@ -1,7 +1,7 @@
 import typing
 
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 def resolve_accesses(

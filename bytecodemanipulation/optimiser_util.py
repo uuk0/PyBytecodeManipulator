@@ -5,8 +5,8 @@ from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 
 from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.Opcodes import SIDE_EFFECT_FREE_LOADS
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import SIDE_EFFECT_FREE_LOADS
 from bytecodemanipulation.Specialization import ArgDescriptor
 from bytecodemanipulation.Specialization import MethodCallDescriptor
 from bytecodemanipulation.Specialization import SpecializationContainer

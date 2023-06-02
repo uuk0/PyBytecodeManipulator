@@ -24,7 +24,7 @@ from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
 )
 from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 if typing.TYPE_CHECKING:

@@ -12,7 +12,7 @@ import random
 
 from bytecodemanipulation.MutableFunctionHelpers import Guarantees
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
 from bytecodemanipulation.optimiser_util import inline_constant_binary_ops
 from bytecodemanipulation.optimiser_util import inline_constant_method_invokes

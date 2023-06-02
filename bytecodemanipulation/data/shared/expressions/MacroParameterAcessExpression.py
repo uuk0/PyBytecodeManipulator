@@ -6,7 +6,7 @@ from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class MacroParameterAccessExpression(AbstractAccessExpression):

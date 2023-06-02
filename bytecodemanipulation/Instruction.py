@@ -4,18 +4,18 @@ import typing
 
 import bytecodemanipulation.assembler
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
-from bytecodemanipulation.Opcodes import END_CONTROL_FLOW
-from bytecodemanipulation.Opcodes import HAS_CELL_VARIABLE
-from bytecodemanipulation.Opcodes import HAS_CONST
-from bytecodemanipulation.Opcodes import HAS_JUMP_ABSOLUTE
-from bytecodemanipulation.Opcodes import HAS_JUMP_BACKWARDS
-from bytecodemanipulation.Opcodes import HAS_JUMP_FORWARD
-from bytecodemanipulation.Opcodes import HAS_LOCAL
-from bytecodemanipulation.Opcodes import HAS_NAME
-from bytecodemanipulation.Opcodes import OPCODE2NAME
-from bytecodemanipulation.Opcodes import Opcodes
-from bytecodemanipulation.Opcodes import OPNAME2CODE
-from bytecodemanipulation.Opcodes import UNCONDITIONAL_JUMPS
+from bytecodemanipulation.opcodes.Opcodes import END_CONTROL_FLOW
+from bytecodemanipulation.opcodes.Opcodes import HAS_CELL_VARIABLE
+from bytecodemanipulation.opcodes.Opcodes import HAS_CONST
+from bytecodemanipulation.opcodes.Opcodes import HAS_JUMP_ABSOLUTE
+from bytecodemanipulation.opcodes.Opcodes import HAS_JUMP_BACKWARDS
+from bytecodemanipulation.opcodes.Opcodes import HAS_JUMP_FORWARD
+from bytecodemanipulation.opcodes.Opcodes import HAS_LOCAL
+from bytecodemanipulation.opcodes.Opcodes import HAS_NAME
+from bytecodemanipulation.opcodes.Opcodes import OPCODE2NAME
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import OPNAME2CODE
+from bytecodemanipulation.opcodes.Opcodes import UNCONDITIONAL_JUMPS
 from bytecodemanipulation.util import AbstractInstructionWalker
 
 

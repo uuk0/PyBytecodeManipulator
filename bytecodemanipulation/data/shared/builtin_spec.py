@@ -1,7 +1,7 @@
 import typing
 import random
 
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.Specialization import SpecializationContainer, register
 from bytecodemanipulation.Instruction import Instruction
 

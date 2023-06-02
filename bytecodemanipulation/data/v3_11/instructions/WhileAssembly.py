@@ -5,7 +5,7 @@ from bytecodemanipulation.data.shared.instructions.WhileAssembly import (
 )
 from bytecodemanipulation.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 @Parser.register

@@ -6,7 +6,7 @@ import typing
 import simplejson
 
 from bytecodemanipulation.Instruction import Instruction
-from bytecodemanipulation.Opcodes import (
+from bytecodemanipulation.opcodes.Opcodes import (
     Opcodes,
 )
 import bytecodemanipulation.data_loader

@@ -12,7 +12,7 @@ from bytecodemanipulation.MutableFunctionHelpers import MutableFunctionWithTree
 from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.util import AbstractInstructionWalker
 from bytecodemanipulation.Instruction import Instruction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class MixinInjectionNotSupportedException(Exception):

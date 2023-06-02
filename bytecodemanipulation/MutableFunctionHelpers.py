@@ -2,8 +2,8 @@ import typing
 
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.Instruction import Instruction
-from bytecodemanipulation.Opcodes import Opcodes, HAS_GLOBAL
-from bytecodemanipulation.Opcodes import UNCONDITIONAL_JUMPS
+from bytecodemanipulation.opcodes.Opcodes import Opcodes, HAS_GLOBAL
+from bytecodemanipulation.opcodes.Opcodes import UNCONDITIONAL_JUMPS
 
 
 class Guarantees:

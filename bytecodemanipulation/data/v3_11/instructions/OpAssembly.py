@@ -1,7 +1,7 @@
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
 from bytecodemanipulation.Instruction import Instruction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 @Parser.register

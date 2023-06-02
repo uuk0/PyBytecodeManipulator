@@ -3,8 +3,8 @@ import json
 import logging
 import os
 import sys
-from bytecodemanipulation.Opcodes import Opcodes, init_maps, OPNAME2CODE
-from bytecodemanipulation import Opcodes as OpcodesM
+from bytecodemanipulation.opcodes.Opcodes import Opcodes, init_maps, OPNAME2CODE
+from bytecodemanipulation.opcodes import Opcodes as OpcodesM
 from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 
 

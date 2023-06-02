@@ -12,7 +12,7 @@ from bytecodemanipulation.data.shared.instructions.OpAssembly import (
     AbstractOperator,
 )
 from bytecodemanipulation.Instruction import Instruction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class NandOperator(AbstractOperator):

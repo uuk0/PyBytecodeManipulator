@@ -11,7 +11,7 @@ from bytecodemanipulation.data.shared.instructions.CallAssembly import (
     AbstractCallAssembly,
 )
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Opcodes import Opcodes
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.util import LambdaInstructionWalker
 
 
