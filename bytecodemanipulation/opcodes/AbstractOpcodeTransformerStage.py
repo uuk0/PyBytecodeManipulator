@@ -76,20 +76,26 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
                 instr.arg_value = instructions[instr.offset - instr.arg]
                 instr.arg = None
 
-        function.set_instructions(instructions)
+        for i, instr in enumerate(instructions[:-1]):
+            if not instr.has_stop_flow() and not instr.has_unconditional_jump():
+                instr.next_instruction = instructions[i+1]
+
+        function.instruction_entry_point = instructions[0]
 
 
 class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
     @classmethod
     def apply(cls, function: "MutableFunction", metadata: typing.Any) -> typing.Any:
-        visiting = {function.instructions[0]} | set(function.exception_table.table.keys())
+        visiting = {function.get_instruction_entry_point()} | set(function.exception_table.table.keys())
         visited = set()
 
         while visiting:
             instr = visiting.pop()
 
-            if instr in visited:
+            if instr in visited or instr is None:
                 continue
+
+            visited.add(instr)
 
             cls.visit(
                 function,
@@ -152,7 +158,7 @@ class LinearStreamGenerator(AbstractOpcodeTransformerStage):
     def apply(cls, function: "MutableFunction", builder: CodeObjectBuilder, breaks_flow=tuple()):
 
         # While we have branches, we need to decode them
-        pending_instructions = {function.instructions[0]} | set(function.exception_table.table.keys())
+        pending_instructions = {function.get_instruction_entry_point()} | set(function.exception_table.table.keys())
         visited: typing.Set[Instruction] = set()
         instructions: typing.List[Instruction] = []
 
@@ -218,12 +224,15 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
 
         cls.update_jump_args(function, builder)
 
-        function.instructions[:] = builder.temporary_instructions
+        function.set_instruction_entry_point(builder.temporary_instructions[0])
         ExtendedArgInserter.apply(function, builder)
         LinearStreamGenerator.apply(function, builder)
 
     @classmethod
     def insert_needed_jumps(cls, function: "MutableFunction", builder: CodeObjectBuilder):
+        for i, instruction in enumerate(builder.temporary_instructions):
+            instruction.offset = i
+
         # Check for unconditional jumps required
         for instruction in builder.temporary_instructions[:]:
             if instruction.has_stop_flow():
@@ -256,6 +265,9 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
                 instruction.next_instruction = jump
                 builder.temporary_instructions.insert(builder.temporary_instructions.index(instruction) + 1, jump)
 
+        for i, instruction in enumerate(builder.temporary_instructions):
+            instruction.offset = i
+
     @classmethod
     def update_jump_args(cls, function: "MutableFunction", builder: CodeObjectBuilder):
         # Update the raw arg for jumps
@@ -267,10 +279,13 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
 
             if instruction.has_jump_absolute():
                 instruction.change_arg_value(instruction.arg_value)
+
             elif instruction.offset in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                 instruction.change_arg_value(instruction.arg_value)
+
             elif instruction.has_jump_forward():
                 instruction.change_arg_value(instruction.arg_value)
+
             elif instruction.has_jump_backward():
                 instruction.change_arg_value(instruction.arg_value)
 
@@ -282,7 +297,7 @@ class InstructionAssembler(AbstractOpcodeTransformerStage):
 
     @classmethod
     def apply(cls, function: "MutableFunction", builder: CodeObjectBuilder):
-        function.set_instructions(builder.temporary_instructions)
+        function.instruction_entry_point = builder.temporary_instructions[0]
 
         function._raw_code.clear()
         for i, instruction in enumerate(builder.temporary_instructions):

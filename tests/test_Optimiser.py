@@ -162,10 +162,10 @@ class TestOptimiserUtil(TestCase):
             a = [10]
 
         mutable = MutableFunction(target)
-        remove_local_var_assign_without_use(mutable)
-        inline_const_value_pop_pairs(mutable)
-        inline_const_value_pop_pairs(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        builder = mutable.create_filled_builder()
+        remove_local_var_assign_without_use(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
         mutable.reassign_to_function()
 
         self.assertEqual(mutable.instructions[0].arg_value, None)
@@ -193,10 +193,10 @@ class TestOptimiserUtil(TestCase):
             [200, 400, 200, (342, 234)]
 
         mutable = MutableFunction(target)
-        remove_local_var_assign_without_use(mutable)
-        inline_const_value_pop_pairs(mutable)
-        inline_const_value_pop_pairs(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        builder = mutable.create_filled_builder()
+        remove_local_var_assign_without_use(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
         mutable.reassign_to_function()
 
         # dis.dis(target)

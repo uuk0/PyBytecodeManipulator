@@ -6,6 +6,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import (
@@ -49,11 +50,12 @@ GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
 def apply_inline_assemblies(
-    target: MutableFunction | typing.Callable, store_at_target: bool = None
+    target: MutableFunction | typing.Callable, builder: CodeObjectBuilder = None, store_at_target: bool = None
 ):
     """
     Processes all assembly() calls and label() calls in 'target'
     """
+    builder = builder or target.create_filled_builder()
 
     if not isinstance(target, MutableFunction):
         target = MutableFunction(target)
@@ -63,7 +65,7 @@ def apply_inline_assemblies(
     labels = set()
     insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
 
-    for instr in target.instructions[:]:
+    for instr in builder.temporary_instructions[:]:
         if instr.opcode == Opcodes.LOAD_GLOBAL:
             try:
                 value = target.target.__globals__.get(instr.arg_value)
@@ -226,15 +228,15 @@ def apply_inline_assemblies(
                     bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
                 )
 
-    for i, ins in enumerate(target.instructions):
+    for i, ins in enumerate(builder.temporary_instructions):
         if ins.opcode == Opcodes.BYTECODE_LABEL:
             label_targets[ins.arg_value] = ins.next_instruction
             ins.change_opcode(Opcodes.NOP)
-            ins.next_instruction = target.instructions[i + 1]
+            ins.next_instruction = builder.temporary_instructions[i + 1]
 
     pending: typing.List[Instruction] = []
 
-    def resolve_special_code(ins: Instruction, *_):
+    def resolve_special_code(ins: Instruction):
         # print(ins)
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
@@ -252,7 +254,7 @@ def apply_inline_assemblies(
                 Opcodes.LOAD_CONST, getattr(obj, ins.arg_value), update_next=False
             )
 
-    target.instructions[0].apply_value_visitor(resolve_special_code)
+    target.walk_instructions(resolve_special_code)
 
     while pending:
         pending.pop().apply_value_visitor(resolve_special_code)

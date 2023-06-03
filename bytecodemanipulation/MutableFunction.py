@@ -63,6 +63,8 @@ class MutableFunction:
 
         self.code_flags = 0
 
+        self._instruction_entry_point: Instruction = None
+
         # todo: fill out when decoding
         # todo: encode when encoding
         self.exception_table = ExceptionTable(self)
@@ -132,45 +134,48 @@ class MutableFunction:
 
         return instance
 
+    def deep_copy(self):
+        instance = self.copy()
+
+        copied = {}
+        instance._instruction_entry_point = instance._instruction_entry_point.copy_deep(copied)
+
+        return instance
+
     def copy_from(self, mutable: "MutableFunction"):
         # self.target = mutable.target
         self.code_object = mutable.code_object
 
         self.argument_count = mutable.argument_count
-        self.cell_variables = mutable.cell_variables.copy()
+        # self.cell_variables = mutable.cell_variables.copy()
         self._raw_code = mutable.raw_code.copy()
-        self.constants = copy.deepcopy(mutable.constants)
+        # self.constants = copy.deepcopy(mutable.constants)
         self.filename = mutable.filename
         self.first_line_number = mutable.first_line_number
         self.code_flags = mutable.code_flags
-        self.free_variables = mutable.free_variables.copy()
+        # self.free_variables = mutable.free_variables.copy()
         self.keyword_only_argument_count = mutable.keyword_only_argument_count
-        self.line_table = copy.copy(mutable.line_table)
-        self.lnotab = mutable.lnotab
+        # self.line_table = copy.copy(mutable.line_table)
+        # self.lnotab = mutable.lnotab
         self.function_name = mutable.function_name
-        self.shared_names = mutable.shared_names.copy()
+        # self.shared_names = mutable.shared_names.copy()
         self.positional_only_argument_count = mutable.positional_only_argument_count
-        self.stack_size = mutable.stack_size
-        self.shared_variable_names = mutable.shared_variable_names.copy()
-
-        self.__instructions = None
+        # self.stack_size = mutable.stack_size
+        # self.shared_variable_names = mutable.shared_variable_names.copy()
 
     if sys.version_info.major == 3 and sys.version_info.minor == 10:
 
         def create_code_obj(self) -> types.CodeType:
-            if self.__instructions is None:
-                self.get_instructions()
-
             builder = self.create_filled_builder()
 
-            self.assemble_fast(self.__instructions)
+            self.assemble_fast(builder.temporary_instructions)
 
             return types.CodeType(
                 self.argument_count,
                 self.positional_only_argument_count,
                 self.keyword_only_argument_count,
                 len(builder.shared_variable_names),
-                self.stack_size,
+                self.calculate_max_stack_size(),
                 self.code_flags,
                 bytes(self.raw_code),
                 tuple(builder.constants),
@@ -187,30 +192,29 @@ class MutableFunction:
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
 
         def create_code_obj(self) -> types.CodeType:
-            if self.__instructions is None:
-                self.get_instructions()
+            builder = self.create_filled_builder()
 
-            self.assemble_fast(self.__instructions)
+            self.assemble_fast(builder.temporary_instructions)
 
             return types.CodeType(
                 self.argument_count,
                 self.positional_only_argument_count,
                 self.keyword_only_argument_count,
-                len(self.shared_variable_names),
-                self.stack_size,
+                len(builder.shared_variable_names),
+                self.calculate_max_stack_size(),
                 self.code_flags,
                 bytes(self.raw_code),
-                tuple(self.constants),
-                tuple(self.shared_names),
-                tuple(self.shared_variable_names),
+                tuple(builder.constants),
+                tuple(builder.shared_names),
+                tuple(builder.shared_variable_names),
                 self.filename,
                 self.function_name,
                 self.function_name,
                 self.first_line_number,
                 self.get_lnotab(),
-                bytes(self.exception_table),
-                tuple(self.free_variables),
-                tuple(self.cell_variables),
+                bytes(self.exception_table),  # todo: encode
+                tuple(builder.free_variables),
+                tuple(builder.cell_variables),
             )
 
     def get_lnotab(self) -> bytes:
@@ -240,83 +244,87 @@ class MutableFunction:
         return bytes(items)
 
     def calculate_max_stack_size(self) -> int:
-        stack_size_table = self.get_max_stack_size_table()
+        def reset(instr: Instruction):
+            instr._max_stack_size_at = -1
 
-        self.stack_size = max(max(stack_size_table), 0)
-        return self.stack_size
+        self.walk_instructions(reset)
 
-    def get_max_stack_size_table(
-        self, instructions: typing.List[Instruction] = None
-    ) -> typing.List[int]:
-        stack_size_table = [-1] * len(instructions or self.instructions)
+        visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+        visiting_2 = set()
+        visited = set()
 
-        if not instructions:
-            self.prepare_previous_instructions()
+        for instr in visiting:
+            instr._max_stack_size_at = 0
 
-        for i, instr in enumerate(instructions or self.instructions):
-            stack = -1
-            if i != 0:
-                prev = (instructions or self.instructions)[i - 1]
+        while visiting or visiting_2:
+            if not visiting:
+                visiting |= visiting_2
+                visiting_2.clear()
 
-                if not prev.has_stop_flow() and not prev.has_unconditional_jump():
-                    stack = stack_size_table[i - 1]
-            else:
-                stack = 0
+            instr = visiting.pop()
 
-            if instr.previous_instructions:
-                for instruction in instr.previous_instructions:
-                    if stack_size_table[instruction.offset] != -1:
-                        stack = max(stack, stack_size_table[instruction.offset])
-                        stack += instruction.special_stack_affect_when_followed_by(
-                            instr
-                        )
+            if instr in visited or instr is None:
+                continue
 
-            if stack != -1:
-                add, sub, _ = instr.get_stack_affect()
-                stack += add
-                stack -= sub
+            visited.add(instr)
 
-            stack_size_table[i] = stack
+            stack_size = 0
+            previous = instr.previous_instructions
+            needs_revisit = False
 
-        if -1 in stack_size_table:
-            pending = list(filter(lambda e: e[1] == -1, enumerate(stack_size_table)))
-            last_next = -1
+            for pinstr in previous:
+                if pinstr._max_stack_size_at != -1:
+                    psize = pinstr._max_stack_size_at
+                    psize += pinstr.special_stack_affect_when_followed_by(instr)
+                    pushed, popped, _ = pinstr.get_stack_affect()
+                    psize += pushed
+                    psize -= popped
 
-            while pending:
-                i, _ = pending.pop(0)
-                instr = (instructions or self.instructions)[i]
-                stack = -1
-
-                if i == last_next:
-                    break
-
-                if not instr.previous_instructions:
-                    print("WARN:", instr)
-                    continue
-
-                for instruction in instr.previous_instructions:
-                    if stack_size_table[instruction.offset] != -1:
-                        stack = max(stack, stack_size_table[instruction.offset])
-                        stack += instruction.special_stack_affect_when_followed_by(
-                            instr
-                        )
-
-                if stack != -1:
-                    add, sub, _ = instr.get_stack_affect()
-                    stack += add
-                    stack -= sub
-
-                    stack_size_table[i] = stack
-
-                    if pending:
-                        last_next = pending[0][0]
+                    stack_size = max(stack_size, psize)
                 else:
-                    pending.append((i, -1))
+                    needs_revisit = True
 
-                if last_next == -1:
-                    last_next = i
+            instr._max_stack_size_at = stack_size
 
-        return stack_size_table
+            if needs_revisit:
+                visited.remove(instr)
+                visiting_2.add(instr)
+
+            if not instr.has_stop_flow() and not instr.has_unconditional_jump():
+                visiting.add(instr.next_instruction)
+
+            if instr.has_jump():
+                visiting.add(instr.arg_value)
+
+        stack_size = 0
+
+        def visit(instr: Instruction):
+            nonlocal stack_size
+            stack_size = max(stack_size, instr._max_stack_size_at)
+
+        self.walk_instructions(visit)
+
+        return stack_size
+
+    def walk_instructions(self, callback: typing.Callable[[Instruction], None]):
+        visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+        visited = set()
+
+        while visiting:
+            instr = visiting.pop()
+
+            if instr in visited or instr is None:
+                continue
+
+            visited.add(instr)
+
+            callback(instr)
+
+            if not instr.has_stop_flow() and not instr.has_unconditional_jump():
+                visiting.add(instr.next_instruction)
+
+            if instr.has_jump():
+                visiting.add(instr.arg_value)
 
     def reassign_to_function(self):
         self.calculate_max_stack_size()
@@ -334,31 +342,45 @@ class MutableFunction:
 
         self.prepare_previous_instructions()
 
-    def create_filled_builder(self):
-        builder = CodeObjectBuilder(self)
+    def prepare_previous_instructions(self):
+        def clear(instr: Instruction):
+            if instr.previous_instructions:
+                instr.previous_instructions.clear()
+            else:
+                instr.previous_instructions = []
+
+        def callback(instr: Instruction):
+            if not instr.has_stop_flow():
+                if instr.next_instruction is None:
+                    raise
+
+                instr.next_instruction.previous_instructions.append(instr)
+
+            if instr.has_jump():
+                typing.cast(Instruction, instr.arg_value).previous_instructions.append(instr)
+
+        self.walk_instructions(clear)
+        self.walk_instructions(callback)
+
+    def create_filled_builder(self, builder=None):
+        builder = builder or CodeObjectBuilder(self)
 
         for stage in self.INSTRUCTION_ENCODING_PIPE:
+            # print(stage, builder.temporary_instructions)
             stage.apply(self, builder)
 
         return builder
 
-    def prepare_previous_instructions(self):
-        for instruction in self.instructions:
-            if instruction.previous_instructions:
-                instruction.previous_instructions.clear()
+    def get_instruction_entry_point(self):
+        if self._instruction_entry_point is None:
+            self.decode_instructions()
 
-        for instruction in self.instructions:
-            if instruction.has_stop_flow() or instruction.has_unconditional_jump():
-                continue
+        return self._instruction_entry_point
 
-            instruction.next_instruction.add_previous_instruction(instruction)
+    def set_instruction_entry_point(self, entry_point: Instruction):
+        self._instruction_entry_point = entry_point
 
-            if instruction.has_jump():
-                # print(instruction.arg_value, typing.cast, typing.cast(Instruction, instruction.arg_value))
-
-                typing.cast(
-                    Instruction, instruction.arg_value
-                ).add_previous_instruction(instruction)
+    instruction_entry_point = property(get_instruction_entry_point, set_instruction_entry_point)
 
     def update_instruction_offsets(self, instructions):
         # Update instruction positions
@@ -373,6 +395,9 @@ class MutableFunction:
 
         :raises ValueError: if not enough space for EXTENDED_ARG's is available
         """
+
+        if not instructions:
+            raise ValueError("<instructions> is empty!")
 
         builder = CodeObjectBuilder(self)
         builder.temporary_instructions = instructions
@@ -395,27 +420,6 @@ class MutableFunction:
             self.decode_instructions()
 
     raw_code = property(get_raw_code, set_raw_code)
-
-    def get_instructions(self):
-        if self.__instructions is None:
-            self.decode_instructions()
-
-        return self.__instructions
-
-    def set_instructions(self, instructions: typing.List[Instruction]):
-        # Update the ownerships of the instructions, so they point to us now
-        # todo: do we want to copy in some cases?
-        self.__instructions = instructions
-        self.__instructions = [
-            instruction.update_owner(self, i, update_following=False)
-            for i, instruction in enumerate(instructions)
-        ]
-
-        for i, instruction in enumerate(instructions[:-1]):
-            if not instruction.has_stop_flow():
-                instruction.set_next_instruction_unsafe(instructions[i+1])
-
-    instructions = property(get_instructions, set_instructions)
 
     def dump_info(self, file: str):
         data = {

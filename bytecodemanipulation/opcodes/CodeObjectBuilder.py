@@ -17,6 +17,24 @@ class CodeObjectBuilder:
         self.free_variables = []
         self.cell_variables = []
 
+    def prepare_previous_instructions(self):
+        for instruction in self.temporary_instructions:
+            if instruction.previous_instructions:
+                instruction.previous_instructions.clear()
+
+        for instruction in self.temporary_instructions:
+            if instruction.has_stop_flow() or instruction.has_unconditional_jump():
+                continue
+
+            instruction.next_instruction.add_previous_instruction(instruction)
+
+            if instruction.has_jump():
+                # print(instruction.arg_value, typing.cast, typing.cast(Instruction, instruction.arg_value))
+
+                typing.cast(
+                    Instruction, instruction.arg_value
+                ).add_previous_instruction(instruction)
+
     def reserve_local_name(self, name: str) -> int:
         if name in self.shared_variable_names:
             return self.shared_variable_names.index(name)

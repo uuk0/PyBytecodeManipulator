@@ -403,21 +403,23 @@ def insert_method_into(
     # body.print_recursive()
 
 
-def inline_calls_to_const_functions(mutable: MutableFunction):
+def inline_calls_to_const_functions(mutable: MutableFunction, builder):
     from bytecodemanipulation.Optimiser import _OptimisationContainer
 
-    for instr in mutable.instructions[:]:
+    dirty = False
+
+    def visit(instr: Instruction):
         if instr.opcode == Opcodes.CALL_FUNCTION:
             source = next(instr.trace_stack_position(instr.arg))
 
             if source.opcode != Opcodes.LOAD_CONST:
-                continue
+                return
 
             target = source.arg_value
 
             container = _OptimisationContainer.get_for_target(target)
             if not container.try_inline_calls:
-                continue
+                return
 
             instr.change_opcode(Opcodes.NOP)
             insert_method_into(
@@ -428,3 +430,8 @@ def inline_calls_to_const_functions(mutable: MutableFunction):
                 protected_locals=None,
             )
             source.change_opcode(Opcodes.NOP)
+            nonlocal dirty
+            dirty = True
+
+    mutable.walk_instructions(visit)
+    return dirty
