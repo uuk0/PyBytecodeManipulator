@@ -24,15 +24,15 @@ class OpAssembly(AbstractOpAssembly):
         "!is": (Opcodes.IS_OP, 1),
         "in": (Opcodes.CONTAINS_OP, 0),
         "!in": (Opcodes.CONTAINS_OP, 1),
-        "<": (Opcodes.COMPARE_OP, 0),
-        "<=": (Opcodes.COMPARE_OP, 1),
-        "==": (Opcodes.COMPARE_OP, 2),
-        "!=": (Opcodes.COMPARE_OP, 3),
-        ">": (Opcodes.COMPARE_OP, 4),
-        ">=": (Opcodes.COMPARE_OP, 5),
+        "<": Opcodes.COMPARE_LT,
+        "<=": Opcodes.COMPARE_LE,
+        "==": Opcodes.COMPARE_EQ,
+        "!=": Opcodes.COMPARE_NEQ,
+        ">": Opcodes.COMPARE_GT,
+        ">=": Opcodes.COMPARE_GE,
         # todo: is there a better way?
-        "xor": (Opcodes.COMPARE_OP, 3),
-        "!xor": (Opcodes.COMPARE_OP, 2),
+        "xor": Opcodes.COMPARE_NEQ,
+        "!xor": Opcodes.COMPARE_EQ,
         ":=": lambda lhs, rhs, function, scope: rhs.emit_bytecodes(function, scope)
         + [Instruction(function, -1, Opcodes.DUP_TOP)]
         + lhs.emit_store_bytecodes(function, scope),

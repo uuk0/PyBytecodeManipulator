@@ -46,12 +46,12 @@ OPCODE_TO_ATTR_DOUBLE = {
     Opcodes.BINARY_OR: "__or__",
     (Opcodes.IS_OP, 0): lambda a, b: a is b,
     (Opcodes.IS_OP, 1): lambda a, b: a is not b,
-    (Opcodes.COMPARE_OP, 0): lambda a, b: a < b,
-    (Opcodes.COMPARE_OP, 1): lambda a, b: a <= b,
-    (Opcodes.COMPARE_OP, 2): lambda a, b: a == b,
-    (Opcodes.COMPARE_OP, 3): lambda a, b: a != b,
-    (Opcodes.COMPARE_OP, 4): lambda a, b: a > b,
-    (Opcodes.COMPARE_OP, 5): lambda a, b: a >= b,
+    Opcodes.COMPARE_LT: lambda a, b: a < b,
+    Opcodes.COMPARE_LE: lambda a, b: a <= b,
+    Opcodes.COMPARE_EQ: lambda a, b: a == b,
+    Opcodes.COMPARE_NEQ: lambda a, b: a != b,
+    Opcodes.COMPARE_GT: lambda a, b: a > b,
+    Opcodes.COMPARE_GE: lambda a, b: a >= b,
 }
 
 
