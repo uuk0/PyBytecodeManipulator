@@ -11,7 +11,7 @@ class CodeObjectBuilder:
         self.function = function
         self.temporary_instructions: typing.List["Instruction"] = []
 
-        self.shared_variable_names = []
+        self.shared_variable_names = function.argument_names.copy()
         self.constants = []
         self.shared_names = []
         self.free_variables = []

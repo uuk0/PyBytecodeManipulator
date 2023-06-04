@@ -52,6 +52,7 @@ class MutableFunction:
         self.__instructions: typing.Optional[typing.List[Instruction]] = None
         self._raw_code: bytearray = None
 
+        self.argument_names: typing.List[str] = None
         self.argument_count = 0
         self.keyword_only_argument_count = 0
         self.positional_only_argument_count = 0
@@ -92,6 +93,7 @@ class MutableFunction:
             self.positional_only_argument_count = self.code_object.co_posonlyargcount
             # self.stack_size = self.code_object.co_stacksize
             # self.shared_variable_names = list(self.code_object.co_varnames)
+            self.argument_names = list(self.code_object.co_varnames[:self.argument_count])
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
 
@@ -114,6 +116,7 @@ class MutableFunction:
             self.positional_only_argument_count = self.code_object.co_posonlyargcount
             # self.stack_size = self.code_object.co_stacksize
             # self.shared_variable_names = list(self.code_object.co_varnames)
+            self.argument_names = list(self.code_object.co_varnames[:self.argument_count])
 
             # self.exception_table = bytearray(self.code_object.co_exceptiontable)
 
@@ -170,24 +173,37 @@ class MutableFunction:
 
             self.assemble_fast(builder.temporary_instructions)
 
-            return types.CodeType(
-                self.argument_count,
-                self.positional_only_argument_count,
-                self.keyword_only_argument_count,
-                len(builder.shared_variable_names),
-                self.calculate_max_stack_size(),
-                self.code_flags,
-                bytes(self.raw_code),
-                tuple(builder.constants),
-                tuple(builder.shared_names),
-                tuple(builder.shared_variable_names),
-                self.filename,
-                self.function_name,
-                self.first_line_number,
-                self.get_lnotab(),
-                tuple(builder.free_variables),
-                tuple(builder.cell_variables),
-            )
+            try:
+                return types.CodeType(
+                    self.argument_count,
+                    self.positional_only_argument_count,
+                    self.keyword_only_argument_count,
+                    len(builder.shared_variable_names),
+                    self.calculate_max_stack_size(),
+                    self.code_flags,
+                    bytes(self.raw_code),
+                    tuple(builder.constants),
+                    tuple(builder.shared_names),
+                    tuple(builder.shared_variable_names),
+                    self.filename,
+                    self.function_name,
+                    self.first_line_number,
+                    self.get_lnotab(),
+                    tuple(builder.free_variables),
+                    tuple(builder.cell_variables),
+                )
+            except:
+                print(builder.shared_variable_names)
+                print(len(builder.shared_variable_names))
+
+                for i in range(0, len(self.raw_code), 2):
+                    frag = self.raw_code[i:i+2]
+                    print(tuple(frag))
+
+                self.walk_instructions(lambda instr: print(instr))
+
+                print(self)
+                raise
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
 
@@ -364,6 +380,7 @@ class MutableFunction:
 
     def create_filled_builder(self, builder=None):
         builder = builder or CodeObjectBuilder(self)
+        self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
 
         for stage in self.INSTRUCTION_ENCODING_PIPE:
             # print(stage, builder.temporary_instructions)
@@ -422,8 +439,10 @@ class MutableFunction:
     raw_code = property(get_raw_code, set_raw_code)
 
     def dump_info(self, file: str):
-        data = {
-            "instructions": [
+        entries = []
+
+        def visit(instr):
+            entries.append(
                 {
                     "opcode": instr.opcode,
                     "opname": instr.opname,
@@ -431,9 +450,11 @@ class MutableFunction:
                     "arg_value": repr(instr.arg_value),
                     "offset": instr.offset,
                 }
-                for instr in self.instructions
-            ]
-        }
+            )
+
+        self.walk_instructions(visit)
+
+        data = {"instructions": entries}
 
         with open(file, mode="w") as f:
             simplejson.dump(data, f, indent="  ")

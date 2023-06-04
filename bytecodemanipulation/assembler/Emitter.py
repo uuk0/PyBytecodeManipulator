@@ -290,7 +290,8 @@ def execute_module_in_instance(
     scope.scope_path.clear()
     create_function = lambda m: None
     target = MutableFunction(create_function)
-    target.shared_variable_names[0] = "$module$"
+    target.argument_names[0] = "$module$"
+
     bytecode = asm.create_bytecode(target, scope)
 
     if bytecode is None:
@@ -317,15 +318,14 @@ def execute_module_in_instance(
     if not bytecode:
         bytecode.append(Instruction(target, -1, "NOP"))
 
-    bytecode[-1].next_instruction = target.instructions[0]
-    target.assemble_instructions_from_tree(bytecode[0])
+    bytecode[-1].next_instruction = target.instruction_entry_point
 
-    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
+    target.walk_instructions(resolve_jump_to_label)
+
     target.stack_size = bytecode[0].apply_value_visitor(_visit_for_stack_effect)[1]
 
-    target.assemble_instructions_from_tree(target.instructions[0])
 
-    for instr in target.instructions:
+    def visit(instr: Instruction):
         if instr.opcode == Opcodes.STORE_FAST:
             load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
             store = Instruction(target, -1, Opcodes.STORE_ATTR, instr.arg_value)
@@ -347,7 +347,8 @@ def execute_module_in_instance(
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])
 
-    target.assemble_instructions_from_tree(target.instructions[0])
+    target.walk_instructions(visit)
+
     target.function_name = module.__name__
 
     target.reassign_to_function()
