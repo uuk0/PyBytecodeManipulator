@@ -355,14 +355,11 @@ class MutableFunction:
         self.target.__code__ = self.create_code_obj()
 
     def decode_instructions(self):
-        if self.__instructions is not None:
-            self.__instructions.clear()
-        else:
-            self.__instructions = []
-
         metadata = None
         for stage in self.INSTRUCTION_DECODING_PIPE:
             metadata = stage.apply(self, metadata)
+
+        self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
 
         self.prepare_previous_instructions()
 
