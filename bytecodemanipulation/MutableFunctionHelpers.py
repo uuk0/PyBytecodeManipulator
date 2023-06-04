@@ -273,8 +273,8 @@ def _inline_outer_return(
 
 
 def insert_method_into(
-    body: MutableFunction | MutableFunctionWithTree,
-    offset: typing.Union[Instruction, int],
+    body: MutableFunction,
+    entry_point: typing.Union[Instruction, int],
     to_insert: MutableFunction | MutableFunctionWithTree,
     protected_locals: typing.List[str] = tuple(),
     drop_return_result=True,
@@ -285,21 +285,21 @@ def insert_method_into(
     """
 
     if isinstance(to_insert, MutableFunctionWithTree):
-        to_insert.mutable.assemble_instructions_from_tree(to_insert.root)
-        to_insert = to_insert.mutable
+        raise ValueError("to_insert")
 
-    if not isinstance(body, MutableFunctionWithTree):
-        body = MutableFunctionWithTree(body)
+    if isinstance(body, MutableFunctionWithTree):
+        raise ValueError("body")
 
-    if offset == -1:
+    if entry_point == -1:
         HEAD_INSTRUCTION = Instruction.create("NOP")
-        HEAD_INSTRUCTION.function = body.mutable
-        HEAD_INSTRUCTION.next_instruction = body.root
-        body.root = HEAD_INSTRUCTION
-    elif isinstance(offset, int):
-        head = body.mutable.instruction_entry_point
+        HEAD_INSTRUCTION.function = body
+        HEAD_INSTRUCTION.next_instruction = body.instruction_entry_point
+        body.instruction_entry_point = HEAD_INSTRUCTION
 
-        for _ in range(offset):
+    elif isinstance(entry_point, int):
+        head = body.instruction_entry_point
+
+        for _ in range(entry_point):
             if not head.has_unconditional_jump():
                 head = head.next_instruction
             else:
@@ -307,8 +307,12 @@ def insert_method_into(
 
         HEAD_INSTRUCTION = head
         del head
+
+    elif isinstance(entry_point, Instruction):
+        HEAD_INSTRUCTION = entry_point
+
     else:
-        HEAD_INSTRUCTION = offset
+        raise ValueError(entry_point)
 
     def set_offset(instr):
         instr.offset = -1
@@ -355,7 +359,7 @@ def insert_method_into(
         instr.next_instruction = HEAD_INSTRUCTION.next_instruction
 
     def visit(instr):
-        instr.update_owner(body.mutable, -1, False)
+        instr.update_owner(body, -1, False)
 
     to_insert.walk_instructions(visit)
 

@@ -482,17 +482,13 @@ class Mixin:
             if self.inject.argument_names[0] in ("cls", "self"):
                 protected_locals.append(self.inject.argument_names[0])
 
-            tree = MutableFunctionWithTree(mutable)
-
             for position_instr in self.at.get_positions(mutable.instruction_entry_point)[:]:
                 insert_method_into(
-                    tree,
+                    mutable,
                     position_instr.offset - 1,
                     self.inject,
                     protected_locals=protected_locals,
                 )
-
-                mutable.instruction_entry_point = tree.root
 
     def __init__(
         self,

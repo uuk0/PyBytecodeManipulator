@@ -81,8 +81,6 @@ class TestMethodInsert(TestCase):
             call()
             call()
 
-        dis.dis(target)
-
         apply_now()(target)
 
         call = None
