@@ -73,7 +73,7 @@ class MethodInvocationInfo:
 class MutableFunctionWithTree:
     def __init__(self, mutable: MutableFunction, root: Instruction = None):
         self.mutable = mutable
-        self.root = root or mutable.instructions[0]
+        self.root = root or mutable.instruction_entry_point
 
     def visitor(
         self, visitor: typing.Callable[[Instruction, typing.List[Instruction]], None]
@@ -137,14 +137,13 @@ def prefix_all_locals_with_all(
     prefix: str,
 ):
     if isinstance(mutable, MutableFunctionWithTree):
-        mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
-    mutable.shared_variable_names = [prefix + e for e in mutable.shared_variable_names]
+    def add_prefix(instr: Instruction):
+        if instr.has_local():
+            instr.arg_value = prefix + instr.arg_value
 
-    for instruction in mutable.instructions:
-        if instruction.has_local():
-            instruction.change_arg(instruction.arg)
+    mutable.walk_instructions(add_prefix)
 
 
 def prefix_all_locals_with_specified(
@@ -153,17 +152,13 @@ def prefix_all_locals_with_specified(
     protected_locals: typing.List[str] = tuple(),
 ):
     if isinstance(mutable, MutableFunctionWithTree):
-        mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
-    mutable.shared_variable_names = [
-        prefix + e if e not in protected_locals else e
-        for e in mutable.shared_variable_names
-    ]
+    def add_prefix(instr: Instruction):
+        if instr.has_local() and instr.arg_value not in protected_locals:
+            instr.arg_value = prefix + instr.arg_value
 
-    for instruction in mutable.instructions:
-        if instruction.has_local():
-            instruction.update_owner(mutable, instruction.offset)
+    mutable.walk_instructions(add_prefix)
 
 
 def replace_opcode_with_other(
@@ -173,31 +168,33 @@ def replace_opcode_with_other(
     handle_new: typing.Callable[[Instruction], None] = lambda _: None,
 ):
     if isinstance(mutable, MutableFunctionWithTree):
-        mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
-    for instruction in mutable.instructions:
+    def replace(instruction: Instruction):
         if instruction.opcode == old_opcode:
             instruction.change_opcode(new_opcode)
 
             handle_new(instruction)
+
+    mutable.walk_instructions(replace)
 
 
 def inline_access_to_global(
     mutable: MutableFunction | MutableFunctionWithTree, global_name: str, value=...
 ):
     if isinstance(mutable, MutableFunctionWithTree):
-        mutable.mutable.assemble_instructions_from_tree(mutable.root)
         mutable = mutable.mutable
 
     if value == ...:
         value = mutable.target.__globals__[global_name]
 
-    for i, instruction in enumerate(mutable.instructions):
+    def replace(instruction: Instruction):
         if instruction.opcode == Opcodes.LOAD_GLOBAL:
             if instruction.arg_value == global_name:
                 instruction.change_opcode(Opcodes.LOAD_CONST)
                 instruction.change_arg_value(value)
+
+    mutable.walk_instructions(replace)
 
 
 def replace_const_func_call_with_opcode(
@@ -300,13 +297,23 @@ def insert_method_into(
         HEAD_INSTRUCTION.next_instruction = body.root
         body.root = HEAD_INSTRUCTION
     elif isinstance(offset, int):
-        body.mutable.assemble_instructions_from_tree(body.root)
-        HEAD_INSTRUCTION = body.mutable.instructions[offset]
+        head = body.mutable.instruction_entry_point
+
+        for _ in range(offset):
+            if not head.has_unconditional_jump():
+                head = head.next_instruction
+            else:
+                head = head.arg_value
+
+        HEAD_INSTRUCTION = head
+        del head
     else:
         HEAD_INSTRUCTION = offset
 
-    for instr in to_insert.instructions:
+    def set_offset(instr):
         instr.offset = -1
+
+    to_insert.walk_instructions(set_offset)
 
     if protected_locals is not None:
         prefix_all_locals_with_specified(
@@ -323,9 +330,12 @@ def insert_method_into(
 
     # MutableFunctionWithTree(to_insert).print_recursive()
 
-    instr = None
-    previous = None
-    for instr in to_insert.instructions:
+    instr: Instruction = None
+    previous: Instruction = None
+
+    def visit(instr):
+        nonlocal previous
+
         if previous is not None:
             previous.next_instruction = instr
 
@@ -339,68 +349,31 @@ def insert_method_into(
 
         previous = instr
 
+    to_insert.walk_instructions(visit)
+
     if instr is not None and instr.next_instruction is None:
         instr.next_instruction = HEAD_INSTRUCTION.next_instruction
 
-    to_insert.assemble_instructions_from_tree(
-        to_insert.instructions[0],
-        breaks_flow=(
-            Instruction.create(
-                Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction
-            ),
-        ),
-    )
-    # MutableFunctionWithTree(to_insert).print_recursive()
-    # to_insert.decode_instructions()
-
-    for instr in to_insert.instructions:
+    def visit(instr):
         instr.update_owner(body.mutable, -1, False)
 
+    to_insert.walk_instructions(visit)
+
     to_insert_tree = MutableFunctionWithTree(to_insert)
-    # to_insert_tree.print_recursive()
     replace_const_func_call_with_opcode(
         to_insert_tree,
         capture_local,
         Opcodes.LOAD_FAST,
         _inline_capture_local,
     )
-    # to_insert_tree.print_recursive()
     replace_const_func_call_with_opcode(
         to_insert_tree,
         outer_return,
         Opcodes.RETURN_VALUE,
         _inline_outer_return,
     )
-    # to_insert_tree.print_recursive()
-
-    def visit(instruction: Instruction, path):
-        if instruction is None:
-            print(path)
-            raise
-
-        instruction.function = body.mutable
-
-        if instruction.has_constant():
-            instruction.arg = body.mutable.allocate_shared_constant(
-                instruction.arg_value
-            )
-
-        elif instruction.has_name():
-            instruction.arg = body.mutable.allocate_shared_name(instruction.arg_value)
-
-        elif instruction.has_local():
-            instruction.arg = body.mutable.allocate_shared_variable_name(
-                instruction.arg_value
-            )
 
     HEAD_INSTRUCTION.next_instruction = to_insert_tree.root
-    body.visitor(visit)
-
-    # body.print_recursive()
-
-    body.mutable.assemble_instructions_from_tree(body.root)
-
-    # body.print_recursive()
 
 
 def inline_calls_to_const_functions(mutable: MutableFunction, builder):
@@ -427,7 +400,6 @@ def inline_calls_to_const_functions(mutable: MutableFunction, builder):
                 instr.offset,
                 MutableFunction(target),
                 drop_return_result=False,
-                protected_locals=None,
             )
             source.change_opcode(Opcodes.NOP)
             nonlocal dirty

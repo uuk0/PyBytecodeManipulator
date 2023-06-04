@@ -132,7 +132,7 @@ class TestOptimiserUtil(TestCase):
 
         mutable = MutableFunction(Outer_test_inline_const_function_on_parent.target)
 
-        self.assertEqual(2, mutable.instructions[0].arg_value)
+        self.assertEqual(2, mutable.instruction_entry_point.arg_value)
 
     def test_branch_remover(self):
         def target():
@@ -168,7 +168,7 @@ class TestOptimiserUtil(TestCase):
         inline_const_value_pop_pairs(mutable, builder)
         mutable.reassign_to_function()
 
-        self.assertEqual(mutable.instructions[0].arg_value, None)
+        self.assertEqual(mutable.instruction_entry_point.arg_value, None)
 
     # TODO: is there a way to make this work?
     # def test_remove_list_build_stacked(self):
@@ -201,7 +201,7 @@ class TestOptimiserUtil(TestCase):
 
         # dis.dis(target)
 
-        self.assertEqual(mutable.instructions[0].arg_value, None)
+        self.assertEqual(mutable.instruction_entry_point.arg_value, None)
 
     def test_empty_range_from_invalid_range(self):
         @cache_global_name("range", lambda: range)

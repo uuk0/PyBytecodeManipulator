@@ -166,6 +166,8 @@ class MutableFunction:
         # self.stack_size = mutable.stack_size
         # self.shared_variable_names = mutable.shared_variable_names.copy()
 
+        self.instruction_entry_point = mutable.instruction_entry_point
+
     if sys.version_info.major == 3 and sys.version_info.minor == 10:
 
         def create_code_obj(self) -> types.CodeType:
@@ -241,11 +243,12 @@ class MutableFunction:
         prev_line = self.first_line_number
         count_since_previous = 0
 
-        for instr in self.__instructions:
+        def visit(instr):
+            nonlocal count_since_previous
             count_since_previous += 1
 
             if instr.source_location is None or instr.source_location[0] == prev_line:
-                continue
+                return
 
             offset = instr.source_location[0] - prev_line
 
@@ -258,6 +261,8 @@ class MutableFunction:
             items.append(count_since_previous)
             items.append(offset)
             count_since_previous = 0
+
+        self.walk_instructions(visit)
 
         return bytes(items)
 

@@ -33,7 +33,6 @@ class _MixinContainer:
             # todo: sort
 
             mutable = MutableFunction(self.target)
-            mutable.update_instruction_offsets(mutable.get_instructions())
 
             for mixin in self.mixins:
                 mixin.apply_on(mutable)
@@ -480,15 +479,12 @@ class Mixin:
         def apply_on(self, mutable: MutableFunction):
             protected_locals = resolve_accesses(mutable, self.inject)
 
-            if self.inject.shared_variable_names[0] in ("cls", "self"):
-                protected_locals.append(self.inject.shared_variable_names[0])
+            if self.inject.argument_names[0] in ("cls", "self"):
+                protected_locals.append(self.inject.argument_names[0])
 
             tree = MutableFunctionWithTree(mutable)
 
-            for position_instr in self.at.get_positions(mutable.instructions[0])[:]:
-                if position_instr not in mutable.instructions:
-                    continue
-
+            for position_instr in self.at.get_positions(mutable.instruction_entry_point)[:]:
                 insert_method_into(
                     tree,
                     position_instr.offset - 1,
@@ -496,7 +492,7 @@ class Mixin:
                     protected_locals=protected_locals,
                 )
 
-                mutable.assemble_instructions_from_tree(tree.root)
+                mutable.instruction_entry_point = tree.root
 
     def __init__(
         self,

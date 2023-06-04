@@ -598,6 +598,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
             macro_exit_label = scope.scope_name_generator("macro_exit")
+
+            builder = self.function.create_filled_builder()
+
             return [
                 (
                     instr.copy(owner=function)
@@ -617,5 +620,5 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 else instr.copy(owner=function).change_opcode(
                     LOCAL_TO_DEREF_OPCODES[instr.opcode]
                 )
-                for instr in self.function.instructions
+                for instr in builder.temporary_instructions
             ] + [Instruction(function, -1, Opcodes.BYTECODE_LABEL, macro_exit_label)]

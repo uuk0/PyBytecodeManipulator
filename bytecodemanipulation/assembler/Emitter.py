@@ -55,12 +55,12 @@ def apply_inline_assemblies(
     """
     Processes all assembly() calls and label() calls in 'target'
     """
-    builder = builder or target.create_filled_builder()
-
     if not isinstance(target, MutableFunction):
         target = MutableFunction(target)
         if store_at_target is None:
             store_at_target = True
+
+    builder = builder or target.create_filled_builder()
 
     labels = set()
     insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
