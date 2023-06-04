@@ -235,7 +235,7 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
 
         # Check for unconditional jumps required
         for instruction in builder.temporary_instructions[:]:
-            if instruction.has_stop_flow():
+            if instruction.has_stop_flow() or instruction.has_unconditional_jump():
                 continue
 
             # FOR_ITER can only jump FORWARD, so insert a new jump absolute to jump there
@@ -278,16 +278,16 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
             instruction.update_owner(function, i)
 
             if instruction.has_jump_absolute():
-                instruction.change_arg_value(instruction.arg_value)
+                instruction.change_arg(instruction.arg_value.offset)
 
-            elif instruction.offset in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
-                instruction.change_arg_value(instruction.arg_value)
+            elif instruction.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
+                instruction.change_arg(instruction.arg_value.offset - instruction.offset - 1)
 
             elif instruction.has_jump_forward():
-                instruction.change_arg_value(instruction.arg_value)
+                instruction.change_arg(instruction.arg_value.offset - instruction.offset)
 
             elif instruction.has_jump_backward():
-                instruction.change_arg_value(instruction.arg_value)
+                instruction.change_arg(instruction.offset - instruction.arg_value.offset)
 
 
 class InstructionAssembler(AbstractOpcodeTransformerStage):

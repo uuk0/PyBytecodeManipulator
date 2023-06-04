@@ -296,42 +296,6 @@ class Instruction:
     def change_arg(self, arg: int):
         self.arg = arg
 
-        if self.function is not None:
-            try:
-                flag = False
-                if sys.version_info.minor >= 11:
-                    if self.opcode == Opcodes.LOAD_GLOBAL:
-                        self.arg_value = self.function.shared_names[arg >> 1]
-                        flag = True
-
-                if flag:
-                    pass
-                elif self.opcode in HAS_NAME:
-                    self.arg_value = self.function.shared_names[arg]
-                elif self.opcode in HAS_CELL_VARIABLE:
-                    self.arg_value = self.function.cell_variables[arg]
-                elif self.opcode in HAS_CONST:
-                    self.arg_value = self.function.constants[arg]
-                elif self.opcode in HAS_LOCAL:
-                    self.arg_value = self.function.shared_variable_names[arg]
-                elif self.opcode in HAS_JUMP_ABSOLUTE:
-                    self.arg_value = self.function.instructions[arg]
-                elif self.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
-                    self.arg_value = self.function.instructions[arg + self.offset]
-                elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
-                    self.arg_value = self.function.instructions[arg + self.offset]
-            except:
-                print(
-                    self.opname,
-                    arg,
-                    self.function.shared_names,
-                    self.function.constants,
-                    self.function.shared_variable_names,
-                )
-                raise
-        else:
-            self.arg_value = None
-
     def has_name(self):
         return self.opcode in HAS_NAME
 
