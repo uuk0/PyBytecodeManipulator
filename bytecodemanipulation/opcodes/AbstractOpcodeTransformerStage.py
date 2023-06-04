@@ -198,6 +198,7 @@ class LinearStreamGenerator(AbstractOpcodeTransformerStage):
                     instruction.has_stop_flow()
                     or instruction in breaks_flow
                     or instruction.opcode in breaks_flow
+                    or instruction.has_unconditional_jump()
                 ):
                     break
 
@@ -281,7 +282,7 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
                 instruction.change_arg(instruction.arg_value.offset)
 
             elif instruction.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
-                instruction.change_arg(instruction.arg_value.offset - instruction.offset - 1)
+                instruction.change_arg(instruction.arg_value.offset - instruction.offset - 2)
 
             elif instruction.has_jump_forward():
                 instruction.change_arg(instruction.arg_value.offset - instruction.offset)

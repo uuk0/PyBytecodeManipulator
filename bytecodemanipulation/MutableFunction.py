@@ -173,6 +173,8 @@ class MutableFunction:
 
             self.assemble_fast(builder.temporary_instructions)
 
+            self.prepare_previous_instructions()
+
             try:
                 return types.CodeType(
                     self.argument_count,
@@ -367,7 +369,7 @@ class MutableFunction:
                 instr.previous_instructions = []
 
         def callback(instr: Instruction):
-            if not instr.has_stop_flow():
+            if not instr.has_stop_flow() and not instr.has_unconditional_jump():
                 if instr.next_instruction is None:
                     raise
 

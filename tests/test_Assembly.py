@@ -1599,7 +1599,7 @@ FOREACH $p IN $iterable
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        # dis.dis(target)
+        dis.dis(target)
 
         self.assertEqual(target(), [1, 2, 3, 4])
 
