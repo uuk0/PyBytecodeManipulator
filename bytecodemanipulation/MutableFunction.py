@@ -14,10 +14,9 @@ from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.ExceptionTable import ExceptionTable
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractOpcodeTransformerStage, InstructionDecoder
-from bytecodemanipulation.opcodes.Opcodes import (
-    Opcodes,
-)
 import bytecodemanipulation.data_loader
+from bytecodemanipulation.opcodes.OperatorTransformer import IntermediateToRawOperatorTransform
+from bytecodemanipulation.opcodes.OperatorTransformer import RawToIntermediateOperatorTransform
 
 
 class LinearCodeConstraintViolationException(Exception):
@@ -27,9 +26,11 @@ class LinearCodeConstraintViolationException(Exception):
 class MutableFunction:
     INSTRUCTION_DECODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
         InstructionDecoder,
+        RawToIntermediateOperatorTransform,
     ]
 
     INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
+        IntermediateToRawOperatorTransform,
         ArgRealValueSetter,
         ExtendedArgInserter,
         LinearStreamGenerator,
