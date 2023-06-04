@@ -12,6 +12,7 @@ import random
 
 from bytecodemanipulation.MutableFunctionHelpers import Guarantees
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.optimiser_util import inline_const_value_pop_pairs
 from bytecodemanipulation.optimiser_util import inline_constant_binary_ops
@@ -260,59 +261,55 @@ class _OptimisationContainer:
 
         # Walk over the entries as long as the optimisers are doing their stuff
         while True:
-            mutable.assemble_instructions_from_tree(
-                mutable.instructions[0].optimise_tree()
-            )
-            mutable.prepare_previous_instructions()
+            builder = mutable.create_filled_builder()
+            # mutable.prepare_previous_instructions()
 
             dirty = False
             for optimiser in self.optimisations:
-                dirty = optimiser.apply(self, mutable) or dirty
+                dirty = optimiser.apply(self, mutable, builder) or dirty
 
             if dirty:
                 continue
 
-            if inline_const_value_pop_pairs(mutable):
+            if inline_const_value_pop_pairs(mutable, builder):
                 continue
 
-            if remove_local_var_assign_without_use(mutable):
+            if remove_local_var_assign_without_use(mutable, builder):
                 continue
 
             # Inlines access to static items
-            if inline_static_attribute_access(mutable):
+            if inline_static_attribute_access(mutable, builder):
                 continue
 
             # Inline invokes to builtins and other known is_constant_op-s with static args
-            if inline_constant_method_invokes(mutable):
+            if inline_constant_method_invokes(mutable, builder):
                 continue
 
             # Resolve known constant types
-            if self._resolve_constant_local_types(mutable):
+            if self._resolve_constant_local_types(mutable, builder):
                 continue
             # self._resolve_constant_local_attr_types(mutable)
             # todo: use return type of known functions
 
-            if inline_constant_binary_ops(mutable):
+            if inline_constant_binary_ops(mutable, builder):
                 continue
 
             # apply optimisation specialisations
-            if apply_specializations(mutable):
+            if apply_specializations(mutable, builder):
                 continue
 
             # Inline invokes to builtins and other known is_constant_op-s with static args
-            if inline_constant_method_invokes(mutable):
+            if inline_constant_method_invokes(mutable, builder):
                 continue
 
             # Remove conditional jumps no longer required
-            if remove_branch_on_constant(mutable):
+            if remove_branch_on_constant(mutable, builder):
                 continue
 
-            if inline_calls_to_const_functions(mutable):
+            if inline_calls_to_const_functions(mutable, builder):
                 continue
 
             break
-
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
 
         mutable.reassign_to_function()
 
@@ -352,7 +349,7 @@ class _OptimisationContainer:
     def _inline_load_globals(self, mutable: MutableFunction) -> bool:
         dirty = False
 
-        for instruction in mutable.instructions:
+        def inline(instruction: Instruction):
             if instruction.opcode == Opcodes.LOAD_GLOBAL:
                 if instruction.arg_value in self.dereference_global_name_cache:
                     name = instruction.arg_value
@@ -360,6 +357,7 @@ class _OptimisationContainer:
                     instruction.change_arg_value(
                         self.dereference_global_name_cache[name]
                     )
+                    nonlocal dirty
                     dirty = True
 
             elif instruction.opcode in (Opcodes.STORE_GLOBAL, Opcodes.DELETE_GLOBAL):
@@ -371,26 +369,28 @@ class _OptimisationContainer:
                         f"Global {instruction.arg_value} is cached but written to!"
                     )
 
+        mutable.walk_instructions(inline)
+
         return dirty
 
-    def _resolve_constant_local_types(self, mutable: MutableFunction) -> bool:
+    def _resolve_constant_local_types(self, mutable: MutableFunction, builder) -> bool:
         dirty = False
 
-        for instruction in mutable.instructions:
+        def visit(instruction: Instruction):
             if instruction.opcode == Opcodes.LOAD_ATTR:
                 try:
                     source = next(instruction.trace_stack_position(0))
                 except StopIteration:
-                    continue
+                    return
 
                 if source.opcode in (Opcodes.LOAD_FAST, Opcodes.LOAD_METHOD):
                     if source.arg_value not in self.dereference_local_var_type:
-                        continue
+                        return
 
                     data_type = self.dereference_local_var_type[source.arg_value]
 
                     if not hasattr(data_type, instruction.arg_value):
-                        continue
+                        return
 
                     # todo: check for dynamic class variables!
 
@@ -399,7 +399,11 @@ class _OptimisationContainer:
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(attr)
                     source.change_opcode(Opcodes.NOP)
+
+                    nonlocal dirty
                     dirty = True
+
+        mutable.walk_instructions(visit)
 
         return dirty
 
@@ -418,11 +422,11 @@ class AbstractOptimisationWalker:
     Optimisation walker for classes and functions, constructed by the optimiser annotations
     """
 
-    def apply(
-        self, container: "_OptimisationContainer", mutable: MutableFunction
-    ) -> bool:
+    def apply(self, container: "_OptimisationContainer", mutable: MutableFunction, builder) -> bool:
         """
         Applies this optimisation on the given container with the MutableFunction as target
+        :param builder:
+        :type builder:
         """
         raise NotImplementedError
 

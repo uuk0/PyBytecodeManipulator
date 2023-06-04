@@ -4,7 +4,7 @@ import string
 import typing
 from inspect import CO_GENERATOR
 
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
@@ -94,14 +94,18 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
     if len(args) != mutable.argument_count:
         raise ValueError()
 
+    builder = mutable.create_filled_builder()
+
     stack = []
-    local_variables = [None] * len(mutable.shared_variable_names)
+    local_variables = [None] * len(builder.shared_variable_names)
     local_variables[: len(args)] = args
-    free_vars = [None] * len(mutable.free_variables)
+    free_vars = [None] * len(builder.free_variables)
     exception_handle_stack = []
 
-    instruction = mutable.instructions[0]
+    instruction = mutable.instruction_entry_point
     continue_stack = []
+
+    max_stack_size = mutable.calculate_max_stack_size()
 
     while True:
         print(instruction)
@@ -129,8 +133,8 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
         except YieldValue:
             raise RuntimeError("YIELD outside GENERATOR")
 
-        if len(stack) > mutable.stack_size:
-            raise StackSizeIssue(f"{len(stack)} > {mutable.stack_size}")
+        if len(stack) > max_stack_size:
+            raise StackSizeIssue(f"{len(stack)} > {max_stack_size}")
 
 
 OPCODE_FUNCS: typing.List[typing.Callable | None] = [None] * 256

@@ -5,7 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.data.shared.instructions.PopElementAssembly import (
     AbstractPopElementAssembly,
 )
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 

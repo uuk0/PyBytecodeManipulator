@@ -41,6 +41,7 @@ class Instruction:
         "_next_instruction",
         "previous_instructions",
         "source_location",
+        "_max_stack_size_at",
     )
 
     @classmethod
@@ -76,28 +77,10 @@ class Instruction:
         self.arg_value = arg_value
         self.arg = arg
         self.source_location = pos_info
-
-        if (
-            self.arg is not None
-            and self.arg_value is None
-            and (_decode_next or not self.has_jump())
-        ):
-            self.change_arg(self.arg)
-        elif (
-            self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST
-        ) and self.arg is None:
-            self.change_arg_value(self.arg_value)
+        self._max_stack_size_at = 0
 
         # Reference to the next instruction
-        # Will raise an exception if changed and not using assemble_instructions_from_tree()
-        self._next_instruction: typing.Optional[Instruction] = (
-            None
-            if function is None
-            or offset is None
-            or self.opcode in END_CONTROL_FLOW
-            or not _decode_next
-            else function.instructions[offset + 1]
-        )
+        self._next_instruction: typing.Optional[Instruction] = None
 
         self.previous_instructions: typing.List["Instruction"] | None = None
 
@@ -106,15 +89,34 @@ class Instruction:
             self.function,
             self.offset,
             self.opcode,
-            self.arg_value
-            if self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST
-            else self.arg,
+            self.arg_value,
+            self.arg,
         )
 
         if owner:
             instance.update_owner(owner, -1, force_change_arg_index=True)
 
         return instance
+
+    def copy_deep(self, copied: dict = None) -> "Instruction":
+        copied = copied or {}
+
+        c = self.copy()
+        copied[self] = c
+
+        if c.has_jump():
+            if c.arg_value not in copied:
+                c.arg_value = typing.cast(Instruction, c.arg_value).copy_deep(copied)
+            else:
+                c.arg_value = copied[c.arg_value]
+
+        if not c.has_stop_flow() and not c.has_unconditional_jump():
+            if c.next_instruction not in copied:
+                c.next_instruction = c.next_instruction.copy_deep(copied)
+            else:
+                c.next_instruction = copied[c.next_instruction]
+
+        return c
 
     def apply_visitor(
         self,
@@ -213,6 +215,9 @@ class Instruction:
         if instruction is not None:
             instruction.add_previous_instruction(self)
 
+    def set_next_instruction_unsafe(self, instruction: typing.Optional["Instruction"]):
+        self._next_instruction = instruction
+
     def get_next_instruction(self) -> typing.Optional["Instruction"]:
         return self._next_instruction
 
@@ -272,94 +277,24 @@ class Instruction:
     def get_arg(self):
         return 0 if self.arg is None else self.arg
 
-    def change_opcode(self, opcode: int | str, arg_value=None, update_next=True):
+    def change_opcode(self, opcode: int | str, arg_value=None):
         self.opcode, self.opname = self._pair_instruction(opcode)
-        # todo: what happens with the arg?
-
-        if update_next:
-            self.next_instruction = (
-                None
-                if self.function is None
-                or self.offset is None
-                or self.opcode in END_CONTROL_FLOW
-                or self.offset == -1
-                else self.function.instructions[self.offset + 1]
-            )
 
         if self.opcode < dis.HAVE_ARGUMENT:
             self.arg = 0
             self.arg_value = None
 
         if arg_value:
-            self.change_arg_value(arg_value)
+            self.arg_value = arg_value
 
         return self
 
+    # todo: remove
     def change_arg_value(self, value: object):
         self.arg_value = value
 
-        if self.function is not None:
-            if self.opcode in HAS_NAME:
-                assert isinstance(value, str)
-                self.arg = self.function.allocate_shared_name(value)
-            elif self.opcode in HAS_CELL_VARIABLE:
-                assert isinstance(value, str)
-                self.arg = self.function.allocate_shared_cell(value)
-            elif self.opcode in HAS_CONST:
-                self.arg = self.function.allocate_shared_constant(value)
-            elif self.opcode in HAS_LOCAL:
-                assert isinstance(value, str), (value, self.opname)
-                self.arg = self.function.allocate_shared_variable_name(value)
-            elif self.opcode in HAS_JUMP_ABSOLUTE:
-                if isinstance(value, Instruction):
-                    self.arg = value.offset
-            elif self.opcode == Opcodes.FOR_ITER:
-                if isinstance(value, Instruction):
-                    self.arg = value.offset - self.offset
-            elif self.opcode in HAS_JUMP_FORWARD:
-                assert isinstance(value, Instruction), value
-                self.arg = value.offset - self.offset
-        else:
-            self.arg = None
-
     def change_arg(self, arg: int):
         self.arg = arg
-
-        if self.function is not None:
-            try:
-                flag = False
-                if sys.version_info.minor >= 11:
-                    if self.opcode == Opcodes.LOAD_GLOBAL:
-                        self.arg_value = self.function.shared_names[arg >> 1]
-                        flag = True
-
-                if flag:
-                    pass
-                elif self.opcode in HAS_NAME:
-                    self.arg_value = self.function.shared_names[arg]
-                elif self.opcode in HAS_CELL_VARIABLE:
-                    self.arg_value = self.function.cell_variables[arg]
-                elif self.opcode in HAS_CONST:
-                    self.arg_value = self.function.constants[arg]
-                elif self.opcode in HAS_LOCAL:
-                    self.arg_value = self.function.shared_variable_names[arg]
-                elif self.opcode in HAS_JUMP_ABSOLUTE:
-                    self.arg_value = self.function.instructions[arg]
-                elif self.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
-                    self.arg_value = self.function.instructions[arg + self.offset]
-                elif self.opcode in HAS_JUMP_FORWARD and self.offset is not None:
-                    self.arg_value = self.function.instructions[arg + self.offset]
-            except:
-                print(
-                    self.opname,
-                    arg,
-                    self.function.shared_names,
-                    self.function.constants,
-                    self.function.shared_variable_names,
-                )
-                raise
-        else:
-            self.arg_value = None
 
     def has_name(self):
         return self.opcode in HAS_NAME
@@ -395,6 +330,7 @@ class Instruction:
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
 
+    # todo: remove args not required
     def update_owner(
         self,
         function: "MutableFunction",
@@ -402,36 +338,8 @@ class Instruction:
         update_following=True,
         force_change_arg_index=False,
     ):
-        previous_function = self.function
-
         self.function = function
         self.offset = offset
-
-        # If previously the ownership was unset, and we have not fully referenced args, do it now!
-        # todo: when previous owner was set, and arg is not None, we might need to de-ref the value
-        #    and re-ref afterwards, so the value lives in the new owner
-        if (
-            self.arg is not None
-            and self.arg_value is None
-            and (not force_change_arg_index or self.opcode != Opcodes.LOAD_CONST)
-        ):
-            self.change_arg(self.arg)
-        elif (self.arg_value is not None or self.opcode == Opcodes.LOAD_CONST) and (
-            self.arg is None or force_change_arg_index
-        ):
-            self.change_arg_value(self.arg_value)
-
-        if update_following:
-            self.next_instruction = (
-                (None if previous_function != function else self.next_instruction)
-                if function is None
-                or offset is None
-                or self.opcode in END_CONTROL_FLOW
-                or offset == -1
-                or offset + 1 >= len(function.instructions)
-                else function.instructions[offset + 1]
-            )
-
         return self
 
     def optimise_tree(self, visited: typing.Set["Instruction"] = None) -> "Instruction":

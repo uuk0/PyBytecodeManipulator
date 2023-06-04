@@ -6,7 +6,7 @@ from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 
@@ -38,16 +38,8 @@ class PythonCodeAssembly(AbstractAssemblyInstruction):
         exec(code, ctx)
 
         mutable = MutableFunction(ctx["target"])
-
-        instructions = []
-
-        for instr in mutable.instructions:
-            instr.update_owner(
-                function, offset=-1, update_following=False, force_change_arg_index=True
-            )
-            instructions.append(instr)
-
-        return instructions
+        builder = mutable.create_filled_builder()
+        return builder.temporary_instructions
 
     def copy(self) -> "PythonCodeAssembly":
         return type(self)(self.code)

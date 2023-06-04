@@ -5,7 +5,7 @@ import unittest
 
 import typing
 
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 
 from bytecodemanipulation.Optimiser import BUILTIN_CACHE
 
@@ -46,11 +46,14 @@ def compare_optimized_results(
     mutable = MutableFunction(target)
     mutable2 = MutableFunction(ideal)
 
-    eq = len(mutable.instructions) == len(mutable2.instructions)
+    builder_1 = mutable.create_filled_builder()
+    builder_2 = mutable2.create_filled_builder()
+
+    eq = len(builder_1.temporary_instructions) == len(builder_2.temporary_instructions)
 
     if eq:
         eq = all(
-            a.lossy_eq(b) for a, b in zip(mutable.instructions, mutable2.instructions)
+            a.lossy_eq(b) for a, b in zip(builder_1.temporary_instructions, builder_2.temporary_instructions)
         )
 
     if not eq:
@@ -69,12 +72,12 @@ def compare_optimized_results(
         dis.dis(ideal)
 
     case.assertEqual(
-        len(mutable.instructions),
-        len(mutable2.instructions),
+        len(builder_1.temporary_instructions),
+        len(builder_2.temporary_instructions),
         msg=(msg if msg is not ... else "...") + ": Instruction count !=",
     )
 
-    for a, b in zip(mutable.instructions, mutable2.instructions):
+    for a, b in zip(builder_1.temporary_instructions, builder_2.temporary_instructions):
         if isinstance(a.arg_value, Exception):
             case.assertTrue(
                 isinstance(b.arg_value, Exception)

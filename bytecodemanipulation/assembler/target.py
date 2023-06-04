@@ -70,11 +70,11 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
             [
                 # todo: add data type here!
                 MacroAssembly.MacroArg(IdentifierToken(name))
-                for name in mutable.shared_variable_names[: mutable.argument_count]
+                for name in mutable.argument_names
             ],
             MacroAssembly.Function2CompoundMapper(
                 function,
-                scoped_names=mutable.shared_variable_names[: mutable.argument_count],
+                scoped_names=mutable.argument_names,
             ),
         )
 

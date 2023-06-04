@@ -10,13 +10,15 @@ def resolve_accesses(
     BOUND_LOCALS = {}
     BOUND_CELL_VARIABLES = {}
 
-    for instruction in injected.instructions:
+    def visit(instruction):
         if instruction.has_local():
             instruction.change_arg_value(
                 injected.function_name + "::" + instruction.arg_value
             )
 
-    for instruction in injected.instructions:
+    inject_target.walk_instructions(visit)
+
+    def visit(instruction):
         if (
             instruction.opcode in (Opcodes.CALL_METHOD, Opcodes.CALL_FUNCTION)
             and instruction.arg <= 1
@@ -27,7 +29,7 @@ def resolve_accesses(
                 target = source.arg_value
 
                 if not isinstance(target, classmethod):
-                    continue
+                    return
 
                 func_name = target.__name__
                 is_const = True
@@ -42,9 +44,9 @@ def resolve_accesses(
                     func_name = source.arg_value
                     is_const = False
                 else:
-                    continue
+                    return
             else:
-                continue
+                return
 
             if func_name == "resolve_local":
                 assert (
@@ -102,5 +104,7 @@ def resolve_accesses(
                 instruction.change_arg_value(
                     BOUND_CELL_VARIABLES[instruction.arg_value]
                 )
+
+    injected.walk_instructions(visit)
 
     return list(BOUND_LOCALS.keys())

@@ -6,7 +6,8 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import (
     Parser as AssemblyParser,
@@ -49,21 +50,22 @@ GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
 def apply_inline_assemblies(
-    target: MutableFunction | typing.Callable, store_at_target: bool = None
+    target: MutableFunction | typing.Callable, builder: CodeObjectBuilder = None, store_at_target: bool = None
 ):
     """
     Processes all assembly() calls and label() calls in 'target'
     """
-
     if not isinstance(target, MutableFunction):
         target = MutableFunction(target)
         if store_at_target is None:
             store_at_target = True
 
+    builder = builder or target.create_filled_builder()
+
     labels = set()
     insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
 
-    for instr in target.instructions[:]:
+    for instr in builder.temporary_instructions[:]:
         if instr.opcode == Opcodes.LOAD_GLOBAL:
             try:
                 value = target.target.__globals__.get(instr.arg_value)
@@ -226,11 +228,11 @@ def apply_inline_assemblies(
                     bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
                 )
 
-    for i, ins in enumerate(target.instructions):
+    for i, ins in enumerate(builder.temporary_instructions):
         if ins.opcode == Opcodes.BYTECODE_LABEL:
             label_targets[ins.arg_value] = ins.next_instruction
             ins.change_opcode(Opcodes.NOP)
-            ins.next_instruction = target.instructions[i + 1]
+            ins.next_instruction = builder.temporary_instructions[i + 1]
 
     pending: typing.List[Instruction] = []
 
@@ -252,16 +254,14 @@ def apply_inline_assemblies(
                 Opcodes.LOAD_CONST, getattr(obj, ins.arg_value), update_next=False
             )
 
-    target.instructions[0].apply_value_visitor(resolve_special_code)
+    target.walk_instructions(resolve_special_code)
 
     while pending:
         pending.pop().apply_value_visitor(resolve_special_code)
 
-    target.stack_size += max(max_stack_effects)
-
     # target.instructions[0].apply_value_visitor(lambda instr, *_: print(instr))
 
-    target.assemble_instructions_from_tree(target.instructions[0])
+    # target.assemble_instructions_from_tree(target.instructions[0])
 
     if store_at_target:
         target.reassign_to_function()
@@ -290,7 +290,8 @@ def execute_module_in_instance(
     scope.scope_path.clear()
     create_function = lambda m: None
     target = MutableFunction(create_function)
-    target.shared_variable_names[0] = "$module$"
+    target.argument_names[0] = "$module$"
+
     bytecode = asm.create_bytecode(target, scope)
 
     if bytecode is None:
@@ -317,15 +318,11 @@ def execute_module_in_instance(
     if not bytecode:
         bytecode.append(Instruction(target, -1, "NOP"))
 
-    bytecode[-1].next_instruction = target.instructions[0]
-    target.assemble_instructions_from_tree(bytecode[0])
+    bytecode[-1].next_instruction = target.instruction_entry_point
 
-    target.instructions[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
-    target.stack_size = bytecode[0].apply_value_visitor(_visit_for_stack_effect)[1]
+    target.walk_instructions(resolve_jump_to_label)
 
-    target.assemble_instructions_from_tree(target.instructions[0])
-
-    for instr in target.instructions:
+    for instr in bytecode:
         if instr.opcode == Opcodes.STORE_FAST:
             load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
             store = Instruction(target, -1, Opcodes.STORE_ATTR, instr.arg_value)
@@ -347,8 +344,10 @@ def execute_module_in_instance(
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])
 
-    target.assemble_instructions_from_tree(target.instructions[0])
     target.function_name = module.__name__
+
+    target.instruction_entry_point = bytecode[0]
+    target.prepare_previous_instructions()
 
     target.reassign_to_function()
 

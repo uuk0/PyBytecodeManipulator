@@ -3,7 +3,7 @@ import typing
 from bytecodemanipulation.annotated_std import CONSTANT_BUILTIN_TYPES
 from bytecodemanipulation.annotated_std import CONSTANT_BUILTINS
 
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.opcodes.Opcodes import SIDE_EFFECT_FREE_LOADS
@@ -55,25 +55,17 @@ OPCODE_TO_ATTR_DOUBLE = {
 }
 
 
-def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
+def inline_const_value_pop_pairs(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
-    for instruction in mutable.instructions:
+    def visit(instruction: Instruction):
+        nonlocal dirty
+
         if instruction.opcode == Opcodes.POP_TOP:
             try:
                 # print("search")
                 source = next(instruction.trace_stack_position(0))
             except StopIteration:
-                # source = next(instruction.trace_stack_position(0))
-
-                print("---")
-
-                for instr in mutable.instructions:
-                    print(instr)
-
-                print("---")
-                print(instruction)
-                print(instruction.get_priorities_previous())
                 raise
 
             # Inline LOAD_XX - POP pairs
@@ -99,23 +91,21 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
 
                         if func_resolve.arg == 0:
                             func_resolve.change_opcode(Opcodes.NOP)
-                            continue
+                            return
+
                         pops = func_resolve.arg
 
                         func_resolve.change_opcode(Opcodes.POP_TOP)
                         pops -= 1
 
                         if not pops:
-                            continue
+                            return
 
                         for _ in range(pops):
                             nop = Instruction.create(Opcodes.NOP)
                             nop.next_instruction = func_resolve.next_instruction
                             func_resolve.next_instruction = nop
 
-                        mutable.assemble_instructions_from_tree(
-                            mutable.instructions[0].optimise_tree()
-                        )
                         return True
 
             if source.opcode in (
@@ -133,13 +123,13 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
                 if count == 0:
                     source.change_opcode(Opcodes.NOP)
                     dirty = True
-                    continue
+                    return
 
                 source.change_opcode(Opcodes.POP_TOP)
 
                 if count == 1:
                     dirty = True
-                    continue
+                    return
 
                 count -= 1
 
@@ -148,40 +138,42 @@ def inline_const_value_pop_pairs(mutable: MutableFunction) -> bool:
                     nop.next_instruction = source.next_instruction
                     source.next_instruction = nop
 
-                mutable.assemble_instructions_from_tree(
-                    mutable.instructions[0].optimise_tree()
-                )
-                return True
+    mutable.walk_instructions(visit)
 
     return dirty
 
 
-def remove_local_var_assign_without_use(mutable: MutableFunction) -> bool:
+def remove_local_var_assign_without_use(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
-    last_loads_of_local = [-1] * len(mutable.shared_variable_names)
+    last_loads_of_local = {}
 
-    for instruction in mutable.instructions:
+    def fill_info(instruction: Instruction):
         if instruction.opcode == Opcodes.LOAD_FAST:
-            last_loads_of_local[instruction.arg] = instruction.offset
+            last_loads_of_local[instruction.arg_value] = instruction.offset
 
-    for instruction in mutable.instructions:
+    def remove_instruction(instruction: Instruction):
         if (
             instruction.opcode in (Opcodes.STORE_FAST, Opcodes.DELETE_FAST)
-            and last_loads_of_local[instruction.arg] < instruction.offset
+            and last_loads_of_local.get(instruction.arg_value, -1) < instruction.offset
         ):
             instruction.change_opcode(Opcodes.POP_TOP)
+
+            nonlocal dirty
             dirty = True
+
+    mutable.walk_instructions(fill_info)
+    mutable.walk_instructions(remove_instruction)
 
     return dirty
 
 
-def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
+def inline_constant_method_invokes(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
-    for instr in mutable.instructions:
-        if instr.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
-            target = next(instr.trace_stack_position(instr.arg))
+    def visit(instruction: Instruction):
+        if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
+            target = next(instruction.trace_stack_position(instruction.arg))
 
             if target.opcode == Opcodes.LOAD_CONST:
                 function: typing.Callable = target.arg_value
@@ -191,29 +183,34 @@ def inline_constant_method_invokes(mutable: MutableFunction) -> bool:
                     and getattr(function, "_OPTIMISER_CONTAINER").is_constant_op
                 ):
                     args = [
-                        next(instr.trace_stack_position(i))
-                        for i in range(instr.arg - 1, -1, -1)
+                        next(instruction.trace_stack_position(i))
+                        for i in range(instruction.arg - 1, -1, -1)
                     ]
 
                     if all(ins.opcode == Opcodes.LOAD_CONST for ins in args):
                         result = function(*(e.arg_value for e in args))
 
-                        instr.change_opcode(Opcodes.LOAD_CONST)
-                        instr.change_arg_value(result)
+                        instruction.change_opcode(Opcodes.LOAD_CONST)
+                        instruction.change_arg_value(result)
                         target.change_opcode(Opcodes.NOP)
 
                         for arg in args:
                             arg.change_opcode(Opcodes.NOP)
 
+                        nonlocal dirty
                         dirty = True
+
+    mutable.walk_instructions(visit)
 
     return dirty
 
 
-def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
+def inline_constant_binary_ops(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
-    for instruction in mutable.instructions:
+    def visit(instruction: Instruction):
+        nonlocal dirty
+
         if (
             instruction.opcode in OPCODE_TO_ATTR_SINGLE
             or (instruction.opcode, instruction.arg) in OPCODE_TO_ATTR_SINGLE
@@ -241,12 +238,13 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                             and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
                         )
                     ):
-                        continue
+                        return
 
                     try:
                         value = method()
                     except:
-                        continue
+                        traceback.print_exc()
+                        return
 
                     instruction.change_opcode(Opcodes.LOAD_CONST)
                     instruction.change_arg_value(value)
@@ -279,13 +277,13 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
                             and getattr(method, "_OPTIMISER_CONTAINER").is_constant_op
                         )
                     ):
-                        continue
+                        return
 
                 try:
                     value = method(arg.arg_value, target.arg_value)
                 except:
                     traceback.print_exc()
-                    continue
+                    return
 
                 instruction.change_opcode(Opcodes.LOAD_CONST)
                 instruction.change_arg_value(value)
@@ -338,13 +336,17 @@ def inline_constant_binary_ops(mutable: MutableFunction) -> bool:
 
                 dirty = True
 
+    mutable.walk_instructions(visit)
+
     return dirty
 
 
-def remove_branch_on_constant(mutable: MutableFunction) -> bool:
+def remove_branch_on_constant(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
-    for instruction in mutable.instructions:
+    def visit(instruction):
+        nonlocal dirty
+
         if (
             instruction.has_jump()
             and not instruction.has_unconditional_jump()
@@ -355,7 +357,7 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
                     instruction.offset == 0
                     and instruction.opcode == Opcodes.SETUP_FINALLY
                 ):
-                    continue
+                    return
 
                 raise RuntimeError
 
@@ -379,7 +381,7 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
 
                     dirty = True
 
-                    continue
+                    return
 
                 if instruction.opcode in (
                     Opcodes.POP_JUMP_IF_TRUE,
@@ -399,13 +401,15 @@ def remove_branch_on_constant(mutable: MutableFunction) -> bool:
 
                     dirty = True
 
+    mutable.walk_instructions(visit)
+
     return dirty
 
 
-def inline_static_attribute_access(mutable: MutableFunction) -> bool:
+def inline_static_attribute_access(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
-    for instruction in mutable.instructions:
+    def visit(instruction: Instruction):
         if instruction.opcode in (Opcodes.LOAD_ATTR, Opcodes.LOAD_METHOD):
             source_instr = next(instruction.trace_stack_position(0))
 
@@ -429,17 +433,22 @@ def inline_static_attribute_access(mutable: MutableFunction) -> bool:
                     if use.opcode == Opcodes.CALL_METHOD:
                         use.change_opcode(Opcodes.CALL_FUNCTION)
 
+                    nonlocal dirty
                     dirty = True
+
+    mutable.walk_instructions(visit)
 
     return dirty
 
 
-def apply_specializations(mutable: MutableFunction) -> bool:
+def apply_specializations(mutable: MutableFunction, builder) -> bool:
     from bytecodemanipulation.Optimiser import _OptimisationContainer
 
     dirty = False
 
-    for instruction in mutable.instructions:
+    def visit(instruction: Instruction):
+        nonlocal dirty
+
         if instruction.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL_METHOD):
             load_stack_pos = instruction.arg
             source = instruction.trace_normalized_stack_position(load_stack_pos)
@@ -449,7 +458,7 @@ def apply_specializations(mutable: MutableFunction) -> bool:
                 container = _OptimisationContainer.get_for_target(source.arg_value)
 
                 if not container.specializations:
-                    continue
+                    return
 
                 target_func = source.arg_value
 
@@ -479,6 +488,8 @@ def apply_specializations(mutable: MutableFunction) -> bool:
                     spec.apply()
                     dirty = True
                     break
+
+    mutable.walk_instructions(visit)
 
     return dirty
 

@@ -132,7 +132,7 @@ class TestOptimiserUtil(TestCase):
 
         mutable = MutableFunction(Outer_test_inline_const_function_on_parent.target)
 
-        self.assertEqual(2, mutable.instructions[0].arg_value)
+        self.assertEqual(2, mutable.instruction_entry_point.arg_value)
 
     def test_branch_remover(self):
         def target():
@@ -162,13 +162,13 @@ class TestOptimiserUtil(TestCase):
             a = [10]
 
         mutable = MutableFunction(target)
-        remove_local_var_assign_without_use(mutable)
-        inline_const_value_pop_pairs(mutable)
-        inline_const_value_pop_pairs(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        builder = mutable.create_filled_builder()
+        remove_local_var_assign_without_use(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
         mutable.reassign_to_function()
 
-        self.assertEqual(mutable.instructions[0].arg_value, None)
+        self.assertEqual(mutable.instruction_entry_point.arg_value, None)
 
     # TODO: is there a way to make this work?
     # def test_remove_list_build_stacked(self):
@@ -193,15 +193,15 @@ class TestOptimiserUtil(TestCase):
             [200, 400, 200, (342, 234)]
 
         mutable = MutableFunction(target)
-        remove_local_var_assign_without_use(mutable)
-        inline_const_value_pop_pairs(mutable)
-        inline_const_value_pop_pairs(mutable)
-        mutable.assemble_instructions_from_tree(mutable.instructions[0].optimise_tree())
+        builder = mutable.create_filled_builder()
+        remove_local_var_assign_without_use(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
+        inline_const_value_pop_pairs(mutable, builder)
         mutable.reassign_to_function()
 
         # dis.dis(target)
 
-        self.assertEqual(mutable.instructions[0].arg_value, None)
+        self.assertEqual(mutable.instruction_entry_point.arg_value, None)
 
     def test_empty_range_from_invalid_range(self):
         @cache_global_name("range", lambda: range)

@@ -939,6 +939,8 @@ CALL @print ("Hello World!") -> $x
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
+        dis.dis(target)
+
         target(self)
 
         def compare():
@@ -1597,7 +1599,7 @@ FOREACH $p IN $iterable
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        # dis.dis(target)
+        dis.dis(target)
 
         self.assertEqual(target(), [1, 2, 3, 4])
 
@@ -1685,6 +1687,8 @@ RETURN %
 ASSERT $x
 """
             )
+
+        dis.dis(target)
 
         target(1)
         self.assertRaises(AssertionError, lambda: target(0))

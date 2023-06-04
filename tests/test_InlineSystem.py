@@ -27,7 +27,7 @@ class TestMethodInsert(TestCase):
         main_mut = MutableFunction(main)
         insert_mut = MutableFunction(insert)
 
-        insert_method_into(main_mut, main_mut.instructions[0], insert_mut)
+        insert_method_into(main_mut, main_mut.instruction_entry_point, insert_mut)
         main_mut.reassign_to_function()
 
         main()

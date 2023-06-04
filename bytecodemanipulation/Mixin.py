@@ -8,10 +8,9 @@ from bytecodemanipulation import Emulator
 from bytecodemanipulation.mixin_util import resolve_accesses
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.MutableFunctionHelpers import insert_method_into
-from bytecodemanipulation.MutableFunctionHelpers import MutableFunctionWithTree
 from bytecodemanipulation.Optimiser import _OptimisationContainer
 from bytecodemanipulation.util import AbstractInstructionWalker
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
@@ -33,7 +32,6 @@ class _MixinContainer:
             # todo: sort
 
             mutable = MutableFunction(self.target)
-            mutable.update_instruction_offsets(mutable.get_instructions())
 
             for mixin in self.mixins:
                 mixin.apply_on(mutable)
@@ -480,23 +478,16 @@ class Mixin:
         def apply_on(self, mutable: MutableFunction):
             protected_locals = resolve_accesses(mutable, self.inject)
 
-            if self.inject.shared_variable_names[0] in ("cls", "self"):
-                protected_locals.append(self.inject.shared_variable_names[0])
+            if self.inject.argument_names[0] in ("cls", "self"):
+                protected_locals.append(self.inject.argument_names[0])
 
-            tree = MutableFunctionWithTree(mutable)
-
-            for position_instr in self.at.get_positions(mutable.instructions[0])[:]:
-                if position_instr not in mutable.instructions:
-                    continue
-
+            for position_instr in self.at.get_positions(mutable.instruction_entry_point)[:]:
                 insert_method_into(
-                    tree,
+                    mutable,
                     position_instr.offset - 1,
                     self.inject,
                     protected_locals=protected_locals,
                 )
-
-                mutable.assemble_instructions_from_tree(tree.root)
 
     def __init__(
         self,

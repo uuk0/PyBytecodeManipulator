@@ -3,7 +3,7 @@ import typing
 from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
     AbstractFunctionDefinitionAssembly,
 )
-from bytecodemanipulation.Instruction import Instruction
+from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
@@ -53,7 +53,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                 ]
 
         inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
-        inner_bytecode[-1].next_instruction = target.instructions[0]
+        inner_bytecode[-1].next_instruction = target.instruction_entry_point
 
         for i, instr in enumerate(inner_bytecode[:-1]):
             instr.next_instruction = inner_bytecode[i + 1]
@@ -76,7 +76,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(resolve_jump_to_label))
 
-        target.assemble_instructions_from_tree(inner_bytecode[0])
+        target.instruction_entry_point = inner_bytecode[0]
         del inner_bytecode
 
         has_kwarg = False
@@ -114,6 +114,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             )
 
         target.argument_count = len(self.args)
+        target.prepare_previous_instructions()
         code_object = target.create_code_obj()
 
         bytecode += [
