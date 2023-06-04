@@ -39,12 +39,12 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
         inner_bytecode += raw_inner_code
 
         if inner_bytecode:
-            inner_bytecode[-1].next_instruction = target.instructions[0]
+            inner_bytecode[-1].next_instruction = target.instruction_entry_point
 
         for i, instr in enumerate(inner_bytecode[:-1]):
             instr.next_instruction = inner_bytecode[i + 1]
 
-        target.assemble_instructions_from_tree(inner_bytecode[0])
+        target.instruction_entry_point = inner_bytecode[0]
         target.reassign_to_function()
 
         code_obj = target.target.__code__

@@ -343,6 +343,7 @@ class MutableFunction:
                 visiting.add(instr.arg_value)
 
     def reassign_to_function(self):
+        self.prepare_previous_instructions()
         self.calculate_max_stack_size()
         self.target.__code__ = self.create_code_obj()
 
