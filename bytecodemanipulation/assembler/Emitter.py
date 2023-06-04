@@ -236,7 +236,7 @@ def apply_inline_assemblies(
 
     pending: typing.List[Instruction] = []
 
-    def resolve_special_code(ins: Instruction):
+    def resolve_special_code(ins: Instruction, *_):
         # print(ins)
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
@@ -322,10 +322,7 @@ def execute_module_in_instance(
 
     target.walk_instructions(resolve_jump_to_label)
 
-    target.stack_size = bytecode[0].apply_value_visitor(_visit_for_stack_effect)[1]
-
-
-    def visit(instr: Instruction):
+    for instr in bytecode:
         if instr.opcode == Opcodes.STORE_FAST:
             load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
             store = Instruction(target, -1, Opcodes.STORE_ATTR, instr.arg_value)
@@ -347,9 +344,10 @@ def execute_module_in_instance(
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])
 
-    target.walk_instructions(visit)
-
     target.function_name = module.__name__
+
+    target.instruction_entry_point = bytecode[0]
+    target.prepare_previous_instructions()
 
     target.reassign_to_function()
 

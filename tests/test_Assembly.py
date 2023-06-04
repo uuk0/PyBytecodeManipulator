@@ -1688,6 +1688,8 @@ ASSERT $x
 """
             )
 
+        dis.dis(target)
+
         target(1)
         self.assertRaises(AssertionError, lambda: target(0))
 

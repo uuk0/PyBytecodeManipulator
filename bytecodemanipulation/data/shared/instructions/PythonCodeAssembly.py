@@ -38,16 +38,8 @@ class PythonCodeAssembly(AbstractAssemblyInstruction):
         exec(code, ctx)
 
         mutable = MutableFunction(ctx["target"])
-
-        instructions = []
-
-        for instr in mutable.instructions:
-            instr.update_owner(
-                function, offset=-1, update_following=False, force_change_arg_index=True
-            )
-            instructions.append(instr)
-
-        return instructions
+        builder = mutable.create_filled_builder()
+        return builder.temporary_instructions
 
     def copy(self) -> "PythonCodeAssembly":
         return type(self)(self.code)
