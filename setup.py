@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="bytecodemanipulation",
-    version="0.2.4",
+    version="0.3.2",
     author="uuk",
     author_email="uuk1301@gmail.com",
     description="High level python bytecode manipulation",

@@ -1,4 +1,6 @@
 
+# Version 0.3.2
+
 # Version 0.3.1
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like
 - added ASSERT_STATIC assembly
