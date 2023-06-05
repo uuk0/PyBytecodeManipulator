@@ -10,12 +10,14 @@ from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import Extended
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import InstructionAssembler
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import JumpArgAssembler
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import LinearStreamGenerator
+from bytecodemanipulation.opcodes.CacheEntryCreation import CacheInstructionCreator
 from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.ExceptionTable import ExceptionTable
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractOpcodeTransformerStage, InstructionDecoder
 import bytecodemanipulation.data_loader
 from bytecodemanipulation.opcodes.OpcodeReplacer import IntermediateToRawOpcodeTransform
+from bytecodemanipulation.opcodes.OpcodeReplacer import PrecallInserterTransform
 from bytecodemanipulation.opcodes.OpcodeReplacer import RawToIntermediateOpcodeTransform
 
 
@@ -31,6 +33,15 @@ class MutableFunction:
 
     INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
         IntermediateToRawOpcodeTransform,
+    ]
+
+    if sys.version_info[1] == 11:
+        INSTRUCTION_ENCODING_PIPE += [
+            CacheInstructionCreator,
+            PrecallInserterTransform,
+        ]
+
+    INSTRUCTION_ENCODING_PIPE += [
         ArgRealValueSetter,
         ExtendedArgInserter,
         LinearStreamGenerator,
@@ -213,8 +224,6 @@ class MutableFunction:
         def create_code_obj(self) -> types.CodeType:
             builder = self.create_filled_builder()
 
-            self.assemble_fast(builder.temporary_instructions)
-
             return types.CodeType(
                 self.argument_count,
                 self.positional_only_argument_count,
@@ -231,7 +240,7 @@ class MutableFunction:
                 self.function_name,
                 self.first_line_number,
                 self.get_lnotab(),
-                bytes(self.exception_table),  # todo: encode
+                bytes(),  # todo: encode
                 tuple(builder.free_variables),
                 tuple(builder.cell_variables),
             )
@@ -359,7 +368,6 @@ class MutableFunction:
             metadata = stage.apply(self, metadata)
 
         self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
-
         self.prepare_previous_instructions()
 
     def prepare_previous_instructions(self):
@@ -372,7 +380,7 @@ class MutableFunction:
         def callback(instr: Instruction):
             if not instr.has_stop_flow() and not instr.has_unconditional_jump():
                 if instr.next_instruction is None:
-                    raise
+                    raise RuntimeError(f"no next_instruction for {instr}")
 
                 instr.next_instruction.previous_instructions.append(instr)
 

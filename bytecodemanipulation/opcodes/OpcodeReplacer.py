@@ -1,3 +1,4 @@
+import sys
 import typing
 
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractInstructionWalkerTransform
@@ -21,6 +22,13 @@ OPCODE_DATA: typing.List[typing.Tuple[int | typing.Tuple[int, int], int | typing
     ((Opcodes.COMPARE_OP, 4), Opcodes.COMPARE_GT),
     ((Opcodes.COMPARE_OP, 5), Opcodes.COMPARE_GE),
 ]
+
+
+if sys.version_info[1] == 11:
+    OPCODE_DATA += [
+        (Opcodes.CALL, Opcodes.CALL_FUNCTION),
+    ]
+
 
 FORWARD_MAP = {e[0]: e[1] for e in OPCODE_DATA}
 REVERSE_MAP = {e[1]: e[0] for e in OPCODE_DATA}
@@ -51,7 +59,7 @@ class RawToIntermediateOpcodeTransform(AbstractInstructionWalkerTransform):
 
         target.change_opcode(opcode)
 
-        if arg:
+        if arg is not None:
             target.arg = arg
 
 
@@ -66,6 +74,7 @@ class IntermediateToRawOpcodeTransform(AbstractInstructionWalkerTransform):
                 arg = None
             else:
                 opcode, arg = e
+
         elif (target.opcode, target.arg) in REVERSE_MAP:
             e = REVERSE_MAP[target.opcode, target.arg]
 
@@ -74,11 +83,21 @@ class IntermediateToRawOpcodeTransform(AbstractInstructionWalkerTransform):
                 arg = None
             else:
                 opcode, arg = e
+
         else:
             return
 
         target.change_opcode(opcode)
 
-        if arg:
+        if arg is not None:
             target.arg = arg
+
+
+class PrecallInserterTransform(AbstractInstructionWalkerTransform):
+    @classmethod
+    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+        if target.opcode == Opcodes.CALL and not any(e.opcode == Opcodes.PRECALL for e in target.previous_instructions):
+            call = target.copy()
+            target.insert_after(call)
+            target.change_opcode(Opcodes.PRECALL)
 

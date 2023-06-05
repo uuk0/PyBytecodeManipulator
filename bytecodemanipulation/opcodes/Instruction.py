@@ -281,10 +281,10 @@ class Instruction:
         self.opcode, self.opname = self._pair_instruction(opcode)
 
         if self.opcode < dis.HAVE_ARGUMENT:
-            self.arg = 0
+            self.arg = None
             self.arg_value = None
 
-        if arg_value:
+        if arg_value is not None or self.opcode == Opcodes.LOAD_CONST:
             self.arg_value = arg_value
 
         return self
@@ -352,7 +352,7 @@ class Instruction:
         """
 
         if self.has_unconditional_jump():
-            return self.arg_value.optimise_tree(visited)
+            return typing.cast(Instruction, self.arg_value).optimise_tree(visited)
 
         if visited is None:
             visited = set()
@@ -362,17 +362,21 @@ class Instruction:
 
         visited.add(self)
 
-        if self.opcode == Opcodes.NOP and self.next_instruction is not None:
+        if self.opcode in (Opcodes.NOP, Opcodes.CACHE, Opcodes.PRECALL):
+            if self.next_instruction is None:
+                print("WARN: no next_instruction:", self)
+                return self
+
             return self.next_instruction.optimise_tree(visited)
 
         while self.next_instruction is not None:
             assert isinstance(self.next_instruction, Instruction)
 
-            if self.next_instruction.opname == "NOP":
+            if self.next_instruction.opcode in (Opcodes.NOP, Opcodes.CACHE, Opcodes.PRECALL):
                 self.next_instruction = self.next_instruction.next_instruction
                 continue
 
-            if self.next_instruction.opname in ("JUMP_ABSOLUTE", "JUMP_FORWARD"):
+            if self.next_instruction.has_unconditional_jump():
                 self.next_instruction = self.next_instruction.arg_value
                 continue
 
@@ -594,9 +598,9 @@ class Instruction:
             Opcodes.BYTECODE_LABEL,
             Opcodes.JUMP_FORWARD,
             Opcodes.RERAISE,
-            # Opcodes.CACHE,
-            # Opcodes.PRECALL,
-            # Opcodes.RESUME,
+            Opcodes.CACHE,
+            Opcodes.PRECALL,
+            Opcodes.RESUME,
         ):
             return 0, 0, None
 
@@ -643,7 +647,7 @@ class Instruction:
             Opcodes.CALL_FUNCTION,
             Opcodes.CALL_METHOD,
             Opcodes.CALL_FUNCTION_KW,
-            # Opcodes.CALL,
+            Opcodes.CALL,
         ):
             return 1, self.arg + 1, None
 

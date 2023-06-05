@@ -40,6 +40,8 @@ def compare_optimized_results(
         BUILTIN_INLINE._inline_load_globals(mutable)
         mutable.reassign_to_function()
 
+    dis.dis(ideal)
+
     if opt_ideal > 1:
         _OptimisationContainer.get_for_target(ideal).run_optimisers()
 

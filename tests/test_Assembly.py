@@ -913,6 +913,7 @@ YIELD @GLOBAL -> $v"""
 CALL PARTIAL @print ("Hello World!") -> $x
 """
             )
+            return x
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -921,6 +922,7 @@ CALL PARTIAL @print ("Hello World!") -> $x
         @cache_global_name("functools")
         def compare():
             x = functools.partial(print, "Hello World!")
+            return x
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
 

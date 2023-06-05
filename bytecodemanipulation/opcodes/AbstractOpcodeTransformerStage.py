@@ -1,3 +1,4 @@
+import sys
 from abc import ABC
 import typing
 
@@ -42,6 +43,8 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 
                 if instr.has_local():
                     instr.arg_value = function.code_object.co_varnames[arg]
+                elif sys.version_info[1] >= 11 and opcode == Opcodes.LOAD_GLOBAL:
+                    instr.arg_value = function.code_object.co_names[arg >> 1]
                 elif instr.has_name():
                     instr.arg_value = function.code_object.co_names[arg]
                 elif instr.has_constant():
