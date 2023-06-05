@@ -133,7 +133,7 @@ class XOROperator(AbstractOperator):
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.UNARY_NOT),
-            Instruction(function, -1, Opcodes.COMPARE_OP, arg=3),
+            Instruction(function, -1, Opcodes.COMPARE_NEQ),
         ]
         return bytecode
 
@@ -153,7 +153,7 @@ class XNOROperator(AbstractOperator):
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
             Instruction(function, -1, Opcodes.UNARY_NOT),
-            Instruction(function, -1, Opcodes.COMPARE_OP, arg=2),
+            Instruction(function, -1, Opcodes.COMPARE_EQ),
         ]
         return bytecode
 
@@ -353,12 +353,12 @@ class OpAssembly(AbstractOpAssembly):
         "!is": OpcodeBaseOperator((Opcodes.IS_OP, 1)),
         "in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 0)),
         "!in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 1)),
-        "<": OpcodeBaseOperator((Opcodes.COMPARE_OP, 0)),
-        "<=": OpcodeBaseOperator((Opcodes.COMPARE_OP, 1)),
-        "==": OpcodeBaseOperator((Opcodes.COMPARE_OP, 2)),
-        "!=": OpcodeBaseOperator((Opcodes.COMPARE_OP, 3)),
-        ">": OpcodeBaseOperator((Opcodes.COMPARE_OP, 4)),
-        ">=": OpcodeBaseOperator((Opcodes.COMPARE_OP, 5)),
+        "<": OpcodeBaseOperator(Opcodes.COMPARE_LT),
+        "<=": OpcodeBaseOperator(Opcodes.COMPARE_LE),
+        "==": OpcodeBaseOperator(Opcodes.COMPARE_EQ),
+        "!=": OpcodeBaseOperator(Opcodes.COMPARE_NEQ),
+        ">": OpcodeBaseOperator(Opcodes.COMPARE_GT),
+        ">=": OpcodeBaseOperator(Opcodes.COMPARE_GE),
         "xor": XOROperator(),
         "!xor": XNOROperator(),
         "xnor": XNOROperator(),

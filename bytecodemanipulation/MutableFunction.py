@@ -14,10 +14,9 @@ from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.ExceptionTable import ExceptionTable
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractOpcodeTransformerStage, InstructionDecoder
-from bytecodemanipulation.opcodes.Opcodes import (
-    Opcodes,
-)
 import bytecodemanipulation.data_loader
+from bytecodemanipulation.opcodes.OperatorTransformer import IntermediateToRawOperatorTransform
+from bytecodemanipulation.opcodes.OperatorTransformer import RawToIntermediateOperatorTransform
 
 
 class LinearCodeConstraintViolationException(Exception):
@@ -27,9 +26,11 @@ class LinearCodeConstraintViolationException(Exception):
 class MutableFunction:
     INSTRUCTION_DECODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
         InstructionDecoder,
+        RawToIntermediateOperatorTransform,
     ]
 
     INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
+        IntermediateToRawOperatorTransform,
         ArgRealValueSetter,
         ExtendedArgInserter,
         LinearStreamGenerator,
@@ -172,8 +173,6 @@ class MutableFunction:
 
         def create_code_obj(self) -> types.CodeType:
             builder = self.create_filled_builder()
-
-            self.assemble_fast(builder.temporary_instructions)
 
             self.prepare_previous_instructions()
 
@@ -388,8 +387,16 @@ class MutableFunction:
         self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
 
         for stage in self.INSTRUCTION_ENCODING_PIPE:
-            # print(stage, builder.temporary_instructions)
             stage.apply(self, builder)
+
+        self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
+
+        meta = None
+        for stage in self.INSTRUCTION_DECODING_PIPE:
+            if stage != InstructionDecoder:
+                meta = stage.apply(self, meta)
+
+        self.prepare_previous_instructions()
 
         return builder
 

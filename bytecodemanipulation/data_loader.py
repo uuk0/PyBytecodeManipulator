@@ -19,6 +19,11 @@ INIT_ASSEMBLY = True
 
 
 def load_opcode_data():
+    if load_opcode_data.loaded:
+        return
+
+    load_opcode_data.loaded = True
+
     opcode_data: dict = json.load(open(folder + "/opcodes.json"))
 
     valid_opcode_names = [
@@ -42,6 +47,9 @@ def load_opcode_data():
         if not key.startswith("__") and value == -1:
             setattr(Opcodes, key, virtual_opcode)
             virtual_opcode += 1
+
+
+load_opcode_data.loaded = False
 
 
 def load_instruction_spec():

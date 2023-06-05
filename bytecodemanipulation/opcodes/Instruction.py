@@ -660,6 +660,12 @@ class Instruction:
 
         if self.opcode in (
             Opcodes.COMPARE_OP,
+            Opcodes.COMPARE_LT,
+            Opcodes.COMPARE_LE,
+            Opcodes.COMPARE_EQ,
+            Opcodes.COMPARE_NEQ,
+            Opcodes.COMPARE_GT,
+            Opcodes.COMPARE_GE,
             Opcodes.IS_OP,
             Opcodes.BINARY_SUBSCR,
             Opcodes.CONTAINS_OP,

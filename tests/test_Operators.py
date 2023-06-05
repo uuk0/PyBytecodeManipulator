@@ -1,6 +1,7 @@
 import dis
 from unittest import TestCase
 
+from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.assembler.target import apply_operations
 from bytecodemanipulation.assembler.target import assembly
 

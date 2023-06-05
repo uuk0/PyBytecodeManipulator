@@ -2,6 +2,7 @@ import math
 import random
 from unittest import TestCase
 
+from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.optimiser_util import *
 from bytecodemanipulation.Optimiser import (
     guarantee_constant_result,
