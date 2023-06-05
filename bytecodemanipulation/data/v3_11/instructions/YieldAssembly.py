@@ -22,21 +22,21 @@ class YieldAssembly(AbstractYieldAssembly):
 
         if self.is_star:
             bytecode += [
-                Instruction(function, -1, Opcodes.GET_YIELD_FROM_ITER),
-                Instruction(function, -1, Opcodes.LOAD_CONST, None),
-                Instruction(function, -1, Opcodes.YIELD_FROM),
+                Instruction(Opcodes.GET_YIELD_FROM_ITER),
+                Instruction(Opcodes.LOAD_CONST, None),
+                Instruction(Opcodes.YIELD_FROM),
             ]
 
         else:
             bytecode += [
-                Instruction(function, -1, Opcodes.YIELD_VALUE),
+                Instruction(Opcodes.YIELD_VALUE),
             ]
 
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)
 
         else:
-            bytecode += [Instruction(function, -1, Opcodes.POP_TOP)]
+            bytecode += [Instruction(Opcodes.POP_TOP)]
 
         # print(bytecode)
 

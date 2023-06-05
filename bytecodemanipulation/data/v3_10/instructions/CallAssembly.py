@@ -41,7 +41,7 @@ class CallAssembly(AbstractCallAssembly):
         if not has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
             if self.is_partial:
                 bytecode = [
-                    Instruction(function, -1, Opcodes.LOAD_CONST, functools.partial)
+                    Instruction(Opcodes.LOAD_CONST, functools.partial)
                 ]
                 extra_args = 1
             else:
@@ -55,14 +55,14 @@ class CallAssembly(AbstractCallAssembly):
 
             bytecode += [
                 Instruction(
-                    function, -1, "CALL_FUNCTION", arg=len(self.args) + extra_args
+                    "CALL_FUNCTION", arg=len(self.args) + extra_args
                 ),
             ]
 
         elif has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
             if self.is_partial:
                 bytecode = [
-                    Instruction(function, -1, Opcodes.LOAD_CONST, functools.partial)
+                    Instruction(Opcodes.LOAD_CONST, functools.partial)
                 ]
                 extra_args = 1
             else:
@@ -82,11 +82,9 @@ class CallAssembly(AbstractCallAssembly):
                 kw_const = tuple(reversed(kw_arg_keys))
 
                 bytecode += [
-                    Instruction(function, -1, "LOAD_CONST", kw_const),
+                    Instruction(Opcodes.LOAD_CONST, kw_const),
                     Instruction(
-                        function,
-                        -1,
-                        "CALL_FUNCTION_KW",
+                        Opcodes.CALL_FUNCTION_KW,
                         arg=len(self.args) + extra_args,
                     ),
                 ]
@@ -94,12 +92,12 @@ class CallAssembly(AbstractCallAssembly):
         else:
             bytecode = self.call_target.emit_bytecodes(function, scope)
 
-            bytecode += [Instruction(function, -1, "BUILD_LIST", arg=0)]
+            bytecode += [Instruction("BUILD_LIST", arg=0)]
 
             if self.is_partial:
                 bytecode += [
-                    Instruction(function, -1, Opcodes.LOAD_CONST, functools.partial),
-                    Instruction(function, -1, "LIST_APPEND"),
+                    Instruction(Opcodes.LOAD_CONST, functools.partial),
+                    Instruction(Opcodes.LIST_APPEND),
                 ]
 
             i = -1
@@ -107,38 +105,36 @@ class CallAssembly(AbstractCallAssembly):
                 bytecode += arg.source.emit_bytecodes(function, scope)
 
                 if isinstance(arg, CallAssembly.Arg):
-                    bytecode += [Instruction(function, -1, "LIST_APPEND", arg=1)]
+                    bytecode += [Instruction("LIST_APPEND", arg=1)]
                 elif isinstance(arg, CallAssembly.StarArg):
-                    bytecode += [Instruction(function, -1, "LIST_EXTEND", arg=1)]
+                    bytecode += [Instruction("LIST_EXTEND", arg=1)]
                 else:
                     break
 
             bytecode += [
-                Instruction(function, -1, "LIST_TO_TUPLE"),
+                Instruction("LIST_TO_TUPLE"),
             ]
 
             if has_seen_kw_arg or has_seen_star_star:
-                bytecode += [Instruction(function, -1, "BUILD_MAP", arg=0)]
+                bytecode += [Instruction("BUILD_MAP", arg=0)]
 
                 for arg in self.args[i + 1 :]:
                     if isinstance(arg, CallAssembly.KwArg):
                         bytecode += (
-                            [Instruction(function, -1, "LOAD_CONST", arg.key.text)]
+                            [Instruction("LOAD_CONST", arg.key.text)]
                             + arg.source.emit_bytecodes(function, scope)
                             + [
-                                Instruction(function, -1, "BUILD_MAP", arg=1),
-                                Instruction(function, -1, "DICT_MERGE", arg=1),
+                                Instruction("BUILD_MAP", arg=1),
+                                Instruction("DICT_MERGE", arg=1),
                             ]
                         )
                     else:
                         bytecode += arg.source.emit_bytecodes(function, scope) + [
-                            Instruction(function, -1, "DICT_MERGE", arg=1)
+                            Instruction("DICT_MERGE", arg=1)
                         ]
 
             bytecode += [
                 Instruction(
-                    function,
-                    -1,
                     "CALL_FUNCTION_EX",
                     arg=int(has_seen_kw_arg or has_seen_star_star),
                 ),

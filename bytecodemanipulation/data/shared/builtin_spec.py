@@ -15,37 +15,37 @@ def specialize_typing_cast(container: SpecializationContainer):
     data_type, value = container.get_arg_specifications()
 
     if ASSERT_TYPE_CASTS:
-        nop = Instruction(container.target, -1, Opcodes.NOP)
+        nop = Instruction(Opcodes.NOP)
 
         bytecode = [
             value,
-            Instruction(container.target, -1, Opcodes.DUP_TOP),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, isinstance),
-            Instruction(container.target, -1, Opcodes.ROT_TWO),
+            Instruction(Opcodes.DUP_TOP),
+            Instruction(Opcodes.LOAD_CONST, isinstance),
+            Instruction(Opcodes.ROT_TWO),
             data_type,
-            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=2),
-            Instruction(container.target, -1, Opcodes.POP_JUMP_IF_TRUE, nop),
+            Instruction(Opcodes.CALL_FUNCTION, arg=2),
+            Instruction(Opcodes.POP_JUMP_IF_TRUE, nop),
             Instruction(
-                container.target, -1, Opcodes.LOAD_CONST, "expected data type '"
+                Opcodes.LOAD_CONST, "expected data type '"
             ),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, repr),
+            Instruction(Opcodes.LOAD_CONST, repr),
             data_type,
-            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
-            Instruction(container.target, -1, Opcodes.BINARY_ADD),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, "', but got '"),
-            Instruction(container.target, -1, Opcodes.BINARY_ADD),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, repr),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, type),
+            Instruction(Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(Opcodes.BINARY_ADD),
+            Instruction(Opcodes.LOAD_CONST, "', but got '"),
+            Instruction(Opcodes.BINARY_ADD),
+            Instruction(Opcodes.LOAD_CONST, repr),
+            Instruction(Opcodes.LOAD_CONST, type),
             value,
-            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
-            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
-            Instruction(container.target, -1, Opcodes.BINARY_ADD),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, "'"),
-            Instruction(container.target, -1, Opcodes.BINARY_ADD),
-            Instruction(container.target, -1, Opcodes.LOAD_CONST, ValueError),
-            Instruction(container.target, -1, Opcodes.ROT_TWO),
-            Instruction(container.target, -1, Opcodes.CALL_FUNCTION, arg=1),
-            Instruction(container.target, -1, Opcodes.RAISE_VARARGS, arg=1),
+            Instruction(Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(Opcodes.BINARY_ADD),
+            Instruction(Opcodes.LOAD_CONST, "'"),
+            Instruction(Opcodes.BINARY_ADD),
+            Instruction(Opcodes.LOAD_CONST, ValueError),
+            Instruction(Opcodes.ROT_TWO),
+            Instruction(Opcodes.CALL_FUNCTION, arg=1),
+            Instruction(Opcodes.RAISE_VARARGS, arg=1),
             nop,
         ]
 
@@ -469,6 +469,6 @@ def specialize_sum(container: SpecializationContainer):
             count = args[0].get_normalized_data_instr().arg
             args[0].get_normalized_data_instr().change_opcode(Opcodes.NOP)
             container.replace_call_with_opcodes(
-                [Instruction(None, -1, Opcodes.BINARY_ADD) for _ in range(count - 1)],
+                [Instruction(Opcodes.BINARY_ADD) for _ in range(count - 1)],
                 leave_args_on_stack=True,
             )

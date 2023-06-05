@@ -36,14 +36,14 @@ class AttributeAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, scope) + [
-            Instruction(function, -1, "LOAD_ATTR", self.name(scope))
+            Instruction("LOAD_ATTR", self.name(scope))
         ]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, scope) + [
-            Instruction(function, -1, "STORE_ATTR", self.name(scope))
+            Instruction("STORE_ATTR", self.name(scope))
         ]
 
     def visit_parts(

@@ -31,14 +31,14 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
             self, function: MutableFunction, scope: ParsingScope
         ) -> typing.List[Instruction]:
             bytecode = [
-                Instruction(function, -1, Opcodes.LOAD_CONST, itertools.product),
+                Instruction(Opcodes.LOAD_CONST, itertools.product),
             ]
 
             for item in self.items:
                 bytecode += item.emit_bytecodes(function, scope)
 
             bytecode += [
-                Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=len(self.items)),
+                Instruction(Opcodes.CALL_FUNCTION, arg=len(self.items)),
             ]
             return bytecode
 

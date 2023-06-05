@@ -5,6 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class LocalAccessExpression(AbstractAccessExpression):
@@ -20,7 +21,7 @@ class LocalAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.token, function, -1, "LOAD_FAST", value, _decode_next=False
+                self.token, Opcodes.LOAD_FAST, value
             )
         ]
 
@@ -33,7 +34,7 @@ class LocalAccessExpression(AbstractAccessExpression):
             value = int(value)
 
         return [
-            Instruction.create_with_token(self.token, function, -1, "STORE_FAST", value)
+            Instruction.create_with_token(self.token, Opcodes.STORE_FAST, value)
         ]
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:

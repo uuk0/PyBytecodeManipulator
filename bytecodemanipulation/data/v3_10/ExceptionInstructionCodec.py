@@ -43,7 +43,7 @@ class ExceptionInstructionEncoder(AbstractInstructionWalkerTransform):
                 if not following or not all(e in span for e in following):
                     from bytecodemanipulation.opcodes.Instruction import Instruction
 
-                    block_exit = Instruction(function, -1, Opcodes.POP_BLOCK)
+                    block_exit = Instruction(Opcodes.POP_BLOCK)
 
                     item.insert_after(block_exit)
                     handled.add(block_exit)

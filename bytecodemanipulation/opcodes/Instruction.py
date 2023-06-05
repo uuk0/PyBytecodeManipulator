@@ -45,34 +45,23 @@ class Instruction:
     )
 
     @classmethod
-    def create(cls, *args, **kwargs):
-        return cls(None, -1, *args, **kwargs)
-
-    @classmethod
     def create_with_token(
         cls,
         token: AbstractToken,
-        function: typing.Optional["MutableFunction"],
-        offset: int | None,
         opcode_or_name: int | str,
         arg_value: object = None,
         arg: int = None,
-        _decode_next=True,
     ) -> "Instruction":
         raise NotImplementedError("not bound!")
 
     def __init__(
         self,
-        function: typing.Optional["MutableFunction"],
-        offset: int | None,
         opcode_or_name: int | str,
         arg_value: object = None,
         arg: int = None,
-        _decode_next=True,
         pos_info=None,
     ):
-        self.function = function
-        self.offset = offset
+        self.offset = None
         self.opcode, self.opname = self._pair_instruction(opcode_or_name)
         self.arg_value = arg_value
         self.arg = arg
@@ -84,17 +73,12 @@ class Instruction:
 
         self.previous_instructions: typing.List["Instruction"] | None = None
 
-    def copy(self, owner: "MutableFunction" = None) -> "Instruction":
+    def copy(self) -> "Instruction":
         instance = type(self)(
-            self.function,
-            self.offset,
             self.opcode,
             self.arg_value,
             self.arg,
         )
-
-        if owner:
-            instance.update_owner(owner, -1, force_change_arg_index=True)
 
         return instance
 
@@ -192,17 +176,9 @@ class Instruction:
             return []
 
         if self.previous_instructions is None:
-            if self.function is None:
-                raise ValueError(
-                    f"Instruction {self} is not bound to a MutableFunction object, making retrieving the previous instruction list impossible!!"
-                )
-
-            self.function.prepare_previous_instructions()
-
-            if self.previous_instructions is None:
-                raise RuntimeError(
-                    f"Could not find previous instructions for {self}. This should NOT happen, as we asked the method which MUST yield results. (See MutableFunction.prepare_previous_instructions())"
-                )
+            raise RuntimeError(
+                f"Could not find previous instructions for {self}. This should NOT happen, as we asked the method which MUST yield results. (See MutableFunction.prepare_previous_instructions())"
+            )
 
         return self.previous_instructions
 
@@ -224,17 +200,16 @@ class Instruction:
     next_instruction = property(get_next_instruction, set_next_instruction)
 
     def __repr__(self):
-        assert self.function is None or isinstance(self.function.function_name, str)
         assert isinstance(self.offset, int)
         assert isinstance(self.opcode, int)
         assert isinstance(self.arg, int) or self.arg is None
         if id(self) == id(self.arg_value):
             return self.repr_safe() + "@self_arg_value"
 
-        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value.repr_safe() if self.arg_value is not None and isinstance(self.arg_value, Instruction) else self.arg_value}, has_next={self.next_instruction is not None})"
+        return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value.repr_safe() if self.arg_value is not None and isinstance(self.arg_value, Instruction) else self.arg_value}, has_next={self.next_instruction is not None})"
 
     def repr_safe(self):
-        return f"Instruction(function={self.function.function_name if self.function else '{Not Bound}'}, position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value=..., has_next={self.next_instruction is not None})"
+        return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value=..., has_next={self.next_instruction is not None})"
 
     def __eq__(self, other):
         if not isinstance(other, Instruction):
@@ -256,6 +231,9 @@ class Instruction:
             )
         )
 
+    def __hash__(self):
+        return id(self)
+
     def lossy_eq(self, other: "Instruction") -> bool:
         if not isinstance(other, Instruction):
             return False
@@ -270,9 +248,6 @@ class Instruction:
             or self.opcode == Opcodes.LOAD_CONST
             else True
         )
-
-    def __hash__(self):
-        return id(self)
 
     def get_arg(self):
         return 0 if self.arg is None else self.arg
@@ -329,18 +304,6 @@ class Instruction:
 
     def has_stop_flow(self):
         return self.opcode in END_CONTROL_FLOW
-
-    # todo: remove args not required
-    def update_owner(
-        self,
-        function: "MutableFunction",
-        offset: int,
-        update_following=True,
-        force_change_arg_index=False,
-    ):
-        self.function = function
-        self.offset = offset
-        return self
 
     def optimise_tree(self, visited: typing.Set["Instruction"] = None) -> "Instruction":
         """
@@ -424,7 +387,7 @@ class Instruction:
     def trace_stack_position(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        for instr in self.get_priorities_previous():
+        for instr in self.previous_instructions: # self.get_priorities_previous():
             yield from instr._trace_stack_position(stack_position, set(), self)
 
     def get_priorities_previous(self) -> typing.List["Instruction"]:
@@ -519,7 +482,7 @@ class Instruction:
 
         yielded.add(self)
 
-        for instr in self.get_priorities_previous():
+        for instr in self.previous_instructions:  # self.get_priorities_previous():
             try:
                 yield from instr._trace_stack_position(stack_position, yielded, self)
             except:

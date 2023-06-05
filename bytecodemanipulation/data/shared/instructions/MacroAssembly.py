@@ -142,7 +142,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             for arg in args:
                 bytecode += arg.emit_bytecodes(function, scope)
 
-            bytecode += [Instruction(function, -1, "BUILD_LIST", arg=len(args))]
+            bytecode += [Instruction("BUILD_LIST", arg=len(args))]
             return bytecode
 
     class MacroArg:
@@ -443,11 +443,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     )
                     bytecode.append(
                         Instruction(
-                            function,
-                            -1,
                             Opcodes.STORE_FAST,
                             var_name,
-                            _decode_next=False,
                         )
                     )
                 else:
@@ -455,11 +452,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     bytecode += arg_code.emit_bytecodes(function, scope)
                     bytecode.append(
                         Instruction(
-                            function,
-                            -1,
                             Opcodes.STORE_FAST,
                             var_name,
-                            _decode_next=False,
                         )
                     )
             else:
@@ -562,9 +556,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 instr.change_opcode(Opcodes.JUMP_ABSOLUTE, JumpToLabel(end_target))
 
         if requires_none_load:
-            bytecode.append(Instruction(function, -1, Opcodes.LOAD_CONST, None))
+            bytecode.append(Instruction(Opcodes.LOAD_CONST, None))
 
-        bytecode.append(Instruction(function, -1, Opcodes.BYTECODE_LABEL, end_target))
+        bytecode.append(Instruction(Opcodes.BYTECODE_LABEL, end_target))
 
         return bytecode
 
@@ -603,22 +597,20 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
             return [
                 (
-                    instr.copy(owner=function)
+                    instr.copy()
                     if instr.opcode != Opcodes.RETURN_VALUE
-                    else instr.copy(owner=function)
+                    else instr.copy()
                     .change_opcode(Opcodes.POP_TOP)
                     .insert_after(
                         Instruction(
-                            function,
-                            -1,
                             Opcodes.JUMP_ABSOLUTE,
                             JumpToLabel(macro_exit_label),
                         )
                     )
                 )
                 if not instr.has_local() or instr.arg_value not in self.scoped_names
-                else instr.copy(owner=function).change_opcode(
+                else instr.copy().change_opcode(
                     LOCAL_TO_DEREF_OPCODES[instr.opcode]
                 )
                 for instr in builder.temporary_instructions
-            ] + [Instruction(function, -1, Opcodes.BYTECODE_LABEL, macro_exit_label)]
+            ] + [Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)]

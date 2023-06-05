@@ -30,7 +30,8 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
-                instr = Instruction(function, i // 2, "NOP", _decode_next=False)
+                instr = Instruction(Opcodes.NOP)
+                instr.offset = i // 2
 
             else:
                 arg += extra * 256
@@ -39,7 +40,8 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
                 if opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                     arg += 1
 
-                instr = Instruction(function, i // 2, opcode, _decode_next=False)
+                instr = Instruction(opcode)
+                instr.offset = i // 2
 
                 if instr.has_local():
                     instr.arg_value = function.code_object.co_varnames[arg]
@@ -188,9 +190,6 @@ class LinearStreamGenerator(AbstractOpcodeTransformerStage):
 
                 # If it branches off, it needs to be visited later on
                 if instruction.has_jump():
-                    if instruction.arg_value is None:
-                        instruction.update_owner(function, instruction.offset)
-
                     assert instruction.arg_value is not None, instruction
 
                     pending_instructions.add(instruction.arg_value)
@@ -205,9 +204,6 @@ class LinearStreamGenerator(AbstractOpcodeTransformerStage):
                     or instruction.has_unconditional_jump()
                 ):
                     break
-
-                if instruction.next_instruction is None:
-                    instruction.update_owner(function, instruction.offset)
 
                 # The next instruction MUST be set if it does NOT end the control flow
                 if instruction.next_instruction is None:
@@ -247,9 +243,7 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
             # TODO: insert the JUMP somewhere else than here!
             if instruction.opcode == Opcodes.FOR_ITER:
                 jump = Instruction(
-                    function,
-                    -1,
-                    "JUMP_ABSOLUTE",
+                    Opcodes.JUMP_ABSOLUTE,
                     instruction.next_instruction,
                 )
                 jump.change_arg_value(instruction.arg_value)
@@ -261,9 +255,7 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
                 and instruction.offset + 1 != instruction.next_instruction.offset
             ):
                 jump = Instruction(
-                    function,
-                    -1,
-                    "JUMP_ABSOLUTE",
+                    Opcodes.JUMP_ABSOLUTE,
                     instruction.next_instruction,
                 )
                 jump.next_instruction = instruction
@@ -279,8 +271,6 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
         for i, instruction in enumerate(builder.temporary_instructions):
             if instruction.next_instruction is None:
                 continue
-
-            instruction.update_owner(function, i)
 
             if instruction.has_jump_absolute():
                 instruction.change_arg(instruction.arg_value.offset)

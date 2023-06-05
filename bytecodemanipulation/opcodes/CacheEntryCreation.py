@@ -26,7 +26,7 @@ class CacheInstructionCreator(AbstractInstructionWalkerTransform):
             from bytecodemanipulation.opcodes.Instruction import Instruction
 
             target.insert_after([
-                Instruction(function, -1, Opcodes.CACHE)
+                Instruction(Opcodes.CACHE)
                 for _ in range(CACHE_COUNT[target.opcode])
             ])
 

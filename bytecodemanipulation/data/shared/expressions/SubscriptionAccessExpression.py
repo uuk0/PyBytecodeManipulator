@@ -46,14 +46,12 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                 else [
                     Instruction.create_with_token(
                         self.index_expr,
-                        function,
-                        -1,
-                        "LOAD_CONST",
+                        Opcodes.LOAD_CONST,
                         int(self.index_expr.text),
                     )
                 ]
             )
-            + [Instruction(function, -1, Opcodes.BINARY_SUBSCR)]
+            + [Instruction(Opcodes.BINARY_SUBSCR)]
         )
 
     def emit_store_bytecodes(
@@ -67,16 +65,14 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                 else [
                     Instruction.create_with_token(
                         self.index_expr,
-                        function,
-                        -1,
-                        "LOAD_CONST",
+                        Opcodes.LOAD_CONST,
                         int(self.index_expr.text),
                     )
                 ]
             )
             + [
                 Instruction.create_with_token(
-                    self.name(scope), function, -1, Opcodes.STORE_SUBSCR
+                    self.name(scope), Opcodes.STORE_SUBSCR
                 )
             ]
         )

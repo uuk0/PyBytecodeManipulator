@@ -34,32 +34,32 @@ class OpAssembly(AbstractOpAssembly):
         "xor": Opcodes.COMPARE_NEQ,
         "!xor": Opcodes.COMPARE_EQ,
         ":=": lambda lhs, rhs, function, scope: rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.DUP_TOP)]
+        + [Instruction(Opcodes.DUP_TOP)]
         + lhs.emit_store_bytecodes(function, scope),
         "isinstance": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, isinstance)
+            Instruction(Opcodes.LOAD_CONST, isinstance)
         ]
         + lhs.emit_bytecodes(function, scope)
         + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        + [Instruction(Opcodes.CALL_FUNCTION, arg=2)],
         "issubclass": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, issubclass)
+            Instruction(Opcodes.LOAD_CONST, issubclass)
         ]
         + lhs.emit_bytecodes(function, scope)
         + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        + [Instruction(Opcodes.CALL_FUNCTION, arg=2)],
         "hasattr": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, hasattr)
+            Instruction(Opcodes.LOAD_CONST, hasattr)
         ]
         + lhs.emit_bytecodes(function, scope)
         + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        + [Instruction(Opcodes.CALL_FUNCTION, arg=2)],
         "getattr": lambda lhs, rhs, function, scope: [
-            Instruction(function, -1, Opcodes.LOAD_CONST, getattr)
+            Instruction(Opcodes.LOAD_CONST, getattr)
         ]
         + lhs.emit_bytecodes(function, scope)
         + rhs.emit_bytecodes(function, scope)
-        + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)],
+        + [Instruction(Opcodes.CALL_FUNCTION, arg=2)],
     }
 
     SINGLE_OPS = {

@@ -52,8 +52,6 @@ class RawAssembly(AbstractAssemblyInstruction):
         return [
             Instruction.create_with_token(
                 self.opcode_or_name,
-                function,
-                -1,
                 opcode,
                 arg=0 if self.arg is None else int(self.arg.text),
             ),

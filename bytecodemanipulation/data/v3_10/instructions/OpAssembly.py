@@ -27,16 +27,16 @@ class NandOperator(AbstractOperator):
 
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(Opcodes.DUP_TOP),
             Instruction(
-                function, -1, Opcodes.POP_JUMP_IF_FALSE, JumpToLabel(label_name)
+                Opcodes.POP_JUMP_IF_FALSE, JumpToLabel(label_name)
             ),
-            Instruction(function, -1, Opcodes.POP_TOP),
+            Instruction(Opcodes.POP_TOP),
         ]
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.BYTECODE_LABEL, label_name),
-            Instruction(function, -1, Opcodes.UNARY_NOT, bool),
+            Instruction(Opcodes.BYTECODE_LABEL, label_name),
+            Instruction(Opcodes.UNARY_NOT, bool),
         ]
         return bytecode
 
@@ -50,7 +50,7 @@ class AndOperator(NandOperator):
         rhs: AbstractSourceExpression,
     ) -> typing.List[Instruction]:
         return super().emit_bytecodes(function, scope, lhs, rhs) + [
-            Instruction(function, -1, Opcodes.UNARY_NOT, bool)
+            Instruction(Opcodes.UNARY_NOT, bool)
         ]
 
 
@@ -65,11 +65,11 @@ class AndEvalOperator(NandOperator):
         inner_label = scope.scope_name_generator("and_eval_swap_skip")
 
         return lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [
-            Instruction(function, -1, Opcodes.DUP_TOP),
-            Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(inner_label)),
-            Instruction(function, -1, Opcodes.ROT_TWO),
-            Instruction(function, -1, Opcodes.BYTECODE_LABEL, inner_label),
-            Instruction(function, -1, Opcodes.POP_TOP),
+            Instruction(Opcodes.DUP_TOP),
+            Instruction(Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(inner_label)),
+            Instruction(Opcodes.ROT_TWO),
+            Instruction(Opcodes.BYTECODE_LABEL, inner_label),
+            Instruction(Opcodes.POP_TOP),
         ]
 
 
@@ -85,16 +85,16 @@ class NorOperator(AbstractOperator):
 
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(Opcodes.DUP_TOP),
             Instruction(
-                function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(label_name)
+                Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(label_name)
             ),
-            Instruction(function, -1, Opcodes.POP_TOP),
+            Instruction(Opcodes.POP_TOP),
         ]
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.BYTECODE_LABEL, label_name),
-            Instruction(function, -1, Opcodes.UNARY_NOT, bool),
+            Instruction(Opcodes.BYTECODE_LABEL, label_name),
+            Instruction(Opcodes.UNARY_NOT, bool),
         ]
         return bytecode
 
@@ -108,7 +108,7 @@ class OrOperator(NorOperator):
         rhs: AbstractSourceExpression,
     ) -> typing.List[Instruction]:
         return super().emit_bytecodes(function, scope, lhs, rhs) + [
-            Instruction(function, -1, Opcodes.UNARY_NOT, bool)
+            Instruction(Opcodes.UNARY_NOT, bool)
         ]
 
 
@@ -123,11 +123,11 @@ class OrEvalOperator(AbstractOperator):
         inner_label = scope.scope_name_generator("or_eval_swap_skip")
 
         return lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [
-            Instruction(function, -1, Opcodes.DUP_TOP),
-            Instruction(function, -1, Opcodes.POP_JUMP_IF_FALSE, JumpToLabel(inner_label)),
-            Instruction(function, -1, Opcodes.ROT_TWO),
-            Instruction(function, -1, Opcodes.BYTECODE_LABEL, inner_label),
-            Instruction(function, -1, Opcodes.POP_TOP),
+            Instruction(Opcodes.DUP_TOP),
+            Instruction(Opcodes.POP_JUMP_IF_FALSE, JumpToLabel(inner_label)),
+            Instruction(Opcodes.ROT_TWO),
+            Instruction(Opcodes.BYTECODE_LABEL, inner_label),
+            Instruction(Opcodes.POP_TOP),
         ]
 
 
@@ -141,12 +141,12 @@ class XOROperator(AbstractOperator):
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.UNARY_NOT),
+            Instruction(Opcodes.UNARY_NOT),
         ]
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.UNARY_NOT),
-            Instruction(function, -1, Opcodes.COMPARE_NEQ),
+            Instruction(Opcodes.UNARY_NOT),
+            Instruction(Opcodes.COMPARE_NEQ),
         ]
         return bytecode
 
@@ -161,12 +161,12 @@ class XNOROperator(AbstractOperator):
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.UNARY_NOT),
+            Instruction(Opcodes.UNARY_NOT),
         ]
         bytecode += rhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.UNARY_NOT),
-            Instruction(function, -1, Opcodes.COMPARE_EQ),
+            Instruction(Opcodes.UNARY_NOT),
+            Instruction(Opcodes.COMPARE_EQ),
         ]
         return bytecode
 
@@ -181,7 +181,7 @@ class WalrusOperator(AbstractOperator):
     ) -> typing.List[Instruction]:
         bytecode = rhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(Opcodes.DUP_TOP),
         ]
         bytecode += lhs.emit_store_bytecodes(function, scope)
         return bytecode
@@ -197,7 +197,7 @@ class InverseWalrusOperator(AbstractOperator):
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
-            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(Opcodes.DUP_TOP),
         ]
         bytecode += rhs.emit_store_bytecodes(function, scope)
         return bytecode
@@ -215,9 +215,9 @@ class InstanceOfChecker(AbstractOperator):
             function, scope
         )
         bytecode += [
-            Instruction(function, -1, Opcodes.LOAD_CONST, isinstance),
-            Instruction(function, -1, Opcodes.ROT_THREE),
-            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2),
+            Instruction(Opcodes.LOAD_CONST, isinstance),
+            Instruction(Opcodes.ROT_THREE),
+            Instruction(Opcodes.CALL_FUNCTION, arg=2),
         ]
         return bytecode
 
@@ -234,9 +234,9 @@ class SubclassOfChecker(AbstractOperator):
             function, scope
         )
         bytecode += [
-            Instruction(function, -1, Opcodes.LOAD_CONST, issubclass),
-            Instruction(function, -1, Opcodes.ROT_THREE),
-            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2),
+            Instruction(Opcodes.LOAD_CONST, issubclass),
+            Instruction(Opcodes.ROT_THREE),
+            Instruction(Opcodes.CALL_FUNCTION, arg=2),
         ]
         return bytecode
 
@@ -253,9 +253,9 @@ class HasattrChecker(AbstractOperator):
             function, scope
         )
         bytecode += [
-            Instruction(function, -1, Opcodes.LOAD_CONST, hasattr),
-            Instruction(function, -1, Opcodes.ROT_THREE),
-            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2),
+            Instruction(Opcodes.LOAD_CONST, hasattr),
+            Instruction(Opcodes.ROT_THREE),
+            Instruction(Opcodes.CALL_FUNCTION, arg=2),
         ]
         return bytecode
 
@@ -274,7 +274,7 @@ class SumOperator(AbstractOperator):
 
         for param in parameters[1:]:
             bytecode += param.emit_bytecodes(function, scope)
-            bytecode.append(Instruction(function, -1, Opcodes.BINARY_ADD))
+            bytecode.append(Instruction(Opcodes.BINARY_ADD))
 
         return bytecode
 
@@ -293,7 +293,7 @@ class ProdOperator(AbstractOperator):
 
         for param in parameters[1:]:
             bytecode += param.emit_bytecodes(function, scope)
-            bytecode.append(Instruction(function, -1, Opcodes.BINARY_MULTIPLY))
+            bytecode.append(Instruction(Opcodes.BINARY_MULTIPLY))
 
         return bytecode
 
@@ -312,11 +312,11 @@ class AvgOperator(AbstractOperator):
 
         for param in parameters[1:]:
             bytecode += param.emit_bytecodes(function, scope)
-            bytecode.append(Instruction(function, -1, Opcodes.BINARY_ADD))
+            bytecode.append(Instruction(Opcodes.BINARY_ADD))
 
         bytecode += [
-            Instruction(function, -1, Opcodes.LOAD_CONST, len(parameters)),
-            Instruction(function, -1, Opcodes.BINARY_TRUE_DIVIDE),
+            Instruction(Opcodes.LOAD_CONST, len(parameters)),
+            Instruction(Opcodes.BINARY_TRUE_DIVIDE),
         ]
 
         return bytecode
@@ -336,11 +336,11 @@ class AvgIOperator(AbstractOperator):
 
         for param in parameters[1:]:
             bytecode += param.emit_bytecodes(function, scope)
-            bytecode.append(Instruction(function, -1, Opcodes.BINARY_ADD))
+            bytecode.append(Instruction(Opcodes.BINARY_ADD))
 
         bytecode += [
-            Instruction(function, -1, Opcodes.LOAD_CONST, len(parameters)),
-            Instruction(function, -1, Opcodes.BINARY_FLOOR_DIVIDE),
+            Instruction(Opcodes.LOAD_CONST, len(parameters)),
+            Instruction(Opcodes.BINARY_FLOOR_DIVIDE),
         ]
 
         return bytecode

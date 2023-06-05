@@ -2,6 +2,7 @@ import dis
 from unittest import TestCase
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Instruction import Instruction
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class TestMutableFunction(TestCase):
@@ -13,8 +14,8 @@ class TestMutableFunction(TestCase):
         builder = mut.create_filled_builder()
         self.assertEqual(
             [
-                Instruction(None, 0, "LOAD_CONST", None),
-                Instruction(None, 1, "RETURN_VALUE"),
+                Instruction(Opcodes.LOAD_CONST, None),
+                Instruction(Opcodes.RETURN_VALUE),
             ],
             builder.temporary_instructions,
         )
@@ -30,8 +31,8 @@ class TestMutableFunction(TestCase):
 
         self.assertEqual(
             [
-                Instruction(None, 0, "LOAD_CONST", None),
-                Instruction(None, 1, "RETURN_VALUE"),
+                Instruction(Opcodes.LOAD_CONST, None),
+                Instruction(Opcodes.RETURN_VALUE),
             ],
             builder.temporary_instructions,
         )

@@ -56,4 +56,4 @@ class MacroReturnAssembly(AbstractAssemblyInstruction):
     ) -> typing.List[Instruction]:
         expr_bytecode = self.expr.emit_bytecodes(function, scope) if self.expr else []
 
-        return expr_bytecode + [Instruction(function, -1, Opcodes.MACRO_RETURN_VALUE)]
+        return expr_bytecode + [Instruction(Opcodes.MACRO_RETURN_VALUE)]

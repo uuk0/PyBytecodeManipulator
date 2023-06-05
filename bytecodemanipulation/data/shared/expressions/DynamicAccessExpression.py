@@ -35,22 +35,22 @@ class DynamicAttributeAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return (
-            [Instruction(function, -1, Opcodes.LOAD_CONST, getattr)]
+            [Instruction(Opcodes.LOAD_CONST, getattr)]
             + self.root.emit_bytecodes(function, scope)
             + self.name_expr.emit_bytecodes(function, scope)
-            + [Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2)]
+            + [Instruction(Opcodes.CALL_FUNCTION, arg=2)]
         )
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return (
-            [Instruction(function, -1, Opcodes.LOAD_CONST, setattr)]
+            [Instruction(Opcodes.LOAD_CONST, setattr)]
             + self.root.emit_bytecodes(function, scope)
             + self.name_expr.emit_bytecodes(function, scope)
             + [
-                Instruction(function, -1, Opcodes.ROT_THREE),
-                Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2),
+                Instruction(Opcodes.ROT_THREE),
+                Instruction(Opcodes.CALL_FUNCTION, arg=2),
             ]
         )
 

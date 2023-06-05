@@ -12,6 +12,7 @@ from bytecodemanipulation.assembler.AbstractBase import (
     IIdentifierAccessor,
     StaticIdentifier,
 )
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class StaticAttributeAccessExpression(AbstractAccessExpression):
@@ -44,9 +45,7 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
         return self.root.emit_bytecodes(function, scope) + [
             Instruction.create_with_token(
                 self.name(scope),
-                function,
-                -1,
-                "STATIC_ATTRIBUTE_ACCESS",
+                Opcodes.STATIC_ATTRIBUTE_ACCESS,
                 self.name(scope),
             )
         ]

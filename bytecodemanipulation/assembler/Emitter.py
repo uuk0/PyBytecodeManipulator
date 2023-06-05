@@ -118,7 +118,7 @@ def apply_inline_assemblies(
 
                 labels.add(StaticIdentifier(arg.arg_value))
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
-                invoke.insert_after(Instruction(target, -1, Opcodes.LOAD_CONST, None))
+                invoke.insert_after(Instruction(Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
                 # print(type(arg))
                 arg.change_opcode(Opcodes.NOP)
@@ -310,13 +310,8 @@ def execute_module_in_instance(
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
 
-    for instr in bytecode:
-        instr.update_owner(
-            target, -1, force_change_arg_index=True, update_following=False
-        )
-
     if not bytecode:
-        bytecode.append(Instruction(target, -1, "NOP"))
+        bytecode.append(Instruction(Opcodes.NOP))
 
     bytecode[-1].next_instruction = target.instruction_entry_point
 
@@ -324,22 +319,22 @@ def execute_module_in_instance(
 
     for instr in bytecode:
         if instr.opcode == Opcodes.STORE_FAST:
-            load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
-            store = Instruction(target, -1, Opcodes.STORE_ATTR, instr.arg_value)
+            load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
+            store = Instruction(Opcodes.STORE_ATTR, instr.arg_value)
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, store])
 
         elif instr.opcode == Opcodes.LOAD_FAST:
-            load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
-            load = Instruction(target, -1, Opcodes.LOAD_ATTR, instr.arg_value)
+            load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
+            load = Instruction(Opcodes.LOAD_ATTR, instr.arg_value)
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, load])
 
         elif instr.opcode == Opcodes.DELETE_FAST:
-            load_module = Instruction(target, -1, Opcodes.LOAD_FAST, "$module$")
-            delete = Instruction(target, -1, Opcodes.DELETE_ATTR, instr.arg_value)
+            load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
+            delete = Instruction(Opcodes.DELETE_ATTR, instr.arg_value)
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])

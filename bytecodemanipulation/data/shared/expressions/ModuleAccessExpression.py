@@ -29,7 +29,7 @@ class ModuleAccessExpression(AbstractAccessExpression):
         value = self._cached_lookup(self.get_name(scope))
         return [
             Instruction.create_with_token(
-                self.token, function, -1, Opcodes.LOAD_CONST, value
+                self.token, Opcodes.LOAD_CONST, value
             )
         ]
 

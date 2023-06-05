@@ -19,6 +19,6 @@ class LoadGlobalAssembly(AbstractLoadGlobalAssembly):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "LOAD_GLOBAL", value)] + (
+        return [Instruction("LOAD_GLOBAL", value)] + (
             self.target.emit_bytecodes(function, scope) if self.target else []
         )

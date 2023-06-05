@@ -48,8 +48,8 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             for name, is_static in self.bound_variables:
                 # print(name, name(scope), is_static)
                 inner_bytecode += [
-                    Instruction(target, -1, Opcodes.LOAD_DEREF, name(scope) + "%inner"),
-                    Instruction(target, -1, Opcodes.STORE_DEREF, name(scope)),
+                    Instruction(Opcodes.LOAD_DEREF, name(scope) + "%inner"),
+                    Instruction(Opcodes.STORE_DEREF, name(scope)),
                 ]
 
         inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
@@ -66,7 +66,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                     if instruction.next_instruction is not None
                     else instruction
                 )
-                instruction.change_opcode(Opcodes.NOP, update_next=False)
+                instruction.change_opcode(Opcodes.NOP)
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(walk_label))
 
@@ -97,19 +97,19 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
             for name, is_static in self.bound_variables:
                 bytecode += [
-                    Instruction(function, -1, Opcodes.LOAD_FAST, name(scope)),
+                    Instruction(Opcodes.LOAD_FAST, name(scope)),
                     Instruction(
-                        function, -1, Opcodes.STORE_DEREF, name(scope) + "%inner"
+                        Opcodes.STORE_DEREF, name(scope) + "%inner"
                     ),
                 ]
 
             bytecode += [
-                Instruction(function, -1, Opcodes.LOAD_CLOSURE, name(scope) + "%inner")
+                Instruction(Opcodes.LOAD_CLOSURE, name(scope) + "%inner")
                 for name, is_static in self.bound_variables
             ]
             bytecode.append(
                 Instruction(
-                    function, -1, Opcodes.BUILD_TUPLE, arg=len(self.bound_variables)
+                    Opcodes.BUILD_TUPLE, arg=len(self.bound_variables)
                 )
             )
 
@@ -118,21 +118,19 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         code_object = target.create_code_obj()
 
         bytecode += [
-            Instruction(function, -1, "LOAD_CONST", code_object),
+            Instruction(Opcodes.LOAD_CONST, code_object),
             Instruction(
-                function,
-                -1,
-                "LOAD_CONST",
+                Opcodes.LOAD_CONST,
                 self.func_name(scope) if self.func_name else "<lambda>",
             ),
-            Instruction(function, -1, "MAKE_FUNCTION", arg=flags),
+            Instruction(Opcodes.MAKE_FUNCTION, arg=flags),
         ]
 
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)
         else:
             bytecode += [
-                Instruction(function, -1, Opcodes.STORE_FAST, self.func_name(scope)),
+                Instruction(Opcodes.STORE_FAST, self.func_name(scope)),
             ]
 
         return bytecode

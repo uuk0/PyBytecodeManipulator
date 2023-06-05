@@ -190,8 +190,7 @@ def _inline_outer_return(
     if len(args) == 0:
         instruction.change_opcode(Opcodes.LOAD_CONST)
         instruction.change_arg_value(None)
-        return_instr = Instruction.create(Opcodes.RETURN_VALUE)
-        return_instr.update_owner(mutable, -1)
+        return_instr = Instruction(Opcodes.RETURN_VALUE)
         return_instr.next_instruction = instruction.next_instruction
         instruction.next_instruction = return_instr
 
@@ -211,7 +210,7 @@ def insert_method_into(
     """
 
     if entry_point == -1:
-        HEAD_INSTRUCTION = Instruction.create("NOP")
+        HEAD_INSTRUCTION = Instruction("NOP")
         HEAD_INSTRUCTION.function = body
         HEAD_INSTRUCTION.next_instruction = body.instruction_entry_point
         body.instruction_entry_point = HEAD_INSTRUCTION
@@ -265,7 +264,7 @@ def insert_method_into(
 
         if instr.opcode == Opcodes.INTERMEDIATE_INNER_RETURN:
             if drop_return_result:
-                previous.insert_after(Instruction(to_insert, -1, Opcodes.POP_TOP))
+                previous.insert_after(Instruction(Opcodes.POP_TOP))
 
             instr.change_opcode(
                 Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction
@@ -277,11 +276,6 @@ def insert_method_into(
 
     if instr is not None and instr.next_instruction is None:
         instr.next_instruction = HEAD_INSTRUCTION.next_instruction
-
-    def visit(instr):
-        instr.update_owner(body, -1, False)
-
-    to_insert.walk_instructions(visit)
 
     replace_const_func_call_with_opcode(
         to_insert,
@@ -320,7 +314,7 @@ def inline_calls_to_const_functions(mutable: MutableFunction, builder):
             instr.change_opcode(Opcodes.NOP)
             insert_method_into(
                 mutable,
-                instr.offset,
+                instr,
                 MutableFunction(target),
                 drop_return_result=False,
             )
