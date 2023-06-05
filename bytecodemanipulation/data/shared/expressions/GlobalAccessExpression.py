@@ -5,6 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class GlobalAccessExpression(AbstractAccessExpression):
@@ -20,7 +21,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.token, function, -1, "LOAD_GLOBAL", value
+                self.token, Opcodes.LOAD_GLOBAL, value
             )
         ]
 
@@ -34,7 +35,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.token, function, -1, "STORE_GLOBAL", value
+                self.token, Opcodes.STORE_GLOBAL, value
             )
         ]
 

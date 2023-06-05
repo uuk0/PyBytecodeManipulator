@@ -7,6 +7,7 @@ from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class GlobalStaticAccessExpression(AbstractAccessExpression):
@@ -24,7 +25,7 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
             value = global_dict.get(key)
 
         return [
-            Instruction.create_with_token(self.name, function, -1, "LOAD_CONST", value)
+            Instruction.create_with_token(self.name, Opcodes.LOAD_CONST, value)
         ]
 
     def emit_store_bytecodes(

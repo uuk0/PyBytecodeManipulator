@@ -45,33 +45,23 @@ class Instruction:
     )
 
     @classmethod
-    def create(cls, *args, **kwargs):
-        return cls(None, -1, *args, **kwargs)
-
-    @classmethod
     def create_with_token(
         cls,
         token: AbstractToken,
-        function: typing.Optional["MutableFunction"],
-        offset: int | None,
         opcode_or_name: int | str,
         arg_value: object = None,
         arg: int = None,
-        _decode_next=True,
     ) -> "Instruction":
         raise NotImplementedError("not bound!")
 
     def __init__(
         self,
-        function: typing.Optional["MutableFunction"],
-        offset: int | None,
         opcode_or_name: int | str,
         arg_value: object = None,
         arg: int = None,
-        _decode_next=True,
         pos_info=None,
     ):
-        self.offset = offset
+        self.offset = None
         self.opcode, self.opname = self._pair_instruction(opcode_or_name)
         self.arg_value = arg_value
         self.arg = arg
@@ -85,8 +75,6 @@ class Instruction:
 
     def copy(self) -> "Instruction":
         instance = type(self)(
-            None,
-            self.offset,
             self.opcode,
             self.arg_value,
             self.arg,
@@ -243,6 +231,9 @@ class Instruction:
             )
         )
 
+    def __hash__(self):
+        return id(self)
+
     def lossy_eq(self, other: "Instruction") -> bool:
         if not isinstance(other, Instruction):
             return False
@@ -257,9 +248,6 @@ class Instruction:
             or self.opcode == Opcodes.LOAD_CONST
             else True
         )
-
-    def __hash__(self):
-        return id(self)
 
     def get_arg(self):
         return 0 if self.arg is None else self.arg
@@ -399,7 +387,7 @@ class Instruction:
     def trace_stack_position(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        for instr in self.get_priorities_previous():
+        for instr in self.previous_instructions: # self.get_priorities_previous():
             yield from instr._trace_stack_position(stack_position, set(), self)
 
     def get_priorities_previous(self) -> typing.List["Instruction"]:
@@ -494,7 +482,7 @@ class Instruction:
 
         yielded.add(self)
 
-        for instr in self.get_priorities_previous():
+        for instr in self.previous_instructions:  # self.get_priorities_previous():
             try:
                 yield from instr._trace_stack_position(stack_position, yielded, self)
             except:

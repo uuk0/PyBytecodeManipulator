@@ -186,8 +186,6 @@ class SpecializationContainer:
             # Store values in temporary variables
             bytecode = [
                 Instruction(
-                    self.target,
-                    -1,
                     Opcodes.STORE_FAST,
                     f"&fast_tmp_specialize_local::{i}",
                 )
@@ -199,8 +197,6 @@ class SpecializationContainer:
                     instruction
                     if isinstance(instruction, Instruction)
                     else Instruction(
-                        self.target,
-                        -1,
                         Opcodes.LOAD_FAST,
                         f"&fast_tmp_specialize_local::{instruction.arg_id}",
                     )
@@ -264,15 +260,8 @@ class SpecializationContainer:
                 self.method_call_descriptor.call_method_instr.change_arg(arg_count)
 
                 self.method_call_descriptor.call_method_instr.insert_after(
-                    Instruction(
-                        self.underlying_function, -1, opcode_or_name=Opcodes.POP_TOP
-                    ),
-                    Instruction(
-                        self.underlying_function,
-                        -1,
-                        opcode_or_name=Opcodes.LOAD_CONST,
-                        arg_value=self.constant_value[0],
-                    ),
+                    Instruction(Opcodes.POP_TOP),
+                    Instruction(Opcodes.LOAD_CONST, self.constant_value[0]),
                 )
 
             else:

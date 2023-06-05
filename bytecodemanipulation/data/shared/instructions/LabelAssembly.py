@@ -41,7 +41,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return [Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.name(scope))]
+        return [Instruction(Opcodes.BYTECODE_LABEL, self.name(scope))]
 
     def copy(self) -> "LabelAssembly":
         return type(self)(self.name)

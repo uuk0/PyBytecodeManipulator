@@ -69,7 +69,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
             )
 
         return [
-            Instruction(function, -1, Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)
+            Instruction(Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)
         ] + (
             []
             if self.target is None

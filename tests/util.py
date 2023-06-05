@@ -112,8 +112,6 @@ class JsonTestEntry:
             else:
                 obj.code = [
                     Instruction(
-                        None,
-                        None,
                         e["op"],
                         e.setdefault("arg", None),
                         e.setdefault("rarg", 0),
@@ -126,8 +124,6 @@ class JsonTestEntry:
             else:
                 obj.compare = [
                     Instruction(
-                        None,
-                        None,
                         e["op"],
                         e.setdefault("arg", None),
                         e.setdefault("rarg", 0),

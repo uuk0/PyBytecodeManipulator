@@ -19,7 +19,7 @@ class ForEachAssembly(AbstractForEachAssembly):
         if len(self.variables) != 1:
             bytecode = [
                 Instruction.create_with_token(
-                    self.base_token, function, -1, Opcodes.LOAD_CONST, zip
+                    self.base_token, Opcodes.LOAD_CONST, zip
                 ),
             ]
         else:
@@ -35,32 +35,24 @@ class ForEachAssembly(AbstractForEachAssembly):
             bytecode += [
                 Instruction.create_with_token(
                     self.base_token,
-                    function,
-                    -1,
                     Opcodes.CALL_FUNCTION,
                     arg=len(self.sources),
                 ),
                 Instruction.create_with_token(
-                    self.base_token, function, -1, Opcodes.GET_ITER
+                    self.base_token, Opcodes.GET_ITER
                 ),
                 Instruction.create_with_token(
                     self.base_token,
-                    function,
-                    -1,
                     Opcodes.BYTECODE_LABEL,
                     loop_label_name_enter,
                 ),
                 Instruction.create_with_token(
                     self.base_token,
-                    function,
-                    -1,
                     Opcodes.FOR_ITER,
                     JumpToLabel(loop_label_name_exit),
                 ),
                 Instruction.create_with_token(
                     self.base_token,
-                    function,
-                    -1,
                     Opcodes.UNPACK_SEQUENCE,
                     arg=len(self.sources),
                 ),
@@ -68,19 +60,15 @@ class ForEachAssembly(AbstractForEachAssembly):
         else:
             bytecode += [
                 Instruction.create_with_token(
-                    self.base_token, function, -1, Opcodes.GET_ITER
+                    self.base_token, Opcodes.GET_ITER
                 ),
                 Instruction.create_with_token(
                     self.base_token,
-                    function,
-                    -1,
                     Opcodes.BYTECODE_LABEL,
                     loop_label_name_enter,
                 ),
                 Instruction.create_with_token(
                     self.base_token,
-                    function,
-                    -1,
                     Opcodes.FOR_ITER,
                     JumpToLabel(loop_label_name_exit),
                 ),
@@ -94,15 +82,11 @@ class ForEachAssembly(AbstractForEachAssembly):
         bytecode += [
             Instruction.create_with_token(
                 self.base_token,
-                function,
-                -1,
                 Opcodes.JUMP_ABSOLUTE,
                 JumpToLabel(loop_label_name_enter),
             ),
             Instruction.create_with_token(
                 self.base_token,
-                function,
-                -1,
                 Opcodes.BYTECODE_LABEL,
                 loop_label_name_exit,
             ),

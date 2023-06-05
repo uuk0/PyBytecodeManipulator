@@ -21,4 +21,4 @@ class StoreFastAssembly(AbstractStoreFastAssembly):
 
         return (
             [] if self.source is None else self.source.emit_bytecodes(function, scope)
-        ) + [Instruction(function, -1, "STORE_FAST", value)]
+        ) + [Instruction("STORE_FAST", value)]

@@ -16,4 +16,4 @@ class ReturnAssembly(AbstractReturnAssembly):
     ) -> typing.List[Instruction]:
         expr_bytecode = self.expr.emit_bytecodes(function, scope) if self.expr else []
 
-        return expr_bytecode + [Instruction(function, -1, "RETURN_VALUE")]
+        return expr_bytecode + [Instruction("RETURN_VALUE")]

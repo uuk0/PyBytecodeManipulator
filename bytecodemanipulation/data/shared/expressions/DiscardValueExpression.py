@@ -20,7 +20,7 @@ class DiscardValueExpression(AbstractAccessExpression):
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return [Instruction(function, -1, Opcodes.POP_TOP)]
+        return [Instruction(Opcodes.POP_TOP)]
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
         return (self.token,)

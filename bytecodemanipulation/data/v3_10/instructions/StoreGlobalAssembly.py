@@ -7,6 +7,7 @@ from bytecodemanipulation.data.shared.instructions.StoreGlobalAssembly import (
 )
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 @Parser.register
@@ -21,4 +22,4 @@ class StoreGlobalAssembly(AbstractStoreGlobalAssembly):
 
         return (
             [] if self.source is None else self.source.emit_bytecodes(function, scope)
-        ) + [Instruction(function, -1, "STORE_GLOBAL", value)]
+        ) + [Instruction(Opcodes.STORE_GLOBAL, value)]

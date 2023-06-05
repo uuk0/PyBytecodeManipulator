@@ -20,10 +20,10 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
         target = MutableFunction(lambda: None)
 
         inner_bytecode = [
-            Instruction(target, -1, Opcodes.LOAD_NAME, "__name__"),
-            Instruction(target, -1, Opcodes.STORE_NAME, "__module__"),
-            Instruction(target, -1, Opcodes.LOAD_CONST, self.name(scope)),
-            Instruction(target, -1, Opcodes.STORE_NAME, "__qualname__"),
+            Instruction(Opcodes.LOAD_NAME, "__name__"),
+            Instruction(Opcodes.STORE_NAME, "__module__"),
+            Instruction(Opcodes.LOAD_CONST, self.name(scope)),
+            Instruction(Opcodes.STORE_NAME, "__qualname__"),
         ]
 
         raw_inner_code = self.code_block.emit_bytecodes(target, inner_scope)
@@ -50,11 +50,11 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
         code_obj = target.target.__code__
 
         bytecode = [
-            Instruction(function, -1, Opcodes.LOAD_BUILD_CLASS),
-            Instruction(function, -1, Opcodes.LOAD_CONST, code_obj),
-            Instruction(function, -1, Opcodes.LOAD_CONST, self.name(scope)),
-            Instruction(function, -1, Opcodes.MAKE_FUNCTION, arg=0),
-            Instruction(function, -1, Opcodes.LOAD_CONST, self.name(scope)),
+            Instruction(Opcodes.LOAD_BUILD_CLASS),
+            Instruction(Opcodes.LOAD_CONST, code_obj),
+            Instruction(Opcodes.LOAD_CONST, self.name(scope)),
+            Instruction(Opcodes.MAKE_FUNCTION, arg=0),
+            Instruction(Opcodes.LOAD_CONST, self.name(scope)),
         ]
 
         for parent in self.parents:
@@ -64,7 +64,7 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
             )
 
         bytecode += [
-            Instruction(function, -1, Opcodes.CALL_FUNCTION, arg=2 + len(self.parents)),
-            Instruction(function, -1, Opcodes.STORE_FAST, self.name(scope)),
+            Instruction(Opcodes.CALL_FUNCTION, arg=2 + len(self.parents)),
+            Instruction(Opcodes.STORE_FAST, self.name(scope)),
         ]
         return bytecode

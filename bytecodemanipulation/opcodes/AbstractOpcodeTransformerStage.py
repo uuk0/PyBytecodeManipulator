@@ -30,7 +30,8 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
-                instr = Instruction(function, i // 2, "NOP", _decode_next=False)
+                instr = Instruction(Opcodes.NOP)
+                instr.offset = i // 2
 
             else:
                 arg += extra * 256
@@ -39,7 +40,8 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
                 if opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
                     arg += 1
 
-                instr = Instruction(function, i // 2, opcode, _decode_next=False)
+                instr = Instruction(opcode)
+                instr.offset = i // 2
 
                 if instr.has_local():
                     instr.arg_value = function.code_object.co_varnames[arg]
@@ -241,9 +243,7 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
             # TODO: insert the JUMP somewhere else than here!
             if instruction.opcode == Opcodes.FOR_ITER:
                 jump = Instruction(
-                    function,
-                    -1,
-                    "JUMP_ABSOLUTE",
+                    Opcodes.JUMP_ABSOLUTE,
                     instruction.next_instruction,
                 )
                 jump.change_arg_value(instruction.arg_value)
@@ -255,9 +255,7 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
                 and instruction.offset + 1 != instruction.next_instruction.offset
             ):
                 jump = Instruction(
-                    function,
-                    -1,
-                    "JUMP_ABSOLUTE",
+                    Opcodes.JUMP_ABSOLUTE,
                     instruction.next_instruction,
                 )
                 jump.next_instruction = instruction

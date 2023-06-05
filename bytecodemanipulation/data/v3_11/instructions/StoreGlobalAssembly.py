@@ -21,4 +21,4 @@ class StoreGlobalAssembly(AbstractStoreGlobalAssembly):
 
         return (
             [] if self.source is None else self.source.emit_bytecodes(function, scope)
-        ) + [Instruction(function, -1, "STORE_GLOBAL", value)]
+        ) + [Instruction("STORE_GLOBAL", value)]

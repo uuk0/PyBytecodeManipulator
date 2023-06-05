@@ -28,7 +28,7 @@ class ConstantAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return [Instruction(function, -1, "LOAD_CONST", self.value)]
+        return [Instruction("LOAD_CONST", self.value)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope

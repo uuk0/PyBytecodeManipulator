@@ -65,7 +65,7 @@ class OpcodeBaseOperator(AbstractOperator):
 
         for opcode in self.opcodes:
             if isinstance(opcode, (int, str)):
-                bytecode.append(Instruction(function, -1, opcode))
+                bytecode.append(Instruction(opcode))
             elif isinstance(opcode, tuple):
                 if isinstance(opcode[1], typing.Callable):
                     bytecode.append(
@@ -77,7 +77,7 @@ class OpcodeBaseOperator(AbstractOperator):
                         )
                     )
                 else:
-                    bytecode.append(Instruction(function, -1, opcode[0], arg=opcode[1]))
+                    bytecode.append(Instruction(opcode[0], arg=opcode[1]))
             elif isinstance(opcode, OperatorArgValue):
                 bytecode += parameters[opcode.index].emit_bytecodes(function, scope)
             elif hasattr(opcode, "emit_bytecodes"):

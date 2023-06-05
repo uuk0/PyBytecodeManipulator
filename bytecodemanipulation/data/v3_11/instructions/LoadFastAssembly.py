@@ -19,6 +19,6 @@ class LoadFastAssembly(AbstractLoadFastAssembly):
         if value.isdigit():
             value = int(value)
 
-        return [Instruction(function, -1, "LOAD_FAST", value)] + (
+        return [Instruction("LOAD_FAST", value)] + (
             self.target.emit_bytecodes(function, scope) if self.target else []
         )

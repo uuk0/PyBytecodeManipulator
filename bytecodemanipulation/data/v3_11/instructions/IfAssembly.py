@@ -11,7 +11,7 @@ class IFAssembly(AbstractIFAssembly):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
 
         if self.label_name is None:
-            end = Instruction(function, -1, "NOP")
+            end = Instruction("NOP")
         else:
             end = Instruction(
                 function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END"
@@ -31,7 +31,7 @@ class IFAssembly(AbstractIFAssembly):
                 ]
             )
             + self.source.emit_bytecodes(function, scope)
-            + [Instruction(function, -1, "POP_JUMP_IF_FALSE", end)]
+            + [Instruction("POP_JUMP_IF_FALSE", end)]
             + (
                 []
                 if self.label_name is None

@@ -31,7 +31,7 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.token, function, -1, Opcodes.MACRO_LOAD_PARAMETER, value
+                self.token, Opcodes.MACRO_LOAD_PARAMETER, value
             )
         ]
 
@@ -54,7 +54,7 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
 
         return [
             Instruction.create_with_token(
-                self.token, function, -1, Opcodes.MACRO_STORE_PARAMETER, value
+                self.token, Opcodes.MACRO_STORE_PARAMETER, value
             )
         ]
 

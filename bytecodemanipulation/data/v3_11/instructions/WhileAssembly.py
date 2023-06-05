@@ -12,7 +12,7 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 class WHILEAssembly(AbstractWhileAssembly):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
         if self.label_name is None:
-            end = Instruction(function, -1, "NOP")
+            end = Instruction("NOP")
         else:
             end = Instruction(
                 function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text + "_END"
@@ -23,10 +23,10 @@ class WHILEAssembly(AbstractWhileAssembly):
         if self.label_name:
             CONDITION.insert(
                 0,
-                Instruction(function, -1, Opcodes.BYTECODE_LABEL, self.label_name.text),
+                Instruction(Opcodes.BYTECODE_LABEL, self.label_name.text),
             )
 
-        HEAD = Instruction(function, -1, "POP_JUMP_IF_FALSE", end)
+        HEAD = Instruction("POP_JUMP_IF_FALSE", end)
 
         BODY = self.body.emit_bytecodes(function, scope)
 
@@ -41,6 +41,6 @@ class WHILEAssembly(AbstractWhileAssembly):
                 ),
             )
 
-        JUMP_BACK = Instruction(function, -1, "JUMP_ABSOLUTE", CONDITION[0])
+        JUMP_BACK = Instruction("JUMP_ABSOLUTE", CONDITION[0])
 
         return CONDITION + [HEAD] + BODY + [JUMP_BACK, end]

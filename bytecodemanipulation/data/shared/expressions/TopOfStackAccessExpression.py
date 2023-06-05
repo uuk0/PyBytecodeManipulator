@@ -30,12 +30,12 @@ class TopOfStackAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         if self.offset != 0:
             return [
-                Instruction(function, -1, Opcodes.ROT_N, arg=self.offset)
+                Instruction(Opcodes.ROT_N, arg=self.offset)
                 for _ in range(self.offset - 1)
             ] + [
-                Instruction(function, -1, Opcodes.DUP_TOP),
-                Instruction(function, -1, Opcodes.ROT_TWO),
-                Instruction(function, -1, Opcodes.ROT_N, arg=self.offset),
+                Instruction(Opcodes.DUP_TOP),
+                Instruction(Opcodes.ROT_TWO),
+                Instruction(Opcodes.ROT_N, arg=self.offset),
             ]
 
         return []

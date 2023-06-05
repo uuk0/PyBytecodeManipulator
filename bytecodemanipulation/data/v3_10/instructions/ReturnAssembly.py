@@ -7,6 +7,7 @@ from bytecodemanipulation.data.shared.instructions.ReturnAssembly import (
 )
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
+from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 @Parser.register
@@ -16,4 +17,4 @@ class ReturnAssembly(AbstractReturnAssembly):
     ) -> typing.List[Instruction]:
         expr_bytecode = self.expr.emit_bytecodes(function, scope) if self.expr else []
 
-        return expr_bytecode + [Instruction(function, -1, "RETURN_VALUE")]
+        return expr_bytecode + [Instruction(Opcodes.RETURN_VALUE)]

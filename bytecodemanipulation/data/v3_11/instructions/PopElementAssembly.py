@@ -15,6 +15,6 @@ class PopElementAssembly(AbstractPopElementAssembly):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         return [
-            Instruction(function, -1, "POP_TOP", int(self.count.text))
+            Instruction("POP_TOP", int(self.count.text))
             for _ in range(int(self.count.text))
         ]
