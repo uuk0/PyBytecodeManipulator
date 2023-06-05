@@ -54,6 +54,25 @@ class AndOperator(NandOperator):
         ]
 
 
+class AndEvalOperator(NandOperator):
+    def emit_bytecodes(
+        self,
+        function: MutableFunction,
+        scope: ParsingScope,
+        lhs: AbstractSourceExpression,
+        rhs: AbstractSourceExpression,
+    ) -> typing.List[Instruction]:
+        inner_label = scope.scope_name_generator("and_eval_swap_skip")
+
+        return lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [
+            Instruction(function, -1, Opcodes.DUP_TOP),
+            Instruction(function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(inner_label)),
+            Instruction(function, -1, Opcodes.ROT_TWO),
+            Instruction(function, -1, Opcodes.BYTECODE_LABEL, inner_label),
+            Instruction(function, -1, Opcodes.POP_TOP),
+        ]
+
+
 class NorOperator(AbstractOperator):
     def emit_bytecodes(
         self,
@@ -101,21 +120,15 @@ class OrEvalOperator(AbstractOperator):
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
     ) -> typing.List[Instruction]:
-        label_name = scope.scope_name_generator("or_skip_second")
+        inner_label = scope.scope_name_generator("or_eval_swap_skip")
 
-        bytecode = lhs.emit_bytecodes(function, scope)
-        bytecode += [
+        return lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(function, scope) + [
             Instruction(function, -1, Opcodes.DUP_TOP),
-            Instruction(
-                function, -1, Opcodes.POP_JUMP_IF_TRUE, JumpToLabel(label_name)
-            ),
+            Instruction(function, -1, Opcodes.POP_JUMP_IF_FALSE, JumpToLabel(inner_label)),
+            Instruction(function, -1, Opcodes.ROT_TWO),
+            Instruction(function, -1, Opcodes.BYTECODE_LABEL, inner_label),
             Instruction(function, -1, Opcodes.POP_TOP),
         ]
-        bytecode += rhs.emit_bytecodes(function, scope)
-        bytecode += [
-            Instruction(function, -1, Opcodes.BYTECODE_LABEL, label_name),
-        ]
-        return bytecode
 
 
 class XOROperator(AbstractOperator):
@@ -370,6 +383,7 @@ class OpAssembly(AbstractOpAssembly):
         "subclassof": SubclassOfChecker(),
         "hasattr": HasattrChecker(),
         "and": AndOperator(),
+        "andeval": AndEvalOperator(),
         "!and": NandOperator(),
         "nand": NandOperator(),
         "or": OrOperator(),

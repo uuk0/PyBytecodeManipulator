@@ -57,6 +57,20 @@ class TestOperators(TestCase):
 
         self.assertFalse(target(self.fail))
 
+    def test_and_eval_not_short(self):
+        @apply_operations
+        def target(tar):
+            assembly("""RETURN OP (0 andeval $tar())""")
+
+        CALLED = False
+
+        def success():
+            nonlocal CALLED
+            CALLED = True
+
+        self.assertFalse(target(success))
+        self.assertTrue(CALLED)
+
     def test_simple_nand_true(self):
         @apply_operations
         def target():
@@ -156,6 +170,20 @@ class TestOperators(TestCase):
             assembly("""RETURN OP (1 or $tar())""")
 
         self.assertTrue(target(self.fail))
+
+    def test_or_eval_not_short(self):
+        @apply_operations
+        def target(tar):
+            assembly("""RETURN OP (1 oreval $tar())""")
+
+        CALLED = False
+
+        def success():
+            nonlocal CALLED
+            CALLED = True
+
+        self.assertTrue(target(success))
+        self.assertTrue(CALLED)
 
     def test_simple_nor_true_true(self):
         @apply_operations

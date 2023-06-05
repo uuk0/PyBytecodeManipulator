@@ -2,6 +2,7 @@
 # Version 0.3.2
 - added new virtual opcodes for compare operations
 - exception handles are now stored in their own structure
+- added andeval operator
 
 # Version 0.3.1
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like
