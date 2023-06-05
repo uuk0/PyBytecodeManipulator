@@ -310,11 +310,6 @@ def execute_module_in_instance(
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
             ins.change_arg_value(label_targets[ins.arg_value.name])
 
-    for instr in bytecode:
-        instr.update_owner(
-            target, -1, force_change_arg_index=True, update_following=False
-        )
-
     if not bytecode:
         bytecode.append(Instruction(target, -1, "NOP"))
 

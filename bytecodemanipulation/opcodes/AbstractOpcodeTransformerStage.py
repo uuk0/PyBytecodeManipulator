@@ -188,9 +188,6 @@ class LinearStreamGenerator(AbstractOpcodeTransformerStage):
 
                 # If it branches off, it needs to be visited later on
                 if instruction.has_jump():
-                    if instruction.arg_value is None:
-                        instruction.update_owner(function, instruction.offset)
-
                     assert instruction.arg_value is not None, instruction
 
                     pending_instructions.add(instruction.arg_value)
@@ -205,9 +202,6 @@ class LinearStreamGenerator(AbstractOpcodeTransformerStage):
                     or instruction.has_unconditional_jump()
                 ):
                     break
-
-                if instruction.next_instruction is None:
-                    instruction.update_owner(function, instruction.offset)
 
                 # The next instruction MUST be set if it does NOT end the control flow
                 if instruction.next_instruction is None:
@@ -279,8 +273,6 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
         for i, instruction in enumerate(builder.temporary_instructions):
             if instruction.next_instruction is None:
                 continue
-
-            instruction.update_owner(function, i)
 
             if instruction.has_jump_absolute():
                 instruction.change_arg(instruction.arg_value.offset)

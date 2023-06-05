@@ -603,9 +603,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
             return [
                 (
-                    instr.copy(owner=function)
+                    instr.copy()
                     if instr.opcode != Opcodes.RETURN_VALUE
-                    else instr.copy(owner=function)
+                    else instr.copy()
                     .change_opcode(Opcodes.POP_TOP)
                     .insert_after(
                         Instruction(
@@ -617,7 +617,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     )
                 )
                 if not instr.has_local() or instr.arg_value not in self.scoped_names
-                else instr.copy(owner=function).change_opcode(
+                else instr.copy().change_opcode(
                     LOCAL_TO_DEREF_OPCODES[instr.opcode]
                 )
                 for instr in builder.temporary_instructions

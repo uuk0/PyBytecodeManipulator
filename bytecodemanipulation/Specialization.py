@@ -196,7 +196,7 @@ class SpecializationContainer:
 
             bytecode += [
                 (
-                    instruction.update_owner(self.target, -1)
+                    instruction
                     if isinstance(instruction, Instruction)
                     else Instruction(
                         self.target,
