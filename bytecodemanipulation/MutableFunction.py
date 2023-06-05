@@ -86,50 +86,35 @@ class MutableFunction:
     if sys.version_info.major == 3 and sys.version_info.minor == 10:
 
         def _load_from_code_object(self, obj: types.CodeType):
-            self.argument_count = self.code_object.co_argcount
-            # self.cell_variables = list(self.code_object.co_cellvars)
-            self._raw_code = bytearray(self.code_object.co_code)
-            # self.constants = list(self.code_object.co_consts)
-            self.filename = self.code_object.co_filename
-            self.first_line_number = self.code_object.co_firstlineno
-            self.code_flags = self.code_object.co_flags
-            # self.free_variables = list(self.code_object.co_freevars)
-            self.keyword_only_argument_count = self.code_object.co_kwonlyargcount
-            # self.line_table = self.code_object.co_linetable
-            # self.lnotab = bytearray(self.code_object.co_lnotab)
+            self.argument_count = obj.co_argcount
+            self._raw_code = bytearray(obj.co_code)
+            self.filename = obj.co_filename
+            self.first_line_number = obj.co_firstlineno
+            self.code_flags = obj.co_flags
+            self.keyword_only_argument_count = obj.co_kwonlyargcount
 
-            self.function_name = self.code_object.co_name
-            # self.shared_names = list(self.code_object.co_names)
-            # Local variable count is implied by co_varnames
-            self.positional_only_argument_count = self.code_object.co_posonlyargcount
-            # self.stack_size = self.code_object.co_stacksize
-            # self.shared_variable_names = list(self.code_object.co_varnames)
-            self.argument_names = list(self.code_object.co_varnames[:self.argument_count])
+            self.function_name = obj.co_name
+            self.positional_only_argument_count = obj.co_posonlyargcount
+            self.argument_names = list(obj.co_varnames[:self.argument_count])
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
 
         def _load_from_code_object(self, obj: types.CodeType):
-            self.argument_count = self.code_object.co_argcount
-            # self.cell_variables = list(self.code_object.co_cellvars)
-            self._raw_code = bytearray(self.code_object.co_code)
-            # self.constants = list(self.code_object.co_consts)
-            self.filename = self.code_object.co_filename
-            self.first_line_number = self.code_object.co_firstlineno
-            self.code_flags = self.code_object.co_flags
-            # self.free_variables = list(self.code_object.co_freevars)
-            self.keyword_only_argument_count = self.code_object.co_kwonlyargcount
-            # self.line_table = self.code_object.co_linetable
-            # self.lnotab = bytearray(self.code_object.co_lnotab)
+            self.argument_count = obj.co_argcount
+            self._raw_code = bytearray(obj.co_code)
+            self.filename = obj.co_filename
+            self.first_line_number = obj.co_firstlineno
+            self.code_flags = obj.co_flags
+            self.keyword_only_argument_count = obj.co_kwonlyargcount
 
-            self.function_name = self.code_object.co_name
-            # self.shared_names = list(self.code_object.co_names)
-            # Local variable count is implied by co_varnames
-            self.positional_only_argument_count = self.code_object.co_posonlyargcount
-            # self.stack_size = self.code_object.co_stacksize
-            # self.shared_variable_names = list(self.code_object.co_varnames)
-            self.argument_names = list(self.code_object.co_varnames[:self.argument_count])
+            # self.line_table = obj.co_linetable
+            # self.lnotab = bytearray(obj.co_lnotab)
 
-            # self.exception_table = bytearray(self.code_object.co_exceptiontable)
+            self.function_name = obj.co_name
+            self.positional_only_argument_count = obj.co_posonlyargcount
+            self.argument_names = list(obj.co_varnames[:self.argument_count])
+
+            # self.exception_table = bytearray(obj.co_exceptiontable)
 
     else:
         raise RuntimeError(sys.version_info)

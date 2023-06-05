@@ -50,6 +50,7 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
                 elif instr.has_constant():
                     instr.arg_value = function.code_object.co_consts[arg]
                 elif instr.has_cell_variable():
+                    # todo: py-3.10 could need special handling here!
                     instr.arg_value = function.code_object.co_cellvars[arg]
                 else:
                     instr.arg = arg
