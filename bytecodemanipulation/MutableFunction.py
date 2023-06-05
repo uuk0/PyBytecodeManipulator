@@ -66,8 +66,10 @@ class MutableFunction:
     def create(cls, target):
         if isinstance(target, staticmethod):
             return cls(target.__func__)
+
         elif isinstance(target, classmethod):
             return cls(target.__func__)
+
         return cls(target)
 
     def __init__(self, target: types.FunctionType | types.MethodType):
@@ -90,8 +92,6 @@ class MutableFunction:
 
         self._instruction_entry_point: Instruction = None
 
-        # todo: fill out when decoding
-        # todo: encode when encoding
         self.exception_table = ExceptionTable(self)
 
         self._load_from_code_object(self.code_object)
@@ -270,12 +270,83 @@ class MutableFunction:
         return bytes(items)
 
     def calculate_max_stack_size(self) -> int:
+        normal_max = self._calculate_max_stack_size_normal_path()
+
+        if len(self.exception_table.table) == 0:
+            return normal_max
+
         def reset(instr: Instruction):
             instr._max_stack_size_at = -1
 
         self.walk_instructions(reset)
 
         visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+        visiting_2 = set()
+        visited = set()
+
+        for instr in visiting:
+            instr._max_stack_size_at = 0
+
+        while visiting or visiting_2:
+            if not visiting:
+                visiting |= visiting_2
+                visiting_2.clear()
+
+            instr = visiting.pop()
+
+            if instr in visited or instr is None:
+                continue
+
+            visited.add(instr)
+
+            stack_size = 0
+            previous = instr.previous_instructions
+            needs_revisit = False
+
+            for pinstr in previous:
+                if pinstr._max_stack_size_at != -1:
+                    psize = pinstr._max_stack_size_at
+                    psize += pinstr.special_stack_affect_when_followed_by(instr)
+                    pushed, popped, _ = pinstr.get_stack_affect()
+                    psize += pushed
+                    psize -= popped
+
+                    stack_size = max(stack_size, psize)
+                else:
+                    needs_revisit = True
+
+            if instr in self.exception_table.table:
+                stack_size = max(stack_size, normal_max)
+
+            instr._max_stack_size_at = stack_size
+
+            if needs_revisit:
+                visited.remove(instr)
+                visiting_2.add(instr)
+
+            if not instr.has_stop_flow() and not instr.has_unconditional_jump():
+                visiting.add(instr.next_instruction)
+
+            if instr.has_jump():
+                visiting.add(instr.arg_value)
+
+        stack_size = 0
+
+        def visit(instr: Instruction):
+            nonlocal stack_size
+            stack_size = max(stack_size, instr._max_stack_size_at)
+
+        self.walk_instructions(visit)
+
+        return stack_size
+
+    def _calculate_max_stack_size_normal_path(self) -> int:
+        def reset(instr: Instruction):
+            instr._max_stack_size_at = -1
+
+        self.walk_instructions(reset)
+
+        visiting = {self.get_instruction_entry_point()}
         visiting_2 = set()
         visited = set()
 
