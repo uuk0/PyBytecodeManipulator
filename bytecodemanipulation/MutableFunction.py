@@ -1,5 +1,3 @@
-import copy
-import dis
 import sys
 import types
 import typing
@@ -10,14 +8,12 @@ from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import Extended
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import InstructionAssembler
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import JumpArgAssembler
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import LinearStreamGenerator
-from bytecodemanipulation.opcodes.CacheEntryCreation import CacheInstructionCreator
 from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.ExceptionTable import ExceptionTable
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractOpcodeTransformerStage, InstructionDecoder
 import bytecodemanipulation.data_loader
 from bytecodemanipulation.opcodes.OpcodeReplacer import IntermediateToRawOpcodeTransform
-from bytecodemanipulation.opcodes.OpcodeReplacer import PrecallInserterTransform
 from bytecodemanipulation.opcodes.OpcodeReplacer import RawToIntermediateOpcodeTransform
 
 
@@ -31,11 +27,28 @@ class MutableFunction:
         RawToIntermediateOpcodeTransform,
     ]
 
+    if sys.version_info[1] == 10:
+        from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import ExceptionInstructionDecoder
+
+        INSTRUCTION_DECODING_PIPE += [
+            ExceptionInstructionDecoder,
+        ]
+
     INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
         IntermediateToRawOpcodeTransform,
     ]
 
-    if sys.version_info[1] == 11:
+    if sys.version_info[1] == 10:
+        from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import ExceptionInstructionEncoder
+
+        INSTRUCTION_ENCODING_PIPE += [
+            ExceptionInstructionEncoder,
+        ]
+
+    elif sys.version_info[1] == 11:
+        from bytecodemanipulation.opcodes.CacheEntryCreation import CacheInstructionCreator
+        from bytecodemanipulation.opcodes.OpcodeReplacer import PrecallInserterTransform
+
         INSTRUCTION_ENCODING_PIPE += [
             CacheInstructionCreator,
             PrecallInserterTransform,

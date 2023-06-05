@@ -779,3 +779,16 @@ class Instruction:
             instructions[0].insert_after(instructions[1:])
 
         return self
+
+    def get_following_instructions(self) -> typing.Iterable["Instruction"]:
+        if self.has_unconditional_jump():
+            yield self.arg_value
+            return
+
+        if self.has_stop_flow():
+            return
+
+        yield self.next_instruction
+
+        if self.has_jump():
+            yield self.arg_value

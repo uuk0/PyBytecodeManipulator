@@ -311,6 +311,9 @@ class InstructionAssembler(AbstractOpcodeTransformerStage):
 
             arg = instruction.get_arg()
 
+            if instruction.opcode == Opcodes.SETUP_FINALLY:
+                arg += 1
+
             if arg > 255:
                 extend = arg // 256
                 arg %= 256

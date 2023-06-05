@@ -59,6 +59,25 @@ class TestMutableFunction(TestCase):
             return "test"
 
         mut = MutableFunction(target)
+        mut.decode_instructions()
         mut.reassign_to_function()
 
         self.assertEqual(target(), "test")
+
+    def test_exception_tables(self):
+        def target():
+            try:
+                raise ValueError
+            except ValueError:
+                return 0
+            return 1
+
+        self.assertEqual(target(), 0)
+
+        mut = MutableFunction(target)
+        mut.decode_instructions()
+        self.assertEqual(len(mut.exception_table.table), 1)
+        mut.reassign_to_function()
+
+        self.assertEqual(target(), 0)
+
