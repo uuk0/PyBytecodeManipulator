@@ -20,7 +20,6 @@ from bytecodemanipulation.optimiser_util import inline_constant_method_invokes
 from bytecodemanipulation.optimiser_util import inline_static_attribute_access
 from bytecodemanipulation.optimiser_util import remove_branch_on_constant
 from bytecodemanipulation.optimiser_util import remove_local_var_assign_without_use
-from bytecodemanipulation.optimiser_util import remove_nops
 from bytecodemanipulation.Specialization import SpecializationContainer
 from bytecodemanipulation.util import _is_parent_of
 

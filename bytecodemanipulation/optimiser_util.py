@@ -209,6 +209,7 @@ def inline_constant_binary_ops(mutable: MutableFunction, builder) -> bool:
     dirty = False
 
     def visit(instruction: Instruction):
+        print(instruction)
         nonlocal dirty
 
         if (
