@@ -61,7 +61,6 @@ class MutableFunction:
         self.target = target
         self.code_object: types.CodeType = target.__code__
 
-        self.__instructions: typing.Optional[typing.List[Instruction]] = None
         self._raw_code: bytearray = None
 
         self.argument_names: typing.List[str] = None
@@ -131,8 +130,6 @@ class MutableFunction:
             self.argument_names = list(self.code_object.co_varnames[:self.argument_count])
 
             # self.exception_table = bytearray(self.code_object.co_exceptiontable)
-
-            self.__instructions: typing.Optional[typing.List[Instruction]] = None
 
     else:
         raise RuntimeError(sys.version_info)
@@ -442,8 +439,7 @@ class MutableFunction:
         InstructionAssembler.apply(self, builder)
 
     def get_raw_code(self):
-        if self.__instructions is not None:
-            self.create_filled_builder()
+        self.create_filled_builder()
 
         return self._raw_code
 
@@ -453,8 +449,7 @@ class MutableFunction:
     def set_raw_code(self, raw_code: bytearray):
         self._raw_code = raw_code
 
-        if self.__instructions is not None:
-            self.decode_instructions()
+        self.decode_instructions()
 
     raw_code = property(get_raw_code, set_raw_code)
 
