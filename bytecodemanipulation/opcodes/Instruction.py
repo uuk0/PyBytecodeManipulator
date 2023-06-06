@@ -200,7 +200,7 @@ class Instruction:
     next_instruction = property(get_next_instruction, set_next_instruction)
 
     def __repr__(self):
-        assert isinstance(self.offset, int)
+        assert isinstance(self.offset, int) or self.offset is None
         assert isinstance(self.opcode, int)
         assert isinstance(self.arg, int) or self.arg is None
         if id(self) == id(self.arg_value):
@@ -209,7 +209,7 @@ class Instruction:
         return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value.repr_safe() if self.arg_value is not None and isinstance(self.arg_value, Instruction) else self.arg_value}, has_next={self.next_instruction is not None})"
 
     def repr_safe(self):
-        return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value=..., has_next={self.next_instruction is not None})"
+        return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={'... (' + str(type(self.arg_value)) + ')' if self.arg_value is not None else None}, has_next={self.next_instruction is not None})"
 
     def __eq__(self, other):
         if not isinstance(other, Instruction):
@@ -357,7 +357,7 @@ class Instruction:
             or self.has_jump_forward()
             or self.has_jump_backward()
         ) and self.arg_value is not None:
-            assert isinstance(self.arg_value, Instruction)
+            assert isinstance(self.arg_value, Instruction), self.repr_safe()
             self.change_arg_value(self.arg_value.optimise_tree(visited))
 
         return self

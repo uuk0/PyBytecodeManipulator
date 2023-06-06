@@ -3,6 +3,7 @@ import string
 import types
 import typing
 
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -50,7 +51,7 @@ GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
 def apply_inline_assemblies(
-    target: MutableFunction | typing.Callable, builder: CodeObjectBuilder = None, store_at_target: bool = None
+    target: MutableFunction | typing.Callable, store_at_target: bool = None
 ):
     """
     Processes all assembly() calls and label() calls in 'target'
@@ -60,17 +61,16 @@ def apply_inline_assemblies(
         if store_at_target is None:
             store_at_target = True
 
-    builder = builder or target.create_filled_builder()
-
-    labels = set()
+    labels: typing.Set[IIdentifierAccessor] = set()
+    label_targets: typing.Dict[str, Instruction] = {}
     insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
 
-    for instr in builder.temporary_instructions[:]:
+    def visit(instr: Instruction):
         if instr.opcode == Opcodes.LOAD_GLOBAL:
             try:
                 value = target.target.__globals__.get(instr.arg_value)
             except KeyError:
-                continue
+                return
 
             if value == assembly_targets.assembly:
                 invoke = next(instr.trace_stack_position_use(0))
@@ -116,12 +116,14 @@ def apply_inline_assemblies(
                     arg.opcode == Opcodes.LOAD_CONST
                 ), "only constant label names are allowed!"
 
-                labels.add(StaticIdentifier(arg.arg_value))
+                labels.add(StaticIdentifier(typing.cast(str, arg.arg_value)))
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
                 invoke.insert_after(Instruction(Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
-                # print(type(arg))
                 arg.change_opcode(Opcodes.NOP)
+                label_targets[typing.cast(str, invoke.arg_value)] = invoke.next_instruction
+
+    target.walk_instructions(visit)
 
     if not insertion_points:
         raise RuntimeError("no target found!")
@@ -144,13 +146,12 @@ def apply_inline_assemblies(
     ]
 
     for asm in assemblies:
-        labels.update(asm.collect_label_info(scope))
+        asm_labels = asm.collect_label_info(scope)
+        labels.update({StaticIdentifier(e) for e in asm_labels})
 
     scope.labels |= labels
 
     max_stack_effects = []
-
-    label_targets: typing.Dict[str, Instruction] = {}
 
     # for asm in assemblies:
     #     asm.fill_scope_complete(scope)
@@ -158,87 +159,19 @@ def apply_inline_assemblies(
     scope.scope_path.clear()
 
     for (_, instr), asm in zip(insertion_points, assemblies):
-        bytecode = asm.create_bytecode(target, scope)
+        _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target)
 
-        for i, ins in enumerate(bytecode[:-1]):
-            ins.next_instruction = bytecode[i + 1]
-
-        # print("---- start ----")
-        # for e in bytecode:
-        #     print(e)
-        # print("---- end ----")
-
-        if bytecode:
-            try:
-                stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
-                    _visit_for_stack_effect
-                )
-            except RuntimeError:
-                stack_effect = 0
-                max_stack_effect = 0
-        else:
-            stack_effect = max_stack_effect = 0
-
-        if (
-            stack_effect != 0
-            and bytecode
-            and not (
-                bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()
-            )
-        ):
-            print(asm)
-
-            total = 0
-
-            for e in enumerate(bytecode):
-                add, subtract, _ = e[1].get_stack_affect()
-                total += add - subtract
-                print(*e, total)
-
-            print(stack_effect)
-
-            raise RuntimeError(
-                f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"
-            )
-
-        max_stack_effects.append(max_stack_effect)
-
-        if bytecode:
-            for i, ins in enumerate(bytecode[:-1]):
-                if not ins.has_stop_flow() and not ins.has_unconditional_jump():
-                    ins.next_instruction = bytecode[i + 1]
-
-            bytecode[-1].next_instruction = following_instr = instr.next_instruction
-
-            # print("inserting AFTER", instr)
-            instr.insert_after(bytecode)
-        # else:
-        #     print("empty bytecode block")
-        #     print(asm)
-
-        for i, ins in enumerate(bytecode):
-            if ins.opcode == Opcodes.BYTECODE_LABEL:
-                label_targets[ins.arg_value] = ins.next_instruction
-
-                if not isinstance(ins, Instruction):
-                    print("error: ", ins)
-
-                ins.change_opcode(Opcodes.NOP)
-                ins.next_instruction = (
-                    bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
-                )
-
-    for i, ins in enumerate(builder.temporary_instructions):
-        if ins.opcode == Opcodes.BYTECODE_LABEL:
-            label_targets[ins.arg_value] = ins.next_instruction
-            ins.change_opcode(Opcodes.NOP)
-            ins.next_instruction = builder.temporary_instructions[i + 1]
+    target.walk_instructions(visit)
 
     pending: typing.List[Instruction] = []
 
-    def resolve_special_code(ins: Instruction, *_):
+    def resolve_special_code(ins: Instruction):
         # print(ins)
         if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
+            if ins.arg_value.name not in label_targets:
+                print(label_targets)
+                raise NameError(f"Label '{ins.arg_value.name}' not found!")
+
             ins.change_arg_value(label_targets[ins.arg_value.name])
             pending.append(ins.arg_value)
 
@@ -256,17 +189,74 @@ def apply_inline_assemblies(
 
     target.walk_instructions(resolve_special_code)
 
-    while pending:
-        pending.pop().apply_value_visitor(resolve_special_code)
-
-    # target.instructions[0].apply_value_visitor(lambda instr, *_: print(instr))
-
-    # target.assemble_instructions_from_tree(target.instructions[0])
-
     if store_at_target:
         target.reassign_to_function()
 
     return target
+
+
+def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction):
+    bytecode = asm.create_bytecode(target, scope)
+
+    if bytecode:
+        # link the instructions to each other
+        for i, ins in enumerate(bytecode[:-1]):
+            ins.next_instruction = bytecode[i + 1]
+
+        try:
+            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
+                _visit_for_stack_effect
+            )
+        except RuntimeError:
+            stack_effect = 0
+            max_stack_effect = 0
+
+    else:
+        max_stack_effects.append(0)
+        return
+
+    if (
+        stack_effect != 0
+        and not (
+            bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()
+        )
+    ):
+        print(asm)
+
+        total = 0
+
+        for e in enumerate(bytecode):
+            add, subtract, _ = e[1].get_stack_affect()
+            total += add - subtract
+            print(*e, total)
+
+        print(stack_effect)
+
+        raise RuntimeError(
+            f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"
+        )
+
+    max_stack_effects.append(max_stack_effect)
+
+    for i, ins in enumerate(bytecode[:-1]):
+        if not ins.has_stop_flow() and not ins.has_unconditional_jump():
+            ins.next_instruction = bytecode[i + 1]
+
+    bytecode[-1].next_instruction = following_instr = insertion_point.next_instruction
+
+    insertion_point.insert_after(bytecode)
+
+    for i, ins in enumerate(bytecode):
+        if ins.opcode == Opcodes.BYTECODE_LABEL:
+            label_targets[ins.arg_value] = ins.next_instruction
+
+            if not isinstance(ins, Instruction):
+                print("error: ", ins)
+
+            ins.change_opcode(Opcodes.NOP)
+            ins.next_instruction = (
+                bytecode[i + 1] if i < len(bytecode) - 1 else following_instr
+            )
 
 
 def execute_module_in_instance(
@@ -314,10 +304,12 @@ def execute_module_in_instance(
         bytecode.append(Instruction(Opcodes.NOP))
 
     bytecode[-1].next_instruction = target.instruction_entry_point
+    target.instruction_entry_point = bytecode[0]
+    target.prepare_previous_instructions()
 
     target.walk_instructions(resolve_jump_to_label)
 
-    for instr in bytecode:
+    def visit(instr):
         if instr.opcode == Opcodes.STORE_FAST:
             load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
             store = Instruction(Opcodes.STORE_ATTR, instr.arg_value)
@@ -339,13 +331,9 @@ def execute_module_in_instance(
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])
 
+    target.walk_instructions_stable(visit)
+
     target.function_name = module.__name__
-
-    target.instruction_entry_point = bytecode[0]
-    target.prepare_previous_instructions()
-
     target.reassign_to_function()
-
-    # dis.dis(target)
 
     create_function(module)

@@ -410,7 +410,7 @@ class MutableFunction:
         while visiting:
             instr = visiting.pop()
 
-            if instr in visited or instr is None:
+            if instr in visited or instr is None or not isinstance(instr, Instruction):
                 continue
 
             visited.add(instr)
@@ -422,6 +422,26 @@ class MutableFunction:
 
             if instr.has_jump():
                 visiting.add(instr.arg_value)
+
+    def walk_instructions_stable(self, callback: typing.Callable[[Instruction], None]):
+        visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+        visited = set()
+
+        while visiting:
+            instr = visiting.pop()
+
+            if instr in visited or instr is None or not isinstance(instr, Instruction):
+                continue
+
+            visited.add(instr)
+
+            if not instr.has_stop_flow() and not instr.has_unconditional_jump():
+                visiting.add(instr.next_instruction)
+
+            if instr.has_jump():
+                visiting.add(instr.arg_value)
+
+            callback(instr)
 
     def reassign_to_function(self):
         self.prepare_previous_instructions()

@@ -338,7 +338,7 @@ class StaticIdentifier(IIdentifierAccessor):
         return hash(self.name)
 
     def __repr__(self):
-        return repr(self.name)
+        return "!" + repr(self.name)
 
     def __call__(self, scope: ParsingScope):
         return self.name
