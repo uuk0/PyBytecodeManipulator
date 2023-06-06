@@ -743,6 +743,28 @@ class Instruction:
 
         return self
 
+    def insert_after_arg(self, *instructions: "Instruction" | typing.List["Instruction"]):
+        if not self.has_jump():
+            raise ValueError("expected <jump>")
+
+        if not instructions:
+            return self
+
+        if isinstance(instructions[0], (list, tuple)):
+            if len(instructions) > 1:
+                raise ValueError
+
+            instructions = instructions[0]
+
+        if len(instructions) == 0:
+            return self
+
+        instructions[-1].next_instruction = self.arg_value
+        self.arg_value = instructions[0]
+
+        self.arg_value.insert_after(instructions[1:])
+        return self
+
     def get_following_instructions(self) -> typing.Iterable["Instruction"]:
         if self.has_unconditional_jump():
             yield self.arg_value

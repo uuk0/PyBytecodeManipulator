@@ -92,7 +92,7 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 
 class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
     @classmethod
-    def apply(cls, function: "MutableFunction", metadata: typing.Any) -> typing.Any:
+    def apply(cls, function: "MutableFunction", metadata: typing.Any):
         visiting = {function.get_instruction_entry_point()} | set(function.exception_table.table.keys())
         visited = set()
 
@@ -104,11 +104,14 @@ class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
 
             visited.add(instr)
 
-            cls.visit(
-                function,
-                metadata,
-                instr,
-            )
+            try:
+                cls.visit(
+                    function,
+                    metadata,
+                    instr,
+                )
+            except StopIteration:
+                return
 
             if not instr.has_stop_flow() and not instr.has_unconditional_jump():
                 visiting.add(instr.next_instruction)

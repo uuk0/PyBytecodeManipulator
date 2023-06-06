@@ -55,7 +55,7 @@ class CallAssembly(AbstractCallAssembly):
 
             bytecode += [
                 Instruction(
-                    function, -1, "CALL_FUNCTION", arg=len(self.args) + extra_args
+                    Opcodes.CALL_FUNCTION, arg=len(self.args) + extra_args
                 ),
             ]
 

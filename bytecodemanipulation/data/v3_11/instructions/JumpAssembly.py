@@ -26,8 +26,6 @@ class JumpAssembly(AbstractJumpAssembly):
         if self.condition is None:
             return [
                 Instruction(
-                    function,
-                    -1,
                     Opcodes.JUMP_ABSOLUTE,
                     JumpToLabel(self.label_name_token.text),
                 )
@@ -35,8 +33,6 @@ class JumpAssembly(AbstractJumpAssembly):
 
         return self.condition.emit_bytecodes(function, scope) + [
             Instruction(
-                function,
-                -1,
                 Opcodes.POP_JUMP_IF_TRUE,
                 JumpToLabel(self.label_name_token.text),
             )

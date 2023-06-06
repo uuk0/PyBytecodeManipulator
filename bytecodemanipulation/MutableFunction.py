@@ -542,11 +542,6 @@ class MutableFunction:
 
     instruction_entry_point = property(get_instruction_entry_point, set_instruction_entry_point)
 
-    def update_instruction_offsets(self, instructions):
-        # Update instruction positions
-        for i, instruction in enumerate(instructions):
-            instruction.offset = i
-
     def assemble_fast(self, instructions: typing.List[Instruction]):
         """
         Assembles the instruction list in FAST mode

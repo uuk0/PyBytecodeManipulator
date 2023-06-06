@@ -63,14 +63,14 @@ def compare_optimized_results(
         mutable.dump_info(local + "/target.json")
         mutable.dump_info(local + "/ideal.json")
 
-        print("target")
+        print(f"target ({target.__name__})")
         if hasattr(target, "_debug_wrapper"):
             for instr in target._debug_wrapper.instructions:
                 print(instr)
         else:
             dis.dis(target)
 
-        print("compare")
+        print(f"compare ({ideal.__name__})")
         dis.dis(ideal)
 
     case.assertEqual(
