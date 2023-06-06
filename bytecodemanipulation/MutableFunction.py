@@ -403,8 +403,25 @@ class MutableFunction:
 
         return stack_size
 
-    def walk_instructions(self, callback: typing.Callable[[Instruction], None]):
-        visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+    def walk_instructions(self, callback: typing.Callable[[Instruction], None], include_exception_entries=True):
+        """
+        Walks the graph of instructions, visiting all "reachable" instructions
+        in the function
+
+        WARNING: mutating the graph in the callback MIGHT result in bad behaviour,
+        depending on what the 'callback' does exactly, as 'callback' might
+        be invoked on newly inserted instructions.
+
+        :param callback: the callback to use, invoked with each reachable instruction
+            (might raise StopIteration to stop further callbacks from happening)
+        :param include_exception_entries: if True, the entries defined in the exception table
+            will be also used
+        """
+        visiting = {self.get_instruction_entry_point()}
+
+        if include_exception_entries:
+            visiting |= set(self.exception_table.table.keys())
+        
         visited = set()
 
         while visiting:
@@ -415,7 +432,10 @@ class MutableFunction:
 
             visited.add(instr)
 
-            callback(instr)
+            try:
+                callback(instr)
+            except StopIteration:
+                return
 
             if not instr.has_stop_flow() and not instr.has_unconditional_jump():
                 visiting.add(instr.next_instruction)
@@ -423,8 +443,21 @@ class MutableFunction:
             if instr.has_jump():
                 visiting.add(instr.arg_value)
 
-    def walk_instructions_stable(self, callback: typing.Callable[[Instruction], None]):
-        visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+    def walk_instructions_stable(self, callback: typing.Callable[[Instruction], None], include_exception_entries=True):
+        """
+        "Stable" variant of walk_instructions()
+        Allows <param>.insert_after() to be called without recursion happening
+
+        :param callback: the callback to call
+            (might raise StopIteration to stop further callbacks from happening)
+        :param include_exception_entries: if True, the entries defined in the exception table
+            will be also used
+        """
+        visiting = {self.get_instruction_entry_point()}
+
+        if include_exception_entries:
+            visiting |= set(self.exception_table.table.keys())
+
         visited = set()
 
         while visiting:
@@ -441,7 +474,10 @@ class MutableFunction:
             if instr.has_jump():
                 visiting.add(instr.arg_value)
 
-            callback(instr)
+            try:
+                callback(instr)
+            except StopIteration:
+                return
 
     def reassign_to_function(self):
         self.prepare_previous_instructions()
@@ -449,9 +485,10 @@ class MutableFunction:
         self.target.__code__ = self.create_code_obj()
 
     def decode_instructions(self):
-        metadata = None
+        metadata = []
+
         for stage in self.INSTRUCTION_DECODING_PIPE:
-            metadata = stage.apply(self, metadata)
+            stage.apply(self, metadata)
 
         self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
         self.prepare_previous_instructions()
@@ -485,10 +522,10 @@ class MutableFunction:
 
         self.instruction_entry_point = self.instruction_entry_point.optimise_tree()
 
-        meta = None
+        meta = []
         for stage in self.INSTRUCTION_DECODING_PIPE:
             if stage != InstructionDecoder:
-                meta = stage.apply(self, meta)
+                stage.apply(self, meta)
 
         self.prepare_previous_instructions()
 

@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 
 class ExceptionInstructionDecoder(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+    def visit(cls, function: "MutableFunction", metadata: typing.List["Instruction"], target: "Instruction") -> typing.Any:
         if target.opcode == Opcodes.SETUP_FINALLY:
             handle = target.arg_value
             target.change_opcode(Opcodes.NOP)

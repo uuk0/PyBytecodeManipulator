@@ -18,7 +18,7 @@ class AbstractOpcodeTransformerStage(ABC):
 
 class InstructionDecoder(AbstractOpcodeTransformerStage):
     @classmethod
-    def apply(cls, function: "MutableFunction", metadata: typing.Any) -> typing.Any:
+    def apply(cls, function: "MutableFunction", metadata: list) -> typing.Any:
         line = function.code_object.co_firstlineno
         lnotab = list(function.code_object.co_lnotab)
 
@@ -87,6 +87,7 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
                 instr.next_instruction = instructions[i+1]
 
         function.instruction_entry_point = instructions[0]
+        metadata[:] = instructions
 
 
 class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
