@@ -28,7 +28,7 @@ def label(name: str):
     raise RuntimeError("Function must be annotated first!")
 
 
-def jump(label_name: str):
+def jump(label_name: str, cond: typing.Any = None):
     raise RuntimeError("Function must be annotated first!")
 
 

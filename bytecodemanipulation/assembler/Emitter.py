@@ -2,8 +2,7 @@ import string
 import types
 import typing
 
-from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
-from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Instruction import Instruction
@@ -11,8 +10,7 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import (
     Parser as AssemblyParser,
 )
-from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.AbstractBase import JumpToLabel, ParsingScope
 from bytecodemanipulation.assembler import target as assembly_targets
 
 
@@ -51,7 +49,7 @@ def apply_inline_assemblies(
     target: MutableFunction | typing.Callable, store_at_target: bool = None
 ):
     """
-    Processes all assembly() calls and label() calls in 'target'
+    Processes all assembly() calls, label() calls and jump() calls in 'target'
     """
     if not isinstance(target, MutableFunction):
         target = MutableFunction(target)
@@ -72,14 +70,14 @@ def apply_inline_assemblies(
             if value == assembly_targets.assembly:
                 invoke = next(instr.trace_stack_position_use(0))
                 arg = next(invoke.trace_stack_position(0))
-                assert (
-                    arg.opcode == Opcodes.LOAD_CONST
-                ), "only constant assembly code is allowed!"
+
+                if arg.opcode != Opcodes.LOAD_CONST:
+                    raise SyntaxError("<assembly> must be constant!")
 
                 if invoke.next_instruction.opcode == Opcodes.POP_TOP:
-                    insertion_points.append((arg.arg_value, invoke.next_instruction))
+                    insertion_points.append((typing.cast(str, arg.arg_value), invoke.next_instruction))
                 else:
-                    insertion_points.append((arg.arg_value, invoke))
+                    insertion_points.append((typing.cast(str, arg.arg_value), invoke))
 
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
@@ -87,31 +85,45 @@ def apply_inline_assemblies(
 
             elif value == assembly_targets.jump:
                 invoke = next(instr.trace_stack_position_use(0))
-                arg = next(invoke.trace_stack_position(0))
-                assert (
-                    arg.opcode == Opcodes.LOAD_CONST
-                ), "only constant assembly code is allowed!"
-                assert all(
-                    e in string.ascii_letters + string.digits for e in arg.arg_value
-                ), "only characters and digits are allowed for label names!"
+
+                if invoke.arg not in (1, 2):
+                    raise SyntaxError(f"expected one to two args, not {invoke.arg} for <jump>")
+
+                label_name = next(invoke.trace_stack_position(0))
+
+                if label_name.opcode != Opcodes.LOAD_CONST:
+                    raise SyntaxError(f"expected <constant>, got {label_name}")
+
+                condition = None
+                if invoke.arg == 2:
+                    condition = label_name
+                    label_name = next(invoke.trace_stack_position(0))
+
+                    if label_name.opcode != Opcodes.LOAD_CONST:
+                        raise SyntaxError(f"expected <constant>, got {label_name}")
+
+                    raise NotImplementedError("<condition> on jump() target")
+
+                if not typing.cast(str, label_name.arg_value).isalnum():
+                    raise SyntaxError("label name only characters and digits are allowed for label names!")
 
                 if invoke.next_instruction.opcode == Opcodes.POP_TOP:
                     insertion_points.append(
-                        (f"JUMP {arg.arg_value}", invoke.next_instruction)
+                        (f"JUMP {label_name.arg_value}", invoke.next_instruction)
                     )
                 else:
-                    insertion_points.append((f"JUMP {arg.arg_value}", invoke))
+                    raise SyntaxError(invoke.next_instruction)
 
                 instr.change_opcode(Opcodes.NOP)
-                arg.change_opcode(Opcodes.NOP)
+                label_name.change_opcode(Opcodes.NOP)
                 invoke.change_opcode(Opcodes.LOAD_CONST, None)
 
             elif value == assembly_targets.label:
                 invoke = next(instr.trace_stack_position_use(0))
                 arg = next(invoke.trace_stack_position(0))
-                assert (
-                    arg.opcode == Opcodes.LOAD_CONST
-                ), "only constant label names are allowed!"
+
+                if arg.opcode != Opcodes.LOAD_CONST:
+                    raise SyntaxError("<label name> must be constant")
 
                 labels.add(StaticIdentifier(typing.cast(str, arg.arg_value)))
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
