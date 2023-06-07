@@ -1,6 +1,7 @@
 import dis
 import json
 import os
+import sys
 import unittest
 
 import typing
@@ -68,10 +69,17 @@ def compare_optimized_results(
             for instr in target._debug_wrapper.instructions:
                 print(instr)
         else:
-            dis.dis(target)
+            if sys.version_info[1] <= 10:
+                dis.dis(target)
+            else:
+                dis.dis(target, show_caches=True)
 
         print(f"compare ({ideal.__name__})")
-        dis.dis(ideal)
+
+        if sys.version_info[1] <= 10:
+            dis.dis(ideal)
+        else:
+            dis.dis(ideal, show_caches=True)
 
     case.assertEqual(
         len(builder_1.temporary_instructions),

@@ -96,7 +96,7 @@ class IntermediateToRawOpcodeTransform(AbstractInstructionWalkerTransform):
 class PrecallInserterTransform(AbstractInstructionWalkerTransform):
     @classmethod
     def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
-        if target.opcode == Opcodes.CALL_FUNCTION and not any(e.opcode == Opcodes.PRECALL for e in target.previous_instructions):
+        if target.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL) and not any(e.opcode == Opcodes.PRECALL for e in target.previous_instructions):
             call = target.copy()
             target.insert_after(call)
             target.change_opcode(Opcodes.PRECALL)

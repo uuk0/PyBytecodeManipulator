@@ -146,4 +146,5 @@ We use the python formatting library "black" on our code
 - write more library-specific optimisations
 - write generating bytecode system for emulator, constructing a function pointing to the
   .json file for exception printing, and optimizing wherever possible
+- add optimisation: JUMP on condition for some operators (e.g. NOT)
 

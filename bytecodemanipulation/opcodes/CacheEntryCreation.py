@@ -18,6 +18,11 @@ if sys.version_info[1] >= 11:
     for opname, info in dis._cache_format.items():
         CACHE_COUNT[getattr(Opcodes, opname)] = info["counter"]
 
+    CACHE_COUNT.update({
+        Opcodes.PRECALL: 1,
+        Opcodes.CALL: 4,
+    })
+
 
 class CacheInstructionCreator(AbstractInstructionWalkerTransform):
     @classmethod
@@ -25,9 +30,9 @@ class CacheInstructionCreator(AbstractInstructionWalkerTransform):
         if target.opcode in CACHE_COUNT:
             from bytecodemanipulation.opcodes.Instruction import Instruction
 
-            target.insert_after([
-                Instruction(Opcodes.CACHE)
-                for _ in range(CACHE_COUNT[target.opcode])
-            ])
+            # target.insert_after([
+            #     Instruction(Opcodes.CACHE)
+            #     for _ in range(CACHE_COUNT[target.opcode])
+            # ])
 
 

@@ -983,7 +983,7 @@ PYTHON {
         def target(t):
             assembly(
                 """
-RETURN $t.("test_dynamic_attribute_access")
+RETURN $t.("attr")
 """
             )
 
@@ -991,7 +991,14 @@ RETURN $t.("test_dynamic_attribute_access")
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        self.assertEqual(target(self), self.test_dynamic_attribute_access)
+        class H:
+            attr = {}
+
+        x = H()
+
+        dis.dis(target)
+
+        self.assertEqual(target(x), x.attr)
 
 
 class TestMacro(TestCase):
