@@ -1,4 +1,3 @@
-import dis
 import string
 import types
 import typing
@@ -7,7 +6,6 @@ from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction
-from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 from bytecodemanipulation.assembler.Parser import (
@@ -16,7 +14,6 @@ from bytecodemanipulation.assembler.Parser import (
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler import target as assembly_targets
-from bytecodemanipulation.util import LambdaInstructionWalker
 
 
 def _visit_for_stack_effect(

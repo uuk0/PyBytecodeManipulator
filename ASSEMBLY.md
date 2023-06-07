@@ -79,7 +79,7 @@ for cross-version support.
 * POP \[\<count = 1>]: Pops 'count' elements from the stack and discards them
 * RETURN \[\<expression>]: Returns the value from TOS or from 'expression'
 * YIELD \[*] \[\<expression>] \['->' \<target>]: Yields the value from TOS or from 'expression'; Writes the result into 'target', default is discard; * means 'yield from'
-* RAW \<opcode> \[\<arg>]
+* RAW \<opcode or opname> \[\<arg as integer>]: Emits the given opcode with the given arg
 
 ## Python opcodes not having a corresponding assembly instruction
 
@@ -96,6 +96,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - $\<local name>: local variable
   - §\<name>: access a variable from an outer scope
   - &\<name>: access to a macro parameter
+  - ~\<name>: static access to a builtin or a module
   - %\[\<n>]: top of stack, or the n-th item from TOS
   - \<access>\[\<index or expression>]: value by \[] operator
   - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
@@ -104,7 +105,8 @@ Expressions can be added as certain parameters to instructions to use instead of
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer or floating-point number
 - \<expression>.\<name>: access an attribute of the expression
-- \<expression>.(\<expression>): accesses the attribute by an dynamic name
+- \<expression>.(\<expression>): accesses the attribute by a dynamic name
+- \<expression>.!\<name>: static access to an attribute, requires lhs to be statically arrival
 
 
 # TODOs
@@ -149,10 +151,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - ..._TYPEDEF_STRICT for enforcing types
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
-
-- create abstract classes for the assembly instructions, and force implement them in the versions
-  - parsing itself should be in the abstract base, only code emitting in the implementation
-- refactor assembly related classes into more files, it is really clustered in only a handful of files
 
 ## PyASM
 
