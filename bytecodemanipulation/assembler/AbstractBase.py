@@ -328,6 +328,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
 class StaticIdentifier(IIdentifierAccessor):
     def __init__(self, name: str, token: AbstractToken = None):
         self.name = name
+        self.token = token
 
     def __eq__(self, other):
         return (

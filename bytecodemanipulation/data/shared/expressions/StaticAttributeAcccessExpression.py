@@ -44,7 +44,7 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         return self.root.emit_bytecodes(function, scope) + [
             Instruction.create_with_token(
-                self.name(scope),
+                tuple(self.name.get_tokens())[0],
                 Opcodes.STATIC_ATTRIBUTE_ACCESS,
                 self.name(scope),
             )

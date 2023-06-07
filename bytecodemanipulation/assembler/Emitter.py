@@ -182,9 +182,9 @@ def apply_inline_assemblies(
                 raise RuntimeError("expected 'constant' for constant attribute access!")
 
             obj = source.arg_value
-            source.change_opcode(Opcodes.NOP, update_next=False)
+            source.change_opcode(Opcodes.NOP)
             ins.change_opcode(
-                Opcodes.LOAD_CONST, getattr(obj, ins.arg_value), update_next=False
+                Opcodes.LOAD_CONST, getattr(obj, ins.arg_value)
             )
 
     target.walk_instructions(resolve_special_code)

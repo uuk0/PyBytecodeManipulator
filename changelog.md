@@ -4,6 +4,7 @@
 - exception handles are now stored in their own structure
 - added andeval operator
 - refactored Instruction class, removing the 'owner' function, and removing the 'offset' from the constructor
+- fixed access to global statically and attributes statically
 
 # Version 0.3.1
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like

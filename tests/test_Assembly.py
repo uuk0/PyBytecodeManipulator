@@ -1000,6 +1000,33 @@ RETURN $t.("attr")
 
         self.assertEqual(target(x), x.attr)
 
+    def test_static_attribute_access(self):
+        class H:
+            attr = {}
+
+        global x
+        x = H()
+
+        def target():
+            assembly(
+                """
+RETURN @!x.!attr
+"""
+            )
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        dis.dis(target)
+
+        value = x.attr
+        x.attr = None
+        self.assertEqual(target(), value)
+
+        x = None
+        self.assertEqual(target(), value)
+
 
 class TestMacro(TestCase):
     def test_basic(self):

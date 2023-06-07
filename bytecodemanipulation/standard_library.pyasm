@@ -35,7 +35,7 @@ NAMESPACE std
     {
         MACRO ASSEMBLY file_walker(directory, file VARIABLE, code CODE_BLOCK)
         {
-            CALL ~os.listdir(&directory) -> $MACRO_files
+            CALL ~os.!listdir(&directory) -> $MACRO_files
 
             LOAD 0 -> $MACRO_counter
             CALL ~len($MACRO_files) -> $MACRO_file_count
@@ -45,7 +45,7 @@ NAMESPACE std
                 LOAD $MACRO_files[$MACRO_counter] -> &file
                 OP $MACRO_counter + 1 -> $MACRO_counter
 
-                IF ~os.path.isfile(&file)
+                IF ~os.!path.!isfile(&file)
                 {
                     MACRO_PASTE &code
                 }
