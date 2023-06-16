@@ -17,6 +17,9 @@ class CodeObjectBuilder:
         self.free_variables = []
         self.cell_variables = []
 
+        self.first_line_number = 0
+        self.line_info_table = bytes()
+
     def prepare_previous_instructions(self):
         for instruction in self.temporary_instructions:
             if instruction.previous_instructions:

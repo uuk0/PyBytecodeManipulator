@@ -60,7 +60,7 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
             if lnotab:
                 lnotab[0] -= 1
 
-                if lnotab[0] == 0:
+                if lnotab[0] <= 0:
                     line_incr = lnotab[1]
                     del lnotab[:2]
 

@@ -29,9 +29,11 @@ class MutableFunction:
 
     if sys.version_info[1] == 10:
         from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import ExceptionInstructionDecoder
+        from bytecodemanipulation.data.v3_10.LocationInformationHandler import LocationInformationDecoder
 
         INSTRUCTION_DECODING_PIPE += [
             ExceptionInstructionDecoder,
+            LocationInformationDecoder,
         ]
 
     INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
@@ -59,6 +61,16 @@ class MutableFunction:
         ExtendedArgInserter,
         LinearStreamGenerator,
         JumpArgAssembler,
+    ]
+
+    if sys.version_info[1] == 10:
+        from bytecodemanipulation.data.v3_10.LocationInformationHandler import LocationInformationEncoder
+
+        INSTRUCTION_ENCODING_PIPE += [
+            LocationInformationEncoder,
+        ]
+
+    INSTRUCTION_ENCODING_PIPE += [
         InstructionAssembler,  # the last stage, assembling the instructions into real bytes
     ]
 
@@ -86,8 +98,6 @@ class MutableFunction:
         self.filename: str | None = None
         self.function_name: str | None = None
 
-        self.first_line_number = 0
-
         self.code_flags = 0
 
         self._instruction_entry_point: Instruction = None
@@ -102,7 +112,6 @@ class MutableFunction:
             self.argument_count = obj.co_argcount
             self._raw_code = bytearray(obj.co_code)
             self.filename = obj.co_filename
-            self.first_line_number = obj.co_firstlineno
             self.code_flags = obj.co_flags
             self.keyword_only_argument_count = obj.co_kwonlyargcount
 
@@ -116,7 +125,6 @@ class MutableFunction:
             self.argument_count = obj.co_argcount
             self._raw_code = bytearray(obj.co_code)
             self.filename = obj.co_filename
-            self.first_line_number = obj.co_firstlineno
             self.code_flags = obj.co_flags
             self.keyword_only_argument_count = obj.co_kwonlyargcount
 
@@ -161,7 +169,6 @@ class MutableFunction:
         self._raw_code = mutable.raw_code.copy()
         # self.constants = copy.deepcopy(mutable.constants)
         self.filename = mutable.filename
-        self.first_line_number = mutable.first_line_number
         self.code_flags = mutable.code_flags
         # self.free_variables = mutable.free_variables.copy()
         self.keyword_only_argument_count = mutable.keyword_only_argument_count
@@ -196,8 +203,8 @@ class MutableFunction:
                     tuple(builder.shared_variable_names),
                     self.filename,
                     self.function_name,
-                    self.first_line_number,
-                    self.get_lnotab(),
+                    builder.first_line_number,
+                    builder.line_info_table,
                     tuple(builder.free_variables),
                     tuple(builder.cell_variables),
                 )
@@ -219,6 +226,8 @@ class MutableFunction:
         def create_code_obj(self) -> types.CodeType:
             builder = self.create_filled_builder()
 
+            self.prepare_previous_instructions()
+
             return types.CodeType(
                 self.argument_count,
                 self.positional_only_argument_count,
@@ -233,41 +242,12 @@ class MutableFunction:
                 self.filename,
                 self.function_name,
                 self.function_name,
-                self.first_line_number,
-                self.get_lnotab(),
+                builder.first_line_number,
+                builder.line_info_table,
                 bytes(),  # todo: encode
                 tuple(builder.free_variables),
                 tuple(builder.cell_variables),
             )
-
-    def get_lnotab(self) -> bytes:
-        items = []
-
-        prev_line = self.first_line_number
-        count_since_previous = 0
-
-        def visit(instr):
-            nonlocal count_since_previous
-            count_since_previous += 1
-
-            if instr.source_location is None or instr.source_location[0] == prev_line:
-                return
-
-            offset = instr.source_location[0] - prev_line
-
-            if offset > 127:
-                return bytes()
-
-            if offset < 0:
-                return bytes()
-
-            items.append(count_since_previous)
-            items.append(offset)
-            count_since_previous = 0
-
-        self.walk_instructions(visit)
-
-        return bytes(items)
 
     def calculate_max_stack_size(self) -> int:
         normal_max = self._calculate_max_stack_size_normal_path()

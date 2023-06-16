@@ -54,6 +54,14 @@ class Instruction:
     ) -> "Instruction":
         raise NotImplementedError("not bound!")
 
+    @classmethod
+    def create_with_same_info(cls, instruction: "Instruction", opname_or_code: int | str, arg_value: object = None, arg: int = None) -> "Instruction":
+        instr = cls(opname_or_code, arg_value, arg)
+        instr.offset = instruction.offset
+        instr.source_location = instruction.source_location
+
+        return instr
+
     def __init__(
         self,
         opcode_or_name: int | str,
@@ -764,6 +772,26 @@ class Instruction:
 
         self.arg_value.insert_after(instructions[1:])
         return self
+
+    def insert_before(self, *instructions: "Instruction" | typing.List["Instruction"]) -> "Instruction":
+        if not instructions:
+            return self
+
+        if isinstance(instructions[0], (list, tuple)):
+            if len(instructions) > 1:
+                raise ValueError
+
+            instructions = instructions[0]
+
+        if len(instructions) == 0:
+            return self
+
+        new_self = self.copy()
+        self.change_opcode(Opcodes.NOP)
+
+        self.insert_after(new_self)
+        self.insert_after(instructions)
+        return new_self
 
     def get_following_instructions(self) -> typing.Iterable["Instruction"]:
         if self.has_unconditional_jump():
