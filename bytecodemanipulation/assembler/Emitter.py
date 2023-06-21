@@ -127,7 +127,7 @@ def apply_inline_assemblies(
 
                 labels.add(StaticIdentifier(typing.cast(str, arg.arg_value)))
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
-                invoke.insert_after(Instruction(Opcodes.LOAD_CONST, None))
+                invoke.insert_after(Instruction.create_with_same_info(invoke, Opcodes.LOAD_CONST, None))
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
                 label_targets[typing.cast(str, invoke.arg_value)] = invoke.next_instruction
@@ -320,22 +320,22 @@ def execute_module_in_instance(
 
     def visit(instr):
         if instr.opcode == Opcodes.STORE_FAST:
-            load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
-            store = Instruction(Opcodes.STORE_ATTR, instr.arg_value)
+            load_module = Instruction.create_with_same_info(instr, Opcodes.LOAD_FAST, "$module$")
+            store = Instruction.create_with_same_info(instr, Opcodes.STORE_ATTR, instr.arg_value)
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, store])
 
         elif instr.opcode == Opcodes.LOAD_FAST:
-            load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
-            load = Instruction(Opcodes.LOAD_ATTR, instr.arg_value)
+            load_module = Instruction.create_with_same_info(instr, Opcodes.LOAD_FAST, "$module$")
+            load = Instruction.create_with_same_info(instr, Opcodes.LOAD_ATTR, instr.arg_value)
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, load])
 
         elif instr.opcode == Opcodes.DELETE_FAST:
-            load_module = Instruction(Opcodes.LOAD_FAST, "$module$")
-            delete = Instruction(Opcodes.DELETE_ATTR, instr.arg_value)
+            load_module = Instruction.create_with_same_info(instr, Opcodes.LOAD_FAST, "$module$")
+            delete = Instruction.create_with_same_info(instr, Opcodes.DELETE_ATTR, instr.arg_value)
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])

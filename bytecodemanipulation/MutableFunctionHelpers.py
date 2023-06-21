@@ -190,7 +190,7 @@ def _inline_outer_return(
     if len(args) == 0:
         instruction.change_opcode(Opcodes.LOAD_CONST)
         instruction.change_arg_value(None)
-        return_instr = Instruction(Opcodes.RETURN_VALUE)
+        return_instr = Instruction.create_with_same_info(instruction, Opcodes.RETURN_VALUE)
         return_instr.next_instruction = instruction.next_instruction
         instruction.next_instruction = return_instr
 
@@ -264,7 +264,7 @@ def insert_method_into(
 
         if instr.opcode == Opcodes.INTERMEDIATE_INNER_RETURN:
             if drop_return_result:
-                previous.insert_after(Instruction(Opcodes.POP_TOP))
+                previous.insert_after(Instruction.create_with_same_info(previous, Opcodes.POP_TOP))
 
             instr.change_opcode(
                 Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction

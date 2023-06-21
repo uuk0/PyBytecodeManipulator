@@ -48,7 +48,7 @@ class StandardLibraryTest(TestCase):
 
     def test_type_check_raise(self):
         def target():
-            assembly("""std:check_type(@int, "test", "exception")""")
+            assembly("""std:check_type(~int, "test", "exception")""")
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)

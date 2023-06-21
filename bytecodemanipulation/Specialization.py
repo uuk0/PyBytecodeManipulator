@@ -257,11 +257,12 @@ class SpecializationContainer:
                 self.method_call_descriptor.lookup_method_instr.change_arg_value(
                     self.invoke_before
                 )
-                self.method_call_descriptor.call_method_instr.change_arg(arg_count)
+                call = self.method_call_descriptor.call_method_instr
+                call.change_arg(arg_count)
 
-                self.method_call_descriptor.call_method_instr.insert_after(
-                    Instruction(Opcodes.POP_TOP),
-                    Instruction(Opcodes.LOAD_CONST, self.constant_value[0]),
+                call.insert_after(
+                    Instruction.create_with_same_info(call, Opcodes.POP_TOP),
+                    Instruction.create_with_same_info(call, Opcodes.LOAD_CONST, self.constant_value[0]),
                 )
 
             else:
