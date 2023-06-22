@@ -35,15 +35,15 @@ NAMESPACE std
     {
         MACRO ASSEMBLY file_walker(directory, file VARIABLE, code CODE_BLOCK)
         {
-            CALL ~os.!listdir(&directory) -> $MACRO_files
+            CALL ~os.!listdir(&directory) -> $files
 
-            LOAD 0 -> $MACRO_counter
-            CALL ~len($MACRO_files) -> $MACRO_file_count
+            LOAD 0 -> $counter
+            CALL ~len($files) -> $file_count
 
-            WHILE OP ($MACRO_counter < $MACRO_file_count)
+            WHILE OP ($counter < $file_count)
             {
-                LOAD $MACRO_files[$MACRO_counter] -> &file
-                OP $MACRO_counter + 1 -> $MACRO_counter
+                LOAD $files[$counter] -> &file
+                OP $counter + 1 -> $counter
 
                 IF ~os.!path.!isfile(&file)
                 {
@@ -57,7 +57,7 @@ NAMESPACE std
     {
         MACRO ASSEMBLY list(iterable, var VARIABLE, code CODE_BLOCK) -> ANY
         {
-            DEF MACRO_inner<&iterable>(iter_obj)
+            DEF inner<&iterable>(iter_obj)
             {
                 LOAD ~list() -> $__unique
                 FOREACH &var IN §&iterable
@@ -68,7 +68,7 @@ NAMESPACE std
                 RETURN $__unique
             }
 
-            MACRO_RETURN $MACRO_inner(~iter(&iterable))
+            MACRO_RETURN $inner(~iter(&iterable))
         }
     }
 
@@ -86,30 +86,30 @@ NAMESPACE std
 
         MACRO ASSEMBLY filter(var VARIABLE, predicate_source VARIABLE, predicate CODE_BLOCK)
         {
-            DEF MACRO_filtered(item)
+            DEF filtered(item)
             {
                 LOAD $item -> &predicate_source
                 MACRO_PASTE predicate
                 RETURN %
             }
 
-            LOAD &var.copy() -> $MACRO_tmp
+            LOAD &var.copy() -> $tmp
             CALL &var.clear() -> \
-            CALL &var.extend(~filter($MACRO_filtered, $MACRO_tmp)) -> \
+            CALL &var.extend(~filter($filtered, $tmp)) -> \
         }
 
         MACRO ASSEMBLY map(var VARIABLE, predicate_source VARIABLE, predicate CODE_BLOCK)
         {
-            DEF MACRO_mapping(item)
+            DEF mapping(item)
             {
                 LOAD $item -> &predicate_source
                 MACRO_PASTE predicate
                 RETURN %
             }
 
-            LOAD &var.copy() -> $MACRO_tmp
+            LOAD &var.copy() -> $tmp
             CALL &var.clear() -> \
-            CALL &var.extend(~map($MACRO_mapping, $MACRO_tmp)) -> \
+            CALL &var.extend(~map($mapping, $tmp)) -> \
         }
 
         MACRO ASSEMBLY reduce(var VARIABLE, lhs VARIABLE, rhs VARIABLE, reducer CODE_BLOCK)
@@ -119,21 +119,21 @@ NAMESPACE std
                 RETURN -1
             }
 
-            LOAD &var[0] -> $MACRO_tmp
+            LOAD &var[0] -> $tmp
 
-            LOAD 1 -> $MACRO_index
-            LOAD ~len(&var) -> $MACRO_max_size
+            LOAD 1 -> $index
+            LOAD ~len(&var) -> $max_size
 
-            WHILE OP ($MACRO_index < $MACRO_max_size)
+            WHILE OP ($index < $max_size)
             {
-                LOAD $MACRO_tmp -> &lhs
-                LOAD &var[$MACRO_index] -> &rhs
+                LOAD $tmp -> &lhs
+                LOAD &var[$index] -> &rhs
                 MACRO_PASTE &reducer
-                STORE $MACRO_tmp
-                OP $MACRO_index + 1 -> $MACRO_index
+                STORE $tmp
+                OP $index + 1 -> $index
             }
 
-            LOAD $MACRO_tmp
+            LOAD $tmp
         }
 
         MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)

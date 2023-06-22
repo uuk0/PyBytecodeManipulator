@@ -2,6 +2,8 @@ import typing
 import warnings
 from abc import ABC
 
+from bytecodemanipulation.MutableFunctionHelpers import capture_local
+
 from bytecodemanipulation.MutableFunctionHelpers import outer_return
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
@@ -450,6 +452,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             var_name,
                         )
                     )
+
                 else:
                     arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
                     bytecode += arg_code.emit_bytecodes(function, scope)
@@ -459,6 +462,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             var_name,
                         )
                     )
+
             else:
                 arg_names.append(None)
 
@@ -545,10 +549,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         RuntimeError,
                     )
 
-            elif instr.has_local() and instr.arg_value.startswith("MACRO_"):
+            elif instr.has_local() and instr.arg_value.startswith("OUTER_"):
                 instr.change_arg_value(
-                    local_prefix + ":" + instr.arg_value.removeprefix("MACRO_")
+                    instr.arg_value.removeprefix("OUTER_")
                 )
+
+            elif instr.has_local():
+                instr.change_arg_value(local_prefix + ":" + instr.arg_value)
 
             elif instr.opcode == Opcodes.MACRO_RETURN_VALUE:
                 if self.return_type is None:
@@ -618,6 +625,27 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 for instr in builder.temporary_instructions
             ]
 
+            captured_locals = set()
+            for instr in instructions:
+                if instr.opcode == Opcodes.LOAD_GLOBAL:
+                    target = self.function.target.__globals__.get(instr.arg_value, None)
+
+                    if target == capture_local:
+                        call = next(instr.trace_stack_position_use(0))
+
+                        if call.opcode != Opcodes.CALL_FUNCTION:
+                            raise ValueError(call)
+
+                        arg = next(call.trace_stack_position(0))
+
+                        if arg.opcode != Opcodes.LOAD_CONST:
+                            raise ValueError(arg)
+
+                        captured_locals.add(arg.arg_value)
+                        arg.change_opcode(Opcodes.NOP)
+                        call.change_opcode(Opcodes.LOAD_CONST, None)
+                        instr.change_opcode(Opcodes.NOP)
+
             for instr in instructions:
                 if instr.opcode == Opcodes.LOAD_GLOBAL:
                     target = self.function.target.__globals__.get(instr.arg_value, None)
@@ -625,10 +653,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     if target == outer_return:
                         call = next(instr.trace_stack_position_use(0))
 
-                        if call.opcode != Opcodes.CALL_FUNCTION:
-                            raise ValueError(call)
-
                         instr.change_opcode(Opcodes.NOP)
                         call.change_opcode(Opcodes.RETURN_VALUE)
+
+                elif instr.has_local() and instr.arg_value in captured_locals:
+                    instr.change_arg_value("OUTER_" + instr.arg_value)
 
             return instructions + [Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)]

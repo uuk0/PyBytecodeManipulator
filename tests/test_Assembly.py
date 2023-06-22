@@ -61,6 +61,7 @@ from bytecodemanipulation.assembler.target import (
 )
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
 from bytecodemanipulation.MutableFunctionHelpers import outer_return
+from bytecodemanipulation.MutableFunctionHelpers import capture_local
 
 try:
     from code_parser.parsers.common import IdentifierExpression
@@ -1036,7 +1037,7 @@ class TestMacro(TestCase):
                 """
     LOAD 1 -> $x
     MACRO test_basic {
-        LOAD 0 -> $x
+        LOAD 0 -> $OUTER_x
     }
     
     CALL MACRO test_basic()
@@ -1056,7 +1057,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_local_access {
-            LOAD 1 -> $local
+            LOAD 1 -> $OUTER_local
         }
 
         LOAD 0 -> $local
@@ -1077,7 +1078,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_resolver (!param) {
-            LOAD &param -> $local
+            LOAD &param -> $OUTER_local
             LOAD 0 -> &param
         }
 
@@ -1099,9 +1100,9 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_duplicated_access_static (!param) {
-            LOAD &param -> $local
+            LOAD &param -> $OUTER_local
             LOAD 2 -> &param
-            LOAD &param -> $local
+            LOAD &param -> $OUTER_local
         }
 
         LOAD 0 -> $local
@@ -1139,7 +1140,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_local_name_override (!param) {
-            LOAD 10 -> $test
+            LOAD 10 -> $OUTER_test
         }
 
         LOAD 0 -> $test
@@ -1160,7 +1161,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_local_name_escape (!param) {
-            LOAD 10 -> $MACRO_test
+            LOAD 10 -> $test
         }
 
         LOAD 0 -> $test
@@ -1324,11 +1325,12 @@ class TestMacro(TestCase):
         self.assertRaises(NameError, lambda: apply_inline_assemblies(mutable))
 
     def test_macro_paste_use(self):
+        @apply_operations
         def target():
             assembly(
                 """
         MACRO test_macro_paste_use (param) {
-            MACRO_PASTE param -> $test
+            MACRO_PASTE param -> $OUTER_test
         }
 
         LOAD 0 -> $test
@@ -1340,9 +1342,7 @@ class TestMacro(TestCase):
             )
             return -1
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
+        dis.dis(target)
 
         self.assertEqual(target(), 10)
 
@@ -1496,8 +1496,10 @@ CALL MACRO test:test_macro()
     def test_transform_to_macro(self):
         @make_macro("TestMacro:test_transform_to_macro")
         def test_transform_to_macro():
+            capture_local("test")
             test = 1
 
+        @apply_operations
         def target():
             test = -1
             assembly(
@@ -1508,17 +1510,15 @@ CALL MACRO TestMacro:test_transform_to_macro()
             )
             return test
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
         self.assertEqual(target(), 1)
 
     def test_transform_to_macro_2(self):
         @make_macro("TestMacro:test_transform_to_macro_2")
         def test_transform_to_macro(a):
+            capture_local("test")
             test = a
 
+        @apply_operations
         def target():
             test = -1
             assembly(
@@ -1529,17 +1529,15 @@ CALL MACRO TestMacro:test_transform_to_macro_2(1)
             )
             return test
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
         self.assertEqual(target(), 1)
 
     def test_transform_to_macro_3(self):
         @make_macro("TestMacro:test_transform_to_macro_3")
         def test_transform_to_macro(a):
+            capture_local("test")
             test = a + a
 
+        @apply_operations
         def target():
             test = -1
             value = [1, 2]
@@ -1550,10 +1548,6 @@ CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
 """
             )
             return test
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
 
         self.assertEqual(target(), 3)
 
@@ -1589,7 +1583,7 @@ CALL MACRO TestMacro:test_transform_to_macro_inner_return()
                 """
 MACRO test_macro_capture_arg_in_inner_func(a)
 {
-    DEF tar()
+    DEF OUTER_tar()
     {
         RETURN &a
     }
@@ -1615,7 +1609,7 @@ CALL MACRO test_macro_capture_arg_in_inner_func(2)
                 """
 MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
 {
-    DEF tar()
+    DEF OUTER_tar()
     {
         MACRO_PASTE a
     }

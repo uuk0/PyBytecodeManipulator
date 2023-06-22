@@ -50,7 +50,7 @@ for cross-version support.
   * Call it by using 'CALL MACRO' with the name being the namespace
   * Parameters can be accessed via the '&' prefix
   * use MACRO_RETURN to return from the macro (if it is not at the end of the scope)
-  * Parameters may start with 'MACRO_' to make them unique in the target function; otherwise, names are shared
+  * Parameters may start with 'OUTER_' to capture locals from outside the macro definition
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
   * Data Types:
     * CODE_BLOCK (a code block in {})

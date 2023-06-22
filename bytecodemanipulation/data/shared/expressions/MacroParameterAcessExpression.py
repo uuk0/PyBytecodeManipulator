@@ -25,9 +25,15 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         if scope.macro_parameter_namespace[value] != self and hasattr(
             scope.macro_parameter_namespace[value], "emit_bytecodes"
         ):
-            return scope.macro_parameter_namespace[value].emit_bytecodes(
+            instructions = scope.macro_parameter_namespace[value].emit_bytecodes(
                 function, scope
             )
+
+            for instr in instructions:
+                if instr.has_local():
+                    instr.change_arg_value("OUTER_" + instr.arg_value)
+
+            return instructions
 
         return [
             Instruction.create_with_token(
@@ -48,9 +54,15 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         if scope.macro_parameter_namespace[value] != self and hasattr(
             scope.macro_parameter_namespace[value], "emit_bytecodes"
         ):
-            return scope.macro_parameter_namespace[value].emit_store_bytecodes(
+            instructions = scope.macro_parameter_namespace[value].emit_store_bytecodes(
                 function, scope
             )
+
+            for instr in instructions:
+                if instr.has_local():
+                    instr.change_arg_value("OUTER_" + instr.arg_value)
+
+            return instructions
 
         return [
             Instruction.create_with_token(
