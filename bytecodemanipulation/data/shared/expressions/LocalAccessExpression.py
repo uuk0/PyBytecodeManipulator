@@ -1,4 +1,5 @@
 import typing
+import warnings
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
@@ -28,6 +29,10 @@ class LocalAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
+        if value not in scope.filled_locals:
+            # todo: why is it warning for some stream tests?
+            warnings.warn(SyntaxWarning(f"Expected local variable '{value}' to be set ahead of time, but might be not set (cannot infer for custom jumps)"))
+
         return [
             Instruction.create_with_token(
                 self.token, Opcodes.LOAD_FAST, self.prefix + value
@@ -38,6 +43,9 @@ class LocalAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
+
+        scope.filled_locals.add(value)
+        scope.filled_locals.add(self.prefix + value)
 
         return [
             Instruction.create_with_token(self.token, Opcodes.STORE_FAST, self.prefix + value)

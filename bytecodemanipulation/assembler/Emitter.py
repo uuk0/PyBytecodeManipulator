@@ -140,6 +140,14 @@ def apply_inline_assemblies(
     scope = ParsingScope()
     scope.globals_dict = target.target.__globals__
     scope.module_file = target.target.__globals__["__file__"]
+    scope.filled_locals = set(target.argument_names)
+
+    def visit(instr: Instruction):
+        if instr.opcode == Opcodes.STORE_FAST:
+            scope.filled_locals.add(instr.arg_value)
+
+
+    target.walk_instructions(visit)
 
     if target.target.__module__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[target.target.__module__]

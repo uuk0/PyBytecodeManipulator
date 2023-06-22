@@ -982,6 +982,7 @@ PYTHON {
         bytecodemanipulation.assembler.hook.unhook()
 
     def test_dynamic_attribute_access(self):
+        @apply_operations
         def target(t):
             assembly(
                 """
@@ -989,16 +990,10 @@ RETURN $t.("attr")
 """
             )
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
         class H:
             attr = {}
 
         x = H()
-
-        dis.dis(target)
 
         self.assertEqual(target(x), x.attr)
 

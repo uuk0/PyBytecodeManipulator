@@ -9,6 +9,7 @@
 - changed macro local access: by default, macro only, ':' prefix now for outer (e.g. $:outer)
 - macro parameters used in MACRO_PASTE are not affected by outer-prefix need; their local accesses
   are automatically bound to outer variables; use the '|' prefix in order to prevent this
+- added warning when using locals not already set ahead of time
 
 # Version 0.3.1
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like

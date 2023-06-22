@@ -15,7 +15,7 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        inner_scope = scope.copy(sub_scope_name=self.name(scope))
+        inner_scope = scope.copy(sub_scope_name=self.name(scope), shared_locals=False)
 
         target = MutableFunction(lambda: None)
 

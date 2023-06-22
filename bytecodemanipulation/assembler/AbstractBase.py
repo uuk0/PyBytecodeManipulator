@@ -48,6 +48,7 @@ class ParsingScope:
         self.module_file: str = None
         self.last_base_token: AbstractToken = None
         self.macro_parameter_namespace: typing.Dict[str] = {}
+        self.filled_locals = set()
 
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
@@ -113,6 +114,7 @@ class ParsingScope:
         sub_scope_name: str | list = None,
         copy_labels=False,
         keep_scope_name_generator: bool = None,
+        shared_locals=True,
     ):
         instance = ParsingScope()
         if copy_labels:
@@ -130,6 +132,9 @@ class ParsingScope:
 
         elif keep_scope_name_generator:
             instance.scope_name_generator = self.scope_name_generator
+
+        if shared_locals:
+            instance.filled_locals = self.filled_locals
 
         return instance
 

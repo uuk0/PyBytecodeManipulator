@@ -3,6 +3,7 @@ import typing
 from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
     AbstractFunctionDefinitionAssembly,
 )
+from bytecodemanipulation.data.v3_10.instructions.CallAssembly import CallAssembly
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.Parser import Parser
@@ -26,7 +27,11 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         inner_labels = self.body.collect_label_info(scope)
         label_targets = {}
 
-        inner_scope = scope.copy()
+        inner_scope = scope.copy(shared_locals=False)
+
+        for arg in self.args:
+            if not isinstance(arg, CallAssembly.Arg):
+                inner_scope.filled_locals.add(arg.name(scope))
 
         if self.bound_variables:
             if any(map(lambda e: e[1], self.bound_variables)):

@@ -140,6 +140,8 @@ STORE $output
         self.assertEqual(target(), 3)
 
     def test_stream_simple_filter(self):
+
+        @apply_operations
         def target():
             data = (0, 1, 2)
             stream = None
@@ -157,12 +159,6 @@ std:stream:to_list($stream, $output)
 """
             )
             return output
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
-        # dis.dis(target)
 
         self.assertEqual(target(), [0, 1])
 

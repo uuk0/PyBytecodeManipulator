@@ -436,8 +436,6 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         inner_bytecode = self.body.emit_bytecodes(function, scope)
 
-        print(inner_bytecode)
-
         arg_names: typing.List[str | None] = []
         arg_decl_lookup: typing.Dict[str, MacroAssembly.MacroArg] = {}
         for i, (arg_decl, arg_code) in enumerate(zip(self.args, args)):
