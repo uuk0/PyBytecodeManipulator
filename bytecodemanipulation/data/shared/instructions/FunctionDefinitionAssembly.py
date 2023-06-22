@@ -31,8 +31,13 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractFunctionDefinitionAssembly":
         prefix = ""
-        while parser.try_consume(SpecialToken(":")):
-            prefix += ":"
+
+        while parser.try_consume(SpecialToken("|")):
+            prefix += "|"
+
+        if prefix == "":
+            while parser.try_consume(SpecialToken(":")):
+                prefix += ":"
 
         func_name = parser.parse_identifier_like(scope)
 
@@ -198,7 +203,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __repr__(self):
-        return f"DEF({self.func_name}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+        return f"DEF({self.prefix}{self.func_name}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
 
     def copy(self) -> "AbstractFunctionDefinitionAssembly":
         return type(self)(
@@ -206,5 +211,6 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             self.bound_variables.copy(),
             [arg.copy() for arg in self.args],
             self.body.copy(),
-            self.target.copy() if self.target else None,
+            target=self.target.copy() if self.target else None,
+            prefix=self.prefix,
         )

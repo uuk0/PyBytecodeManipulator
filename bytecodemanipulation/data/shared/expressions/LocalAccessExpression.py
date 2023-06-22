@@ -20,6 +20,9 @@ class LocalAccessExpression(AbstractAccessExpression):
         super(LocalAccessExpression, self).__init__(name, token)
         self.prefix = prefix
 
+    def __repr__(self):
+        return f"{self.PREFIX}{self.prefix}{self.name}"
+
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:

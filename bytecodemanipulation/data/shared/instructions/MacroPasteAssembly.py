@@ -66,7 +66,10 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
             for instr in instructions:
                 if instr.has_local():
-                    instr.change_arg_value(":" + instr.arg_value)
+                    if instr.arg_value.startswith("|"):
+                        instr.change_arg_value(instr.arg_value[1:])
+                    else:
+                        instr.change_arg_value(":" + instr.arg_value)
 
             return instructions + (
                 []

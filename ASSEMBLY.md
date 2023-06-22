@@ -149,6 +149,10 @@ Expressions can be added as certain parameters to instructions to use instead of
 - ATTR_TYPEDEF \<attr name> \<type definition> in class bodies
 - VAR_TYPEDEF \<variable name> \<type definition> everywhere to hint types
 - ..._TYPEDEF_STRICT for enforcing types
+- MACRO_PASTE \<parameter> \[ '(' \<arg> {',' \<arg>} ')' ]
+  - CODE_BLOCK Parameter Syntax: \['\[' \<arg name> {',' \<arg name>} ']' ] '{' \<code> '}'
+  - Allows macro CODE_BLOCK parameters to accept variables names dynamically
+  - Rewritten in MACRO_PASTE to use the correct variable
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 

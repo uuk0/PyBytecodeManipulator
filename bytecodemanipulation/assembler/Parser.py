@@ -359,8 +359,12 @@ class Parser(AbstractParser):
 
             prefix = ""
 
-            while self.try_consume(SpecialToken(":")):
-                prefix += ":"
+            while self.try_consume(SpecialToken("|")):
+                prefix += "|"
+
+            if prefix == "":
+                while self.try_consume(SpecialToken(":")):
+                    prefix += ":"
 
             expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token, prefix=prefix)
 

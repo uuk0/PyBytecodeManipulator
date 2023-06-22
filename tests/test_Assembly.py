@@ -1342,7 +1342,27 @@ class TestMacro(TestCase):
             )
             return -1
 
-        dis.dis(target)
+        self.assertEqual(target(), 10)
+
+    def test_macro_paste_use_vbar_prefix(self):
+        @apply_operations
+        def target():
+            assembly(
+                """
+        MACRO test_macro_paste_use_vbar (param) {
+            LOAD 0 -> $test
+            
+            MACRO_PASTE param
+            
+            RETURN $test
+        }
+
+        CALL MACRO test_macro_paste_use_vbar({
+            LOAD 10 -> $|test
+        })
+        """
+            )
+            return -1
 
         self.assertEqual(target(), 10)
 
