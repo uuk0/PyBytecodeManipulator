@@ -30,6 +30,10 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractFunctionDefinitionAssembly":
+        prefix = ""
+        while parser.try_consume(SpecialToken(":")):
+            prefix += ":"
+
         func_name = parser.parse_identifier_like(scope)
 
         bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []
@@ -123,7 +127,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 "Respect ordering (got 'code' before 'target'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
             )
 
-        return cls(func_name, bound_variables, args, body, target)
+        return cls(func_name, bound_variables, args, body, target, prefix=prefix)
 
     def __init__(
         self,
@@ -132,6 +136,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         args: typing.List[AbstractCallAssembly.IArg],
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
+        prefix="",
     ):
         self.func_name = (
             func_name if not isinstance(func_name, str) else StaticIdentifier(func_name)
@@ -163,6 +168,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.args = args
         self.body = body
         self.target = target
+        self.prefix = prefix
 
     def visit_parts(
         self,

@@ -11,17 +11,23 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 class LocalAccessExpression(AbstractAccessExpression):
     PREFIX = "$"
 
+    def __init__(
+        self,
+        name: "IIdentifierAccessor | str",
+        token: AbstractToken | typing.List[AbstractToken] = None,
+        prefix="",
+    ):
+        super(LocalAccessExpression, self).__init__(name, token)
+        self.prefix = prefix
+
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
-        if value.isdigit():
-            value = int(value)
-
         return [
             Instruction.create_with_token(
-                self.token, Opcodes.LOAD_FAST, value
+                self.token, Opcodes.LOAD_FAST, self.prefix + value
             )
         ]
 
@@ -30,11 +36,8 @@ class LocalAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
-        if value.isdigit():
-            value = int(value)
-
         return [
-            Instruction.create_with_token(self.token, Opcodes.STORE_FAST, value)
+            Instruction.create_with_token(self.token, Opcodes.STORE_FAST, self.prefix + value)
         ]
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:

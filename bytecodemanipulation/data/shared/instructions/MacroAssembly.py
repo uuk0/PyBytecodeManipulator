@@ -549,9 +549,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         RuntimeError,
                     )
 
-            elif instr.has_local() and instr.arg_value.startswith("OUTER_"):
+            elif instr.has_local() and instr.arg_value.startswith(":"):
                 instr.change_arg_value(
-                    instr.arg_value.removeprefix("OUTER_")
+                    instr.arg_value.removeprefix(":")
                 )
 
             elif instr.has_local():
@@ -657,6 +657,6 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         call.change_opcode(Opcodes.RETURN_VALUE)
 
                 elif instr.has_local() and instr.arg_value in captured_locals:
-                    instr.change_arg_value("OUTER_" + instr.arg_value)
+                    instr.change_arg_value(":" + instr.arg_value)
 
             return instructions + [Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)]

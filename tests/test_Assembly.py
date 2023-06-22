@@ -1037,7 +1037,7 @@ class TestMacro(TestCase):
                 """
     LOAD 1 -> $x
     MACRO test_basic {
-        LOAD 0 -> $OUTER_x
+        LOAD 0 -> $:x
     }
     
     CALL MACRO test_basic()
@@ -1057,7 +1057,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_local_access {
-            LOAD 1 -> $OUTER_local
+            LOAD 1 -> $:local
         }
 
         LOAD 0 -> $local
@@ -1078,7 +1078,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_resolver (!param) {
-            LOAD &param -> $OUTER_local
+            LOAD &param -> $:local
             LOAD 0 -> &param
         }
 
@@ -1100,9 +1100,9 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_parameter_duplicated_access_static (!param) {
-            LOAD &param -> $OUTER_local
+            LOAD &param -> $:local
             LOAD 2 -> &param
-            LOAD &param -> $OUTER_local
+            LOAD &param -> $:local
         }
 
         LOAD 0 -> $local
@@ -1140,7 +1140,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_local_name_override (!param) {
-            LOAD 10 -> $OUTER_test
+            LOAD 10 -> $:test
         }
 
         LOAD 0 -> $test
@@ -1330,7 +1330,7 @@ class TestMacro(TestCase):
             assembly(
                 """
         MACRO test_macro_paste_use (param) {
-            MACRO_PASTE param -> $OUTER_test
+            MACRO_PASTE param -> $:test
         }
 
         LOAD 0 -> $test
@@ -1583,7 +1583,7 @@ CALL MACRO TestMacro:test_transform_to_macro_inner_return()
                 """
 MACRO test_macro_capture_arg_in_inner_func(a)
 {
-    DEF OUTER_tar()
+    DEF :tar()
     {
         RETURN &a
     }
@@ -1609,7 +1609,7 @@ CALL MACRO test_macro_capture_arg_in_inner_func(2)
                 """
 MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
 {
-    DEF OUTER_tar()
+    DEF :tar()
     {
         MACRO_PASTE a
     }

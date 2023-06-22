@@ -130,7 +130,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             bytecode += self.target.emit_store_bytecodes(function, scope)
         else:
             bytecode += [
-                Instruction(Opcodes.STORE_FAST, self.func_name(scope)),
+                Instruction(Opcodes.STORE_FAST, self.prefix + self.func_name(scope)),
             ]
 
         return bytecode

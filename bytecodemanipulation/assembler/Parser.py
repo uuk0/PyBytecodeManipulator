@@ -356,7 +356,13 @@ class Parser(AbstractParser):
 
         elif start_token.text == "$":
             self.consume(SpecialToken("$"), err_arg=scope)
-            expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token)
+
+            prefix = ""
+
+            while self.try_consume(SpecialToken(":")):
+                prefix += ":"
+
+            expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token, prefix=prefix)
 
         elif start_token.text == "§":
             self.consume(SpecialToken("§"), err_arg=scope)

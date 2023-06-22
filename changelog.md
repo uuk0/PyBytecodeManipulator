@@ -6,6 +6,7 @@
 - refactored Instruction class, removing the 'owner' function, and removing the 'offset' from the constructor
 - fixed access to global statically and attributes statically
 - source code location info for instructions should now be encoded correctly
+- changed macro local access: by default, macro only, ':' prefix now for outer (e.g. $:outer)
 
 # Version 0.3.1
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like
