@@ -60,6 +60,7 @@ from bytecodemanipulation.assembler.target import (
     make_macro,
 )
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
+from bytecodemanipulation.MutableFunctionHelpers import outer_return
 
 try:
     from code_parser.parsers.common import IdentifierExpression
@@ -1564,6 +1565,22 @@ CALL MACRO TestMacro:test_transform_to_macro_3({ CALL $value.pop() })
             pass
 
         self.assertRaises(RuntimeError, test_transform_to_macro)
+
+    def test_transform_to_macro_inner_return(self):
+        @make_macro("TestMacro:test_transform_to_macro_inner_return")
+        def test_transform_to_macro():
+            outer_return(1)
+
+        @apply_operations
+        def target():
+            assembly(
+                """
+CALL MACRO TestMacro:test_transform_to_macro_inner_return()
+"""
+            )
+            return 0
+
+        self.assertEqual(target(), 1)
 
     def test_macro_capture_arg_in_inner_func(self):
         def target():

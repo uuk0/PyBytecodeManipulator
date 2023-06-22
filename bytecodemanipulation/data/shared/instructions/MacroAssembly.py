@@ -1,5 +1,8 @@
 import typing
+import warnings
 from abc import ABC
+
+from bytecodemanipulation.MutableFunctionHelpers import outer_return
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
@@ -595,11 +598,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
             builder = self.function.create_filled_builder()
 
-            return [
+            instructions = [
                 (
-                    instr.copy()
+                    instr
                     if instr.opcode != Opcodes.RETURN_VALUE
-                    else instr.copy()
+                    else instr
                     .change_opcode(Opcodes.POP_TOP)
                     .insert_after(
                         Instruction(
@@ -613,4 +616,19 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     LOCAL_TO_DEREF_OPCODES[instr.opcode]
                 )
                 for instr in builder.temporary_instructions
-            ] + [Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)]
+            ]
+
+            for instr in instructions:
+                if instr.opcode == Opcodes.LOAD_GLOBAL:
+                    target = self.function.target.__globals__.get(instr.arg_value, None)
+
+                    if target == outer_return:
+                        call = next(instr.trace_stack_position_use(0))
+
+                        if call.opcode != Opcodes.CALL_FUNCTION:
+                            raise ValueError(call)
+
+                        instr.change_opcode(Opcodes.NOP)
+                        call.change_opcode(Opcodes.RETURN_VALUE)
+
+            return instructions + [Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)]
