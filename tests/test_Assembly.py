@@ -1503,13 +1503,30 @@ RETURN $func
 """)
             return 0
 
-        dis.dis(target)
-
         inter = target()
 
         self.assertEqual(inter.__defaults__, (0,))
 
         self.assertEqual(inter(key=10), 10)
+
+    def test_macro_func_call_keyword_expansion(self):
+        @apply_operations
+        def target():
+            assembly("""
+
+DEF xy(a=0)
+{
+    RETURN $a
+}            
+
+MACRO test_macro_func_call_keyword_expansion(keyword)
+{
+    RETURN $xy(&keyword=4)
+}
+
+CALL MACRO test_macro_func_call_keyword_expansion("key")
+""")
+            return 0
 
 class TestClassAssembly(TestCase):
     def test_class_assembly(self):

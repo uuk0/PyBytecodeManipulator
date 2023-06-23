@@ -238,7 +238,7 @@ def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: 
             bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()
         )
     ):
-        print(asm)
+        # print(asm)
 
         total = 0
 

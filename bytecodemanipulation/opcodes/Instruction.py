@@ -617,10 +617,12 @@ class Instruction:
         if self.opcode in (
             Opcodes.CALL_FUNCTION,
             Opcodes.CALL_METHOD,
-            Opcodes.CALL_FUNCTION_KW,
             Opcodes.CALL,
         ):
             return 1, self.arg + 1, None
+
+        if self.opcode == Opcodes.CALL_FUNCTION_KW:
+            return 1, self.arg + 2, None
 
         if self.opcode in (Opcodes.CALL_FUNCTION_EX,):
             count = 2

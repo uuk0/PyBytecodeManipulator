@@ -224,19 +224,18 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         has_seen_keyword_arg = False
 
         while not (bracket := parser.try_consume(SpecialToken(")"))):
-            if (
-                isinstance(parser[0], IdentifierToken)
-                and parser[1] == SpecialToken("=")
-                and not is_macro
-            ):
-                key = parser.try_parse_identifier_like()
+            parser.save()
 
-                if key is None:
-                    raise throw_positioned_error(
-                        scope,
-                        parser[0],
-                        "expected <identifier-like>",
-                    )
+            identifier = parser.try_parse_identifier_like()
+            is_keyword = identifier and parser.try_inspect() == SpecialToken("=") and not is_macro
+
+            if is_keyword:
+                parser.discard_save()
+            else:
+                parser.rollback()
+
+            if is_keyword:
+                key = identifier
 
                 parser.consume(SpecialToken("="))
 
