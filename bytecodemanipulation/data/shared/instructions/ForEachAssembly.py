@@ -49,8 +49,9 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
         initial = parser.try_consume_access_to_value()
         if initial is None:
             raise throw_positioned_error(
-                scope, parser[0], "<expression> expected"
+                scope, parser[0], "initial <expression> expected"
             )
+
         variables = [initial]
 
         while parser.try_consume(SpecialToken(",")):
@@ -59,7 +60,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
 
             if expr is None:
                 raise throw_positioned_error(
-                    scope, parser[0], "<expression> expected"
+                    scope, parser[0], "further <expression> expected after ','"
                 )
 
             variables.append(expr)
@@ -70,8 +71,9 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
         source = parser.try_consume_access_to_value()
         if not source:
             raise throw_positioned_error(
-                scope, parser[0], "<expression> expected"
+                scope, parser[0], "base iterator <expression> expected"
             )
+
         sources = [source]
 
         multi = None
@@ -81,7 +83,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
             source = parser.try_consume_access_to_value()
             if not source:
                 raise throw_positioned_error(
-                    scope, parser[0], "<expression> expected"
+                    scope, parser[0], f"further iterator <expression> expected after '{'*' if multi else ','}'"
                 )
 
             if multi:
@@ -108,7 +110,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
             variables,
             sources,
             body,
-            scope.last_base_token,
+            typing.cast(IdentifierToken, scope.last_base_token),
         )
 
     def __init__(

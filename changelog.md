@@ -1,6 +1,6 @@
 
 # Version 0.3.4
-
+- improved error messages for assemblies
 
 # Version 0.3.3
 - added new virtual opcodes for compare operations

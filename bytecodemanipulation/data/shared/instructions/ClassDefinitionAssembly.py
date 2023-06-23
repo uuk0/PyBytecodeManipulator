@@ -33,19 +33,50 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     ) -> "AbstractClassDefinitionAssembly":
         name = parser.parse_identifier_like(scope)
 
+        if name is None:
+            raise throw_positioned_error(
+                scope,
+                parser[0],
+                "Expected <identifier like>"
+            )
+
         namespace = None
 
-        if parser.try_consume(SpecialToken("<")):
-            namespace = [parser.consume(IdentifierToken, err_arg=scope).text]
+        if opening_bracket := parser.try_consume(SpecialToken("<")):
+            # todo: maybe use try_parse_identifier_like() instead
+            namespace_f = parser.try_consume(IdentifierToken)
+
+            if namespace_f is None:
+                raise throw_positioned_error(
+                    scope,
+                    parser[0],
+                    "<name> expected",
+                )
+
+            namespace = [namespace_f.text]
 
             while parser.try_consume(SpecialToken(":")):
-                namespace.append(parser.consume(IdentifierToken, err_arg=scope).text)
+                p = parser.try_consume(IdentifierToken)
 
-            parser.consume(SpecialToken(">"), err_arg=scope)
+                if p is None:
+                    raise throw_positioned_error(
+                        scope,
+                        [namespace_f, parser[0]],
+                        "<name> expected after ':' to complete namespace name",
+                    )
+
+                namespace.append(p.text)
+
+            if parser.try_consume(SpecialToken(">")) is None:
+                raise throw_positioned_error(
+                    scope,
+                    [opening_bracket, parser[0]],
+                    "expected '>' to close namespace declaration",
+                )
 
         parents = []
 
-        if parser.try_consume(SpecialToken("(")):
+        if opening_bracket := parser.try_consume(SpecialToken("(")):
             if parent := parser.try_consume_access_to_value():
                 parents.append(parent)
 
@@ -58,12 +89,13 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                         raise throw_positioned_error(
                             scope,
                             parser[0],
-                            "Expected <expression>",
+                            "Expected <expression> for parent",
                         )
+
                     parents.append(parent)
 
             if not parser.try_consume(SpecialToken(")")):
-                raise throw_positioned_error(scope, parser[0], "Expected ')'")
+                raise throw_positioned_error(scope, [opening_bracket, parser[0]], "Expected ')'")
 
         if not parents:
             parents = [ConstantAccessExpression(object)]
