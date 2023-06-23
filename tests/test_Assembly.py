@@ -1432,6 +1432,86 @@ class TestMacro(TestCase):
 
         self.assertEqual(target(), 1)
 
+    def test_macro_capture_arg_in_inner_func(self):
+        def target():
+            tar = lambda: 0
+            assembly(
+                """
+MACRO test_macro_capture_arg_in_inner_func(a)
+{
+    DEF :tar()
+    {
+        RETURN &a
+    }
+}
+
+CALL MACRO test_macro_capture_arg_in_inner_func(2)
+"""
+            )
+            return tar
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        # dis.dis(target)
+
+        self.assertEqual(target()(), 2)
+
+    def test_macro_capture_arg_in_inner_func_2(self):
+        def target():
+            tar = lambda: 0
+            assembly(
+                """
+MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
+{
+    DEF :tar()
+    {
+        MACRO_PASTE a
+    }
+}
+
+CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
+"""
+            )
+            return tar
+
+        mutable = MutableFunction(target)
+        apply_inline_assemblies(mutable)
+        mutable.reassign_to_function()
+
+        # dis.dis(target)
+
+        self.assertEqual(target()(), 2)
+
+    def test_macro_func_definition_keyword_expansion(self):
+        @apply_operations
+        def target():
+            assembly("""
+MACRO test_macro_func_definition_keyword_expansion(keyword) -> ANY
+{
+    DEF export(&keyword=0)
+    {
+        RETURN $&keyword
+    }
+    
+    MACRO_RETURN $export
+}
+
+CALL MACRO test_macro_func_definition_keyword_expansion("key") -> $func
+RETURN $func
+""")
+            return 0
+
+        dis.dis(target)
+
+        inter = target()
+
+        self.assertEqual(inter.__defaults__, (0,))
+
+        self.assertEqual(inter(key=10), 10)
+
+class TestClassAssembly(TestCase):
     def test_class_assembly(self):
         def target():
             test = None
@@ -1507,6 +1587,8 @@ CALL MACRO test:test_macro()
 
         self.assertEqual(target(), 1)
 
+
+class TestFunc2Macro(TestCase):
     def test_transform_to_macro(self):
         @make_macro("TestMacro:test_transform_to_macro")
         def test_transform_to_macro():
@@ -1590,58 +1672,8 @@ CALL MACRO TestMacro:test_transform_to_macro_inner_return()
 
         self.assertEqual(target(), 1)
 
-    def test_macro_capture_arg_in_inner_func(self):
-        def target():
-            tar = lambda: 0
-            assembly(
-                """
-MACRO test_macro_capture_arg_in_inner_func(a)
-{
-    DEF :tar()
-    {
-        RETURN &a
-    }
-}
 
-CALL MACRO test_macro_capture_arg_in_inner_func(2)
-"""
-            )
-            return tar
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
-        # dis.dis(target)
-
-        self.assertEqual(target()(), 2)
-
-    def test_macro_capture_arg_in_inner_func_2(self):
-        def target():
-            tar = lambda: 0
-            assembly(
-                """
-MACRO test_macro_capture_arg_in_inner_func_2(a CODE_BLOCK)
-{
-    DEF :tar()
-    {
-        MACRO_PASTE a
-    }
-}
-
-CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
-"""
-            )
-            return tar
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
-        # dis.dis(target)
-
-        self.assertEqual(target()(), 2)
-
+class TestForLoopAssembly(TestCase):
     def test_for_loop_basic(self):
         def target():
             iterable = [0, 1, 2, 3]

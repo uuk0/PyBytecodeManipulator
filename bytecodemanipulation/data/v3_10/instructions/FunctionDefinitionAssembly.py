@@ -30,7 +30,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         inner_scope = scope.copy(shared_locals=False)
 
         for arg in self.args:
-            if not isinstance(arg, CallAssembly.Arg):
+            if not isinstance(arg, (CallAssembly.Arg, CallAssembly.KwArg)):
                 inner_scope.filled_locals.add(arg.name(scope))
 
         if self.bound_variables:
@@ -91,8 +91,21 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                 break
 
         if has_kwarg:
-            flags |= 0x02
-            raise NotImplementedError("Kwarg defaults")
+            flags |= 0x01
+
+            defaults = []
+            c = 0
+
+            for arg in self.args:
+                if isinstance(arg, CallAssembly.KwArg):
+                    defaults += typing.cast(CallAssembly.KwArg, arg).source.emit_bytecodes(function, scope)
+                    c += 1
+
+            defaults += [
+                Instruction(Opcodes.BUILD_TUPLE, arg=c),
+            ]
+
+            bytecode += defaults
 
         if self.bound_variables:
             if any(map(lambda e: e[1], self.bound_variables)):
@@ -119,6 +132,13 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             )
 
         target.argument_count = len(self.args)
+
+        for arg in self.args:
+            if isinstance(arg, CallAssembly.Arg):
+                target.argument_names.append(arg.source(scope))
+            elif isinstance(arg, CallAssembly.KwArg):
+                target.argument_names.append(arg.key(scope))
+
         target.prepare_previous_instructions()
         code_object = target.create_code_obj()
 

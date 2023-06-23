@@ -74,16 +74,16 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
             star = parser.try_consume(SpecialToken("*"))
             star_star = parser.try_consume(SpecialToken("*"))
-            identifier = parser.try_consume(IdentifierToken)
+            identifier = parser.try_parse_identifier_like()
 
             if not identifier:
                 if star:
                     raise throw_positioned_error(
                         scope,
                         [star, star_star],
-                        "Expected <expression> after '*'"
+                        "Expected <identifier> after '*'"
                         if not star_star
-                        else "Expected <expression> after '**'",
+                        else "Expected <identifier> after '**'",
                     )
 
                 break
@@ -101,17 +101,17 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                             "expected <expression>",
                         )
 
-                    arg = AbstractCallAssembly.KwArg(identifier.text, default_value, token=identifier)
+                    arg = AbstractCallAssembly.KwArg(identifier, default_value, token=identifier)
 
             if not arg:
                 if star_star:
-                    arg = AbstractCallAssembly.KwArgStar(identifier.text, token=identifier)
+                    arg = AbstractCallAssembly.KwArgStar(identifier, token=identifier)
 
                 elif star:
-                    arg = AbstractCallAssembly.StarArg(identifier.text, token=identifier)
+                    arg = AbstractCallAssembly.StarArg(identifier, token=identifier)
 
                 else:
-                    arg = AbstractCallAssembly.Arg(identifier.text, token=identifier)
+                    arg = AbstractCallAssembly.Arg(identifier, token=identifier)
 
             args.append(arg)
 

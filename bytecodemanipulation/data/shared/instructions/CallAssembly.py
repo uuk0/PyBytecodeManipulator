@@ -39,7 +39,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
         def __init__(
             self,
-            source: typing.Union["AbstractAccessExpression", IdentifierToken],
+            source: typing.Union["AbstractAccessExpression", IIdentifierAccessor],
             is_dynamic: bool = False,
             token: AbstractToken =None,
         ):

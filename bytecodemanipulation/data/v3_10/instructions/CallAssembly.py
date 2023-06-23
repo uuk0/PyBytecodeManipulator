@@ -77,7 +77,7 @@ class CallAssembly(AbstractCallAssembly):
                 bytecode += arg.source.emit_bytecodes(function, scope)
 
                 if isinstance(arg, CallAssembly.KwArg):
-                    kw_arg_keys.append(arg.key.text)
+                    kw_arg_keys.append(arg.key(scope))
 
                 kw_const = tuple(reversed(kw_arg_keys))
 
@@ -178,6 +178,6 @@ class CallAssembly(AbstractCallAssembly):
         bytecode = macro.emit_call_bytecode(function, scope, args)
 
         if self.target:
-            bytecode += self.target.emit_bytecodes(function, scope)
+            bytecode += self.target.emit_store_bytecodes(function, scope)
 
         return bytecode
