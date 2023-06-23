@@ -1800,7 +1800,8 @@ ASSERT $x \"Test Message\"
 
     def test_assert_static_fail_message_invalid(self):
         def target():
-            assembly("ASSERT_STATIC 0 $x")
+            assembly("""
+ASSERT_STATIC 0 $x""")
 
         try:
             apply_operations(target)
@@ -1817,7 +1818,7 @@ ASSERT $x \"Test Message\"
         try:
             apply_operations(target)
         except SyntaxError as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able>",))
+            self.assertEqual(e.args, ("Expected <static evaluate-able at 'expression'>",))
 
     def test_assert_static_macro_static_parameter(self):
         @apply_operations

@@ -10,7 +10,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -285,7 +285,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     args[:] = prefix + [inner] + postfix
                     return macro, args
 
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 self.name_token,
                 f"Could not find overloaded variant of {':'.join(self.name)} with args {args}!",
@@ -496,7 +496,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 Opcodes.MACRO_PARAMETER_EXPANSION,
             ):
                 if instr.arg_value not in arg_decl_lookup:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope,
                         self.name,
                         f"macro name {instr.arg_value} not found in scope",
@@ -534,7 +534,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
             elif instr.opcode == Opcodes.MACRO_STORE_PARAMETER:
                 if instr.arg_value not in arg_decl_lookup:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope,
                         self.name,
                         f"macro name {instr.arg_value} not found in scope",
@@ -556,7 +556,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             bytecode += instructions
                             continue
 
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope,
                         self.name,
                         f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!",

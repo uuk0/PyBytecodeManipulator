@@ -7,7 +7,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -175,7 +175,7 @@ class AbstractOpAssembly(
                     function, scope, self.expression
                 )
             except:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     self.operator_token,
                     "during emitting bytecode of singleton operator",
@@ -243,7 +243,7 @@ class AbstractOpAssembly(
                     function, scope, self.lhs, self.rhs
                 )
             except:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     self.operator_token,
                     "during emitting bytecode of binary operation",
@@ -305,7 +305,7 @@ class AbstractOpAssembly(
                     function, scope, *self.args
                 )
             except:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     self.operator_token,
                     "during emitting bytecode of binary operation",
@@ -343,7 +343,7 @@ class AbstractOpAssembly(
         if expr := cls.try_consume_prefix(parser, scope):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
-        raise throw_positioned_syntax_error(
+        raise throw_positioned_error(
             scope,
             parser.try_inspect(),
             "expected <operator> or <expression> <operator> ...",
@@ -368,7 +368,7 @@ class AbstractOpAssembly(
     ) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     parser[-1:1] + [scope.last_base_token],
                     "expected '>' after '-' to complete '->'",
@@ -450,9 +450,9 @@ class AbstractOpAssembly(
         bracket = parser.try_consume(SpecialToken("("))
 
         if bracket is None and has_brackets is True:
-            raise throw_positioned_syntax_error(scope, parser[0], "expected '('")
+            raise throw_positioned_error(scope, parser[0], "expected '('")
         elif bracket is not None and has_brackets is False:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 operator_tokens + [parser[0]],
                 "did not expect '(' after operator name",
@@ -472,7 +472,7 @@ class AbstractOpAssembly(
                 )
 
                 if expr is None:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope, parser[0], "expected <expression>"
                     )
 
@@ -481,12 +481,12 @@ class AbstractOpAssembly(
                 coma = parser.try_consume(SpecialToken(","))
 
                 if coma is None and has_coma_sep is True:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope, parser[0], "expected ','"
                     )
 
                 elif coma is not None and has_coma_sep is False:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope, coma, "did not expect ',' for separation of args"
                     )
         else:
@@ -501,7 +501,7 @@ class AbstractOpAssembly(
                 )
 
                 if expr is None:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope, parser[0], "expected <expression>"
                     )
 
@@ -514,17 +514,17 @@ class AbstractOpAssembly(
                     and has_coma_sep is True
                     and parser[0] != SpecialToken(")")
                 ):
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope, parser[0], "expected ','"
                     )
 
                 elif coma is not None and has_coma_sep is False:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope, coma, "did not expect ',' for separation of args"
                     )
 
         if bracket and not parser.try_consume(SpecialToken(")")):
-            raise throw_positioned_syntax_error(scope, parser[0], "expected ')'")
+            raise throw_positioned_error(scope, parser[0], "expected ')'")
 
         return cls.PrefixOperator(operator, operator_tokens, args, base=cls)
 

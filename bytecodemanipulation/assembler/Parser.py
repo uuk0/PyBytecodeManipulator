@@ -8,7 +8,7 @@ from bytecodemanipulation.assembler.AbstractBase import (
 )
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import _syntax_wrapper
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -176,7 +176,7 @@ class Parser(AbstractParser):
                 scope.scope_path += namespace_part
 
         if not self.try_consume(SpecialToken("{")):
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, self.try_inspect(), "expected '{'"
             )
 
@@ -211,7 +211,7 @@ class Parser(AbstractParser):
                 continue
 
             if not (instr_token := self.try_consume(IdentifierToken)):
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope, self.try_inspect(), "expected identifier"
                 )
 
@@ -220,7 +220,7 @@ class Parser(AbstractParser):
 
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope,
                         instr_token,
                         "expected <assembly instruction name> or <assembly macro name>",
@@ -251,13 +251,13 @@ class Parser(AbstractParser):
                 if eof_error and self.try_inspect() is None:
                     print(self.try_inspect())
                     print(repr(root))
-                    raise throw_positioned_syntax_error(scope, self[-1], eof_error)
+                    raise throw_positioned_error(scope, self[-1], eof_error)
 
                 break
 
             print(self[-1].line, self[-1], expr.line)
 
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 self.try_inspect(),
                 "Expected <newline> or ';' after assembly instruction",
@@ -407,7 +407,7 @@ class Parser(AbstractParser):
             self.consume(start_token, err_arg=scope)
 
             if not (opening := self.try_consume(SpecialToken("("))):
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     self[-1:1],
                     "expected '(' after OP when used in expressions",
@@ -416,7 +416,7 @@ class Parser(AbstractParser):
             expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
 
             if not self.try_consume(SpecialToken(")")):
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     [opening, self[0]],
                     "expected ')' after operation",
@@ -437,7 +437,7 @@ class Parser(AbstractParser):
                             scope=scope,
                         )
                     ):
-                        raise throw_positioned_syntax_error(
+                        raise throw_positioned_error(
                             scope,
                             self.try_inspect() or self[-1],
                             "expected <expression>"
@@ -449,7 +449,7 @@ class Parser(AbstractParser):
                         )
 
                     if not self.try_consume(SpecialToken("]")):
-                        raise throw_positioned_syntax_error(
+                        raise throw_positioned_error(
                             scope, self.try_inspect() or self[-1], "expected ']''"
                         )
 
@@ -469,7 +469,7 @@ class Parser(AbstractParser):
                                 allow_calls=allow_calls,
                             )
                         ):
-                            raise throw_positioned_syntax_error(
+                            raise throw_positioned_error(
                                 scope,
                                 self.try_inspect() or self[-1],
                                 "expected <expression>"
@@ -483,7 +483,7 @@ class Parser(AbstractParser):
                             )
 
                         if not self.try_consume(SpecialToken(")")):
-                            raise throw_positioned_syntax_error(
+                            raise throw_positioned_error(
                                 scope,
                                 [opening_bracket, self.try_inspect()],
                                 "expected ')'",
@@ -563,7 +563,7 @@ class Parser(AbstractParser):
         identifier = self.try_parse_identifier_like()
 
         if identifier is None:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 self[0],
                 "expected <identifier> or &<identifier>",

@@ -15,7 +15,7 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
     MacroAccessExpression,
 )
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 
 
@@ -179,7 +179,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 call_target = MacroAccessExpression(name)
 
         if call_target is None:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 parser.try_inspect(),
                 "expected <expression> to be called (did you forget the prefix?)"
@@ -230,7 +230,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     args.append(AbstractCallAssembly.StarArg(expr))
 
                 else:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope,
                         parser.try_inspect(),
                         "*<arg> only allowed before keyword arguments!",
@@ -251,14 +251,14 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         if parser[0] == SpecialToken(")"):
                             break
 
-                        raise throw_positioned_syntax_error(
+                        raise throw_positioned_error(
                             scope, parser[0], "<expression> expected"
                         )
 
                 args.append(AbstractCallAssembly.Arg(expr, is_dynamic))
 
             else:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     parser.try_inspect(),
                     "pure <arg> only allowed before keyword arguments",
@@ -268,7 +268,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, parser.try_inspect(), "expected ')'"
             )
 

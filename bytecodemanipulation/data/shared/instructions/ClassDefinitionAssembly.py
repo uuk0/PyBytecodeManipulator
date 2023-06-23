@@ -10,7 +10,7 @@ from bytecodemanipulation.assembler.AbstractBase import (
 )
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
     ConstantAccessExpression,
@@ -55,7 +55,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
                     parent = parser.try_consume_access_to_value()
                     if parent is None:
-                        raise throw_positioned_syntax_error(
+                        raise throw_positioned_error(
                             scope,
                             parser[0],
                             "Expected <expression>",
@@ -63,7 +63,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                     parents.append(parent)
 
             if not parser.try_consume(SpecialToken(")")):
-                raise throw_positioned_syntax_error(scope, parser[0], "Expected ')'")
+                raise throw_positioned_error(scope, parser[0], "Expected ')'")
 
         if not parents:
             parents = [ConstantAccessExpression(object)]

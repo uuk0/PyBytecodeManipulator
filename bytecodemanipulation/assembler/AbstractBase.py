@@ -276,7 +276,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
 
     def __call__(self, scope: ParsingScope):
         from bytecodemanipulation.assembler.syntax_errors import (
-            throw_positioned_syntax_error,
+            throw_positioned_error,
         )
         from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
             ConstantAccessExpression,
@@ -295,7 +295,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
             raise SyntaxError("no scope provided")
 
         if self.token[1].text not in scope.macro_parameter_namespace:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 self.token,
                 "Could not find name in macro parameter space",
@@ -305,7 +305,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
 
         if isinstance(value, ConstantAccessExpression):
             if not isinstance(value.value, str):
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     self.token,
                     f"Expected 'string' for name de-referencing, got {value}",
@@ -323,7 +323,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         ):
             return value.get_name(scope)
 
-        raise throw_positioned_syntax_error(
+        raise throw_positioned_error(
             scope,
             self.token,
             f"Expected <static evaluated expression> for getting the name for storing, got {value}",

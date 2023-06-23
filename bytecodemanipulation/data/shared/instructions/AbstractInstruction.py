@@ -59,7 +59,7 @@ class AbstractAssemblyInstruction(AbstractExpression, IAssemblyStructureVisitabl
 
         TODO: do we want to allow to return multiple instructions without using an CompoundExpression?
 
-        For coders implementing this function: use the throw_positioned_syntax_error(...) function
+        For coders implementing this function: use the throw_positioned_error(...) function
         for printing fancy error messages with source code location (use e.g. parser[0] for the token)
 
         :param parser: the Parser instance to use

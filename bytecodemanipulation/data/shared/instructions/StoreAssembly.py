@@ -8,7 +8,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -26,7 +26,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
         )
 
         if access is None:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, parser.try_inspect(), "expected <expression>"
             )
 

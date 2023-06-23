@@ -4,7 +4,7 @@ from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -23,7 +23,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
         name = parser.try_parse_identifier_like()
 
         if name is None:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, parser[0], "expected <identifier like>"
             )
 

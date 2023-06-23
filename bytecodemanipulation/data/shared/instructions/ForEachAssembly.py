@@ -5,7 +5,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -48,7 +48,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
     ) -> "AbstractForEachAssembly":
         initial = parser.try_consume_access_to_value()
         if initial is None:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, parser[0], "<expression> expected"
             )
         variables = [initial]
@@ -58,18 +58,18 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
             expr = parser.try_consume_access_to_value()
 
             if expr is None:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope, parser[0], "<expression> expected"
                 )
 
             variables.append(expr)
 
         if not parser.try_consume(IdentifierToken("IN")):
-            raise throw_positioned_syntax_error(scope, parser[0], "'IN' expected")
+            raise throw_positioned_error(scope, parser[0], "'IN' expected")
 
         source = parser.try_consume_access_to_value()
         if not source:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, parser[0], "<expression> expected"
             )
         sources = [source]
@@ -80,7 +80,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
         ):
             source = parser.try_consume_access_to_value()
             if not source:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope, parser[0], "<expression> expected"
                 )
 
@@ -97,7 +97,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
                 sources.append(source)
 
         if len(variables) != len(sources):
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 scope.last_base_token,
                 f"Number of Variables ({len(variables)}) must equal number of Sources ({len(sources)})",

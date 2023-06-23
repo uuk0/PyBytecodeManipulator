@@ -5,7 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
@@ -41,13 +41,13 @@ class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
         name = parser.try_consume([IdentifierToken, IntegerToken])
 
         if name is None:
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope, parser.try_inspect(), "expected <name> or <integer>"
             )
 
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope,
                     parser[-1:1] + [scope.last_base_token],
                     "expected '>' after '-'",
@@ -56,7 +56,7 @@ class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
             target = parser.try_consume_access_to_value(scope=scope)
 
             if target is None:
-                raise throw_positioned_syntax_error(
+                raise throw_positioned_error(
                     scope, parser.try_inspect(), "expected <expression>"
                 )
         else:

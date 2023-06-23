@@ -7,7 +7,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_syntax_error
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -73,7 +73,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
             if not identifier:
                 if star:
-                    raise throw_positioned_syntax_error(
+                    raise throw_positioned_error(
                         scope,
                         [star, star_star],
                         "Expected <expression> after '*'"
@@ -110,7 +110,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         parser.consume(SpecialToken(")"))
 
         if expr := parser.try_consume(SpecialToken("<")):
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 expr,
                 "Respect ordering (got 'args' before 'captured'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
@@ -126,7 +126,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         body = parser.parse_body(scope=scope)
 
         if expr := parser.try_consume(SpecialToken("-")):
-            raise throw_positioned_syntax_error(
+            raise throw_positioned_error(
                 scope,
                 expr,
                 "Respect ordering (got 'code' before 'target'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
