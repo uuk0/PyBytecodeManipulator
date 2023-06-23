@@ -1,5 +1,8 @@
 
-# Version 0.3.2
+# Version 0.3.4
+
+
+# Version 0.3.3
 - added new virtual opcodes for compare operations
 - exception handles are now stored in their own structure
 - added andeval operator
