@@ -2,7 +2,9 @@ import typing
 from abc import ABC
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, StaticIdentifier
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -39,9 +41,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             self,
             source: typing.Union["AbstractAccessExpression", IdentifierToken],
             is_dynamic: bool = False,
+            token: AbstractToken =None,
         ):
             self.source = source
             self.is_dynamic = is_dynamic
+            self.token = token
 
         def __repr__(self):
             return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.source})"
@@ -92,15 +96,16 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
         def __init__(
             self,
-            key: IdentifierToken | str,
+            key: IIdentifierAccessor | str,
             source: typing.Union["AbstractAccessExpression", IdentifierToken],
             is_dynamic: bool = False,
+            token: AbstractToken = None,
         ):
-            self.key = key if isinstance(key, IdentifierToken) else IdentifierToken(key)
-            super().__init__(source, is_dynamic=is_dynamic)
+            self.key = key if not isinstance(key, str) else StaticIdentifier(key)
+            super().__init__(source, is_dynamic=is_dynamic, token=token)
 
         def __repr__(self):
-            return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.key.text} = {self.source})"
+            return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.key(None)} = {self.source})"
 
         def __eq__(self, other):
             return (
@@ -146,6 +151,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         """
         is_partial = bool(parser.try_consume(IdentifierToken("PARTIAL")))
         is_macro = not is_partial and bool(parser.try_consume(IdentifierToken("MACRO")))
+
         return cls.consume_inner(parser, is_partial, is_macro, scope)
 
     @classmethod
@@ -168,17 +174,36 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 )
 
                 if isinstance(call_target, AbstractCallAssembly):
-                    raise RuntimeError
+                    # should not be reachable
+
+                    raise throw_positioned_error(
+                        scope,
+                        list(call_target.get_tokens()),
+                        "Must be not <call assembly> (internal error)",
+                        RuntimeError,
+                    )
 
             else:
                 name = [parser.consume(IdentifierToken, err_arg=scope)]
 
-                while parser.try_consume(SpecialToken(":")):
-                    name.append(parser.consume(IdentifierToken, err_arg=scope))
+                while expr := parser.try_consume(SpecialToken(":")):
+                    # todo: allow identifier-like
+                    part = parser.try_consume(IdentifierToken)
+
+                    if part is None:
+                        raise throw_positioned_error(
+                            scope,
+                            [expr, parser[0]],
+                            "<identifier> expected after '.'",
+                        )
+
+                    name.append(part)
 
                 call_target = MacroAccessExpression(name)
 
         if call_target is None:
+            # should be unreachable
+
             raise throw_positioned_error(
                 scope,
                 parser.try_inspect(),
@@ -189,7 +214,12 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
         args: typing.List[AbstractCallAssembly.IArg] = []
 
-        parser.consume(SpecialToken("("), err_arg=scope)
+        if not (opening_bracket := parser.try_consume(SpecialToken("("))):
+            raise throw_positioned_error(
+                scope,
+                parser[0],
+                "Expected '(' after <call target>",
+            )
 
         has_seen_keyword_arg = False
 
@@ -199,7 +229,15 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 and parser[1] == SpecialToken("=")
                 and not is_macro
             ):
-                key = parser.consume(IdentifierToken)
+                key = parser.try_parse_identifier_like()
+
+                if key is None:
+                    raise throw_positioned_error(
+                        scope,
+                        parser[0],
+                        "expected <identifier-like>",
+                    )
+
                 parser.consume(SpecialToken("="))
 
                 is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
@@ -237,9 +275,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     )
 
             elif not has_seen_keyword_arg:
+                # todo: maybe parse here also partial variable names
                 if is_macro and parser[0] == SpecialToken("{"):
                     expr = parser.parse_body(scope=scope)
                     is_dynamic = False
+
                 else:
                     is_dynamic = is_partial and bool(
                         parser.try_consume(SpecialToken("?"))
@@ -269,16 +309,28 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
             raise throw_positioned_error(
-                scope, parser.try_inspect(), "expected ')'"
+                scope,
+                [opening_bracket, parser[0]],
+                "expected ')' matching '('",
             )
 
-        if allow_target and parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
+        if allow_target and (arrow_0 := parser.try_consume(SpecialToken("-"))):
+
+            if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
+                raise throw_positioned_error(
+                    scope,
+                    [arrow_0, parser[0]],
+                    "expected '>' after '-' to fill out <target> expression",
+                )
+
             target = parser.try_consume_access_to_value(scope=scope)
+
+            if target is None:
+                raise throw_positioned_error(
+                    scope,
+                    [arrow_0, arrow_1],
+                    "expected <target> expression after '->'",
+                )
         else:
             target = None
 

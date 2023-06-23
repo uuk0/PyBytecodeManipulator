@@ -62,7 +62,12 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
             parser.consume(SpecialToken(">"), err_arg=scope)
 
-        parser.consume(SpecialToken("("), err_arg=scope)
+        if (opening_bracket := parser.try_consume(SpecialToken("("))) is None:
+            raise throw_positioned_error(
+                scope,
+                parser[0],
+                "expected '(' after <identifier>"
+            )
 
         while parser.try_inspect() != SpecialToken(")"):
             arg = None
@@ -84,42 +89,75 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 break
 
             if not star:
-                if parser.try_consume(SpecialToken("=")):
+                if equal_sign := parser.try_consume(SpecialToken("=")):
                     default_value = parser.try_parse_data_source(
                         allow_primitives=True, include_bracket=False, allow_op=True
                     )
 
                     if default_value is None:
-                        raise SyntaxError
+                        raise throw_positioned_error(
+                            scope,
+                            [identifier, equal_sign, parser[0]],
+                            "expected <expression>",
+                        )
 
-                    arg = AbstractCallAssembly.KwArg(identifier, default_value)
+                    arg = AbstractCallAssembly.KwArg(identifier.text, default_value, token=identifier)
 
             if not arg:
                 if star_star:
-                    arg = AbstractCallAssembly.KwArgStar(identifier)
+                    arg = AbstractCallAssembly.KwArgStar(identifier.text, token=identifier)
+
                 elif star:
-                    arg = AbstractCallAssembly.StarArg(identifier)
+                    arg = AbstractCallAssembly.StarArg(identifier.text, token=identifier)
+
                 else:
-                    arg = AbstractCallAssembly.Arg(identifier)
+                    arg = AbstractCallAssembly.Arg(identifier.text, token=identifier)
 
             args.append(arg)
 
             if not parser.try_consume(SpecialToken(",")):
                 break
 
-        parser.consume(SpecialToken(")"))
+        if not parser.try_consume(SpecialToken(")")):
+            raise throw_positioned_error(
+                scope,
+                [opening_bracket, parser[0]],
+                "expected ')' matching '(' in function definition",
+            )
 
         if expr := parser.try_consume(SpecialToken("<")):
+            if bound_variables:
+                raise throw_positioned_error(
+                    scope,
+                    expr,
+                    "got '<' after '(' ... ')' expression, where a '{' ... '}' (code block) was expected"
+                )
+
             raise throw_positioned_error(
                 scope,
                 expr,
                 "Respect ordering (got 'args' before 'captured'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
             )
 
-        if parser.try_consume(SpecialToken("-")) and parser.try_consume(
+        if (arrow_0 := parser.try_consume(SpecialToken("-"))) and (arrow_1 := parser.try_consume(
             SpecialToken(">")
-        ):
+        )):
             target = parser.try_consume_access_to_value(scope=scope)
+
+            if target is None:
+                raise throw_positioned_error(
+                    scope,
+                    [arrow_0, arrow_1, parser[0]],
+                    "expected <expression> after '->' as target"
+                )
+
+        elif arrow_0:
+            raise throw_positioned_error(
+                scope,
+                [arrow_0, parser[0]],
+                "expected '>' after '-' to complete <target> expression",
+            )
+
         else:
             target = None
 
@@ -203,7 +241,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __repr__(self):
-        return f"DEF({self.prefix}{self.func_name}<{repr([(name[0](None), name[1]) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+        return f"DEF({self.prefix}{self.func_name}<{repr([('!:' if name[1] else '') + name[0](None) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
 
     def copy(self) -> "AbstractFunctionDefinitionAssembly":
         return type(self)(

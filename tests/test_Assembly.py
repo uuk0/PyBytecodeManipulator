@@ -152,8 +152,8 @@ LOAD 19 --> $test
         self.assertEqualList(
             CompoundExpression(
                 [
-                    AbstractStoreGlobalAssembly.IMPLEMENTATION(IdentifierToken("test")),
-                    AbstractStoreGlobalAssembly.IMPLEMENTATION(IdentifierToken("test")),
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION("test"),
+                    AbstractStoreGlobalAssembly.IMPLEMENTATION("test"),
                     AbstractStoreGlobalAssembly.IMPLEMENTATION(
                         "test",
                         GlobalAccessExpression("test"),
@@ -725,15 +725,15 @@ DEF test <test> () -> @target {}
                     AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test",
                         ["test"],
-                        [AbstractCallAssembly.Arg(IdentifierToken("a"))],
+                        [AbstractCallAssembly.Arg("a")],
                         CompoundExpression([]),
                     ),
                     AbstractFunctionDefinitionAssembly.IMPLEMENTATION(
                         "test",
                         ["test"],
                         [
-                            AbstractCallAssembly.Arg(IdentifierToken("a")),
-                            AbstractCallAssembly.Arg(IdentifierToken("b")),
+                            AbstractCallAssembly.Arg("a"),
+                            AbstractCallAssembly.Arg("b"),
                         ],
                         CompoundExpression([]),
                     ),
