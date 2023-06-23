@@ -1091,6 +1091,7 @@ class TestMacro(TestCase):
         self.assertEqual(target(), 1)
 
     def test_macro_parameter_duplicated_access_static(self):
+        @apply_operations
         def target():
             assembly(
                 """
@@ -1107,9 +1108,7 @@ class TestMacro(TestCase):
             )
             return -1
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
+        dis.dis(target)
 
         self.assertEqual(target(), 2)
 

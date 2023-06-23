@@ -1,5 +1,5 @@
+import traceback
 import typing
-import warnings
 from abc import ABC
 
 from bytecodemanipulation.MutableFunctionHelpers import capture_local
@@ -40,6 +40,20 @@ LOCAL_TO_DEREF_OPCODES = {
     Opcodes.LOAD_FAST: Opcodes.MACRO_LOAD_PARAMETER,
     Opcodes.STORE_FAST: Opcodes.MACRO_STORE_PARAMETER,
 }
+
+
+def _manipulate_stack_trace(exc: Exception, file: str, func_name: str, line: int, column: int, span: int):
+    trace = traceback.extract_stack()
+
+    entry = traceback.FrameSummary(
+        filename=file,
+        lineno=line,
+        name=func_name,
+    )
+
+    trace.append(entry)
+
+    # exc.__traceback__ = traceback.TracebackException(*trace).__traceback__
 
 
 class MacroAssembly(AbstractAssemblyInstruction):
@@ -569,6 +583,25 @@ class MacroAssembly(AbstractAssemblyInstruction):
             bytecode.append(Instruction(Opcodes.LOAD_CONST, None))
 
         bytecode.append(Instruction(Opcodes.BYTECODE_LABEL, end_target))
+
+        # handle = Instruction(Opcodes.NOP)
+        # handle.insert_after(
+        #     [
+        #         Instruction(Opcodes.POP_TOP),
+        #         Instruction(Opcodes.ROT_TWO),  # TOS would be the exception
+        #         Instruction(Opcodes.POP_TOP),
+        #         Instruction(Opcodes.LOAD_CONST, _manipulate_stack_trace),
+        #         Instruction(Opcodes.ROT_TWO),
+        #         Instruction(Opcodes.LOAD_CONST, scope.module_file),
+        #         Instruction(Opcodes.LOAD_CONST, "".join(map(lambda e: e.text, self.name))),
+        #         Instruction(Opcodes.LOAD_CONST, 0),  # todo: load position info (line)
+        #         Instruction(Opcodes.LOAD_CONST, 0),  # todo: load position info (column)
+        #         Instruction(Opcodes.LOAD_CONST, 0),  # todo: load position info (span)
+        #         Instruction(Opcodes.CALL_FUNCTION, arg=6),
+        #         Instruction(Opcodes.RAISE_VARARGS, arg=0),
+        #     ]
+        # )
+        # function.exception_table.add_handle(handle, inner_bytecode)
 
         return bytecode
 

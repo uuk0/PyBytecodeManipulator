@@ -34,6 +34,8 @@ class ExceptionInstructionDecoder(AbstractInstructionWalkerTransform):
 class ExceptionInstructionEncoder(AbstractInstructionWalkerTransform):
     @classmethod
     def visit(cls, function: "MutableFunction", builder: "CodeObjectBuilder", target: "Instruction"):
+        # todo: how to handle overlapping but not fully overlapping spans?
+
         for handle, span in function.exception_table.table.items():
             handled = set()
 
