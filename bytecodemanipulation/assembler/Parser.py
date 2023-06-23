@@ -366,11 +366,28 @@ class Parser(AbstractParser):
                 while self.try_consume(SpecialToken(":")):
                     prefix += ":"
 
+            elif error := self.try_consume(SpecialToken(":")):
+                raise throw_positioned_error(
+                    scope,
+                    error,
+                    "Cannot parse '|' and ':' for <local variable name>",
+                )
+
             expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token, prefix=prefix)
 
         elif start_token.text == "§":
             self.consume(SpecialToken("§"), err_arg=scope)
-            expr = DerefAccessExpression(self.parse_identifier_like(scope), start_token)
+
+            identifier = self.try_parse_identifier_like()
+
+            if identifier is None:
+                raise throw_positioned_error(
+                    scope,
+                    [start_token, self[0]],
+                    "Expected <identifier-like> after '§' for cell-var reference",
+                )
+
+            expr = DerefAccessExpression(identifier, start_token)
 
         elif start_token.text == "&":
             self.consume(SpecialToken("&"), err_arg=scope)
@@ -570,3 +587,36 @@ class Parser(AbstractParser):
             )
 
         return identifier
+
+    def try_parse_jump_target(self) -> typing.List[IIdentifierAccessor] | None:
+        self.save()
+        tokens = []
+
+        if not (t := self.try_parse_identifier_like()):
+            return
+
+        tokens.append(t)
+
+        while self.try_consume(SpecialToken(":")):
+            t = self.try_parse_identifier_like()
+
+            if t is None:
+                self.rollback()
+                return
+
+            tokens.append(t)
+
+        self.discard_save()
+        return tokens
+
+    def parse_jump_target(self, scope: ParsingScope) -> typing.List[IIdentifierAccessor]:
+        tokens = self.try_parse_jump_target()
+
+        if tokens is None:
+            raise throw_positioned_error(
+                scope,
+                self[0],
+                "expected <identifier-like>[{':' <identifier like>}] for jump target"
+            )
+
+        return tokens

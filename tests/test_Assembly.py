@@ -1902,3 +1902,20 @@ CALL MACRO test_assert_static_macro_static_parameter_fail(0)
             apply_operations(target)
         except AssertionError as e:
             self.assertEqual(e.args, ("assertion failed: expected <true-ish value>",))
+
+    def test_if_label_jump(self):
+        @apply_operations
+        def target(x):
+            assembly("""
+
+IF $x 'label' 
+{
+    JUMP label:END
+    RETURN 0
+}
+
+RETURN 1
+""")
+
+        self.assertEqual(target(0), 1)
+        self.assertEqual(target(1), 1)

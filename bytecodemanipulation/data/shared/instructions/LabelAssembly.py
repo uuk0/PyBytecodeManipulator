@@ -20,7 +20,7 @@ class LabelAssembly(AbstractAssemblyInstruction):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "LabelAssembly":
-        name = parser.try_parse_identifier_like()
+        name = parser.try_parse_jump_target()
 
         if name is None:
             raise throw_positioned_error(
@@ -29,8 +29,8 @@ class LabelAssembly(AbstractAssemblyInstruction):
 
         return cls(name)
 
-    def __init__(self, name: IIdentifierAccessor | str):
-        self.name = name if not isinstance(name, str) else StaticIdentifier(name)
+    def __init__(self, name: typing.List[IIdentifierAccessor] | str):
+        self.name = name if not isinstance(name, str) else [StaticIdentifier(e) for e in name.split(":")]
 
     def __repr__(self):
         return f"LABEL({self.name})"
@@ -41,10 +41,12 @@ class LabelAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return [Instruction(Opcodes.BYTECODE_LABEL, self.name(scope))]
+        name = ":".join(e(scope) for e in self.name)
+
+        return [Instruction(Opcodes.BYTECODE_LABEL, name)]
 
     def copy(self) -> "LabelAssembly":
         return type(self)(self.name)
 
     def get_labels(self, scope: ParsingScope) -> typing.Set[StaticIdentifier]:
-        return {StaticIdentifier(self.name(scope))}
+        return {StaticIdentifier(":".join(e(scope) for e in self.name))}

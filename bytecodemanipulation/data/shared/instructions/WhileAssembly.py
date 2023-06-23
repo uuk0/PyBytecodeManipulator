@@ -35,11 +35,13 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
             )
 
         if parser.try_consume(SpecialToken("'")):
-            label_name = parser.parse_identifier_like(scope)
+            label_name = parser.parse_jump_target(scope)
+
             if not parser.try_consume(SpecialToken("'")):
                 raise throw_positioned_error(
                     scope, parser.try_inspect(), "expected '"
                 )
+
         else:
             label_name = None
 
@@ -55,18 +57,18 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
         self,
         source: AbstractSourceExpression,
         body: CompoundExpression,
-        label_name: IIdentifierAccessor | None = None,
+        label_name: typing.List[IIdentifierAccessor] | str | None = None,
     ):
         self.source = source
         self.body = body
         self.label_name = (
             label_name
             if not isinstance(label_name, str)
-            else StaticIdentifier(label_name)
-        )
+            else [StaticIdentifier(e) for e in label_name.split(":")]
+        ) if label_name is not None else None
 
     def copy(self):
-        return type(self)(self.source.copy(), self.body.copy(), self.label_name)
+        return type(self)(self.source.copy(), self.body.copy(), self.label_name.copy())
 
     def __eq__(self, other):
         return (
@@ -98,12 +100,14 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
 
     def get_labels(self, scope: ParsingScope):
+        name = ":".join(e(scope) for e in self.label_name)
+
         return (
             set()
             if self.label_name is None
             else {
-                self.label_name(scope),
-                self.label_name(scope) + "_END",
-                self.label_name(scope) + "_INNER",
+                name,
+                name + ":END",
+                name + ":INNER",
             }
         ) | self.body.get_labels(scope)

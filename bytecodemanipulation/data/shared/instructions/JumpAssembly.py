@@ -3,6 +3,8 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
+from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor
+from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
@@ -14,13 +16,15 @@ from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpA
 
 
 class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
+    # JUMP <label name> ['IF' <expression>]
+
     NAME = "JUMP"
 
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "AbstractJumpAssembly":
         has_quotes = parser.try_consume(SpecialToken("'"))
 
-        label_target = parser.consume(IdentifierToken)
+        label_target = parser.parse_jump_target(scope)
 
         if has_quotes:
             parser.consume(SpecialToken("'"))
@@ -50,13 +54,13 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     def __init__(
         self,
-        label_name_token: IdentifierToken | str,
+        label_name_token: typing.List[IIdentifierAccessor] | str,
         condition: AbstractAccessExpression | None = None,
     ):
         self.label_name_token = (
             label_name_token
-            if isinstance(label_name_token, IdentifierToken)
-            else IdentifierToken(label_name_token)
+            if not isinstance(label_name_token, str)
+            else [StaticIdentifier(e) for e in label_name_token.split(":")]
         )
         self.condition = condition
 
@@ -86,9 +90,9 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __repr__(self):
-        return f"JUMP({self.label_name_token.text}{'' if self.condition is None else ', IF '+repr(self.condition)})"
+        return f"JUMP({':'.join(map(repr, self.label_name_token))}{'' if self.condition is None else ', IF '+repr(self.condition)})"
 
     def copy(self) -> "AbstractJumpAssembly":
         return type(self)(
-            self.label_name_token, self.condition.copy() if self.condition else None
+            self.label_name_token.copy(), self.condition.copy() if self.condition else None
         )

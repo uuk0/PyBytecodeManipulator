@@ -38,6 +38,13 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             while parser.try_consume(SpecialToken(":")):
                 prefix += ":"
 
+        elif error := parser.try_consume(SpecialToken(":")):
+            raise throw_positioned_error(
+                scope,
+                error,
+                "Cannot parse '|' and ':' as inter-fix for <function name>",
+            )
+
         func_name = parser.parse_identifier_like(scope)
 
         bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []

@@ -9,22 +9,23 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 @Parser.register
 class IFAssembly(AbstractIFAssembly):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
+        label_name = ":".join(e(scope) for e in self.label_name) if self.label_name is not None else None
 
-        if self.label_name is None:
+        if label_name is None:
             end = Instruction(Opcodes.NOP)
         else:
             end = Instruction(
-                Opcodes.BYTECODE_LABEL, self.label_name.text + "_END"
+                Opcodes.BYTECODE_LABEL, label_name + ":END"
             )
 
         return (
             (
                 []
-                if self.label_name is None
+                if label_name is None
                 else [
                     Instruction(
                         Opcodes.BYTECODE_LABEL,
-                        self.label_name.text + "_HEAD",
+                        label_name + ":HEAD",
                     )
                 ]
             )
@@ -32,10 +33,10 @@ class IFAssembly(AbstractIFAssembly):
             + [Instruction("POP_JUMP_IF_FALSE", end)]
             + (
                 []
-                if self.label_name is None
+                if label_name is None
                 else [
                     Instruction(
-                        Opcodes.BYTECODE_LABEL, self.label_name.text
+                        Opcodes.BYTECODE_LABEL, label_name
                     )
                 ]
             )

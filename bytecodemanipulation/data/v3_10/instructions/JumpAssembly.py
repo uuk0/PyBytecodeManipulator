@@ -18,22 +18,24 @@ class JumpAssembly(AbstractJumpAssembly):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        if not scope.exists_label(self.label_name_token.text):
+        label_name = ":".join(e(scope) for e in self.label_name_token)
+
+        if not scope.exists_label(label_name):
             raise ValueError(
-                f"Label '{self.label_name_token.text}' is not valid in this context!"
+                f"Label '{label_name}' is not valid in this context!"
             )
 
         if self.condition is None:
             return [
                 Instruction(
                     Opcodes.JUMP_ABSOLUTE,
-                    JumpToLabel(self.label_name_token.text),
+                    JumpToLabel(label_name),
                 )
             ]
 
         return self.condition.emit_bytecodes(function, scope) + [
             Instruction(
                 Opcodes.POP_JUMP_IF_TRUE,
-                JumpToLabel(self.label_name_token.text),
+                JumpToLabel(label_name),
             )
         ]

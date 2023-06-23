@@ -1,6 +1,8 @@
 
 # Version 0.3.4
 - improved error messages for assemblies
+- label names may now contain ':', and be based on macro-expanded names,
+  used when labels are generated for e.g. for loops, using now the interfix ':' 
 
 # Version 0.3.3
 - added new virtual opcodes for compare operations
