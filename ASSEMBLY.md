@@ -53,12 +53,16 @@ for cross-version support.
   * Parameters may start with ':' to capture locals from outside the macro definition
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
   * Data Types:
-    * CODE_BLOCK (a code block in {})
+    * CODE_BLOCK\[\<count>] (a code block in {}, where \<count> is the amount of dynamic variables, defaults to 0); 
+      when count != 0, it is expected to prefix the {} with \[\<target name> {',' \<target name>}] to declare where the values go (local variable only)
     * VARIABLE_ARG\[...] (a dynamic count (including 0) of the specific type; if no type should be specified, omit the \[])
     * VARIABLE (a variable reference, similar to C#'s 'out' keyword; can be used as a store target than; requires special inputs to work (currently only local, global or cell variables are allowed, in the future more might work))
   * Macro names can be overloaded
   * Comes with an extra instruction, which should only be used in macros:
-* MACRO_PASTE \<macro param name> \['->' \<target>]: pastes the code for a macro-parameter, and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
+* MACRO_PASTE \<macro param name> \['\[' \<access> {',' \<access>} ']'] \['->' \<target>]: pastes the code for a macro-parameter, 
+  and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
+  \<access> can be used to expose parameter names for dynamic replacement, optionally prefixed with '!' to make the value static inlined (single eval)
+  WARNING: will raise an exception when trying to use a STORE on a complex \<expression> as \<access>, as that is generally not supported
 * MACRO_IMPORT \<module name with '.'> \['->' \['.'\] \<namespace with '.'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
 
@@ -95,12 +99,12 @@ Expressions can be added as certain parameters to instructions to use instead of
   - @!\<global name>: static global variable
   - $\<local name>: local variable
   - §\<name>: access a variable from an outer scope
-  - &\<name>: access to a macro parameter
+  - &\<name>: access to a macro parameter (can be also used in most places were <name> should be used)
   - ~\<name>: static access to a builtin or a module
   - %\[\<n>]: top of stack, or the n-th item from TOS
   - \<access>\[\<index or expression>]: value by \[] operator
   - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
-  - '\' for discarding the result of an expression (only when STORING)
+  - '\\' for discarding the result of an expression (only when STORING)
 - OP instruction, where everything except the 'OP' name is in a single bracket, e.g. "OP ($a + $b)"
 - A string literal with " as quotes, and \\" for escaping
 - A signed integer or floating-point number
@@ -149,10 +153,6 @@ Expressions can be added as certain parameters to instructions to use instead of
 - ATTR_TYPEDEF \<attr name> \<type definition> in class bodies
 - VAR_TYPEDEF \<variable name> \<type definition> everywhere to hint types
 - ..._TYPEDEF_STRICT for enforcing types
-- MACRO_PASTE \<parameter> \[ '(' \<arg> {',' \<arg>} ')' ]
-  - CODE_BLOCK Parameter Syntax: \['\[' \<arg name> {',' \<arg name>} ']' ] '{' \<code> '}'
-  - Allows macro CODE_BLOCK parameters to accept variables names dynamically
-  - Rewritten in MACRO_PASTE to use the correct variable
 - MACRO_PASTE / CODE_BLOCK: allow the macro to forbid access to internal locals
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)

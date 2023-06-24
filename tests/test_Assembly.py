@@ -1258,15 +1258,15 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test_macro_paste (param) {
-            MACRO_PASTE param
-        }
+MACRO test_macro_paste (param) {
+    MACRO_PASTE param
+}
 
-        LOAD 0 -> $test
-        CALL MACRO test_macro_paste({
-            LOAD 10 -> $test
-        })
-        RETURN $test
+LOAD 0 -> $test
+CALL MACRO test_macro_paste({
+    LOAD 10 -> $test
+})
+RETURN $test
         """
             )
             return -1
@@ -1521,12 +1521,70 @@ DEF xy(a=0)
 
 MACRO test_macro_func_call_keyword_expansion(keyword)
 {
-    RETURN $xy(&keyword=4)
+    RETURN $:xy(&keyword=4)
 }
 
-CALL MACRO test_macro_func_call_keyword_expansion("key")
+CALL MACRO test_macro_func_call_keyword_expansion("a")
 """)
             return 0
+
+        self.assertEqual(target(), 4)
+
+    def test_macro_paste_parameterized_code_block_1(self):
+        @apply_operations
+        def target():
+            assembly("""    
+
+MACRO test_macro_paste_parameterized_code_block_1(code CODE_BLOCK[1])
+{
+    LOAD 10 -> $var
+    MACRO_PASTE &code [$var]
+}
+
+CALL MACRO test_macro_paste_parameterized_code_block_1([$local] { RETURN $local })
+        """)
+            return 0
+
+        self.assertEqual(target(), 10)
+
+    def test_macro_paste_parameterized_code_block_non_static(self):
+        @apply_operations
+        def target():
+            assembly("""    
+
+MACRO test_macro_paste_parameterized_code_block_non_static(code CODE_BLOCK[1])
+{
+    LOAD 10 -> $var
+    MACRO_PASTE &code [$var]
+}
+
+CALL MACRO test_macro_paste_parameterized_code_block_non_static([$local] { LOAD 0 -> $|var\nRETURN $local })
+        """)
+            return -1
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 0)
+
+    def test_macro_paste_parameterized_code_block_static(self):
+        @apply_operations
+        def target():
+            assembly("""    
+
+MACRO test_macro_paste_parameterized_code_block_static(code CODE_BLOCK[1])
+{
+    LOAD 10 -> $var
+    MACRO_PASTE &code [!$var]
+}
+
+CALL MACRO test_macro_paste_parameterized_code_block_static([$local] { LOAD 0 -> $|var\nRETURN $local })
+        """)
+            return 0
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 10)
+
 
 class TestClassAssembly(TestCase):
     def test_class_assembly(self):

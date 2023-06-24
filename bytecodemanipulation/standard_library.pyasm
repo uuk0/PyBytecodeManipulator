@@ -84,12 +84,11 @@ NAMESPACE std
             CALL &var.extend(&value) -> \
         }
 
-        MACRO ASSEMBLY filter(var VARIABLE, predicate_source VARIABLE, predicate CODE_BLOCK)
+        MACRO ASSEMBLY filter(var VARIABLE, predicate CODE_BLOCK[1])
         {
             DEF filtered(item)
             {
-                LOAD $item -> &predicate_source
-                MACRO_PASTE predicate
+                MACRO_PASTE predicate [$item]
                 RETURN %
             }
 
@@ -98,13 +97,12 @@ NAMESPACE std
             CALL &var.extend(~filter($filtered, $tmp)) -> \
         }
 
-        MACRO ASSEMBLY map(var VARIABLE, predicate_source VARIABLE, predicate CODE_BLOCK)
+        MACRO ASSEMBLY map(var VARIABLE, predicate CODE_BLOCK[1])
         {
             DEF mapping(item)
             {
-                LOAD $item -> &predicate_source
-                MACRO_PASTE predicate
-                RETURN %
+                MACRO_PASTE predicate [$item]
+                RETURN $item
             }
 
             LOAD &var.copy() -> $tmp
@@ -112,7 +110,7 @@ NAMESPACE std
             CALL &var.extend(~map($mapping, $tmp)) -> \
         }
 
-        MACRO ASSEMBLY reduce(var VARIABLE, lhs VARIABLE, rhs VARIABLE, reducer CODE_BLOCK)
+        MACRO ASSEMBLY reduce(var VARIABLE, reducer CODE_BLOCK[2])
         {
             IF OP (~len(&var) == 0)
             {
@@ -126,10 +124,7 @@ NAMESPACE std
 
             WHILE OP ($index < $max_size)
             {
-                LOAD $tmp -> &lhs
-                LOAD &var[$index] -> &rhs
-                MACRO_PASTE &reducer
-                STORE $tmp
+                MACRO_PASTE &reducer [$tmp, &var[$index]] -> $tmp
                 OP $index + 1 -> $index
             }
 
