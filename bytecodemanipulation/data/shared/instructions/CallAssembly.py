@@ -277,7 +277,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 if is_macro and (inner_opening_bracket := parser[0] == SpecialToken("<")):
                     to_be_stored_at = []
 
-                    base = parser.try_consume_access_to_value()
+                    parser.try_consume(SpecialToken("$"))
+                    base = parser.try_parse_identifier_like()
 
                     if base is None:
                         raise throw_positioned_error(
@@ -289,7 +290,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     to_be_stored_at.append(base)
 
                     while not parser.try_inspect() == SpecialToken(">"):
-                        base = parser.try_consume_access_to_value()
+                        parser.try_consume(SpecialToken("$"))
+                        base = parser.try_parse_identifier_like()
 
                         if base is None:
                             raise throw_positioned_error(

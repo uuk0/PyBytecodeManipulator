@@ -453,6 +453,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         scope = scope.copy()
         scope.scope_path = self.scope_path
         scope.module_file = self.module_path
+        scope.current_macro_assembly = self
 
         bytecode = []
 

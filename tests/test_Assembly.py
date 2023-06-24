@@ -1258,15 +1258,15 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test_macro_paste (param) {
-            MACRO_PASTE param
-        }
+MACRO test_macro_paste (param) {
+    MACRO_PASTE param
+}
 
-        LOAD 0 -> $test
-        CALL MACRO test_macro_paste({
-            LOAD 10 -> $test
-        })
-        RETURN $test
+LOAD 0 -> $test
+CALL MACRO test_macro_paste({
+    LOAD 10 -> $test
+})
+RETURN $test
         """
             )
             return -1

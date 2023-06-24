@@ -50,6 +50,8 @@ class ParsingScope:
         self.macro_parameter_namespace: typing.Dict[str] = {}
         self.filled_locals = set()
 
+        self.current_macro_assembly = None
+
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
         self._name_counter += 1

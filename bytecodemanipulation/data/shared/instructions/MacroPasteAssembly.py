@@ -6,6 +6,7 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -98,18 +99,41 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         if self.name.text in scope.macro_parameter_namespace and hasattr(
             scope.macro_parameter_namespace[self.name.text], "emit_bytecodes"
         ):
-            instructions = scope.macro_parameter_namespace[self.name.text].emit_bytecodes(
+            body: CompoundExpression = scope.macro_parameter_namespace[self.name.text]
+            instructions = body.emit_bytecodes(
                 function, scope
             )
 
+            sources = [e(scope) for e in getattr(body, "to_be_stored_at", [])]
+
+            if len(sources) != len(self.dynamic_names):
+                raise throw_positioned_error(
+                    scope,
+                    self.name,
+                    f"Expected exactly {len(sources)} paramters at MACRO_PASTE, but got {len(self.dynamic_names)}",
+                )
+
+            result = []
+
             for instr in instructions:
                 if instr.has_local():
-                    if instr.arg_value.startswith("|"):
-                        instr.change_arg_value(instr.arg_value[1:])
-                    else:
-                        instr.change_arg_value(":" + instr.arg_value)
+                    local: str = typing.cast(str, instr.arg_value)
 
-            return instructions + (
+                    if local in sources:
+                        index = sources.index(local)
+                        code = self.dynamic_names[index]
+                        result += code.emit_bytecodes(function, scope)
+
+                    elif local.startswith("|"):
+                        instr.change_arg_value(local[1:])
+                        result.append(instr)
+                    else:
+                        instr.change_arg_value(":" + local)
+                        result.append(instr)
+                else:
+                    result.append(instr)
+
+            return result + (
                 []
                 if self.target is None
                 else self.target.emit_store_bytecodes(function, scope)
