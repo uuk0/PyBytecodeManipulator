@@ -30,9 +30,10 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
         name = parser.consume(IdentifierToken)
 
-        dynamic_names = []
+        dynamic_names: typing.List[typing.Tuple[AbstractAccessExpression, bool]] = []
         if opening_bracket := parser.try_consume(SpecialToken("[")):
             while parser.try_inspect() != SpecialToken("]"):
+                is_static = bool(parser.try_consume(SpecialToken("!")))
                 base = parser.try_consume_access_to_value(scope=scope)
 
                 if base is None:
@@ -42,7 +43,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                         "Expected <expression> after ',' for dynamic name access",
                     )
 
-                dynamic_names.append(base)
+                dynamic_names.append((base, is_static))
 
                 if not parser.try_consume(SpecialToken(",")):
                     break
@@ -63,7 +64,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
         return cls(name, target, dynamic_names=dynamic_names)
 
-    def __init__(self, name: IdentifierToken, target: AbstractAccessExpression = None, dynamic_names: typing.List[AbstractAccessExpression] = None):
+    def __init__(self, name: IdentifierToken, target: AbstractAccessExpression = None, dynamic_names: typing.List[typing.Tuple[AbstractAccessExpression, bool]] = None):
         self.name = name
         self.target = target
         self.dynamic_names = dynamic_names or []
@@ -80,7 +81,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         )
 
     def copy(self) -> "MacroPasteAssembly":
-        return type(self)(self.name, self.target.copy() if self.target else None, [e.copy() for e in self.dynamic_names])
+        return type(self)(self.name, self.target.copy() if self.target else None, [(e[0].copy(), e[1]) for e in self.dynamic_names])
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -103,6 +104,19 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                 )
 
             result = []
+            special_names = []
+
+            for i, (code, is_static) in enumerate(self.dynamic_names):
+                if is_static:
+                    label_name = scope.scope_name_generator(f"dynamic_name_{i}")
+
+                    result += code.emit_bytecodes(function, scope)
+                    result += [
+                        Instruction(Opcodes.STORE_FAST, label_name)
+                    ]
+                    special_names.append(label_name)
+                else:
+                    special_names.append(None)
 
             for instr in instructions:
                 if instr.has_local():
@@ -110,11 +124,24 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
                     if local in sources:
                         index = sources.index(local)
-                        code = self.dynamic_names[index]
+                        code, is_static = self.dynamic_names[index]
 
                         if instr.opcode == Opcodes.LOAD_FAST:
-                            result += code.emit_bytecodes(function, scope)
+                            if is_static:
+                                result += [
+                                    Instruction(Opcodes.LOAD_FAST, special_names[index]),
+                                ]
+                            else:
+                                result += code.emit_bytecodes(function, scope)
+
                         elif instr.opcode == Opcodes.STORE_FAST:
+                            if is_static:
+                                raise throw_positioned_error(
+                                    scope,
+                                    self.name,  # todo: use outer call entry
+                                    f"arg {index+1} is marked as static, but it was tried to write to",
+                                )
+
                             result += code.emit_store_bytecodes(function, scope)
                         else:
                             result.append(instr)
