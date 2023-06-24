@@ -457,6 +457,15 @@ class MacroAssembly(AbstractAssemblyInstruction):
         bytecode = []
 
         for arg_decl, arg_code in zip(self.args, args):
+            if isinstance(arg_decl.data_type_annotation, MacroAssembly.CodeBlockDataType):
+                if isinstance(arg_code, CompoundExpression) and hasattr(arg_code, "to_be_stored_at"):
+                    if len(arg_code.to_be_stored_at) != arg_decl.data_type_annotation.count:
+                        raise throw_positioned_error(
+                            scope,
+                            arg_decl.name,
+                            f"Expected {arg_decl.data_type_annotation.count} dynamic name entries, got {len(arg_code.to_be_stored_at)}"
+                        )
+
             if arg_decl.is_static:
                 scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name.text
             else:
