@@ -274,9 +274,50 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     )
 
             elif not has_seen_keyword_arg:
-                # todo: maybe parse here also partial variable names
-                if is_macro and parser[0] == SpecialToken("{"):
+                if is_macro and (inner_opening_bracket := parser[0] == SpecialToken("<")):
+                    to_be_stored_at = []
+
+                    base = parser.try_consume_access_to_value()
+
+                    if base is None:
+                        raise throw_positioned_error(
+                            scope,
+                            [inner_opening_bracket, parser[0]],
+                            "Expected <expression> after '<'",
+                        )
+
+                    to_be_stored_at.append(base)
+
+                    while not parser.try_inspect() == SpecialToken(">"):
+                        base = parser.try_consume_access_to_value()
+
+                        if base is None:
+                            raise throw_positioned_error(
+                                scope,
+                                [inner_opening_bracket, parser[0]],
+                                "Expected <expression> after ','",
+                            )
+
+                        to_be_stored_at.append(base)
+
+                        if not parser.try_consume(SpecialToken(",")):
+                            break
+
+                    if not parser.try_consume(SpecialToken(">")):
+                        raise throw_positioned_error(
+                            scope,
+                            [inner_opening_bracket, parser[0]],
+                            "Expected '>' closing '<'",
+                        )
+
                     expr = parser.parse_body(scope=scope)
+                    expr.to_be_stored_at = to_be_stored_at
+                    is_dynamic = False
+
+                # todo: maybe parse here also partial variable names
+                elif is_macro and parser[0] == SpecialToken("{"):
+                    expr = parser.parse_body(scope=scope)
+                    expr.to_be_stored_at = []
                     is_dynamic = False
 
                 else:
