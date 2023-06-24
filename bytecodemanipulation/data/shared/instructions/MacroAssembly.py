@@ -2,6 +2,7 @@ import traceback
 import typing
 from abc import ABC
 
+from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
 from bytecodemanipulation.MutableFunctionHelpers import capture_local
 
 from bytecodemanipulation.MutableFunctionHelpers import outer_return
@@ -104,6 +105,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
     class CodeBlockDataType(AbstractDataType):
         IDENTIFIER = "CODE_BLOCK"
+
+        def __init__(self, count=0):
+            self.count = count
 
         def is_match(
             self,
@@ -297,18 +301,35 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self.assemblies.append(macro)
 
     @classmethod
-    def _try_parse_arg_data_type(cls, parser: "Parser") -> AbstractDataType | None:
+    def _try_parse_arg_data_type(cls, parser: "Parser", scope: ParsingScope) -> AbstractDataType | None:
         if identifier := parser.try_inspect(IdentifierToken):
             if identifier.text == "CODE_BLOCK":
                 parser.consume(identifier)
-                inst = cls.CodeBlockDataType()
+
+                count = 0
+                if opening_bracket := parser.try_consume(SpecialToken("[")):
+                    if not (expr := parser.try_consume(IntegerToken)) or not expr.text.isdigit() or (count := int(expr.text)) < 0:
+                        raise throw_positioned_error(
+                            scope,
+                            [opening_bracket, parser[0]],
+                            "expected <integer> after '[' to declare count",
+                        )
+
+                    if not parser.try_consume(SpecialToken("]")):
+                        raise throw_positioned_error(
+                            scope,
+                            [opening_bracket, parser[0]],
+                            "expected ']' closing '[' in CODE_BLOCK",
+                        )
+
+                inst = cls.CodeBlockDataType(count=count)
                 return inst
 
             elif identifier.text == "VARIABLE_ARG":
                 parser.consume(identifier)
                 # todo: add check that it is the only * arg
                 if parser.try_consume(SpecialToken("[")):
-                    inner_type = cls._try_parse_arg_data_type(parser)
+                    inner_type = cls._try_parse_arg_data_type(parser, scope)
                     if inner_type is None:
                         return
 
@@ -350,7 +371,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 i += 1
                 args.append(arg)
 
-                data_type = cls._try_parse_arg_data_type(parser)
+                data_type = cls._try_parse_arg_data_type(parser, scope)
 
                 parser.save()
                 if data_type is not None:
@@ -360,13 +381,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     parser.rollback()
 
                 if not parser.try_consume(SpecialToken(",")):
-                    parser.consume(SpecialToken(")"))
+                    parser.consume(SpecialToken(")"), err_arg=scope)
                     break
 
         if parser.try_consume(SpecialToken("-")):
             parser.consume(SpecialToken(">"), err_arg=scope)
 
-            return_type = cls._try_parse_arg_data_type(parser)
+            return_type = cls._try_parse_arg_data_type(parser, scope)
         else:
             return_type = None
 
@@ -439,10 +460,20 @@ class MacroAssembly(AbstractAssemblyInstruction):
         scope = scope.copy()
         scope.scope_path = self.scope_path
         scope.module_file = self.module_path
+        scope.current_macro_assembly = self
 
         bytecode = []
 
         for arg_decl, arg_code in zip(self.args, args):
+            if isinstance(arg_decl.data_type_annotation, MacroAssembly.CodeBlockDataType):
+                if isinstance(arg_code, CompoundExpression) and hasattr(arg_code, "to_be_stored_at"):
+                    if len(arg_code.to_be_stored_at) != arg_decl.data_type_annotation.count:
+                        raise throw_positioned_error(
+                            scope,
+                            arg_decl.name,
+                            f"Expected {arg_decl.data_type_annotation.count} dynamic name entries, got {len(arg_code.to_be_stored_at)}"
+                        )
+
             if arg_decl.is_static:
                 scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name.text
             else:

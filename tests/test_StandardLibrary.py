@@ -125,7 +125,7 @@ std:stream:to_list($stream, $output)
                 """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
-std:stream:reduce($stream, $lhs, $rhs, {
+std:stream:reduce($stream, [$lhs, $rhs] {
     OP $lhs + $rhs
 })
 STORE $output
@@ -151,7 +151,7 @@ STORE $output
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:print($stream)
-std:stream:filter($stream, $var, {
+std:stream:filter($stream, [$var] {
     OP $var < 2 -> %
 })
 std:print($stream)
@@ -163,6 +163,7 @@ std:stream:to_list($stream, $output)
         self.assertEqual(target(), [0, 1])
 
     def test_stream_simple_map(self):
+        @apply_operations
         def target():
             data = (0, 1, 2)
             stream = None
@@ -171,7 +172,7 @@ std:stream:to_list($stream, $output)
                 """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
-std:stream:map($stream, $var, {
+std:stream:map($stream, [$var] {
     OP $var + 1 -> $var
 })
 std:stream:to_list($stream, $output)
@@ -179,9 +180,7 @@ std:stream:to_list($stream, $output)
             )
             return output
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
+        dis.dis(target)
 
         self.assertEqual(target(), [1, 2, 3])
 
