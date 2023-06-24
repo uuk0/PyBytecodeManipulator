@@ -14,7 +14,7 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 
 class MacroPasteAssembly(AbstractAssemblyInstruction):
-    # MACRO_PASTE <macro param name> ['->' <target>]
+    # MACRO_PASTE <macro param name> ['[' <access> {',' <access>} ']'] ['->' <target>]
     NAME = "MACRO_PASTE"
 
     @classmethod
