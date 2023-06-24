@@ -32,19 +32,8 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
         dynamic_names = []
         if opening_bracket := parser.try_consume(SpecialToken("[")):
-            base = parser.try_consume_access_to_value()
-
-            if base is None:
-                raise throw_positioned_error(
-                    scope,
-                    [opening_bracket, parser[0]],
-                    "Expected <expression> after '[' for dynamic name access",
-                )
-
-            dynamic_names.append(base)
-
             while parser.try_inspect() != SpecialToken("]"):
-                base = parser.try_consume_access_to_value()
+                base = parser.try_consume_access_to_value(scope=scope)
 
                 if base is None:
                     raise throw_positioned_error(
@@ -122,7 +111,13 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                     if local in sources:
                         index = sources.index(local)
                         code = self.dynamic_names[index]
-                        result += code.emit_bytecodes(function, scope)
+
+                        if instr.opcode == Opcodes.LOAD_FAST:
+                            result += code.emit_bytecodes(function, scope)
+                        elif instr.opcode == Opcodes.STORE_FAST:
+                            result += code.emit_store_bytecodes(function, scope)
+                        else:
+                            result.append(instr)
 
                     elif local.startswith("|"):
                         instr.change_arg_value(local[1:])

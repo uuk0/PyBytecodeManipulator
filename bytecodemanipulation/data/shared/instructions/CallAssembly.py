@@ -279,18 +279,6 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
                     to_be_stored_at = []
 
-                    parser.try_consume(SpecialToken("$"))
-                    base = parser.try_parse_identifier_like()
-
-                    if base is None:
-                        raise throw_positioned_error(
-                            scope,
-                            [inner_opening_bracket, parser[0]],
-                            "Expected <expression> after '['",
-                        )
-
-                    to_be_stored_at.append(base)
-
                     while not parser.try_inspect() == SpecialToken("]"):
                         parser.try_consume(SpecialToken("$"))
                         base = parser.try_parse_identifier_like()
