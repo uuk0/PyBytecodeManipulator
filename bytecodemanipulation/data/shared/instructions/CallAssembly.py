@@ -274,7 +274,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     )
 
             elif not has_seen_keyword_arg:
-                if is_macro and (inner_opening_bracket := parser[0] == SpecialToken("<")):
+                if is_macro and ((inner_opening_bracket := parser[0]) == SpecialToken("[")):
+                    parser.consume(SpecialToken("["))
+
                     to_be_stored_at = []
 
                     parser.try_consume(SpecialToken("$"))
@@ -284,12 +286,12 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         raise throw_positioned_error(
                             scope,
                             [inner_opening_bracket, parser[0]],
-                            "Expected <expression> after '<'",
+                            "Expected <expression> after '['",
                         )
 
                     to_be_stored_at.append(base)
 
-                    while not parser.try_inspect() == SpecialToken(">"):
+                    while not parser.try_inspect() == SpecialToken("]"):
                         parser.try_consume(SpecialToken("$"))
                         base = parser.try_parse_identifier_like()
 
@@ -305,11 +307,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         if not parser.try_consume(SpecialToken(",")):
                             break
 
-                    if not parser.try_consume(SpecialToken(">")):
+                    if not parser.try_consume(SpecialToken("]")):
                         raise throw_positioned_error(
                             scope,
                             [inner_opening_bracket, parser[0]],
-                            "Expected '>' closing '<'",
+                            "Expected ']' closing '['",
                         )
 
                     expr = parser.parse_body(scope=scope)

@@ -53,7 +53,8 @@ for cross-version support.
   * Parameters may start with ':' to capture locals from outside the macro definition
   * WARNING:  N E V E R  call a macro in itself (directly or indirectly). As you might expect, that cannot possibly work, and will most likely crash the compiler
   * Data Types:
-    * CODE_BLOCK\[\<count>] (a code block in {}, where \<count> is the amount of dynamic variables, defaults to 0)
+    * CODE_BLOCK\[\<count>] (a code block in {}, where \<count> is the amount of dynamic variables, defaults to 0); 
+      when count != 0, it is expected to prefix the {} with \[\<target name> {',' \<target name>}] to declare where the values go (local variable only)
     * VARIABLE_ARG\[...] (a dynamic count (including 0) of the specific type; if no type should be specified, omit the \[])
     * VARIABLE (a variable reference, similar to C#'s 'out' keyword; can be used as a store target than; requires special inputs to work (currently only local, global or cell variables are allowed, in the future more might work))
   * Macro names can be overloaded

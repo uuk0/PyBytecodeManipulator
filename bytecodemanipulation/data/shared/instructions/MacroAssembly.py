@@ -315,6 +315,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             "expected <integer> after '[' to declare count",
                         )
 
+                    if not parser.try_consume(SpecialToken("]")):
+                        raise throw_positioned_error(
+                            scope,
+                            [opening_bracket, parser[0]],
+                            "expected ']' closing '[' in CODE_BLOCK",
+                        )
+
                 inst = cls.CodeBlockDataType(count=count)
                 return inst
 
@@ -374,7 +381,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     parser.rollback()
 
                 if not parser.try_consume(SpecialToken(",")):
-                    parser.consume(SpecialToken(")"))
+                    parser.consume(SpecialToken(")"), err_arg=scope)
                     break
 
         if parser.try_consume(SpecialToken("-")):

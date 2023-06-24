@@ -1521,12 +1521,32 @@ DEF xy(a=0)
 
 MACRO test_macro_func_call_keyword_expansion(keyword)
 {
-    RETURN $xy(&keyword=4)
+    RETURN $:xy(&keyword=4)
 }
 
-CALL MACRO test_macro_func_call_keyword_expansion("key")
+CALL MACRO test_macro_func_call_keyword_expansion("a")
 """)
             return 0
+
+        self.assertEqual(target(), 4)
+
+    def test_macro_paste_parameterized_code_block_1(self):
+        @apply_operations
+        def target():
+            assembly("""    
+
+MACRO test_macro_paste_parameterized_code_block_1(code CODE_BLOCK[1])
+{
+    LOAD 10 -> $var
+    MACRO_PASTE &code [$var]
+}
+
+CALL MACRO test_macro_paste_parameterized_code_block_1([$local] { RETURN $local })
+        """)
+            return 0
+
+        self.assertEqual(target(), 10)
+
 
 class TestClassAssembly(TestCase):
     def test_class_assembly(self):
