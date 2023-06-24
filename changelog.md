@@ -3,6 +3,9 @@
 - improved error messages for assemblies
 - label names may now contain ':', and be based on macro-expanded names,
   used when labels are generated for e.g. for loops, using now the interfix ':' 
+- CODE_BLOCK data type can now expose 'parameters' to the caller, so the implementation detail is hidden.
+  Use the data type CODE_BLOCK\[\<parameter count>] together with MACRO_PASTE \<var> \[\<expressions...>]
+  and \[\<local var names>] {\<code>}
 
 # Version 0.3.3
 - added new virtual opcodes for compare operations
