@@ -18,28 +18,79 @@ class IFAssembly(AbstractIFAssembly):
                 Opcodes.BYTECODE_LABEL, label_name + ":END"
             )
 
+        try:
+            value = self.source.evaluate_static_value(scope)
+        except:
+            return (
+                (
+                    []
+                    if label_name is None
+                    else [
+                        Instruction(
+                            Opcodes.BYTECODE_LABEL,
+                            label_name + ":HEAD",
+                        )
+                    ]
+                )
+                + self.source.emit_bytecodes(function, scope)
+                + [Instruction("POP_JUMP_IF_FALSE", end)]
+                + (
+                    []
+                    if label_name is None
+                    else [
+                        Instruction(
+                            Opcodes.BYTECODE_LABEL, label_name
+                        )
+                    ]
+                )
+                + self.body.emit_bytecodes(function, scope)
+                + [end]
+            )
+
+        if value:
+            return (
+                    (
+                        []
+                        if label_name is None
+                        else [
+                            Instruction(
+                                Opcodes.BYTECODE_LABEL,
+                                label_name + ":HEAD",
+                            )
+                        ]
+                    )
+                    + (
+                        []
+                        if label_name is None
+                        else [
+                            Instruction(
+                                Opcodes.BYTECODE_LABEL, label_name
+                            )
+                        ]
+                    )
+                    + self.body.emit_bytecodes(function, scope)
+                    + [end]
+            )
+
         return (
-            (
-                []
-                if label_name is None
-                else [
-                    Instruction(
-                        Opcodes.BYTECODE_LABEL,
-                        label_name + ":HEAD",
-                    )
-                ]
-            )
-            + self.source.emit_bytecodes(function, scope)
-            + [Instruction("POP_JUMP_IF_FALSE", end)]
-            + (
-                []
-                if label_name is None
-                else [
-                    Instruction(
-                        Opcodes.BYTECODE_LABEL, label_name
-                    )
-                ]
-            )
-            + self.body.emit_bytecodes(function, scope)
-            + [end]
+                (
+                    []
+                    if label_name is None
+                    else [
+                        Instruction(
+                            Opcodes.BYTECODE_LABEL,
+                            label_name + ":HEAD",
+                        )
+                    ]
+                )
+                + (
+                    []
+                    if label_name is None
+                    else [
+                        Instruction(
+                            Opcodes.BYTECODE_LABEL, label_name
+                        )
+                    ]
+                )
+                + [end]
         )

@@ -35,6 +35,7 @@ for cross-version support.
     parameter count, etc.
 
 * IF \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' only if 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the IF statement and 'label name'+"_HEAD" the real HEAD, so before the condition check
+  might decide to statically evaluate 'expression' if possible, and statically include / not include the code
 * WHILE \<expression> \['\\'' \<label name> '\\''] '{' \<body> '}': executes 'body' while 'expression' is not False; 'label name' is the top, 'label name'+"_END" the end of the WHILE statement and 'label name'+"_INNER" the inner HEAD, without condition check
 * FOREACH \<variable> {',' \<variable>} 'IN' \<iterable> {(',' | '\*') \<iterable>}: iterates over the given iterables, using itertools.product on items chained by '*'
 * JUMP \<label name> \[(IF \<condition access>) | ('(' \<expression> | \<op expression> ')')] : jumps to the label named 'label name'; if a condition is provided, jumps only if it evals to True

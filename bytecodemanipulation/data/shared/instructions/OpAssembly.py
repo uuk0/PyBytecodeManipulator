@@ -4,6 +4,7 @@ import typing
 from collections import namedtuple
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
+from bytecodemanipulation.assembler.target import assembly
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
@@ -31,6 +32,9 @@ class AbstractOperator(abc.ABC):
     ) -> typing.List[Instruction]:
         raise NotImplementedError
 
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        raise NotImplementedError
+
 
 OperatorArgValue = namedtuple("OperatorArgValue", "index")
 
@@ -49,8 +53,10 @@ class OpcodeBaseOperator(AbstractOperator):
             ],
         ]
         | OperatorArgValue,
+        static_eval: typing.Callable[[ParsingScope, typing.List[AbstractSourceExpression]], typing.Any] = None
     ):
         self.opcodes = opcodes
+        self.static_eval = static_eval
 
     def emit_bytecodes(
         self,
@@ -86,6 +92,12 @@ class OpcodeBaseOperator(AbstractOperator):
                 raise ValueError(opcode)
 
         return bytecode
+
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        if not self.static_eval:
+            raise NotImplementedError
+
+        return self.static_eval(scope, list(parameters))
 
 
 class AbstractOpAssembly(
@@ -139,6 +151,9 @@ class AbstractOpAssembly(
         def __repr__(self):
             raise NotImplementedError
 
+        def evaluate_static_value(self, scope: ParsingScope):
+            raise NotImplementedError
+
     class SingleOperation(IOperation):
         def __init__(
             self,
@@ -180,6 +195,9 @@ class AbstractOpAssembly(
                     self.operator_token,
                     "during emitting bytecode of singleton operator",
                 )
+
+        def evaluate_static_value(self, scope: ParsingScope):
+            return self.base.SINGLE_OPS[self.operator].evaluate_static_value(scope, self.expression)
 
         def visit_parts(
             self,
@@ -249,6 +267,9 @@ class AbstractOpAssembly(
                     "during emitting bytecode of binary operation",
                 )
 
+        def evaluate_static_value(self, scope: ParsingScope):
+            return self.base.BINARY_OPS[self.operator].evaluate_static_value(scope, self.lhs, self.rhs)
+
         def visit_parts(
             self,
             visitor: typing.Callable[[IAssemblyStructureVisitable, tuple], typing.Any],
@@ -310,6 +331,9 @@ class AbstractOpAssembly(
                     self.operator_token,
                     "during emitting bytecode of binary operation",
                 )
+
+        def evaluate_static_value(self, scope: ParsingScope):
+            return self.base.PREFIX_OPERATORS[self.operator][0].evaluate_static_value(scope, *self.args)
 
         def visit_parts(
             self,
@@ -565,6 +589,9 @@ class AbstractOpAssembly(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         raise RuntimeError(f"cannot assign to an '{self.operation}' operator!")
+
+    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+        return self.operation.evaluate_static_value(scope)
 
     def visit_parts(
         self,

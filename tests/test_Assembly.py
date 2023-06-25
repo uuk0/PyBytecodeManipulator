@@ -46,10 +46,6 @@ from bytecodemanipulation.data.shared.instructions.WhileAssembly import (
 from bytecodemanipulation.data.shared.instructions.YieldAssembly import (
     AbstractYieldAssembly,
 )
-from bytecodemanipulation.data.shared.instructions.OpAssembly import AbstractOpAssembly
-from bytecodemanipulation.data.shared.instructions.CallAssembly import (
-    AbstractCallAssembly,
-)
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 bytecodemanipulation.data_loader.INIT_ASSEMBLY = False
@@ -1988,3 +1984,24 @@ RETURN ~PY_VERSION
         """)
 
         self.assertEqual(target(), sys.version_info.major * 100 + sys.version_info.minor)
+
+    def test_static_version_check(self):
+        version_id = sys.version_info.major * 100 + sys.version_info.minor
+
+        scope = {"__file__": __file__, "apply_operations": apply_operations, "assembly": assembly}
+
+        exec(f'''
+@apply_operations
+def target():
+    assembly("""
+IF OP(~PY_VERSION == {version_id})
+{{
+    RETURN 1
+}}
+RETURN 0
+""")''', scope)
+
+        target = scope["target"]
+
+        self.assertEqual(target(), 1)
+        compare_optimized_results(self, target, lambda: 1)
