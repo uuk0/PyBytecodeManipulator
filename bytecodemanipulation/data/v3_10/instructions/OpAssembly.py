@@ -40,6 +40,12 @@ class NandOperator(AbstractOperator):
         ]
         return bytecode
 
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        if not lhs.evaluate_static_value(scope):
+            return True
+
+        return not rhs.evaluate_static_value(scope)
+
 
 class AndOperator(NandOperator):
     def emit_bytecodes(
@@ -52,6 +58,12 @@ class AndOperator(NandOperator):
         return super().emit_bytecodes(function, scope, lhs, rhs) + [
             Instruction(Opcodes.UNARY_NOT, bool)
         ]
+
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        if not lhs.evaluate_static_value(scope):
+            return False
+
+        return rhs.evaluate_static_value(scope)
 
 
 class AndEvalOperator(NandOperator):
@@ -71,6 +83,12 @@ class AndEvalOperator(NandOperator):
             Instruction(Opcodes.BYTECODE_LABEL, inner_label),
             Instruction(Opcodes.POP_TOP),
         ]
+
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        lhs = lhs.evaluate_static_value(scope)
+        rhs = rhs.evaluate_static_value(scope)
+
+        return bool(lhs and rhs)
 
 
 class NorOperator(AbstractOperator):
@@ -98,6 +116,12 @@ class NorOperator(AbstractOperator):
         ]
         return bytecode
 
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        if lhs.evaluate_static_value(scope):
+            return False
+
+        return not rhs.evaluate_static_value(scope)
+
 
 class OrOperator(NorOperator):
     def emit_bytecodes(
@@ -110,6 +134,12 @@ class OrOperator(NorOperator):
         return super().emit_bytecodes(function, scope, lhs, rhs) + [
             Instruction(Opcodes.UNARY_NOT, bool)
         ]
+
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        if lhs.evaluate_static_value(scope):
+            return True
+
+        return rhs.evaluate_static_value(scope)
 
 
 class OrEvalOperator(AbstractOperator):
@@ -129,6 +159,12 @@ class OrEvalOperator(AbstractOperator):
             Instruction(Opcodes.BYTECODE_LABEL, inner_label),
             Instruction(Opcodes.POP_TOP),
         ]
+
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        lhs = lhs.evaluate_static_value(scope)
+        rhs = rhs.evaluate_static_value(scope)
+
+        return bool(lhs or rhs)
 
 
 class XOROperator(AbstractOperator):
@@ -150,6 +186,12 @@ class XOROperator(AbstractOperator):
         ]
         return bytecode
 
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        lhs = lhs.evaluate_static_value(scope)
+        rhs = rhs.evaluate_static_value(scope)
+
+        return lhs != rhs
+
 
 class XNOROperator(AbstractOperator):
     def emit_bytecodes(
@@ -169,6 +211,12 @@ class XNOROperator(AbstractOperator):
             Instruction(Opcodes.COMPARE_EQ),
         ]
         return bytecode
+
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        lhs = lhs.evaluate_static_value(scope)
+        rhs = rhs.evaluate_static_value(scope)
+
+        return lhs == rhs
 
 
 class WalrusOperator(AbstractOperator):
@@ -349,29 +397,29 @@ class AvgIOperator(AbstractOperator):
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
-        "+": OpcodeBaseOperator(Opcodes.BINARY_ADD),
-        "-": OpcodeBaseOperator(Opcodes.BINARY_SUBTRACT),
-        "*": OpcodeBaseOperator(Opcodes.BINARY_MULTIPLY),
-        "/": OpcodeBaseOperator(Opcodes.BINARY_TRUE_DIVIDE),
-        "//": OpcodeBaseOperator(Opcodes.BINARY_FLOOR_DIVIDE),
-        "**": OpcodeBaseOperator(Opcodes.BINARY_MULTIPLY),
-        "%": OpcodeBaseOperator(Opcodes.BINARY_MODULO),
-        "&": OpcodeBaseOperator(Opcodes.BINARY_AND),
-        "|": OpcodeBaseOperator(Opcodes.BINARY_OR),
-        "^": OpcodeBaseOperator(Opcodes.BINARY_XOR),
-        ">>": OpcodeBaseOperator(Opcodes.BINARY_RSHIFT),
-        "<<": OpcodeBaseOperator(Opcodes.BINARY_LSHIFT),
-        "@": OpcodeBaseOperator(Opcodes.BINARY_MATRIX_MULTIPLY),
-        "is": OpcodeBaseOperator((Opcodes.IS_OP, 0)),
-        "!is": OpcodeBaseOperator((Opcodes.IS_OP, 1)),
-        "in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 0)),
-        "!in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 1)),
-        "<": OpcodeBaseOperator(Opcodes.COMPARE_LT),
-        "<=": OpcodeBaseOperator(Opcodes.COMPARE_LE),
-        "==": OpcodeBaseOperator(Opcodes.COMPARE_EQ),
-        "!=": OpcodeBaseOperator(Opcodes.COMPARE_NEQ),
-        ">": OpcodeBaseOperator(Opcodes.COMPARE_GT),
-        ">=": OpcodeBaseOperator(Opcodes.COMPARE_GE),
+        "+": OpcodeBaseOperator(Opcodes.BINARY_ADD, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) + x[1].evaluate_static_value(scope)),
+        "-": OpcodeBaseOperator(Opcodes.BINARY_SUBTRACT, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) - x[1].evaluate_static_value(scope)),
+        "*": OpcodeBaseOperator(Opcodes.BINARY_MULTIPLY, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) * x[1].evaluate_static_value(scope)),
+        "/": OpcodeBaseOperator(Opcodes.BINARY_TRUE_DIVIDE, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) / x[1].evaluate_static_value(scope)),
+        "//": OpcodeBaseOperator(Opcodes.BINARY_FLOOR_DIVIDE, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) // x[1].evaluate_static_value(scope)),
+        "**": OpcodeBaseOperator(Opcodes.BINARY_POWER, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) ** x[1].evaluate_static_value(scope)),
+        "%": OpcodeBaseOperator(Opcodes.BINARY_MODULO, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) % x[1].evaluate_static_value(scope)),
+        "&": OpcodeBaseOperator(Opcodes.BINARY_AND, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) & x[1].evaluate_static_value(scope)),
+        "|": OpcodeBaseOperator(Opcodes.BINARY_OR, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) | x[1].evaluate_static_value(scope)),
+        "^": OpcodeBaseOperator(Opcodes.BINARY_XOR, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) ^ x[1].evaluate_static_value(scope)),
+        ">>": OpcodeBaseOperator(Opcodes.BINARY_RSHIFT, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) >> x[1].evaluate_static_value(scope)),
+        "<<": OpcodeBaseOperator(Opcodes.BINARY_LSHIFT, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) << x[1].evaluate_static_value(scope)),
+        "@": OpcodeBaseOperator(Opcodes.BINARY_MATRIX_MULTIPLY, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) @ x[1].evaluate_static_value(scope)),
+        "is": OpcodeBaseOperator((Opcodes.IS_OP, 0), static_eval=lambda scope, x: x[0].evaluate_static_value(scope) is x[1].evaluate_static_value(scope)),
+        "!is": OpcodeBaseOperator((Opcodes.IS_OP, 1), static_eval=lambda scope, x: x[0].evaluate_static_value(scope) is not x[1].evaluate_static_value(scope)),
+        "in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 0), static_eval=lambda scope, x: x[0].evaluate_static_value(scope) in x[1].evaluate_static_value(scope)),
+        "!in": OpcodeBaseOperator((Opcodes.CONTAINS_OP, 1), static_eval=lambda scope, x: x[0].evaluate_static_value(scope) not in x[1].evaluate_static_value(scope)),
+        "<": OpcodeBaseOperator(Opcodes.COMPARE_LT, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) < x[1].evaluate_static_value(scope)),
+        "<=": OpcodeBaseOperator(Opcodes.COMPARE_LE, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) <= x[1].evaluate_static_value(scope)),
+        "==": OpcodeBaseOperator(Opcodes.COMPARE_EQ, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) == x[1].evaluate_static_value(scope)),
+        "!=": OpcodeBaseOperator(Opcodes.COMPARE_NEQ, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) != x[1].evaluate_static_value(scope)),
+        ">": OpcodeBaseOperator(Opcodes.COMPARE_GT, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) > x[1].evaluate_static_value(scope)),
+        ">=": OpcodeBaseOperator(Opcodes.COMPARE_GE, static_eval=lambda scope, x: x[0].evaluate_static_value(scope) >= x[1].evaluate_static_value(scope)),
         "xor": XOROperator(),
         "!xor": XNOROperator(),
         "xnor": XNOROperator(),
@@ -393,11 +441,11 @@ class OpAssembly(AbstractOpAssembly):
     }
 
     SINGLE_OPS = {
-        "-": OpcodeBaseOperator(Opcodes.UNARY_NEGATIVE),
-        "+": OpcodeBaseOperator(Opcodes.UNARY_POSITIVE),
-        "~": OpcodeBaseOperator(Opcodes.UNARY_INVERT),
-        "not": OpcodeBaseOperator(Opcodes.UNARY_NOT),
-        "!": OpcodeBaseOperator(Opcodes.UNARY_NOT),
+        "-": OpcodeBaseOperator(Opcodes.UNARY_NEGATIVE, static_eval=lambda scope, x: -x[0].evaluate_static_value(scope)),
+        "+": OpcodeBaseOperator(Opcodes.UNARY_POSITIVE, static_eval=lambda scope, x: +x[0].evaluate_static_value(scope)),
+        "~": OpcodeBaseOperator(Opcodes.UNARY_INVERT, static_eval=lambda scope, x: ~x[0].evaluate_static_value(scope)),
+        "not": OpcodeBaseOperator(Opcodes.UNARY_NOT, static_eval=lambda scope, x: not x[0].evaluate_static_value(scope)),
+        "!": OpcodeBaseOperator(Opcodes.UNARY_NOT, static_eval=lambda scope, x: not x[0].evaluate_static_value(scope)),
     }
 
     PREFIX_OPERATORS = {

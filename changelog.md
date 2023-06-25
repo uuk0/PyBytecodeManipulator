@@ -6,6 +6,8 @@
 - CODE_BLOCK data type can now expose 'parameters' to the caller, so the implementation detail is hidden.
   Use the data type CODE_BLOCK\[\<parameter count>] together with MACRO_PASTE \<var> \[\<expressions...>]
   and \[\<local var names>] {\<code>}
+- added constants ~PY_VERSION and ~BCM_VERSION
+- IF assembly tries now to evaluate the expression ahead of time, making compile-time decisions if to include code or not
 
 # Version 0.3.3
 - added new virtual opcodes for compare operations
