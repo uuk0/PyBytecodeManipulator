@@ -1,6 +1,7 @@
 import dis
 import functools
 import itertools
+import sys
 from unittest import TestCase
 
 import bytecodemanipulation.data_loader
@@ -1977,3 +1978,13 @@ RETURN 1
 
         self.assertEqual(target(0), 1)
         self.assertEqual(target(1), 1)
+
+    def test_version_constants(self):
+        @apply_operations
+        def target():
+            assembly("""
+
+RETURN ~PY_VERSION
+        """)
+
+        self.assertEqual(target(), sys.version_info.major * 100 + sys.version_info.minor)

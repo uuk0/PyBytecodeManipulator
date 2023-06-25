@@ -100,7 +100,9 @@ Expressions can be added as certain parameters to instructions to use instead of
   - $\<local name>: local variable
   - §\<name>: access a variable from an outer scope
   - &\<name>: access to a macro parameter (can be also used in most places were <name> should be used)
-  - ~\<name>: static access to a builtin or a module
+  - ~\<name>: static access to a builtin or a module, or one of the following constants:
+    - PY_VERSION: the python version, in a single integer, e.g. 310 for version 3.10
+    - BCM_VERSION: the bytecode manipulation version, also in above format, e.g. 10410 would be version 1.4.10 
   - %\[\<n>]: top of stack, or the n-th item from TOS
   - \<access>\[\<index or expression>]: value by \[] operator
   - \<access>(\<... args>): call to the attribute; not allowed in CALL opcode source and STORE opcode source
