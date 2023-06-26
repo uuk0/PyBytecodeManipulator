@@ -41,7 +41,7 @@ for cross-version support.
 * JUMP \<label name> \[(IF \<condition access>) | ('(' \<expression> | \<op expression> ')')] : jumps to the label named 'label name'; if a condition is provided, jumps only if it evals to True
 
 * CLASS \<name> '\<' \<exposed namespace> '\>' \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}': creates a class; namespace for 'body' is extended by class name!
-* DEF \[\<func name>] \['<' \['!'] \<bound variables\> '>'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}': creates a method named 'func name' (lambda-like if not provided), capturing the outer locals in 'bound variables' (or none)
+* DEF \[\<func name>] \['\<' \['!'] \<bound variables\> '>'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}': creates a method named 'func name' (lambda-like if not provided), capturing the outer locals in 'bound variables' (or none)
   using the args stored in 'signature', and optionally storing the result at 'target' (if not provided, at 'func name' if provided else TOS). 'body' is the code itself
 
 * PYTHON '{' \<code> '}': puts the python code in place; '{' and '}' is allowed in code, but the last not matched and not escaped '}' will be used at end of code by the Lexer; WARNING: f-strings are currently NOT supported as they require
@@ -131,19 +131,21 @@ Expressions can be added as certain parameters to instructions to use instead of
 - AWAIT \<expr> \['->' \<target>] and as an expression
 - AWAIT '\*' ('(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')') | ('(' \<expr> {\<expr>} ')' \['->' \<target>]) | (\<expr> \['->' \<target>]) (* = asyncio.gather(...))
 - WITH '(' \<expr> \['->' \<target>] {\<expr> \['->' \<target>]} ')' '{' \<body> '}' with special handling for jumps (trigger exit or disable exit)
+- UNPACK \<iterable> '->' \[\<targets...>\] \['*' \<rest target>] \[\<targets...>\] separated by ',', at least one present, at most one '\*'
+- PACK \<type> \<arguments ...> '->' \<target>: packs data as 'type' (LIST, DICT, SET, TUPLE are possible, DICT enforced even item count)
 - CALL INLINE
 - CALL MACRO for normal functions (implicit made macros with static parameters), and CALL for macros (implicit made local function)
 - More Macro Arg Types:
-  - new data type: KEYWORD:'...' where ... is the keyword name to be required (and \' is the escaping for ')
-  - new data type: OPTIONAL\<...> where ... is another data type
-  - new data type: UNION\<...> where ... is a list of data types, separated by ','
-  - new data type: LIST\['\<' \<data type> '>'] where data type is the inner type
-  - new data type: CONSTANT\['\<' \<type name> '>']
+  - new data type: OPTIONAL\[...] where ... is another data type, marking a variable as None-able
+  - new data type: UNION\[...] where ... is a list of data types, separated by ','
+  - new data type: LIST\['\[' \<data type> ']'] where data type is the inner type
+  - new data type: CONSTANT\['\[' \<type name> ']']
+  - ENFORCED\[\<type>] for runtime enforcing the type also
   - new data type: LABEL exposing a label to the macro, which can be used in places were normal labels can be used (handed over only by name)
+    (partially implemented via macro name expansion, but compile-time checks should be enforced)
   - new specialization for the & macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on & macro parameter where list: returns len of parameter list
   - storing a list parameter in a local variable will create a list creation code
-  - new assembly instruction ASSERT_STATIC (\<condition>) which asserts an expression statically, in this case at instantiation time
   - maybe also the possibility to define code for emitting assembly instructions
     - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
@@ -152,11 +154,17 @@ Expressions can be added as certain parameters to instructions to use instead of
 - CLASS STRUCT ... '\<' \<attr name> {',' \<attr name>} '>' '{' ... '}' to declare a class with \_\_slots__ (and maybe compile-time checks that no other attributes are set on 'self' attributes on functions?)
 - CLASS STRUCT IMMUTABLE (for namedtuple stuff)
 - CLASS ABSTRACT ... for abstract classes, which includes the abc.ABC baseclass
-- DEF ABSTRACT ... for defining abstract methods (no body to declare!)
+- DEF ABSTRACT ... for defining abstract methods (no body to declare, automatically raises a NotImplementedException when called)
+- DEF PROTECTED ... for defining a method which cannot be overridden in subclasses, enforced via \_\_init_subclass__
 - ATTR_TYPEDEF \<attr name> \<type definition> in class bodies
 - VAR_TYPEDEF \<variable name> \<type definition> everywhere to hint types
 - ..._TYPEDEF_STRICT for enforcing types
 - MACRO_PASTE / CODE_BLOCK: allow the macro to forbid access to internal locals
+- RAW with macro data
+- Template parameters to functions and classes somehow, enforceable via runtime type checks
+  - DEF \[\<func name>] \['\<' \['!'] \<bound variables\> '>'] \['{' \<generic type information> '}'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}'
+  - CLASS \<name> '\<' \<exposed namespace> '\>' \['{' \<generic type inforation> '}'] \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}'
+  - GENERIC\[\<name>] as type specifier
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 
