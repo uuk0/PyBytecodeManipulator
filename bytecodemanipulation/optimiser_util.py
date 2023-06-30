@@ -262,14 +262,20 @@ def inline_constant_binary_ops(mutable: MutableFunction, builder) -> bool:
                 else (instruction.opcode, instruction.arg)
             ]
 
-            arg = next(instruction.trace_stack_position(1))
-            target = next(instruction.trace_stack_position(0))
+            target = next(instruction.trace_stack_position(1))
+            arg = next(instruction.trace_stack_position(0))
 
             if arg.opcode == target.opcode == Opcodes.LOAD_CONST:
                 value = target.arg_value
 
+                add_target = True
+
                 if isinstance(method, str):
+                    if not hasattr(value, method):
+                        return
+
                     method = getattr(value, method)
+                    add_target = False
 
                     if not callable(method) or not (
                         type(value) in CONSTANT_BUILTIN_TYPES
@@ -281,7 +287,10 @@ def inline_constant_binary_ops(mutable: MutableFunction, builder) -> bool:
                         return
 
                 try:
-                    value = method(arg.arg_value, target.arg_value)
+                    if add_target:
+                        value = method(arg.arg_value, target.arg_value)
+                    else:
+                        value = method(arg.arg_value)
                 except:
                     traceback.print_exc()
                     return

@@ -9,6 +9,7 @@
 - added constants ~PY_VERSION and ~BCM_VERSION
 - IF assembly tries now to evaluate the expression ahead of time, making compile-time decisions if to include code or not
 - new operators: tuple, list, set and dict
+- fixed some optimiser stuff when statically doing operators
 
 # Version 0.3.3
 - added new virtual opcodes for compare operations

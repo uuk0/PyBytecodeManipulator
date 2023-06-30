@@ -4,6 +4,7 @@ from unittest import TestCase
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.assembler.target import apply_operations
 from bytecodemanipulation.assembler.target import assembly
+from tests.util import compare_optimized_results
 
 
 class TestOperators(TestCase):
@@ -371,6 +372,17 @@ class TestOperators(TestCase):
             assembly("RETURN OP (tuple (10, 20, 30))")
 
         self.assertEqual(target(), (10, 20, 30))
+
+    def test_tuple_operator_static(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (tuple (10, 20, 30))[0]")
+
+        self.assertEqual(target(), 10)
+
+        dis.dis(target)
+
+        compare_optimized_results(self, target, lambda: 10)
 
     def test_list_operator(self):
         @apply_operations
