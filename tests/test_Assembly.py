@@ -1810,6 +1810,8 @@ FOREACH $p IN $iterable * $iterable_2
 
         self.assertEqual(target(), [0, 0, 1, 2])
 
+
+class TestRawAssembly(TestCase):
     def test_raw_assembly_by_id(self):
         def target():
             assembly(
@@ -1844,6 +1846,8 @@ RETURN %
 
         self.assertEqual(target(), 10)
 
+
+class TestAssert(TestCase):
     def test_assert(self):
         @apply_operations
         def target(x):
@@ -1958,6 +1962,8 @@ CALL MACRO test_assert_static_macro_static_parameter_fail(0)
         except AssertionError as e:
             self.assertEqual(e.args, ("assertion failed: expected <true-ish value>",))
 
+
+class TestIfLabel(TestCase):
     def test_if_label_jump(self):
         @apply_operations
         def target(x):
@@ -1985,6 +1991,8 @@ RETURN ~PY_VERSION
 
         self.assertEqual(target(), sys.version_info.major * 100 + sys.version_info.minor)
 
+
+class TestStaticIf(TestCase):
     def test_static_version_check(self):
         version_id = sys.version_info.major * 100 + sys.version_info.minor
 
