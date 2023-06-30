@@ -364,3 +364,37 @@ class TestOperators(TestCase):
             assembly("RETURN OP (sum ($a, $a, $a, $a))")
 
         self.assertEqual(target(2), 8)
+
+    def test_tuple_operator(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (tuple (10, 20, 30))")
+
+        self.assertEqual(target(), (10, 20, 30))
+
+    def test_list_operator(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (list (10, 20, 30))")
+
+        self.assertEqual(target(), [10, 20, 30])
+
+    def test_set_operator(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (set (10, 20, 30))")
+
+        self.assertEqual(target(), {10, 20, 30})
+
+    def test_dict_operator(self):
+        @apply_operations
+        def target():
+            assembly("RETURN OP (dict (10, 20, 30, 40))")
+
+        self.assertEqual(target(), {10: 20, 30: 40})
+
+    def test_dict_operator_failure(self):
+        def target():
+            assembly("RETURN OP (dict (10, 20, 30))")
+
+        self.assertRaises(SyntaxError, lambda: apply_operations(target))

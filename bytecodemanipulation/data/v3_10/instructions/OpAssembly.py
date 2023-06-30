@@ -3,6 +3,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.data.shared.instructions.OpAssembly import OpcodeBaseOperator
 from bytecodemanipulation.MutableFunction import MutableFunction
 
@@ -394,6 +395,109 @@ class AvgIOperator(AbstractOperator):
         return bytecode
 
 
+class TupleOperator(AbstractOperator):
+    def emit_bytecodes(
+        self,
+        function: MutableFunction,
+        scope: ParsingScope,
+        *parameters: AbstractSourceExpression,
+    ) -> typing.List[Instruction]:
+        bytecode = []
+
+        for param in parameters:
+            bytecode += param.emit_bytecodes(
+                function,
+                scope,
+            )
+
+        bytecode += [
+            Instruction(Opcodes.BUILD_TUPLE, arg=len(parameters)),
+        ]
+
+        return bytecode
+
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        return tuple(
+            [
+                param.evaluate_static_value(scope)
+                for param in parameters
+            ]
+        )
+
+
+class ListOperator(AbstractOperator):
+    def emit_bytecodes(
+        self,
+        function: MutableFunction,
+        scope: ParsingScope,
+        *parameters: AbstractSourceExpression,
+    ) -> typing.List[Instruction]:
+        bytecode = []
+
+        for param in parameters:
+            bytecode += param.emit_bytecodes(
+                function,
+                scope,
+            )
+
+        bytecode += [
+            Instruction(Opcodes.BUILD_LIST, arg=len(parameters)),
+        ]
+
+        return bytecode
+
+
+class SetOperator(AbstractOperator):
+    def emit_bytecodes(
+        self,
+        function: MutableFunction,
+        scope: ParsingScope,
+        *parameters: AbstractSourceExpression,
+    ) -> typing.List[Instruction]:
+        bytecode = []
+
+        for param in parameters:
+            bytecode += param.emit_bytecodes(
+                function,
+                scope,
+            )
+
+        bytecode += [
+            Instruction(Opcodes.BUILD_SET, arg=len(parameters)),
+        ]
+
+        return bytecode
+
+
+class DictOperator(AbstractOperator):
+    def emit_bytecodes(
+        self,
+        function: MutableFunction,
+        scope: ParsingScope,
+        *parameters: AbstractSourceExpression,
+    ) -> typing.List[Instruction]:
+        if len(parameters) % 2 != 0:
+            raise throw_positioned_error(
+                scope,
+                sum([list(param.get_tokens()) for param in parameters], []),
+                "expected even arg count for dict build",
+            )
+
+        bytecode = []
+
+        for param in parameters:
+            bytecode += param.emit_bytecodes(
+                function,
+                scope,
+            )
+
+        bytecode += [
+            Instruction(Opcodes.BUILD_MAP, arg=len(parameters) // 2),
+        ]
+
+        return bytecode
+
+
 @Parser.register
 class OpAssembly(AbstractOpAssembly):
     BINARY_OPS = {
@@ -453,6 +557,10 @@ class OpAssembly(AbstractOpAssembly):
         "prod": (ProdOperator(), None, True, True),
         "avg": (AvgOperator(), None, True, True),
         "avgi": (AvgIOperator(), None, True, True),
+        "tuple": (TupleOperator(), None, True, True),
+        "list": (ListOperator(), None, True, True),
+        "set": (SetOperator(), None, True, True),
+        "dict": (DictOperator(), None, True, True),
     }
 
     # todo: inplace variants

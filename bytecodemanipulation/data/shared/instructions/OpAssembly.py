@@ -325,6 +325,8 @@ class AbstractOpAssembly(
                 return self.base.PREFIX_OPERATORS[self.operator][0].emit_bytecodes(
                     function, scope, *self.args
                 )
+            except SyntaxError:
+                raise
             except:
                 raise throw_positioned_error(
                     scope,

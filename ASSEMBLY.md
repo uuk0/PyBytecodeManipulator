@@ -145,6 +145,7 @@ Expressions can be added as certain parameters to instructions to use instead of
     (partially implemented via macro name expansion, but compile-time checks should be enforced)
   - new specialization for the & macro expansion system: index operator on result where parameter is list will access that item in the list
   - new special case for len(...) on & macro parameter where list: returns len of parameter list
+  - new special case for using & parameters in local captures: name expansion when VARIABLE_ARG
   - storing a list parameter in a local variable will create a list creation code
   - maybe also the possibility to define code for emitting assembly instructions
     - this could be done by a new instruction called EMIT_INSTRUCTION

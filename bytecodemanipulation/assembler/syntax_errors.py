@@ -50,6 +50,9 @@ def _print_complex_token_location(
             print(f'File "{file}", line {line + 1}', file=sys.stderr)
         previous_line_no = line
 
+        if line >= len(content):
+            continue
+
         print(content[line].removesuffix("\n"), file=sys.stderr)
         print(error_location, file=sys.stderr)
 
