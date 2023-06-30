@@ -327,6 +327,17 @@ class SumOperator(AbstractOperator):
 
         return bytecode
 
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        s = parameters[0].evaluate_static_value(scope)
+
+        for param in parameters[1:]:
+            s += param.evaluate_static_value(scope)
+
+        return s
+
 
 class ProdOperator(AbstractOperator):
     def emit_bytecodes(
@@ -345,6 +356,17 @@ class ProdOperator(AbstractOperator):
             bytecode.append(Instruction(Opcodes.BINARY_MULTIPLY))
 
         return bytecode
+
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        s = parameters[0].evaluate_static_value(scope)
+
+        for param in parameters[1:]:
+            s *= param.evaluate_static_value(scope)
+
+        return s
 
 
 class AvgOperator(AbstractOperator):
@@ -370,6 +392,16 @@ class AvgOperator(AbstractOperator):
 
         return bytecode
 
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        s = parameters[0].evaluate_static_value(scope)
+
+        s += sum([param.evaluate_static_value(scope) for param in parameters[1:]])
+
+        return s / len(parameters)
+
 
 class AvgIOperator(AbstractOperator):
     def emit_bytecodes(
@@ -393,6 +425,16 @@ class AvgIOperator(AbstractOperator):
         ]
 
         return bytecode
+
+    def evaluate_static_value(self, scope: ParsingScope, *parameters: AbstractSourceExpression):
+        if len(parameters) == 0:
+            raise SyntaxError("expected at least one parameter")
+
+        s = parameters[0].evaluate_static_value(scope)
+
+        s += sum([param.evaluate_static_value(scope) for param in parameters[1:]])
+
+        return s // len(parameters)
 
 
 class TupleOperator(AbstractOperator):
