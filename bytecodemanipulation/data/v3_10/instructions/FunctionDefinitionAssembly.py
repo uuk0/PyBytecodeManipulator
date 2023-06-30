@@ -1,5 +1,9 @@
 import typing
 
+from bytecodemanipulation.assembler.AbstractBase import MacroExpandedIdentifier
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
 from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
     AbstractFunctionDefinitionAssembly,
 )
@@ -114,8 +118,14 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             flags |= 0x08
 
             for name, is_static in self.bound_variables:
+                n = name(scope)
+
+                # todo: why is this hack needed?
+                if isinstance(name, MacroExpandedIdentifier):
+                    n = ":" + n
+
                 bytecode += [
-                    Instruction(Opcodes.LOAD_FAST, name(scope)),
+                    Instruction(Opcodes.LOAD_FAST, n),
                     Instruction(
                         Opcodes.STORE_DEREF, name(scope) + "%inner"
                     ),
@@ -153,6 +163,12 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)
+        elif not self.func_name:
+            raise throw_positioned_error(
+                scope,
+                [],
+                "Expected either 'target' or <valid name>",
+            )
         else:
             bytecode += [
                 Instruction(Opcodes.STORE_FAST, self.prefix + self.func_name(scope)),

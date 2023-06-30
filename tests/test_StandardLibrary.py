@@ -188,7 +188,7 @@ std:stream:to_list($stream, $output)
 #         def target():
 #             l = [1, 2, 3, 4]
 #             assembly("""
-# std:comprehension:list($l, $value, { OP $value + 1 -> % }) -> %
+# std:comprehension:list($l, [$value] { OP $value + 1 -> % }) -> %
 # RETURN %""")
 #
 #         mutable = MutableFunction(target)

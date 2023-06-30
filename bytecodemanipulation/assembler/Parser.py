@@ -111,7 +111,10 @@ except ImportError:
 
 def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
     instr = Instruction(*args, **kwargs)
-    instr.source_location = token.line, token.column, token.span
+
+    if token is not None:
+        instr.source_location = token.line, token.column, token.span
+
     return instr
 
 
