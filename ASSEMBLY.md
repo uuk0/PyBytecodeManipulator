@@ -166,6 +166,8 @@ Expressions can be added as certain parameters to instructions to use instead of
   - DEF \[\<func name>] \['\<' \['!'] \<bound variables\> '>'] \['{' \<generic type information> '}'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}'
   - CLASS \<name> '\<' \<exposed namespace> '\>' \['{' \<generic type inforation> '}'] \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}'
   - GENERIC\[\<name>] as type specifier
+- Macro-in-Macro does not work due to macro parameter shadowing; This requires changes to the ParsingScope to
+  make the macro parameter namespace a stack
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 

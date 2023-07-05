@@ -1,4 +1,6 @@
 
+# Version 0.3.5
+
 # Version 0.3.4
 - improved error messages for assemblies
 - label names may now contain ':', and be based on macro-expanded names,
