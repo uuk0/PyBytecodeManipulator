@@ -112,6 +112,9 @@ class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
                 )
             except StopIteration:
                 return
+            except:
+                print(instr)
+                raise
 
             if not instr.has_stop_flow() and not instr.has_unconditional_jump():
                 visiting.add(instr.next_instruction)
@@ -140,7 +143,10 @@ class ArgRealValueSetter(AbstractInstructionWalkerTransform):
         elif target.has_name():
             target.arg = builder.reserve_name(target.arg_value)
         elif target.has_cell_variable():
-            target.arg = builder.reserve_cell_name(target.arg_value)
+            if target.arg_value.startswith("*"):
+                target.arg = builder.reserve_cell_name(target.arg_value)
+            else:
+                target.arg = builder.reserve_free_name(target.arg_value)
         elif target.has_constant():
             target.arg = builder.reserve_constant(target.arg_value)
 

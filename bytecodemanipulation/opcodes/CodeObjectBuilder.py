@@ -39,20 +39,38 @@ class CodeObjectBuilder:
                 ).add_previous_instruction(instruction)
 
     def reserve_local_name(self, name: str) -> int:
+        assert isinstance(name, str)
+
         if name in self.shared_variable_names:
             return self.shared_variable_names.index(name)
+
         self.shared_variable_names.append(name)
         return len(self.shared_variable_names) - 1
 
     def reserve_cell_name(self, name: str) -> int:
+        assert isinstance(name, str)
+
         if name in self.cell_variables:
             return self.cell_variables.index(name)
+
         self.cell_variables.append(name)
         return len(self.cell_variables) - 1
+    
+    def reserve_free_name(self, name: str) -> int:
+        assert isinstance(name, str)
+
+        if name in self.free_variables:
+            return self.free_variables.index(name)
+
+        self.free_variables.append(name)
+        return len(self.free_variables) - 1
 
     def reserve_name(self, name: str) -> int:
+        assert isinstance(name, str)
+
         if name in self.shared_names:
             return self.shared_names.index(name)
+
         self.shared_names.append(name)
         return len(self.shared_names) - 1
 

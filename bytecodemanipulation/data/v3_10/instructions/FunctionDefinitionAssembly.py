@@ -1,3 +1,5 @@
+import functools
+import inspect
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import MacroExpandedIdentifier
@@ -55,11 +57,14 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
         if self.bound_variables:
             for name, is_static in self.bound_variables:
-                # print(name, name(scope), is_static)
-                inner_bytecode += [
-                    Instruction(Opcodes.LOAD_DEREF, name(scope) + "%inner"),
-                    Instruction(Opcodes.STORE_DEREF, name(scope)),
-                ]
+                scope.closure_locals.add(name(scope))
+
+        local_variable_buffer = scope.scope_name_generator("outer_locals")
+
+        target.argument_count = len(self.args)
+        if self.bound_variables:
+            target.argument_names.insert(0, local_variable_buffer)
+            target.argument_count += 1
 
         inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
         inner_bytecode[-1].next_instruction = target.instruction_entry_point
@@ -78,6 +83,17 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                 instruction.change_opcode(Opcodes.NOP)
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(walk_label))
+
+        def rewrite_outer_access(instruction: Instruction):
+            if instruction.opcode == Opcodes.LOAD_DEREF and instruction.arg_value in scope.closure_locals:
+                instruction.insert_after([
+                    Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
+                    Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
+                    Instruction(Opcodes.BINARY_SUBSCR),
+                ])
+                instruction.change_opcode(Opcodes.NOP)
+
+        inner_bytecode[0].apply_visitor(LambdaInstructionWalker(rewrite_outer_access))
 
         def resolve_jump_to_label(ins: Instruction):
             if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):
@@ -111,41 +127,10 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
             bytecode += defaults
 
-        if self.bound_variables:
-            if any(map(lambda e: e[1], self.bound_variables)):
-                raise NotImplementedError("Static variables")
-
-            flags |= 0x08
-
-            for name, is_static in self.bound_variables:
-                n = name(scope)
-
-                # todo: why is this hack needed?
-                if isinstance(name, MacroExpandedIdentifier):
-                    n = ":" + n
-
-                bytecode += [
-                    Instruction(Opcodes.LOAD_FAST, n),
-                    Instruction(
-                        Opcodes.STORE_DEREF, name(scope) + "%inner"
-                    ),
-                ]
-
-            bytecode += [
-                Instruction(Opcodes.LOAD_CLOSURE, name(scope) + "%inner")
-                for name, is_static in self.bound_variables
-            ]
-            bytecode.append(
-                Instruction(
-                    Opcodes.BUILD_TUPLE, arg=len(self.bound_variables)
-                )
-            )
-
-        target.argument_count = len(self.args)
-
         for arg in self.args:
             if isinstance(arg, CallAssembly.Arg):
                 target.argument_names.append(arg.source(scope))
+
             elif isinstance(arg, CallAssembly.KwArg):
                 target.argument_names.append(arg.key(scope))
 
@@ -160,6 +145,18 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             ),
             Instruction(Opcodes.MAKE_FUNCTION, arg=flags),
         ]
+
+        if self.bound_variables:
+            # <function> = functools.partial(<function>, <bound local dict>)
+
+            bytecode += [
+                Instruction(Opcodes.LOAD_CONST, functools.partial),
+                Instruction(Opcodes.ROT_TWO),
+                Instruction(Opcodes.LOAD_CONST, inspect.currentframe),
+                Instruction(Opcodes.CALL_FUNCTION, arg=0),
+                Instruction(Opcodes.LOAD_ATTR, "f_locals"),
+                Instruction(Opcodes.CALL_FUNCTION, arg=2),
+            ]
 
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)

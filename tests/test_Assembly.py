@@ -2013,3 +2013,23 @@ RETURN 0
 
         self.assertEqual(target(), 1)
         compare_optimized_results(self, target, lambda: 1)
+
+
+class TestFunctionDefinitionLocalCapture(TestCase):
+    def test_simple(self):
+        @apply_operations
+        def target():
+            assembly("""
+LOAD 10 -> $test
+
+DEF func<test>()
+{
+    RETURN §test
+}
+
+RETURN $func()
+""")
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 10)

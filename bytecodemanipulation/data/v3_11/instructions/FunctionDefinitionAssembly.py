@@ -114,6 +114,10 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             )
 
         target.argument_count = len(self.args)
+
+        if self.bound_variables:
+            target.argument_count += 1
+
         code_object = target.create_code_obj()
 
         bytecode += [
