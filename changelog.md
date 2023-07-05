@@ -24,6 +24,8 @@
 - added warning when using locals not already set ahead of time
 - more error messages when using slightly wrong syntax (fixing edge cases that would be allowed)
 - keyword argument names in function definitions and function calls can now be any identifier-like, including macro expanded names
+- improved code for capturing outer locals (rewritten as freevars cannot be created)
+- made std:comprehension:list working
 
 # Version 0.3.1
 - added oreval operator, acting like python's or operator, returning the righthandside if the left hand side is false-like

@@ -92,6 +92,22 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                     Instruction(Opcodes.BINARY_SUBSCR),
                 ])
                 instruction.change_opcode(Opcodes.NOP)
+            elif instruction.opcode == Opcodes.STORE_DEREF and instruction.arg_value in scope.closure_locals:
+                instruction.insert_after([
+                    Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
+                    Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
+                    Instruction(Opcodes.ROT_THREE),
+                    Instruction(Opcodes.ROT_THREE),
+                    Instruction(Opcodes.STORE_SUBSCR),
+                ])
+                instruction.change_opcode(Opcodes.NOP)
+            elif instruction.opcode == Opcodes.DELETE_DEREF and instruction.arg_value in scope.closure_locals:
+                instruction.insert_after([
+                    Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
+                    Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
+                    Instruction(Opcodes.DELETE_SUBSCR),
+                ])
+                instruction.change_opcode(Opcodes.NOP)
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(rewrite_outer_access))
 

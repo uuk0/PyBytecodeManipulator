@@ -65,7 +65,8 @@ NAMESPACE std
                 FOREACH $var IN §&iterable
                 {
                     MACRO_PASTE code [$var]
-                    CALL $result.append(%) -> \
+                    STORE $tmp
+                    CALL $result.append($tmp) -> \
                 }
                 RETURN $result
             }
