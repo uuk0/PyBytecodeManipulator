@@ -57,8 +57,6 @@ NAMESPACE std
     {
         MACRO ASSEMBLY list(iterable, code CODE_BLOCK[1]) -> ANY
         {
-            CALL ~print(&iterable) -> \
-
             DEF inner<&iterable>(iter_obj)
             {
                 LOAD ~list() -> $result

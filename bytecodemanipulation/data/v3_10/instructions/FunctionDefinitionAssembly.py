@@ -96,8 +96,6 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                 instruction.insert_after([
                     Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
                     Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
-                    Instruction(Opcodes.ROT_THREE),
-                    Instruction(Opcodes.ROT_THREE),
                     Instruction(Opcodes.STORE_SUBSCR),
                 ])
                 instruction.change_opcode(Opcodes.NOP)

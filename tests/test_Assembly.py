@@ -2030,6 +2030,28 @@ DEF func<test>()
 RETURN $func()
 """)
 
+        self.assertEqual(target(), 10)
+
+    def test_write(self):
+        @apply_operations
+        def target():
+            assembly("""
+LOAD 0 -> $test            
+
+DEF func<test>()
+{
+    LOAD 10 -> §test
+    RETURN §test
+}
+
+CALL ~print(10) -> \\
+
+LOAD $func() -> $result
+# ASSERT OP ($test == 10)  # wont work as we currently cannot write back outside
+ASSERT OP ($test == 0) "old implementation limitation lifted?"
+RETURN $result 
+""")
+
         dis.dis(target)
 
         self.assertEqual(target(), 10)
