@@ -17,17 +17,15 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
-        if value not in scope.macro_parameter_namespace:
+        try:
+            value_deref = scope.lookup_macro_parameter(value)
+        except KeyError:
             raise throw_positioned_error(
                 scope, self.token, "Name not found in macro var space"
-            )
+            ) from None
 
-        if scope.macro_parameter_namespace[value] != self and hasattr(
-            scope.macro_parameter_namespace[value], "emit_bytecodes"
-        ):
-            instructions = scope.macro_parameter_namespace[value].emit_bytecodes(
-                function, scope
-            )
+        if value_deref != self and hasattr(value_deref, "emit_bytecodes"):
+            instructions = value_deref.emit_bytecodes(function, scope)
 
             for instr in instructions:
                 if instr.has_local():
@@ -46,17 +44,15 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
-        if value not in scope.macro_parameter_namespace:
+        try:
+            deref_value = scope.lookup_macro_parameter(value)
+        except KeyError:
             raise throw_positioned_error(
                 scope, self.token, "Name not found in macro var space"
-            )
+            ) from None
 
-        if scope.macro_parameter_namespace[value] != self and hasattr(
-            scope.macro_parameter_namespace[value], "emit_bytecodes"
-        ):
-            instructions = scope.macro_parameter_namespace[value].emit_store_bytecodes(
-                function, scope
-            )
+        if deref_value != self and hasattr(deref_value, "emit_bytecodes"):
+            instructions = deref_value.emit_store_bytecodes(function, scope)
 
             for instr in instructions:
                 if instr.has_local():
@@ -73,10 +69,12 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
         name = self.name(scope)
 
-        if name not in scope.macro_parameter_namespace:
-            raise NotImplementedError
+        try:
+            obj = scope.lookup_macro_parameter(name)
+        except KeyError:
+            raise NotImplementedError from None
 
-        return scope.macro_parameter_namespace[name].evaluate_static_value(scope)
+        return obj.evaluate_static_value(scope)
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
         return (self.token,)

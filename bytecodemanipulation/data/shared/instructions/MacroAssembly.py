@@ -119,7 +119,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             arg_accessor: AbstractAccessExpression | CompoundExpression | MacroParameterAccessExpression,
         ) -> bool:
             if isinstance(arg_accessor, MacroParameterAccessExpression):
-                arg_accessor = scope.lookup_macro_parameter(arg_accessor.name)
+                arg_accessor = scope.lookup_macro_parameter(arg_accessor.name(scope))
 
             return isinstance(arg_accessor, CompoundExpression)
 
@@ -484,9 +484,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         )
 
             if arg_decl.is_static:
-                scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name.text
+                scope.set_macro_arg_value(arg_decl.name.text, arg_decl.name.text)
             else:
-                scope.macro_parameter_namespace[arg_decl.name.text] = arg_code
+                scope.set_macro_arg_value(arg_decl.name.text, arg_code)
 
         inner_bytecode = self.body.emit_bytecodes(function, scope)
 

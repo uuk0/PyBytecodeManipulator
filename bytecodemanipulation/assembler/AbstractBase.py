@@ -1,3 +1,4 @@
+import copy
 import types
 import typing
 from abc import ABC
@@ -47,7 +48,7 @@ class ParsingScope:
         self.globals_dict = {}
         self.module_file: str = None
         self.last_base_token: AbstractToken = None
-        self.macro_parameter_namespace: typing.Dict[str] = {}
+        self.macro_parameter_namespace_stack: typing.List[typing.Dict[str]] = [{}]
         self.filled_locals = set()
 
         self.current_macro_assembly = None
@@ -126,7 +127,7 @@ class ParsingScope:
         instance.global_scope = self.global_scope
         instance.scope_path = self.scope_path.copy()
         instance.module_file = self.module_file
-        instance.macro_parameter_namespace = self.macro_parameter_namespace.copy()
+        instance.macro_parameter_namespace_stack = [e.copy() for e in self.macro_parameter_namespace_stack]
 
         if sub_scope_name is not None:
             if isinstance(sub_scope_name, str):
@@ -159,7 +160,20 @@ class ParsingScope:
         scope[name[-1]] = data
 
     def lookup_macro_parameter(self, name: str):
-        return self.macro_parameter_namespace.get(name)
+        for space in self.macro_parameter_namespace_stack:
+            if name in space:
+                return space[name]
+
+        raise KeyError(name)
+
+    def set_macro_arg_value(self, key: str, value: typing.Any):
+        self.macro_parameter_namespace_stack[-1][key] = value
+
+    def push_macro_param_stack(self):
+        self.macro_parameter_namespace_stack.append({})
+
+    def pop_macro_param_stack(self):
+        self.macro_parameter_namespace_stack.pop(-1)
 
 
 class IAssemblyStructureVisitable(ABC):
@@ -285,6 +299,25 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         from bytecodemanipulation.assembler.syntax_errors import (
             throw_positioned_error,
         )
+
+        if scope is None:
+            raise SyntaxError("no scope provided")
+
+        try:
+            value = scope.lookup_macro_parameter(self.token[1].text)
+        except KeyError:
+            raise throw_positioned_error(
+                scope,
+                self.token,
+                "Could not find name in macro parameter space",
+            ) from None
+
+        return self._check_value(scope, value)
+
+    def _check_value(self, scope, value):
+        from bytecodemanipulation.assembler.syntax_errors import (
+            throw_positioned_error,
+        )
         from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
             ConstantAccessExpression,
         )
@@ -297,19 +330,6 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
             LocalAccessExpression,
         )
-
-        if scope is None:
-            raise SyntaxError("no scope provided")
-
-        if self.token[1].text not in scope.macro_parameter_namespace:
-            raise throw_positioned_error(
-                scope,
-                self.token,
-                "Could not find name in macro parameter space",
-            )
-
-        value = scope.macro_parameter_namespace[self.token[1].text]
-
         if isinstance(value, ConstantAccessExpression):
             if not isinstance(value.value, str):
                 raise throw_positioned_error(
@@ -330,10 +350,20 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         ):
             return value.get_name(scope)
 
+        from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
+
+        if isinstance(value, MacroParameterAccessExpression):
+            new_value = scope.lookup_macro_parameter(value.name(scope))
+
+            if value != new_value:
+                return self._check_value(scope, new_value)
+
+            print("WARN: got some value from macro namespace")
+
         raise throw_positioned_error(
             scope,
             self.token,
-            f"Expected <static evaluated expression> for getting the name for storing, got {value}",
+            f"Expected <static evaluated expression> for getting the name for storing, got '{value}'",
         )
 
 

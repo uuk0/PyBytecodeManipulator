@@ -86,10 +86,13 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        if self.name.text in scope.macro_parameter_namespace and hasattr(
-            scope.macro_parameter_namespace[self.name.text], "emit_bytecodes"
-        ):
-            body: CompoundExpression = scope.macro_parameter_namespace[self.name.text]
+        try:
+            deref_name = scope.lookup_macro_parameter(self.name.text)
+        except KeyError:
+            deref_name = None
+
+        if deref_name and hasattr(deref_name, "emit_bytecodes"):
+            body: CompoundExpression = deref_name
             instructions = body.emit_bytecodes(
                 function, scope
             )
