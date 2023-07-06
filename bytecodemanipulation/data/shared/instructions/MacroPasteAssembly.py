@@ -7,6 +7,7 @@ from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -88,11 +89,25 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
     ) -> typing.List[Instruction]:
         try:
             deref_name = scope.lookup_macro_parameter(self.name.text)
+
+            level = 0
+            while isinstance(deref_name, MacroParameterAccessExpression):
+                deref_name = scope.lookup_macro_parameter(deref_name.name(scope), start=level)
+                level += 1
+
         except KeyError:
             deref_name = None
 
         if deref_name and hasattr(deref_name, "emit_bytecodes"):
             body: CompoundExpression = deref_name
+
+            if not isinstance(body, CompoundExpression):
+                raise throw_positioned_error(
+                    scope,
+                    self.name,
+                    f"invalid body, got {body}",
+                )
+
             instructions = body.emit_bytecodes(
                 function, scope
             )

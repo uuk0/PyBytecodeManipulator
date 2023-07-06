@@ -66,11 +66,12 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
             value = self.source.evaluate_static_value(scope)
         except NotImplementedError:
             print("<target>:", self.source)
+            print(scope.macro_parameter_namespace_stack)
 
             raise throw_positioned_error(
                 scope,
                 self.base_token or list(self.source.get_tokens()),
-                "Expected <static evaluate-able at 'expression'>",
+                "Expected <static evaluate-able> at 'expression'",
             ) from None
 
         if not value:
