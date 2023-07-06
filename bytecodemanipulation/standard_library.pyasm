@@ -76,6 +76,25 @@ NAMESPACE std
             generator(&iterable, &code) -> $result
             RETURN ~list($result)
         }
+
+        MACRO ASSEMBLY set(iterable, code CODE_BLOCK[1]) -> ANY
+        {
+            generator(&iterable, &code) -> $result
+            RETURN ~set($result)
+        }
+
+        MACRO ASSEMBLY tuple(iterable, code CODE_BLOCK[1]) -> ANY
+        {
+            generator(&iterable, &code) -> $result
+            RETURN ~tuple($result)
+        }
+
+        MACRO ASSEMBLY dict(iterable, key CODE_BLOCK[1], value CODE_BLOCK[1]) -> ANY
+        {
+            generator(&iterable, &key) -> $keys
+            generator(&iterable, &value) -> $values
+            RETURN ~dict(~zip($keys, $values))
+        }
     }
 
     NAMESPACE stream

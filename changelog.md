@@ -1,8 +1,9 @@
 
 # Version 0.3.5
 - std:comprehension:list is now using internally a generator wrapped in a list() call
-- added std:comprehension:generator for constructing a generator object
+- added std:comprehension:generator, :set, :tuple and :map
 - fixed YIELD in function definition blocks
+- fix macro-in-macro calls
 
 # Version 0.3.4
 - improved error messages for assemblies
