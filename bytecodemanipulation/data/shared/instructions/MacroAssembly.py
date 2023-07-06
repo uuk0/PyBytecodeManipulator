@@ -3,6 +3,7 @@ import typing
 from abc import ABC
 
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
 from bytecodemanipulation.MutableFunctionHelpers import capture_local
 
 from bytecodemanipulation.MutableFunctionHelpers import outer_return
@@ -115,8 +116,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self,
             scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
-            arg_accessor: AbstractAccessExpression | CompoundExpression,
+            arg_accessor: AbstractAccessExpression | CompoundExpression | MacroParameterAccessExpression,
         ) -> bool:
+            if isinstance(arg_accessor, MacroParameterAccessExpression):
+                arg_accessor = scope.lookup_macro_parameter(arg_accessor.name)
+
             return isinstance(arg_accessor, CompoundExpression)
 
     class VariableDataType(AbstractDataType):

@@ -158,6 +158,9 @@ class ParsingScope:
 
         scope[name[-1]] = data
 
+    def lookup_macro_parameter(self, name: str):
+        return self.macro_parameter_namespace.get(name)
+
 
 class IAssemblyStructureVisitable(ABC):
     def visit_parts(
