@@ -6,6 +6,7 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -48,7 +49,15 @@ class ModuleAccessExpression(AbstractAccessExpression):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        value = self._cached_lookup(self.get_name(scope))
+        try:
+            value = self._cached_lookup(self.get_name(scope))
+        except (ModuleNotFoundError, ImportError):
+            raise throw_positioned_error(
+                scope,
+                [self.token] + list(self.name.get_tokens()),
+                f"expected <module>, got '{self.name(scope)}'",
+            )
+
         return [
             Instruction.create_with_token(
                 self.token, Opcodes.LOAD_CONST, value

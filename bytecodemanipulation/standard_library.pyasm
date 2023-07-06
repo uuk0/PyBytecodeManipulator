@@ -68,7 +68,7 @@ NAMESPACE std
                 RETURN $result
             }
 
-            MACRO_RETURN $inner(~&iterable)
+            MACRO_RETURN $inner(&iterable)
         }
 
         MACRO ASSEMBLY list(iterable, code CODE_BLOCK[1]) -> ANY

@@ -470,6 +470,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         scope.scope_path = self.scope_path
         scope.module_file = self.module_path
         scope.current_macro_assembly = self
+        scope.push_macro_param_stack()
 
         bytecode = []
 
@@ -618,6 +619,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     )
 
                 instr.change_opcode(Opcodes.JUMP_ABSOLUTE, JumpToLabel(end_target))
+
+        scope.pop_macro_param_stack()
 
         if requires_none_load:
             bytecode.append(Instruction(Opcodes.LOAD_CONST, None))
