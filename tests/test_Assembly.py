@@ -1926,7 +1926,7 @@ ASSERT_STATIC 0 $x""")
         try:
             apply_operations(target)
         except SyntaxError as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able at 'expression'>",))
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression'",))
 
     def test_assert_static_macro_static_parameter(self):
         @apply_operations

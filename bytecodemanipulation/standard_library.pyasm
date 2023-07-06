@@ -68,23 +68,13 @@ NAMESPACE std
                 RETURN $result
             }
 
-            MACRO_RETURN $inner(~&iterable)
+            MACRO_RETURN $inner(&iterable)
         }
 
         MACRO ASSEMBLY list(iterable, code CODE_BLOCK[1]) -> ANY
         {
-            DEF inner<&iterable>(iter_obj)
-            {
-                LOAD ~list() -> $result
-                FOREACH $var IN §&iterable
-                {
-                    MACRO_PASTE code [$var]
-                    YIELD %
-                }
-                RETURN $result
-            }
-
-            MACRO_RETURN ~list($inner(~iter(&iterable)))
+            generator(&iterable, &code) -> $result
+            RETURN ~list($result)
         }
     }
 

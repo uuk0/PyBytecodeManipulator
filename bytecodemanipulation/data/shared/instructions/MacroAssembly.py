@@ -3,6 +3,7 @@ import typing
 from abc import ABC
 
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
 from bytecodemanipulation.MutableFunctionHelpers import capture_local
 
 from bytecodemanipulation.MutableFunctionHelpers import outer_return
@@ -72,6 +73,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def is_match(
             self,
+            scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
             arg_accessor: AbstractAccessExpression | CompoundExpression,
         ) -> bool:
@@ -98,6 +100,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def is_match(
             self,
+            scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
             arg_accessor: AbstractAccessExpression | CompoundExpression,
         ) -> bool:
@@ -111,9 +114,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def is_match(
             self,
+            scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
-            arg_accessor: AbstractAccessExpression | CompoundExpression,
+            arg_accessor: AbstractAccessExpression | CompoundExpression | MacroParameterAccessExpression,
         ) -> bool:
+            if isinstance(arg_accessor, MacroParameterAccessExpression):
+                arg_accessor = scope.lookup_macro_parameter(arg_accessor.name(scope))
+
             return isinstance(arg_accessor, CompoundExpression)
 
     class VariableDataType(AbstractDataType):
@@ -126,6 +133,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def is_match(
             self,
+            scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
             arg_accessor: AbstractAccessExpression | CompoundExpression,
         ) -> bool:
@@ -147,6 +155,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def is_match(
             self,
+            scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
             arg_accessor: AbstractAccessExpression | CompoundExpression,
         ) -> bool:
@@ -179,13 +188,13 @@ class MacroAssembly(AbstractAssemblyInstruction):
             return type(self)(self.name, self.is_static)
 
         def is_match(
-            self, arg_accessor: AbstractAccessExpression | CompoundExpression
+            self, scope: ParsingScope, arg_accessor: AbstractAccessExpression | CompoundExpression
         ) -> bool:
             if self.data_type_annotation is None:
                 return True
 
             if isinstance(self.data_type_annotation, MacroAssembly.AbstractDataType):
-                return self.data_type_annotation.is_match(self, arg_accessor)
+                return self.data_type_annotation.is_match(scope, self, arg_accessor)
 
             return False
 
@@ -222,7 +231,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                 if (
                     len(macro.args) == len(args)
-                    and all(arg.is_match(param) for arg, param in zip(macro.args, args))
+                    and all(arg.is_match(scope, param) for arg, param in zip(macro.args, args))
                     and not has_star_args
                 ):
                     return macro, args
@@ -277,7 +286,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     for arg in (
                         args[star_index : i + 1] if i != -1 else args[star_index:]
                     ):
-                        if not macro.args[star_index].is_match(arg):
+                        if not macro.args[star_index].is_match(scope, arg):
                             error = True
                             break
 
@@ -461,6 +470,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
         scope.scope_path = self.scope_path
         scope.module_file = self.module_path
         scope.current_macro_assembly = self
+        scope.push_macro_param_stack()
 
         bytecode = []
 
@@ -475,9 +485,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         )
 
             if arg_decl.is_static:
-                scope.macro_parameter_namespace[arg_decl.name.text] = arg_decl.name.text
+                scope.set_macro_arg_value(arg_decl.name.text, arg_decl.name.text)
             else:
-                scope.macro_parameter_namespace[arg_decl.name.text] = arg_code
+                scope.set_macro_arg_value(arg_decl.name.text, arg_code)
 
         inner_bytecode = self.body.emit_bytecodes(function, scope)
 
@@ -609,6 +619,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     )
 
                 instr.change_opcode(Opcodes.JUMP_ABSOLUTE, JumpToLabel(end_target))
+
+        scope.pop_macro_param_stack()
 
         if requires_none_load:
             bytecode.append(Instruction(Opcodes.LOAD_CONST, None))
