@@ -84,6 +84,8 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(walk_label))
 
+        has_yield_statement = False
+
         def rewrite_outer_access(instruction: Instruction):
             if instruction.opcode == Opcodes.LOAD_DEREF and instruction.arg_value in scope.closure_locals:
                 instruction.insert_after([
@@ -106,8 +108,14 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
                     Instruction(Opcodes.DELETE_SUBSCR),
                 ])
                 instruction.change_opcode(Opcodes.NOP)
+            elif instruction.opcode in (Opcodes.YIELD_VALUE, Opcodes.YIELD_FROM):
+                nonlocal has_yield_statement
+                has_yield_statement = True
 
         inner_bytecode[0].apply_visitor(LambdaInstructionWalker(rewrite_outer_access))
+
+        if has_yield_statement:
+            target.code_flags |= inspect.CO_GENERATOR
 
         def resolve_jump_to_label(ins: Instruction):
             if ins.has_jump() and isinstance(ins.arg_value, JumpToLabel):

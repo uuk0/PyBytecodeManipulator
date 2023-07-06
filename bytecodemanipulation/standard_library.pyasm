@@ -55,6 +55,22 @@ NAMESPACE std
 
     NAMESPACE comprehension
     {
+        MACRO ASSEMBLY generator(iterable, code CODE_BLOCK[1]) -> ANY
+        {
+            DEF inner<&iterable>(iter_obj)
+            {
+                LOAD ~list() -> $result
+                FOREACH $var IN §&iterable
+                {
+                    MACRO_PASTE code [$var]
+                    YIELD %
+                }
+                RETURN $result
+            }
+
+            MACRO_RETURN $inner(~&iterable)
+        }
+
         MACRO ASSEMBLY list(iterable, code CODE_BLOCK[1]) -> ANY
         {
             DEF inner<&iterable>(iter_obj)
@@ -63,13 +79,12 @@ NAMESPACE std
                 FOREACH $var IN §&iterable
                 {
                     MACRO_PASTE code [$var]
-                    STORE $tmp
-                    CALL $result.append($tmp) -> \
+                    YIELD %
                 }
                 RETURN $result
             }
 
-            MACRO_RETURN $inner(~iter(&iterable))
+            MACRO_RETURN ~list($inner(~iter(&iterable)))
         }
     }
 
