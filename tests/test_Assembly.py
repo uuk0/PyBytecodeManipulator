@@ -2055,3 +2055,29 @@ RETURN $result
         dis.dis(target)
 
         self.assertEqual(target(), 10)
+
+    def test_change_after_create(self):
+        @apply_operations
+        def target():
+            assembly("""
+LOAD 0 -> $test            
+
+DEF func<test>()
+{
+    RETURN §test
+}
+
+LOAD 1 -> $test
+
+LOAD $func() -> $result
+# ASSERT OP ($test == 10)  # wont work as we currently cannot write back outside
+ASSERT OP ($test == 1) "old implementation limitation lifted?"
+RETURN $result 
+""")
+
+        dis.dis(target)
+
+        # todo: this is a limitation of the current implementation, we don't update the local variables
+        #    captured
+        # self.assertEqual(target(), 1)
+        self.assertEqual(target(), 0)
