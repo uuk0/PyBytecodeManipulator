@@ -4,14 +4,6 @@
 
 NAMESPACE std
 {
-
-    # Wrapper around the print builtin
-    MACRO ASSEMBLY print(text VARIABLE_ARG)
-    {
-        CALL ~print (*&text)
-        POP
-    }
-
     # Wrapper around the input builtin
     MACRO ASSEMBLY input(result VARIABLE, text VARIABLE_ARG)
     {

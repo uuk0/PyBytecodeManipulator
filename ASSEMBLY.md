@@ -166,6 +166,10 @@ Expressions can be added as certain parameters to instructions to use instead of
   - DEF \[\<func name>] \['\<' \['!'] \<bound variables\> '>'] \['{' \<generic type information> '}'] '(' \<signature> ')' \['->' \<target>] '{' \<body> '}'
   - CLASS \<name> '\<' \<exposed namespace> '\>' \['{' \<generic type inforation> '}'] \['(' \<parents> ')'] \['->' \<target>] '{' \<body> '}'
   - GENERIC\[\<name>] as type specifier
+- make the RAW assembly arguments correct; we can no longer set "arg" to the value we want, as the re-assembler
+  will not use the raw "arg" attribute, but the "arg_value"
+- rewrite how exceptions are emitted, so each stage might add a trace element, building it piece by piece,
+  and adding cross-file info; store file information in the token objects
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 

@@ -4,6 +4,7 @@
 - added std:comprehension:generator, :set, :tuple and :map
 - fixed YIELD in function definition blocks
 - fix macro-in-macro calls
+- removed std:print as it can be implemented using ~print(...) in the same way
 
 # Version 0.3.4
 - improved error messages for assemblies

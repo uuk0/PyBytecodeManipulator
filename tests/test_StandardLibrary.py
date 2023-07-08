@@ -23,27 +23,6 @@ class StandardLibraryTest(TestCase):
 
         target()
 
-    def test_macro_import(self):
-        def target():
-            assembly(
-                """CALL MACRO std:print("Hello World"); CALL MACRO std:print("Hello World", "World Hello!"); CALL MACRO std:print("hello", "world", "test", 123)"""
-            )
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-        target()
-
-    def test_macro_as_assembly(self):
-        def target():
-            assembly("""std:print("Hello World")""")
-
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
-        target()
-
     # todo: can we test somehow the input system
 
     def test_type_check_raise(self):
@@ -150,11 +129,9 @@ STORE $output
                 """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
-std:print($stream)
 std:stream:filter($stream, [$var] {
     OP $var < 2 -> %
 })
-std:print($stream)
 std:stream:to_list($stream, $output)
 """
             )
