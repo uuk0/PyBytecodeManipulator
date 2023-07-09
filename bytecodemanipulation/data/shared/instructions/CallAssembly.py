@@ -17,7 +17,7 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
     MacroAccessExpression,
 )
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 
 
@@ -176,12 +176,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 if isinstance(call_target, AbstractCallAssembly):
                     # should not be reachable
 
-                    raise throw_positioned_error(
-                        scope,
-                        list(call_target.get_tokens()),
-                        "Must be not <call assembly> (internal error)",
-                        RuntimeError,
-                    )
+                    raise PropagatingCompilerException(
+                        "Must not be <call assembly> (internal error)"
+                    ).add_trace_level(scope.get_trace_info().with_token(list(call_target.get_tokens())))
 
             else:
                 name = [parser.consume(IdentifierToken, err_arg=scope)]
@@ -191,11 +188,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     part = parser.try_consume(IdentifierToken)
 
                     if part is None:
-                        raise throw_positioned_error(
-                            scope,
-                            [expr, parser[0]],
-                            "<identifier> expected after '.'",
-                        )
+                        raise PropagatingCompilerException(
+                            "<identifier> expected after '.'"
+                        ).add_trace_level(scope.get_trace_info().with_token(expr, parser[0]))
 
                     name.append(part)
 
@@ -204,22 +199,16 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         if call_target is None:
             # should be unreachable
 
-            raise throw_positioned_error(
-                scope,
-                parser.try_inspect(),
+            raise PropagatingCompilerException(
                 "expected <expression> to be called (did you forget the prefix?)"
-                if not is_macro
-                else "expected <macro name>",
-            )
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         args: typing.List[AbstractCallAssembly.IArg] = []
 
         if not (opening_bracket := parser.try_consume(SpecialToken("("))):
-            raise throw_positioned_error(
-                scope,
-                parser[0],
-                "Expected '(' after <call target>",
-            )
+            raise PropagatingCompilerException(
+                "Expected '(' after <call target>"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0], list(call_target.get_tokens())))
 
         has_seen_keyword_arg = False
 
@@ -267,11 +256,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     args.append(AbstractCallAssembly.StarArg(expr))
 
                 else:
-                    raise throw_positioned_error(
-                        scope,
-                        parser.try_inspect(),
-                        "*<arg> only allowed before keyword arguments!",
-                    )
+                    raise PropagatingCompilerException(
+                        "*<arg> only allowed before keyword arguments!"
+                    ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
             elif not has_seen_keyword_arg:
                 if is_macro and ((inner_opening_bracket := parser[0]) == SpecialToken("[")):
@@ -284,11 +271,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         base = parser.try_parse_identifier_like()
 
                         if base is None:
-                            raise throw_positioned_error(
-                                scope,
-                                [inner_opening_bracket, parser[0]],
-                                "Expected <expression> after ','",
-                            )
+                            raise PropagatingCompilerException(
+                                "Expected <expression> after ','"
+                            ).add_trace_level(scope.get_trace_info().with_token(inner_opening_bracket, parser[0]))
 
                         to_be_stored_at.append(base)
 
@@ -296,11 +281,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                             break
 
                     if not parser.try_consume(SpecialToken("]")):
-                        raise throw_positioned_error(
-                            scope,
-                            [inner_opening_bracket, parser[0]],
-                            "Expected ']' closing '['",
-                        )
+                        raise PropagatingCompilerException(
+                            "Expected ']' closing '['"
+                        ).add_trace_level(scope.get_trace_info().with_token(inner_opening_bracket, parser[0]))
 
                     expr = parser.parse_body(scope=scope)
                     expr.to_be_stored_at = to_be_stored_at
@@ -323,46 +306,38 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         if parser[0] == SpecialToken(")"):
                             break
 
-                        raise throw_positioned_error(
-                            scope, parser[0], "<expression> expected"
-                        )
+                        raise PropagatingCompilerException(
+                            "Expected <expression>"
+                        ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
                 args.append(AbstractCallAssembly.Arg(expr, is_dynamic))
 
             else:
-                raise throw_positioned_error(
-                    scope,
-                    parser.try_inspect(),
-                    "pure <arg> only allowed before keyword arguments",
-                )
+                raise PropagatingCompilerException(
+                    "pure <arg> only allowed before keyword arguments"
+                ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
             if not parser.try_consume(SpecialToken(",")):
                 break
 
         if bracket is None and not parser.try_consume(SpecialToken(")")):
-            raise throw_positioned_error(
-                scope,
-                [opening_bracket, parser[0]],
-                "expected ')' matching '('",
-            )
+            raise PropagatingCompilerException(
+                "Expected ')' matching '('"
+            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
 
         if allow_target and (arrow_0 := parser.try_consume(SpecialToken("-"))):
 
             if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
-                raise throw_positioned_error(
-                    scope,
-                    [arrow_0, parser[0]],
-                    "expected '>' after '-' to fill out <target> expression",
-                )
+                raise PropagatingCompilerException(
+                    "Expected '>' after '-' to fill out <target> expression"
+                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, parser[0]))
 
             target = parser.try_consume_access_to_value(scope=scope)
 
             if target is None:
-                raise throw_positioned_error(
-                    scope,
-                    [arrow_0, arrow_1],
-                    "expected <target> expression after '->'",
-                )
+                raise PropagatingCompilerException(
+                    "expected <target> expression after '->'"
+                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1))
         else:
             target = None
 
