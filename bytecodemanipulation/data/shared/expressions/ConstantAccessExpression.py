@@ -3,7 +3,7 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -33,9 +33,9 @@ class ConstantAccessExpression(AbstractAccessExpression):
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        raise throw_positioned_error(
-            scope, self.token, f"Cannot assign to a constant: {self}"
-        )
+        raise PropagatingCompilerException(
+            f"Cannot assign to a constant: {self}"
+        ).add_trace_level(scope.get_trace_info().with_token(self.token))
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
         return (self.token,)

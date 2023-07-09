@@ -3,7 +3,7 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -37,12 +37,9 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
         if self.get_name(scope) in scope.globals_dict:
             return scope.globals_dict[self.get_name(scope)]
 
-        raise throw_positioned_error(
-            scope,
-            self.token,
-            f"Name {self.get_name(scope)} not found!",
-            NameError,
-        )
+        raise PropagatingCompilerException(
+            f"Name {self.get_name(scope)} not found!"
+        ).add_trace_level(scope.get_trace_info().with_token(self.token))
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
         return (self.token,)

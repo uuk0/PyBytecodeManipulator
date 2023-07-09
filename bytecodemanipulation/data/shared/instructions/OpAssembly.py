@@ -4,11 +4,10 @@ import typing
 from collections import namedtuple
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
-from bytecodemanipulation.assembler.target import assembly
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -161,11 +160,13 @@ class AbstractOpAssembly(
             operator_token: typing.List[AbstractToken],
             expression: AbstractSourceExpression,
             base: typing.Type["AbstractOpAssembly"] = None,
+            trace_info: TraceInfo = None,
         ):
             self.operator = operator
             self.operator_token = operator_token
             self.expression = expression
             self.base = base
+            self.trace_info: TraceInfo = trace_info
 
         def __eq__(self, other):
             return (
@@ -189,12 +190,8 @@ class AbstractOpAssembly(
                 return self.base.SINGLE_OPS[self.operator].emit_bytecodes(
                     function, scope, self.expression
                 )
-            except:
-                raise throw_positioned_error(
-                    scope,
-                    self.operator_token,
-                    "during emitting bytecode of singleton operator",
-                )
+            except PropagatingCompilerException as e:
+                raise e.add_trace_level(self.trace_info)
 
         def evaluate_static_value(self, scope: ParsingScope):
             return self.base.SINGLE_OPS[self.operator].evaluate_static_value(scope, self.expression)
@@ -226,12 +223,14 @@ class AbstractOpAssembly(
             operator_token: typing.List[AbstractToken],
             rhs: AbstractSourceExpression,
             base: typing.Type["AbstractOpAssembly"] = None,
+            trace_info: TraceInfo = None,
         ):
             self.base = base
             self.lhs = lhs
             self.operator = operator
             self.operator_token = operator_token
             self.rhs = rhs
+            self.trace_info: TraceInfo = trace_info
 
         def __eq__(self, other):
             return (
@@ -260,12 +259,8 @@ class AbstractOpAssembly(
                 return self.base.BINARY_OPS[self.operator].emit_bytecodes(
                     function, scope, self.lhs, self.rhs
                 )
-            except:
-                raise throw_positioned_error(
-                    scope,
-                    self.operator_token,
-                    "during emitting bytecode of binary operation",
-                )
+            except PropagatingCompilerException as e:
+                raise e.add_trace_level(self.trace_info)
 
         def evaluate_static_value(self, scope: ParsingScope):
             return self.base.BINARY_OPS[self.operator].evaluate_static_value(scope, self.lhs, self.rhs)
@@ -297,11 +292,13 @@ class AbstractOpAssembly(
             operator_token: typing.List[AbstractToken],
             args: typing.List[AbstractSourceExpression],
             base: typing.Type["AbstractOpAssembly"] = None,
+            trace_info: TraceInfo = None,
         ):
             self.base = base
             self.operator = operator
             self.operator_token = operator_token
             self.args = args
+            self.trace_info: TraceInfo = trace_info
 
         def __eq__(self, other):
             return (
@@ -325,14 +322,8 @@ class AbstractOpAssembly(
                 return self.base.PREFIX_OPERATORS[self.operator][0].emit_bytecodes(
                     function, scope, *self.args
                 )
-            except SyntaxError:
-                raise
-            except:
-                raise throw_positioned_error(
-                    scope,
-                    self.operator_token,
-                    "during emitting bytecode of binary operation",
-                )
+            except PropagatingCompilerException as e:
+                raise e.add_trace_level(self.trace_info)
 
         def evaluate_static_value(self, scope: ParsingScope):
             return self.base.PREFIX_OPERATORS[self.operator][0].evaluate_static_value(scope, *self.args)
@@ -369,11 +360,9 @@ class AbstractOpAssembly(
         if expr := cls.try_consume_prefix(parser, scope):
             return cls(expr, cls.try_consume_arrow(parser, scope))
 
-        raise throw_positioned_error(
-            scope,
-            parser.try_inspect(),
-            "expected <operator> or <expression> <operator> ...",
-        )
+        raise PropagatingCompilerException(
+            "expected <operator> or <expression> <operator>..."
+        ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
     @classmethod
     def try_consume_operator_name(
@@ -394,11 +383,9 @@ class AbstractOpAssembly(
     ) -> AbstractAccessExpression | None:
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                raise throw_positioned_error(
-                    scope,
-                    parser[-1:1] + [scope.last_base_token],
-                    "expected '>' after '-' to complete '->'",
-                )
+                raise PropagatingCompilerException(
+                    "expected '>' after '-' to complete '->'"
+                ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
             return parser.try_consume_access_to_value(scope=scope)
 
@@ -424,6 +411,7 @@ class AbstractOpAssembly(
             operator_tokens,
             expression,
             base=cls,
+            trace_info=scope.get_trace_info().with_token(list(expression.get_tokens()), operator_tokens),
         )
 
     @classmethod
@@ -459,6 +447,9 @@ class AbstractOpAssembly(
             operator_tokens,
             rhs,
             base=cls,
+            trace_info=scope.get_trace_info().with_token(
+                list(lhs.get_tokens()), list(rhs.get_tokens()), operator_tokens
+            ),
         )
 
     @classmethod
@@ -476,13 +467,9 @@ class AbstractOpAssembly(
         bracket = parser.try_consume(SpecialToken("("))
 
         if bracket is None and has_brackets is True:
-            raise throw_positioned_error(scope, parser[0], "expected '('")
+            raise PropagatingCompilerException("expected '('").add_trace_level(scope.get_trace_info().with_token(parser[0]))
         elif bracket is not None and has_brackets is False:
-            raise throw_positioned_error(
-                scope,
-                operator_tokens + [parser[0]],
-                "did not expect '(' after operator name",
-            )
+            raise PropagatingCompilerException("did not expect '('").add_trace_level(scope.get_trace_info().with_token(parser[0], operator_tokens))
 
         args = []
 
@@ -498,23 +485,23 @@ class AbstractOpAssembly(
                 )
 
                 if expr is None:
-                    raise throw_positioned_error(
-                        scope, parser[0], "expected <expression>"
-                    )
+                    raise PropagatingCompilerException(
+                        "expected <expression>"
+                    ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
                 args.append(expr)
 
                 coma = parser.try_consume(SpecialToken(","))
 
                 if coma is None and has_coma_sep is True:
-                    raise throw_positioned_error(
-                        scope, parser[0], "expected ','"
-                    )
+                    raise PropagatingCompilerException(
+                        "expected ','"
+                    ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
                 elif coma is not None and has_coma_sep is False:
-                    raise throw_positioned_error(
-                        scope, coma, "did not expect ',' for separation of args"
-                    )
+                    raise PropagatingCompilerException(
+                        "did not expect ','"
+                    ).add_trace_level(scope.get_trace_info().with_token(coma))
         else:
             while not parser.try_inspect() == SpecialToken(")"):
                 expr = parser.try_consume_access_to_value(
@@ -527,9 +514,9 @@ class AbstractOpAssembly(
                 )
 
                 if expr is None:
-                    raise throw_positioned_error(
-                        scope, parser[0], "expected <expression>"
-                    )
+                    raise PropagatingCompilerException(
+                        "expected <expression>"
+                    ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
                 args.append(expr)
 
@@ -540,17 +527,17 @@ class AbstractOpAssembly(
                     and has_coma_sep is True
                     and parser[0] != SpecialToken(")")
                 ):
-                    raise throw_positioned_error(
-                        scope, parser[0], "expected ','"
-                    )
+                    raise PropagatingCompilerException(
+                        "expected ','"
+                    ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
                 elif coma is not None and has_coma_sep is False:
-                    raise throw_positioned_error(
-                        scope, coma, "did not expect ',' for separation of args"
-                    )
+                    raise PropagatingCompilerException(
+                        "did not expect ','"
+                    ).add_trace_level(scope.get_trace_info().with_token(coma))
 
         if bracket and not parser.try_consume(SpecialToken(")")):
-            raise throw_positioned_error(scope, parser[0], "expected ')'")
+            raise PropagatingCompilerException("expected ')'").add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         return cls.PrefixOperator(operator, operator_tokens, args, base=cls)
 

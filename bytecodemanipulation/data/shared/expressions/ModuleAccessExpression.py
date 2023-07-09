@@ -6,7 +6,7 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -51,12 +51,10 @@ class ModuleAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         try:
             value = self._cached_lookup(self.get_name(scope))
-        except (ModuleNotFoundError, ImportError):
-            raise throw_positioned_error(
-                scope,
-                [self.token] + list(self.name.get_tokens()),
-                f"expected <module>, got '{self.name(scope)}'",
-            )
+        except (ModuleNotFoundError, ImportError) as e:
+            raise PropagatingCompilerException(
+                f"expected <module>, got '{self.name(scope)}'"
+            ).add_trace_level(scope.get_trace_info().with_token(self.token), "\n".join(map(str, e.args))) from None
 
         return [
             Instruction.create_with_token(
