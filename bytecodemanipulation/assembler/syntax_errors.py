@@ -1,12 +1,26 @@
 import sys
 import typing
 
-from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+if typing.TYPE_CHECKING:
+    from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 
 
+class TraceInfo:
+    def with_token(self, *token: AbstractToken | typing.List[AbstractToken]) -> "TraceInfo":
+        pass
+
+
+class PropagatingCompilerException(Exception):
+    def set_underlying_exception(self, exc: typing.Type[Exception]):
+        return self
+
+    def add_trace_level(self, info: TraceInfo, message: str = None) -> "PropagatingCompilerException":
+        return self
+
+
 def _print_complex_token_location(
-    scope: ParsingScope,
+    scope: "ParsingScope",
     tokens: typing.List[AbstractToken | None],
     exc_type: typing.Type[Exception] = SyntaxError,
 ):
@@ -57,8 +71,8 @@ def _print_complex_token_location(
         print(error_location, file=sys.stderr)
 
 
-def throw_positioned_error(
-    scope: ParsingScope,
+def old_throw_positioned_error(
+    scope: "ParsingScope",
     token: AbstractToken | typing.List[AbstractToken | None] | None,
     message: str,
     exc_type: typing.Type[Exception] = SyntaxError,
@@ -86,8 +100,8 @@ def throw_positioned_error(
     return exc_type(message)
 
 
-def print_positional_warning(
-    scope: ParsingScope,
+def old_print_positional_warning(
+    scope: "ParsingScope",
     token: AbstractToken | typing.List[AbstractToken | None] | None,
     message: str,
     warning_type: typing.Type[Exception] = SyntaxWarning,

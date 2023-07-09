@@ -8,7 +8,7 @@ from bytecodemanipulation.assembler.AbstractBase import (
 )
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.syntax_errors import _syntax_wrapper
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -179,9 +179,9 @@ class Parser(AbstractParser):
                 scope.scope_path += namespace_part
 
         if not self.try_consume(SpecialToken("{")):
-            raise throw_positioned_error(
-                scope, self.try_inspect(), "expected '{'"
-            )
+            raise PropagatingCompilerException(
+                "expected '{'"
+            ).add_trace_level(scope.get_trace_info().with_token(self.try_inspect()))
 
         body = self.parse_while_predicate(
             lambda: not self.try_consume(SpecialToken("}")),
@@ -214,20 +214,18 @@ class Parser(AbstractParser):
                 continue
 
             if not (instr_token := self.try_consume(IdentifierToken)):
-                raise throw_positioned_error(
-                    scope, self.try_inspect(), "expected identifier"
-                )
+                raise PropagatingCompilerException(
+                    "expected <identifier>"
+                ).add_trace_level(scope.get_trace_info().with_token(self.try_inspect()))
 
             if scope:
                 scope.last_base_token = instr_token
 
             if instr_token.text not in self.INSTRUCTIONS:
                 if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
-                    raise throw_positioned_error(
-                        scope,
-                        instr_token,
-                        "expected <assembly instruction name> or <assembly macro name>",
-                    )
+                    raise PropagatingCompilerException(
+                        "expected <assembly instruction name> or <assembly macro name>"
+                    ).add_trace_level(scope.get_trace_info().with_token(instr_token))
             else:
                 instr = self.INSTRUCTIONS[instr_token.text].consume(self, scope)
 
@@ -254,17 +252,15 @@ class Parser(AbstractParser):
                 if eof_error and self.try_inspect() is None:
                     print(self.try_inspect())
                     print(repr(root))
-                    raise throw_positioned_error(scope, self[-1], eof_error)
+                    raise PropagatingCompilerException(eof_error).add_trace_level(scope.get_trace_info().with_token(self[-1]))
 
                 break
 
             print(self[-1].line, self[-1], expr.line)
 
-            raise throw_positioned_error(
-                scope,
-                self.try_inspect(),
-                "Expected <newline> or ';' after assembly instruction",
-            )
+            raise PropagatingCompilerException(
+                "Expected <newline> or ';' after assembly instruction"
+            ).add_trace_level(scope.get_trace_info().with_token(self.try_inspect()))
 
         return root
 
@@ -302,7 +298,7 @@ class Parser(AbstractParser):
         allow_op=True,
         allow_advanced_access=True,
         allow_calls=True,
-        scope=None,
+        scope: ParsingScope = None,
     ) -> AbstractAccessExpression | None:
         """
         Consumes an access to a value, for read or write access
@@ -370,11 +366,9 @@ class Parser(AbstractParser):
                     prefix += ":"
 
             elif error := self.try_consume(SpecialToken(":")):
-                raise throw_positioned_error(
-                    scope,
-                    error,
-                    "Cannot parse '|' and ':' for <local variable name>",
-                )
+                raise PropagatingCompilerException(
+                    "Cannot parse '|' and ':' for <local variable name>"
+                ).add_trace_level(scope.get_trace_info().with_token(error))
 
             expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token, prefix=prefix)
 
@@ -384,11 +378,9 @@ class Parser(AbstractParser):
             identifier = self.try_parse_identifier_like()
 
             if identifier is None:
-                raise throw_positioned_error(
-                    scope,
-                    [start_token, self[0]],
-                    "Expected <identifier-like> after '§' for cell-var reference",
-                )
+                raise PropagatingCompilerException(
+                    "Expected <identifier-like> after '§' for cell-var reference"
+                ).add_trace_level(scope.get_trace_info().with_token(start_token, self[0]))
 
             expr = DerefAccessExpression(identifier, start_token)
 
@@ -397,6 +389,8 @@ class Parser(AbstractParser):
             expr = MacroParameterAccessExpression(
                 self.parse_identifier_like(scope), start_token
             )
+            expr.trace_info = scope.get_trace_info()
+            expr.info = scope.get_trace_info()
 
         elif start_token.text == "%" and allow_tos:
             self.consume(SpecialToken("%"), err_arg=scope)
@@ -427,27 +421,22 @@ class Parser(AbstractParser):
             self.consume(start_token, err_arg=scope)
 
             if not (opening := self.try_consume(SpecialToken("("))):
-                raise throw_positioned_error(
-                    scope,
-                    self[-1:1],
-                    "expected '(' after OP when used in expressions",
-                )
+                raise PropagatingCompilerException(
+                    "expected '(' after OP when used in expressions"
+                ).add_trace_level(scope.get_trace_info().with_token(self[-1:1]))
 
             expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
 
             if not self.try_consume(SpecialToken(")")):
-                raise throw_positioned_error(
-                    scope,
-                    [opening, self[0]],
-                    "expected ')' after operation",
-                )
-
+                raise PropagatingCompilerException(
+                    "expected ')' after operation"
+                ).add_trace_level(scope.get_trace_info().with_token([opening, self[0]]))
         else:
             return
 
         if allow_advanced_access:
             while True:
-                if self.try_consume(SpecialToken("[")):
+                if opening_bracket := self.try_consume(SpecialToken("[")):
                     # Consume either an Integer or a expression
                     if not (
                         index := self.try_consume_access_to_value(
@@ -457,21 +446,19 @@ class Parser(AbstractParser):
                             scope=scope,
                         )
                     ):
-                        raise throw_positioned_error(
-                            scope,
-                            self.try_inspect() or self[-1],
-                            "expected <expression>"
+                        raise PropagatingCompilerException(
+                            "expected <expression for index>"
                             + (
                                 ""
                                 if not isinstance(self.try_inspect(), IdentifierToken)
                                 else " (did you forget a prefix?)"
-                            ),
-                        )
+                            )
+                        ).add_trace_level(scope.get_trace_info().with_token(self[-1]))
 
                     if not self.try_consume(SpecialToken("]")):
-                        raise throw_positioned_error(
-                            scope, self.try_inspect() or self[-1], "expected ']''"
-                        )
+                        raise PropagatingCompilerException(
+                            "expected ']' after <index>"
+                        ).add_trace_level(scope.get_trace_info().with_token(self[-1], opening_bracket))
 
                     expr = SubscriptionAccessExpression(
                         expr,
@@ -489,25 +476,21 @@ class Parser(AbstractParser):
                                 allow_calls=allow_calls,
                             )
                         ):
-                            raise throw_positioned_error(
-                                scope,
-                                self.try_inspect() or self[-1],
-                                "expected <expression>"
+                            raise PropagatingCompilerException(
+                                "expected <expression for index>"
                                 + (
                                     ""
                                     if not isinstance(
                                         self.try_inspect(), IdentifierToken
                                     )
                                     else " (did you forget a prefix?)"
-                                ),
-                            )
+                                )
+                            ).add_trace_level(scope.get_trace_info().with_token(self[-1]))
 
                         if not self.try_consume(SpecialToken(")")):
-                            raise throw_positioned_error(
-                                scope,
-                                [opening_bracket, self.try_inspect()],
-                                "expected ')'",
-                            )
+                            raise PropagatingCompilerException(
+                                "expected ')' after '<dynamic name expression>"
+                            ).add_trace_level(scope.get_trace_info().with_token(self[-1], opening_bracket))
 
                         expr = DynamicAttributeAccessExpression(expr, index)
 
@@ -583,11 +566,9 @@ class Parser(AbstractParser):
         identifier = self.try_parse_identifier_like()
 
         if identifier is None:
-            raise throw_positioned_error(
-                scope,
-                self[0],
-                "expected <identifier> or &<identifier>",
-            )
+            raise PropagatingCompilerException(
+                "expected <identifier> or &<identifier>"
+            ).add_trace_level(scope.get_trace_info().with_token(self[0]))
 
         return identifier
 
@@ -616,10 +597,8 @@ class Parser(AbstractParser):
         tokens = self.try_parse_jump_target()
 
         if tokens is None:
-            raise throw_positioned_error(
-                scope,
-                self[0],
+            raise PropagatingCompilerException(
                 "expected <identifier-like>[{':' <identifier like>}] for jump target"
-            )
+            ).add_trace_level(scope.get_trace_info().with_token(self[0]))
 
         return tokens

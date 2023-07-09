@@ -88,7 +88,7 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
         if macro_name.split(":")[-1] not in namespace_obj:
             namespace_obj[macro_name.split(":")[-1]] = MacroAssembly.MacroOverloadPage(
                 macro_name.split(":")
-            )
+            ).set_scope(scope.get_trace_info())
 
         namespace_obj[macro_name.split(":")[-1]].add_assembly(macro_asm)
 
