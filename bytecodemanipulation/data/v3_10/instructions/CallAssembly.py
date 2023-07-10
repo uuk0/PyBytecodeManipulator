@@ -10,7 +10,7 @@ from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
 from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
@@ -152,12 +152,9 @@ class CallAssembly(AbstractCallAssembly):
         macro_declaration = scope.lookup_name_in_scope(name[0].text)
 
         if macro_declaration is None:
-            raise throw_positioned_error(
-                scope,
-                typing.cast(MacroAccessExpression, self.call_target).name,
-                f"Macro '{':'.join(map(lambda e: e.text, name))}' not found!",
-                NameError,
-            )
+            raise PropagatingCompilerException(
+                "Macro '{':'.join(map(lambda e: e.text, name))}' not found"
+            ).add_trace_level(scope.get_trace_info().with_token(list(self.call_target.get_tokens()))).set_underlying_exception(NameError)
 
         if len(name) > 1:
             for e in name[1:]:

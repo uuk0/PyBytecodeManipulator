@@ -8,7 +8,7 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -26,17 +26,15 @@ class LoadAssembly(AbstractAssemblyInstruction):
         )
 
         if access_expr is None:
-            raise throw_positioned_error(
-                scope, parser.try_inspect(), "expected <expression>"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression> after LOAD"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
-                raise throw_positioned_error(
-                    scope,
-                    parser[-1:1] + [scope.last_base_token],
-                    "expected '>' after '-' to complete '->'",
-                )
+                raise PropagatingCompilerException(
+                    "expected '>' after '-' to complete '->'"
+                ).add_trace_level(scope.get_trace_info().with_token(parser[-1:1], scope.last_base_token))
 
             target = parser.try_consume_access_to_value(scope=scope)
         else:
