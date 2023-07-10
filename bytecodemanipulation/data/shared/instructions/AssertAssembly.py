@@ -4,7 +4,7 @@ from bytecodemanipulation.assembler.AbstractBase import (
     ParsingScope,
     AbstractSourceExpression,
 )
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -20,9 +20,9 @@ class AbstractAssertAssembly(AbstractAssemblyInstruction, ABC):
         target = parser.try_consume_access_to_value(scope=scope, allow_primitives=True)
 
         if target is None:
-            raise throw_positioned_error(
-                scope, parser[0], "expected <expression>"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression> after ASSERT"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         return cls(
             target,

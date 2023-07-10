@@ -5,7 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
@@ -37,12 +37,14 @@ class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "AbstractStoreGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
-        name = parser.try_consume([IdentifierToken, IntegerToken])
+
+        # todo: make parse_identifier_like()
+        name = parser.try_consume(IdentifierToken)
 
         if name is None:
-            raise throw_positioned_error(
-                scope, parser.try_inspect(), "expected <name> or <integer>"
-            )
+            raise PropagatingCompilerException(
+                "expected <name>"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         source = parser.try_parse_data_source()
 

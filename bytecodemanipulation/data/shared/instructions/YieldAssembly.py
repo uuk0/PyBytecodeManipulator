@@ -5,7 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -42,9 +42,9 @@ class AbstractYieldAssembly(AbstractAssemblyInstruction, abc.ABC):
             )
 
             if target is None:
-                raise throw_positioned_error(
-                    scope, parser.try_inspect(), "expected <expression>"
-                )
+                raise PropagatingCompilerException(
+                    "expected <expression> after '->'"
+                ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         else:
             target = None

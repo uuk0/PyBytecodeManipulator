@@ -3,7 +3,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.OpAssembly import OpcodeBaseOperator
 from bytecodemanipulation.MutableFunction import MutableFunction
 
@@ -519,11 +519,9 @@ class DictOperator(AbstractOperator):
         *parameters: AbstractSourceExpression,
     ) -> typing.List[Instruction]:
         if len(parameters) % 2 != 0:
-            raise throw_positioned_error(
-                scope,
-                sum([list(param.get_tokens()) for param in parameters], []),
-                "expected even arg count for dict build",
-            )
+            raise PropagatingCompilerException(
+                "expected even arg count for dict build"
+            ).add_trace_level(scope.get_trace_info().with_token(sum([list(param.get_tokens()) for param in parameters], [])))
 
         bytecode = []
 
