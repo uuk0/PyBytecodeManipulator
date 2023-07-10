@@ -7,7 +7,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -39,11 +39,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 prefix += ":"
 
         elif error := parser.try_consume(SpecialToken(":")):
-            raise throw_positioned_error(
-                scope,
-                error,
-                "Cannot parse '|' and ':' as inter-fix for <function name>",
-            )
+            raise PropagatingCompilerException(
+                "Cannot parser '|' and ':' as inter-fix for <function name>",
+            ).add_trace_level(scope.get_trace_info().with_token(error))
 
         func_name = parser.parse_identifier_like(scope)
 
@@ -69,11 +67,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             parser.consume(SpecialToken(">"), err_arg=scope)
 
         if (opening_bracket := parser.try_consume(SpecialToken("("))) is None:
-            raise throw_positioned_error(
-                scope,
-                parser[0],
-                "expected '(' after <identifier>"
-            )
+            raise PropagatingCompilerException(
+                f"expected '(' after <{'identifier' if not bound_variables else 'bound variables'}>"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         while parser.try_inspect() != SpecialToken(")"):
             arg = None
@@ -84,13 +80,11 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
 
             if not identifier:
                 if star:
-                    raise throw_positioned_error(
-                        scope,
-                        [star, star_star],
+                    raise PropagatingCompilerException(
                         "Expected <identifier> after '*'"
                         if not star_star
-                        else "Expected <identifier> after '**'",
-                    )
+                        else "Expected <identifier> after '**'"
+                    ).add_trace_level(scope.get_trace_info().with_token(star, star_star))
 
                 break
 
@@ -101,11 +95,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                     )
 
                     if default_value is None:
-                        raise throw_positioned_error(
-                            scope,
-                            [identifier, equal_sign, parser[0]],
-                            "expected <expression>",
-                        )
+                        raise PropagatingCompilerException(
+                            "expected <expression> after '='"
+                        ).add_trace_level(scope.get_trace_info().with_token(list(identifier.get_tokens()), equal_sign, parser[0]))
 
                     arg = AbstractCallAssembly.KwArg(identifier, default_value, token=identifier)
 
@@ -125,25 +117,19 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 break
 
         if not parser.try_consume(SpecialToken(")")):
-            raise throw_positioned_error(
-                scope,
-                [opening_bracket, parser[0]],
-                "expected ')' matching '(' in function definition",
-            )
+            raise PropagatingCompilerException(
+                "expected ')' matching '(' in function definition"
+            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
 
         if expr := parser.try_consume(SpecialToken("<")):
             if bound_variables:
-                raise throw_positioned_error(
-                    scope,
-                    expr,
-                    "got '<' after '(' ... ')' expression, where a '{' ... '}' (code block) was expected"
-                )
+                raise PropagatingCompilerException(
+                    "got '<' after '('... ')' expression, where a '{'... '}' (code block) was expected"
+                ).add_trace_level(scope.get_trace_info().with_token(expr))
 
-            raise throw_positioned_error(
-                scope,
-                expr,
-                "Respect ordering (got 'args' before 'captured'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
-            )
+            raise PropagatingCompilerException(
+                "Respect ordering (got '<' before 'args'): DEF ['name'] ['captured'] ('args') [-> 'target'] { 'code' }"
+            ).add_trace_level(scope.get_trace_info().with_token(expr))
 
         if (arrow_0 := parser.try_consume(SpecialToken("-"))) and (arrow_1 := parser.try_consume(
             SpecialToken(">")
@@ -151,18 +137,14 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             target = parser.try_consume_access_to_value(scope=scope)
 
             if target is None:
-                raise throw_positioned_error(
-                    scope,
-                    [arrow_0, arrow_1, parser[0]],
+                raise PropagatingCompilerException(
                     "expected <expression> after '->' as target"
-                )
+                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0]))
 
         elif arrow_0:
-            raise throw_positioned_error(
-                scope,
-                [arrow_0, parser[0]],
-                "expected '>' after '-' to complete <target> expression",
-            )
+            raise PropagatingCompilerException(
+                "expected '>' after '-' to complete <target> expression"
+            ).add_trace_level(scope.get_trace_info().with_token(arrow_0, parser[0]))
 
         else:
             target = None
@@ -170,11 +152,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         body = parser.parse_body(scope=scope)
 
         if expr := parser.try_consume(SpecialToken("-")):
-            raise throw_positioned_error(
-                scope,
-                expr,
-                "Respect ordering (got 'code' before 'target'): DEF ['name'] ['captured'] ('args') [-> 'target'] { code }",
-            )
+            raise PropagatingCompilerException(
+                "Respect ordering (got '-' before 'args'): DEF ['name'] ['captured'] ('args') [-> 'target'] { 'code' }"
+            ).add_trace_level(scope.get_trace_info().with_token(expr))
 
         return cls(func_name, bound_variables, args, body, target, prefix=prefix)
 

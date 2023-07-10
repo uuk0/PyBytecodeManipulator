@@ -2,10 +2,7 @@ import functools
 import inspect
 import typing
 
-from bytecodemanipulation.assembler.AbstractBase import MacroExpandedIdentifier
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
-from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
-from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
     AbstractFunctionDefinitionAssembly,
 )
@@ -183,11 +180,9 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)
         elif not self.func_name:
-            raise throw_positioned_error(
-                scope,
-                [],
-                "Expected either 'target' or <valid name>",
-            )
+            raise PropagatingCompilerException(
+                "Expected either 'target' or <valid name>"
+            ).add_trace_level(self.trace_info)
         else:
             bytecode += [
                 Instruction(Opcodes.STORE_FAST, self.prefix + self.func_name(scope)),
