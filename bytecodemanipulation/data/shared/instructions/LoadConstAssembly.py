@@ -5,7 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
     ConstantAccessExpression,
@@ -41,9 +41,9 @@ class AbstractLoadConstAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
         if not isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)):
-            raise throw_positioned_error(
-                scope, parser.try_inspect(), "expected <constant epxression>"
-            )
+            raise PropagatingCompilerException(
+                "expected <constant epxression>"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         if parser.try_consume_multi(
             [
