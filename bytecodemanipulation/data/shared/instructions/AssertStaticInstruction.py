@@ -1,10 +1,10 @@
+import sys
 import typing
 import warnings
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import print_positional_warning
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -27,24 +27,27 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
         target = parser.try_consume_access_to_value(scope=scope, allow_primitives=True)
 
         if target is None:
-            raise throw_positioned_error(
-                scope, parser[0], "expected <expression>"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression>"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         return cls(
             target,
             parser.try_consume_access_to_value(scope=scope, allow_primitives=True),
             base_token=scope.last_base_token,
+            trace_info=scope.get_trace_info(),
         )
 
     def __init__(
         self, source: AbstractSourceExpression,
         text: AbstractSourceExpression = None,
         base_token: AbstractToken = None,
+        trace_info: TraceInfo = None,
     ):
         self.source = source
         self.text = text
         self.base_token = base_token
+        self.trace_info = trace_info
 
     def __repr__(self):
         return f"ASSERT({self.source}, {self.text})"
@@ -68,11 +71,9 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
             print("<target>:", self.source)
             print(scope.macro_parameter_namespace_stack)
 
-            raise throw_positioned_error(
-                scope,
-                self.base_token or list(self.source.get_tokens()),
-                "Expected <static evaluate-able> at 'expression'",
-            ) from None
+            raise PropagatingCompilerException(
+                "Expected <static evaluate-able> at 'expression'"
+            ).add_trace_level(self.trace_info.with_token(self.base_token, list(self.source.get_tokens()))) from None
 
         if not value:
             try:
@@ -82,19 +83,13 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
                     else self.text.evaluate_static_value(scope)
                 )
             except NotImplementedError:
-                print_positional_warning(
-                    scope,
-                    list(self.source.get_tokens()),
-                    f"<message> could not be evaluated (got syntax element: {self.text})",
-                )
+                print(f"SyntaxWarning: <message> could not be evaluated (got syntax element: {self.text})", file=sys.stderr)
+                self.trace_info.with_token(list(self.source.get_tokens())).print_stack(sys.stderr)
 
                 message = "expected <true-ish value> (message not arrival)"
 
-            raise throw_positioned_error(
-                scope,
-                list(self.source.get_tokens()),
-                f"assertion failed: {message}",
-                AssertionError,
-            )
+            raise PropagatingCompilerException(
+                "assertion failed: " + message
+            ).add_trace_level(self.trace_info.with_token(list(self.source.get_tokens())))
 
         return []

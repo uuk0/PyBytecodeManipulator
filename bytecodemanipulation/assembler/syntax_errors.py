@@ -7,7 +7,13 @@ from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 
 
 class TraceInfo:
+    class TraceLevel:
+        pass
+
     def with_token(self, *token: AbstractToken | typing.List[AbstractToken]) -> "TraceInfo":
+        pass
+
+    def print_stack(self, file=sys.stdout):
         pass
 
 
@@ -128,4 +134,4 @@ def old_print_positional_warning(
 
 
 def _syntax_wrapper(token, text, scope):
-    raise throw_positioned_error(scope, token, text)
+    raise NotImplementedError

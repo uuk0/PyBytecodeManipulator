@@ -4,7 +4,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
 from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
@@ -38,11 +38,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                 base = parser.try_consume_access_to_value(scope=scope)
 
                 if base is None:
-                    raise throw_positioned_error(
-                        scope,
-                        [opening_bracket, parser[0]],
-                        "Expected <expression> after ',' for dynamic name access",
-                    )
+                    raise PropagatingCompilerException(
+                        "Expected <expression> after '[' for dynamic name access"
+                    ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
 
                 dynamic_names.append((base, is_static))
 
@@ -50,11 +48,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                     break
 
             if not parser.try_consume(SpecialToken("]")):
-                raise throw_positioned_error(
-                    scope,
-                    [opening_bracket, parser[0]],
-                    "expected ']' to close '[' closing dynamic names",
-                )
+                raise PropagatingCompilerException(
+                    "expected ']' to close '[' closing dynamic names"
+                ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
 
         if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
             target = parser.try_consume_access_to_value(
@@ -63,12 +59,13 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        return cls(name, target, dynamic_names=dynamic_names)
+        return cls(name, target, dynamic_names=dynamic_names, trace_info=scope.get_trace_info())
 
-    def __init__(self, name: IdentifierToken, target: AbstractAccessExpression = None, dynamic_names: typing.List[typing.Tuple[AbstractAccessExpression, bool]] = None):
+    def __init__(self, name: IdentifierToken, target: AbstractAccessExpression = None, dynamic_names: typing.List[typing.Tuple[AbstractAccessExpression, bool]] = None, trace_info: TraceInfo = None):
         self.name = name
         self.target = target
         self.dynamic_names = dynamic_names or []
+        self.trace_info = trace_info
 
     def __repr__(self):
         return f"MACRO_PASTE({self.name.text}{repr(self.dynamic_names)[1:-1]}{'' if self.target is None else '-> '+repr(self.target)})"
@@ -102,11 +99,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
             body: CompoundExpression = deref_name
 
             if not isinstance(body, CompoundExpression):
-                raise throw_positioned_error(
-                    scope,
-                    self.name,
-                    f"invalid body, got {body}",
-                )
+                raise PropagatingCompilerException(
+                    f"invalid body, got {body}"
+                ).add_trace_level(self.trace_info.with_token(self.name))
 
             instructions = body.emit_bytecodes(
                 function, scope
@@ -115,11 +110,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
             sources = [e(scope) for e in getattr(body, "to_be_stored_at", [])]
 
             if len(sources) != len(self.dynamic_names):
-                raise throw_positioned_error(
-                    scope,
-                    self.name,
-                    f"Expected exactly {len(sources)} paramters at MACRO_PASTE, but got {len(self.dynamic_names)}",
-                )
+                raise PropagatingCompilerException(
+                    f"expected exactly {len(sources)} parameters at MACRO_PASTE, but got {len(self.dynamic_names)}",
+                ).add_trace_level(self.trace_info.with_token(self.name))
 
             result = []
             special_names = []
@@ -154,11 +147,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
                         elif instr.opcode == Opcodes.STORE_FAST:
                             if is_static:
-                                raise throw_positioned_error(
-                                    scope,
-                                    self.name,  # todo: use outer call entry
-                                    f"arg {index+1} is marked as static, but it was tried to write to",
-                                )
+                                raise PropagatingCompilerException(
+                                    f"macro parameter {self.name.text} is marked as static, but it was tried to write to"
+                                ).add_trace_level(self.trace_info.with_token(self.name))
 
                             result += code.emit_store_bytecodes(function, scope)
                         else:
