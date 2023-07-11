@@ -2093,11 +2093,9 @@ class TestPropagateException(TestCase):
         def target():
             def test():
                 assembly("""
-
 CLASS xy {
     LOAD 10 -> 20
 }
-
 """
                 )
 
@@ -2113,11 +2111,9 @@ CLASS xy {
         def target():
             def test():
                 assembly("""
-
 CLASS xy {
     ASSERT_STATIC $test
 }
-
 """
                          )
 
@@ -2133,11 +2129,9 @@ CLASS xy {
         def target():
             def test():
                 assembly("""
-
 DEF xy() {
     LOAD 10 -> 20
 }
-
 """
                          )
 
@@ -2153,11 +2147,9 @@ DEF xy() {
         def target():
             def test():
                 assembly("""
-
 DEF xy() {
     ASSERT_STATIC $test
 }
-
 """
                          )
 
@@ -2173,11 +2165,9 @@ DEF xy() {
         def target():
             def test():
                 assembly("""
-
 NAMESPACE xy {
     LOAD 10 -> 20
 }
-
 """
                          )
 
@@ -2194,11 +2184,9 @@ NAMESPACE xy {
         def target():
             def test():
                 assembly("""
-
 NAMESPACE xy {
     ASSERT_STATIC $test
 }
-
 """
                          )
 
@@ -2210,3 +2198,43 @@ NAMESPACE xy {
             self.assertEqual(e.args, (
             "Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
             self.assertEqual(len(e.levels), 2)
+
+    def test_macro_decl_add_info_to_exception(self):
+        def target():
+            def test():
+                assembly("""
+MACRO xy_1() {
+    LOAD 10 -> 20
+}
+"""
+                         )
+
+            apply_inline_assemblies(test, unwrap_exceptions=False)
+
+        try:
+            target()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(len(e.levels), 2)
+            self.assertEqual(e.levels[0][0].tokens[0].text, "20")
+            self.assertEqual(e.levels[1][0].tokens[0].text, "xy_1")
+
+    def test_macro_decl_add_info_to_exception_emitting(self):
+        def target():
+            def test():
+                assembly("""
+MACRO xy_2() {
+    ASSERT_STATIC $test
+}
+"""
+                         )
+
+            apply_inline_assemblies(test, unwrap_exceptions=False)
+
+        try:
+            target()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            self.assertEqual(len(e.levels), 2)
+            self.assertEqual(e.levels[0][0].tokens[0].text, "20")
+            self.assertEqual(e.levels[1][0].tokens[0].text, "xy_1")

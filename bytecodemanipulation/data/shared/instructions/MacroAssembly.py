@@ -400,7 +400,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
         else:
             return_type = None
 
-        body = parser.parse_body(scope=scope)
+        try:
+            body = parser.parse_body(scope=scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(scope.get_trace_info().with_token(name))
+            raise e
 
         return cls(
             name,
@@ -410,7 +414,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
             scope_path=scope.scope_path.copy(),
             module_path=scope.module_file,
             return_type=return_type,
-            trace_info=scope.get_trace_info(),
+            trace_info=scope.get_trace_info().with_token(name),
         )
 
     def __init__(
@@ -490,7 +494,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
             else:
                 scope.set_macro_arg_value(arg_decl.name.text, arg_code)
 
-        inner_bytecode = self.body.emit_bytecodes(function, scope)
+        try:
+            inner_bytecode = self.body.emit_bytecodes(function, scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(self.trace_info)
+            raise e
 
         arg_names: typing.List[str | None] = []
         arg_decl_lookup: typing.Dict[str, MacroAssembly.MacroArg] = {}

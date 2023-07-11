@@ -65,9 +65,6 @@ def _print_complex_token_location(
 
 
 class TraceInfo:
-    class TraceLevel:
-        pass
-
     def __init__(self):
         self.tokens = []
 
