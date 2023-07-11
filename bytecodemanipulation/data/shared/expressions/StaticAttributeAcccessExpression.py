@@ -75,4 +75,4 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
         return getattr(base, self.name(scope))
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return list(self.root.get_tokens()) + [self.token]
+        return list(self.root.get_tokens())

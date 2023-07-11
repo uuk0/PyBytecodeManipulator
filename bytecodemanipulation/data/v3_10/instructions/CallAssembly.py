@@ -154,7 +154,7 @@ class CallAssembly(AbstractCallAssembly):
         if macro_declaration is None:
             raise PropagatingCompilerException(
                 "Macro '{':'.join(map(lambda e: e.text, name))}' not found"
-            ).add_trace_level(scope.get_trace_info().with_token(list(self.call_target.get_tokens()))).set_underlying_exception(NameError)
+            ).add_trace_level(self.trace_info.with_token(list(self.call_target.get_tokens()))).set_underlying_exception(NameError)
 
         if len(name) > 1:
             for e in name[1:]:

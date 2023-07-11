@@ -72,13 +72,15 @@ class TraceInfo:
         self.tokens = []
 
     def with_token(self, *token: AbstractToken | typing.List[AbstractToken]) -> "TraceInfo":
+        instance = TraceInfo()
+        instance.with_tokens = self.tokens.copy
         for e in token:
             if isinstance(e, AbstractToken):
-                self.tokens.append(e)
+                instance.tokens.append(e)
             else:
-                self.tokens.extend(e)
+                instance.tokens.extend(e)
 
-        return self
+        return instance
 
     def print_stack(self, file=sys.stdout):
         print(self.tokens)

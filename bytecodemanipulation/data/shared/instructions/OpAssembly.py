@@ -28,6 +28,7 @@ class AbstractOperator(abc.ABC):
         function: MutableFunction,
         scope: ParsingScope,
         *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         raise NotImplementedError
 
@@ -62,6 +63,7 @@ class OpcodeBaseOperator(AbstractOperator):
         function: MutableFunction,
         scope: ParsingScope,
         *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = []
         if not any(isinstance(param, OperatorArgValue) for param in self.opcodes):
@@ -188,7 +190,7 @@ class AbstractOpAssembly(
         ) -> typing.List[Instruction]:
             try:
                 return self.base.SINGLE_OPS[self.operator].emit_bytecodes(
-                    function, scope, self.expression
+                    function, scope, self.expression, trace_info=self.trace_info,
                 )
             except PropagatingCompilerException as e:
                 raise e.add_trace_level(self.trace_info)
@@ -257,7 +259,7 @@ class AbstractOpAssembly(
         ) -> typing.List[Instruction]:
             try:
                 return self.base.BINARY_OPS[self.operator].emit_bytecodes(
-                    function, scope, self.lhs, self.rhs
+                    function, scope, self.lhs, self.rhs, trace_info=self.trace_info,
                 )
             except PropagatingCompilerException as e:
                 raise e.add_trace_level(self.trace_info)
@@ -320,7 +322,7 @@ class AbstractOpAssembly(
         ) -> typing.List[Instruction]:
             try:
                 return self.base.PREFIX_OPERATORS[self.operator][0].emit_bytecodes(
-                    function, scope, *self.args
+                    function, scope, *self.args, trace_info=self.trace_info,
                 )
             except PropagatingCompilerException as e:
                 raise e.add_trace_level(self.trace_info)

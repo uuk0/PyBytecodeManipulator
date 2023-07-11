@@ -17,7 +17,7 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
     MacroAccessExpression,
 )
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 
 
@@ -341,7 +341,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         else:
             target = None
 
-        return cls(call_target, args, target, is_partial, is_macro)
+        return cls(call_target, args, target, is_partial, is_macro, trace_info=scope.get_trace_info().with_token(list(call_target.get_tokens())))
 
     def __init__(
         self,
@@ -350,12 +350,14 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         target: AbstractAccessExpression | None = None,
         is_partial: bool = False,
         is_macro: bool = False,
+        trace_info: typing.Optional[TraceInfo] = None,
     ):
         self.call_target = call_target
         self.args = args
         self.target = target
         self.is_partial = is_partial
         self.is_macro = is_macro
+        self.trace_info = trace_info
 
     def visit_parts(
         self,

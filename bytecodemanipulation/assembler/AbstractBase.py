@@ -54,9 +54,14 @@ class ParsingScope:
 
         self.current_macro_assembly = None
 
+        self.may_get_trace_info = True
+
         self.closure_locals: typing.Set[str] = set()
 
     def get_trace_info(self) -> TraceInfo:
+        if not self.may_get_trace_info:
+            raise RuntimeError("Cannot get trace info")
+
         return TraceInfo()
 
     def scope_name_generator(self, suffix="") -> str:

@@ -183,6 +183,7 @@ def apply_inline_assemblies(
     #     asm.fill_scope_complete(scope)
 
     scope.scope_path.clear()
+    scope.may_get_trace_info = False
 
     for (_, instr), asm in zip(insertion_points, assemblies):
         _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target, unwrap_exceptions=unwrap_exceptions)
