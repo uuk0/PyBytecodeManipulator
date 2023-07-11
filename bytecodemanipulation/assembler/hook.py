@@ -9,6 +9,9 @@ import typing
 from bytecodemanipulation.assembler import Emitter
 
 
+LET_PROPAGATE_EXCEPTIONS_THROUGH = False
+
+
 class ASMFileFinder(importlib.machinery.SourceFileLoader):
     """
     .pyasm file importer
@@ -45,7 +48,7 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
 
         module.__file__ = self.path
 
-        Emitter.execute_module_in_instance(asm_code, module, self.path)
+        Emitter.execute_module_in_instance(asm_code, module, self.path, unwrap_exceptions=not LET_PROPAGATE_EXCEPTIONS_THROUGH)
 
         return module
 

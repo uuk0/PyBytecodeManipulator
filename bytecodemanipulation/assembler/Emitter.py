@@ -294,7 +294,7 @@ def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: 
 
 
 def execute_module_in_instance(
-    asm_code: str, module: types.ModuleType, file: str = None
+    asm_code: str, module: types.ModuleType, file: str = None, unwrap_exceptions=True,
 ):
     scope = ParsingScope()
 
@@ -308,7 +308,15 @@ def execute_module_in_instance(
     else:
         GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
-    asm = AssemblyParser(asm_code, scope, module_file=module.__file__).parse()
+    try:
+        asm = AssemblyParser(asm_code, scope, module_file=module.__file__).parse()
+    except PropagatingCompilerException as e:
+        if not unwrap_exceptions:
+            raise e
+
+        e.print_exception()
+        raise e.underlying_exception(*e.args) from None
+
     scope.labels = asm.get_labels(scope)
     # asm.fill_scope_complete(scope)
     scope.scope_path.clear()
@@ -316,7 +324,14 @@ def execute_module_in_instance(
     target = MutableFunction(create_function)
     target.argument_names[0] = "$module$"
 
-    bytecode = asm.create_bytecode(target, scope)
+    try:
+        bytecode = asm.create_bytecode(target, scope)
+    except PropagatingCompilerException as e:
+        if not unwrap_exceptions:
+            raise e
+
+        e.print_exception()
+        raise e.underlying_exception(*e.args) from None
 
     if bytecode is None:
         return
