@@ -72,7 +72,7 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
             print(scope.macro_parameter_namespace_stack)
 
             raise PropagatingCompilerException(
-                "Expected <static evaluate-able> at 'expression'"
+                f"Expected <static evaluate-able> at 'expression', got {type(self.source).__name__} as type"
             ).add_trace_level(self.trace_info.with_token(self.base_token, list(self.source.get_tokens()))) from None
 
         if not value:

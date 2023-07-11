@@ -102,7 +102,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             name,
             parents,
             code_block,
-            trace_info=scope.get_trace_info(),
+            trace_info=scope.get_trace_info().with_token(list(name.get_tokens())),
         )
 
     def __init__(

@@ -1931,7 +1931,7 @@ ASSERT_STATIC 0 $x""")
         try:
             apply_operations(target)
         except SyntaxError as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression'",))
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
 
     def test_assert_static_macro_static_parameter(self):
         @apply_operations
@@ -2107,4 +2107,24 @@ CLASS xy {
             target()
         except PropagatingCompilerException as e:
             self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(len(e.levels), 2)
+
+    def test_class_add_info_to_exception_emitting(self):
+        def target():
+            def test():
+                assembly("""
+
+CLASS xy {
+    ASSERT_STATIC $test
+}
+
+"""
+                         )
+
+            apply_inline_assemblies(test, unwrap_exceptions=False)
+
+        try:
+            target()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
             self.assertEqual(len(e.levels), 2)
