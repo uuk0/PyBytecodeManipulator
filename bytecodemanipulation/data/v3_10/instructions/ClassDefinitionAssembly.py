@@ -2,6 +2,7 @@ import typing
 
 from bytecodemanipulation.assembler.Parser import Parser
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.ClassDefinitionAssembly import (
     AbstractClassDefinitionAssembly,
 )
@@ -26,7 +27,11 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
             Instruction(Opcodes.STORE_NAME, "__qualname__"),
         ]
 
-        raw_inner_code = self.code_block.emit_bytecodes(target, inner_scope)
+        try:
+            raw_inner_code = self.code_block.emit_bytecodes(target, inner_scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(self.trace_info, message=f"during constructing class '{self.name(scope)}'")
+            raise e
 
         for instr in raw_inner_code:
             if instr.opcode == Opcodes.LOAD_FAST:

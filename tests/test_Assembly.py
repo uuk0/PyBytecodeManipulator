@@ -111,13 +111,14 @@ class TestParser(TestCase):
 
     def test_syntax_error(self):
         def test():
-            @apply_inline_assemblies
             def target():
                 assembly(
                     """
 LOAD 19 --> $test
     """
                 )
+
+            apply_inline_assemblies(target, unwrap_exceptions=False)
 
         try:
             test()
@@ -2085,3 +2086,25 @@ RETURN $result
         #    captured
         # self.assertEqual(target(), 1)
         self.assertEqual(target(), 0)
+
+
+class TestPropagateException(TestCase):
+    def test_class_add_info_to_exception(self):
+        def target():
+            def test():
+                assembly("""
+
+CLASS xy {
+    LOAD 10 -> 20
+}
+
+"""
+                )
+
+            apply_inline_assemblies(test, unwrap_exceptions=False)
+
+        try:
+            target()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(len(e.levels), 2)

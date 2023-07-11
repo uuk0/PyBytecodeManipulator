@@ -260,7 +260,7 @@ class Parser(AbstractParser):
             print(self[-1].line, self[-1], expr.line)
 
             raise PropagatingCompilerException(
-                "Expected <newline> or ';' after assembly instruction"
+                f"Expected <newline> or ';' after assembly instruction, got '{self[0].text}' ({type(self[0]).__name__})"
             ).add_trace_level(scope.get_trace_info().with_token(self.try_inspect()))
 
         return root

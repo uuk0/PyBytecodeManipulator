@@ -119,11 +119,11 @@ def configurate_makro_parameter(name: str | int, config_pattern: typing.Type):
     return annotation
 
 
-def apply_operations(target: typing.Callable):
+def apply_operations(target: typing.Callable, unwrap_exceptions=True):
     from bytecodemanipulation.MutableFunction import MutableFunction
     from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
 
     mutable = MutableFunction(target)
-    apply_inline_assemblies(mutable)
+    apply_inline_assemblies(mutable, unwrap_exceptions=unwrap_exceptions)
     mutable.reassign_to_function()
     return target

@@ -10,7 +10,7 @@ from bytecodemanipulation.assembler.AbstractBase import (
 )
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
     ConstantAccessExpression,
@@ -92,19 +92,26 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         if not parents:
             parents = [ConstantAccessExpression(object)]
 
-        code_block = parser.parse_body(scope=scope, namespace_part=namespace)
+        try:
+            code_block = parser.parse_body(scope=scope, namespace_part=namespace)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(scope.get_trace_info().with_token(list(name.get_tokens())), message=f"during parsing class '{name(scope)}'")
+            raise e
+
         return cls(
             name,
             parents,
             code_block,
+            trace_info=scope.get_trace_info(),
         )
 
     def __init__(
-        self, name: IIdentifierAccessor, parents, code_block: CompoundExpression
+        self, name: IIdentifierAccessor, parents, code_block: CompoundExpression, trace_info: TraceInfo = None
     ):
         self.name = name
         self.parents = parents
         self.code_block = code_block
+        self.trace_info = trace_info
 
     def __repr__(self):
         return f"ClassAssembly::'{self.name}'({','.join(map(repr, self.parents))}){{{self.code_block}}}"

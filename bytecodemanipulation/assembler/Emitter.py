@@ -47,7 +47,7 @@ GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
 def apply_inline_assemblies(
-    target: MutableFunction | typing.Callable, store_at_target: bool = None
+    target: MutableFunction | typing.Callable, store_at_target: bool = None, unwrap_exceptions=True,
 ):
     """
     Processes all assembly() calls, label() calls and jump() calls in 'target'
@@ -155,14 +155,21 @@ def apply_inline_assemblies(
     else:
         GLOBAL_SCOPE_CACHE[target.target.__module__] = scope.global_scope
 
-    assemblies = [
-        AssemblyParser(
-            Lexer(code, module_file=target.target.__globals__["__file__"]).add_line_offset(instr.source_location[0]).lex(),
-            scope.scope_path.clear() or scope,
-            module_file=target.target.__globals__["__file__"],
-        ).parse()
-        for code, instr in insertion_points
-    ]
+    assemblies = []
+
+    for code, instr in insertion_points:
+        try:
+            assemblies.append(AssemblyParser(
+                Lexer(code, module_file=target.target.__globals__["__file__"]).add_line_offset(instr.source_location[0]).lex(),
+                scope.scope_path.clear() or scope,
+                module_file=target.target.__globals__["__file__"],
+            ).parse())
+        except PropagatingCompilerException as e:
+            if not unwrap_exceptions:
+                raise e
+
+            e.print_exception()
+            raise e.underlying_exception(*e.args) from None
 
     for asm in assemblies:
         asm_labels = asm.collect_label_info(scope)
@@ -178,7 +185,7 @@ def apply_inline_assemblies(
     scope.scope_path.clear()
 
     for (_, instr), asm in zip(insertion_points, assemblies):
-        _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target)
+        _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target, unwrap_exceptions=unwrap_exceptions)
 
     target.walk_instructions(visit)
 
@@ -214,10 +221,13 @@ def apply_inline_assemblies(
     return target
 
 
-def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction):
+def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction, unwrap_exceptions=False):
     try:
         bytecode = asm.create_bytecode(target, scope)
     except PropagatingCompilerException as e:
+        if not unwrap_exceptions:
+            raise e
+
         e.print_exception()
         raise e.underlying_exception(*e.args) from None
 
