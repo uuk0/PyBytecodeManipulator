@@ -63,7 +63,12 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             target.argument_names.insert(0, local_variable_buffer)
             target.argument_count += 1
 
-        inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
+        try:
+            inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(self.trace_info, message=f"during parsing function definition {self.func_name(scope)}")
+            raise e
+
         inner_bytecode[-1].next_instruction = target.instruction_entry_point
 
         for i, instr in enumerate(inner_bytecode[:-1]):

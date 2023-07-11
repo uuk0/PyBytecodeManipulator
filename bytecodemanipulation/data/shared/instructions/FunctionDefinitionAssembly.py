@@ -7,7 +7,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -149,14 +149,18 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         else:
             target = None
 
-        body = parser.parse_body(scope=scope)
+        try:
+            body = parser.parse_body(scope=scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(scope.get_trace_info().with_token(list(func_name.get_tokens())), message=f"during parsing function definition {func_name(scope)}")
+            raise e
 
         if expr := parser.try_consume(SpecialToken("-")):
             raise PropagatingCompilerException(
                 "Respect ordering (got '-' before 'args'): DEF ['name'] ['captured'] ('args') [-> 'target'] { 'code' }"
             ).add_trace_level(scope.get_trace_info().with_token(expr))
 
-        return cls(func_name, bound_variables, args, body, target, prefix=prefix)
+        return cls(func_name, bound_variables, args, body, target, prefix=prefix, trace_info=scope.get_trace_info().with_token(list(func_name.get_tokens())))
 
     def __init__(
         self,
@@ -166,6 +170,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         body: CompoundExpression,
         target: AbstractAccessExpression | None = None,
         prefix="",
+        trace_info: TraceInfo = None,
     ):
         self.func_name = (
             func_name if not isinstance(func_name, str) else StaticIdentifier(func_name)
@@ -198,6 +203,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.body = body
         self.target = target
         self.prefix = prefix
+        self.trace_info = trace_info
 
     def visit_parts(
         self,

@@ -2128,3 +2128,43 @@ CLASS xy {
         except PropagatingCompilerException as e:
             self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
             self.assertEqual(len(e.levels), 2)
+
+    def test_function_add_info_to_exception(self):
+        def target():
+            def test():
+                assembly("""
+
+DEF xy() {
+    LOAD 10 -> 20
+}
+
+"""
+                         )
+
+            apply_inline_assemblies(test, unwrap_exceptions=False)
+
+        try:
+            target()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(len(e.levels), 2)
+
+    def test_function_add_info_to_exception_emitting(self):
+        def target():
+            def test():
+                assembly("""
+
+DEF xy() {
+    ASSERT_STATIC $test
+}
+
+"""
+                         )
+
+            apply_inline_assemblies(test, unwrap_exceptions=False)
+
+        try:
+            target()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            self.assertEqual(len(e.levels), 2)
