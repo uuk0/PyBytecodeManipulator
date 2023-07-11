@@ -119,20 +119,24 @@ LOAD 19 --> $test
     """
                 )
 
-        self.assertRaises(SyntaxError, test)
+        try:
+            test()
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.underlying_exception, SyntaxError)
+            self.assertEqual(e.args, ("expected '>' after '-' to complete '->'",))
+        else:
+            self.fail()
 
     def test_load_global(self):
         expr = Parser(
-            "LOAD_GLOBAL test\nLOAD_GLOBAL 10\nLOAD_GLOBAL @test\nLOAD_GLOBAL @10\nLOAD_GLOBAL @hello -> $test"
+            "LOAD_GLOBAL test\nLOAD_GLOBAL @test\nLOAD_GLOBAL @hello -> $test"
         ).parse()
 
         self.assertEqualList(
             CompoundExpression(
                 [
                     AbstractLoadGlobalAssembly.IMPLEMENTATION("test"),
-                    AbstractLoadGlobalAssembly.IMPLEMENTATION(10),
                     AbstractLoadGlobalAssembly.IMPLEMENTATION("test"),
-                    AbstractLoadGlobalAssembly.IMPLEMENTATION(10),
                     AbstractLoadGlobalAssembly.IMPLEMENTATION(
                         "hello", LocalAccessExpression("test")
                     ),

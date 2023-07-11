@@ -6,13 +6,14 @@ from .CommonUtil import AbstractCursorStateItem
 
 
 class AbstractToken(abc.ABC):
-    __slots__ = ("text", "line", "column", "span")
+    __slots__ = ("text", "line", "column", "span", "module_file")
 
     def __init__(self, text: str):
         self.text = text
         self.line: int | None = None
         self.column: int | None = None
         self.span: int | None = None
+        self.module_file: str | None = None
 
     def __eq__(self, other):
         return type(other) == type(self) and self.text == other.text
@@ -103,12 +104,13 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
     INCLUDE_LINE_INFO = True
 
-    def __init__(self, text: str, initial_line_offset=0):
+    def __init__(self, text: str, initial_line_offset=0, module_file: str | None = None):
         super().__init__()
         self.text = text
         self.old_line_number = 1
         self.old_column_number = 0
         self._line_offset = initial_line_offset
+        self.module_file = module_file
 
     def add_line_offset(self, offset: int):
         self._line_offset += offset
@@ -285,6 +287,7 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     r.line = self.old_line_number + self._line_offset
                     r.column = self.old_column_number - newline_count
                     r.span = self.cursor - old_cursor
+                    r.module_file = self.module_file
 
                     # print(
                     #     f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})"

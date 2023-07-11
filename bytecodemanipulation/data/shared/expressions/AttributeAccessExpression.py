@@ -60,7 +60,7 @@ class AttributeAccessExpression(AbstractAccessExpression):
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
         return (
-            list(self.root.get_tokens()) + list(self.name.get_tokens()) + [self.token]
+            list(self.root.get_tokens()) + list(self.name.get_tokens())
         )
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:

@@ -140,11 +140,12 @@ class Parser(AbstractParser):
         tokens_or_str: str | typing.List[AbstractToken],
         scope: ParsingScope = None,
         initial_line_offset=0,
+        module_file: str = None,
     ):
         super().__init__(
             tokens_or_str
             if isinstance(tokens_or_str, list)
-            else Lexer(tokens_or_str, initial_line_offset=initial_line_offset).lex()
+            else Lexer(tokens_or_str, initial_line_offset=initial_line_offset, module_file=module_file).lex()
         )
         self.scope = scope or ParsingScope()
 

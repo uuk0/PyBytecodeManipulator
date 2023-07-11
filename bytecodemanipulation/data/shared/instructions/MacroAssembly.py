@@ -328,6 +328,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             "expected ']' closing '[' in CODE_BLOCK"
                         ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
 
+                    inst = cls.CodeBlockDataType(int(expr.text))
+                    return inst
+
                 inst = cls.CodeBlockDataType()
                 return inst
 

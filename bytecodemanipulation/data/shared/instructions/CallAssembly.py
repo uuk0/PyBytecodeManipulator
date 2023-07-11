@@ -251,7 +251,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 elif not has_seen_keyword_arg:
                     parser.consume(SpecialToken("*"))
                     expr = parser.try_parse_data_source(
-                        allow_primitives=True, include_bracket=False
+                        allow_primitives=True, include_bracket=False, scope=scope
                     )
                     args.append(AbstractCallAssembly.StarArg(expr))
 
@@ -300,7 +300,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         parser.try_consume(SpecialToken("?"))
                     )
 
-                    expr = parser.try_consume_access_to_value(allow_primitives=True)
+                    expr = parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
 
                     if expr is None:
                         if parser[0] == SpecialToken(")"):

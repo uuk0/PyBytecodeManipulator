@@ -1,3 +1,4 @@
+import inspect
 import sys
 import typing
 
@@ -6,33 +7,19 @@ if typing.TYPE_CHECKING:
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 
 
-class TraceInfo:
-    class TraceLevel:
-        pass
-
-    def with_token(self, *token: AbstractToken | typing.List[AbstractToken]) -> "TraceInfo":
-        pass
-
-    def print_stack(self, file=sys.stdout):
-        pass
-
-
-class PropagatingCompilerException(Exception):
-    def set_underlying_exception(self, exc: typing.Type[Exception]):
-        return self
-
-    def add_trace_level(self, info: TraceInfo, message: str = None) -> "PropagatingCompilerException":
-        return self
-
-
 def _print_complex_token_location(
-    scope: "ParsingScope",
+    file,
     tokens: typing.List[AbstractToken | None],
-    exc_type: typing.Type[Exception] = SyntaxError,
 ):
+    while None in tokens:
+        tokens.remove(None)
+
+    if not tokens:
+        return
+
     lines: typing.Dict[int, typing.List[AbstractToken]] = {}
 
-    with open(scope.module_file, mode="r", encoding="utf-8") as f:
+    with open(tokens[0].module_file, mode="r", encoding="utf-8") as f:
         content = f.readlines()
 
     for token in tokens:
@@ -63,18 +50,69 @@ def _print_complex_token_location(
 
         if line != previous_line_no + 1:
             if already_seen_line:
-                print()
+                print(file=file)
             already_seen_line = True
 
-            file = scope.module_file.replace("\\", "/")
-            print(f'File "{file}", line {line + 1}', file=sys.stderr)
+            _file = tokens[0].module_file
+            print(f'File "{_file}", line {line + 1}', file=file)
         previous_line_no = line
 
         if line >= len(content):
             continue
 
-        print(content[line].removesuffix("\n"), file=sys.stderr)
-        print(error_location, file=sys.stderr)
+        print(content[line].removesuffix("\n"), file=file)
+        print(error_location, file=file)
+
+
+class TraceInfo:
+    class TraceLevel:
+        pass
+
+    def __init__(self):
+        self.tokens = []
+
+    def with_token(self, *token: AbstractToken | typing.List[AbstractToken]) -> "TraceInfo":
+        for e in token:
+            if isinstance(e, AbstractToken):
+                self.tokens.append(e)
+            else:
+                self.tokens.extend(e)
+
+        return self
+
+    def print_stack(self, file=sys.stdout):
+        print(self.tokens)
+        _print_complex_token_location(file, self.tokens)
+
+
+class PropagatingCompilerException(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.underlying_exception = SyntaxError
+        self.levels: typing.List[typing.Tuple[TraceInfo, str | None]] = []
+        self.base_file = inspect.currentframe().f_back.f_code.co_filename
+        self.base_lineno = inspect.currentframe().f_back.f_lineno
+
+    def set_underlying_exception(self, exc: typing.Type[Exception]):
+        self.underlying_exception = exc
+        return self
+
+    def add_trace_level(self, info: TraceInfo, message: str = None) -> "PropagatingCompilerException":
+        if info is None:
+            self.print_exception(file=sys.stderr)
+            raise ValueError("info must not be None") from None
+
+        self.levels.append((info, message))
+        return self
+
+    def print_exception(self, file=sys.stderr):
+        print(f"File \"{self.base_file}\", line {self.base_lineno}", file=file)
+
+        for trace, message in self.levels:
+            trace.print_stack(file=file)
+
+            if message:
+                print(message, file=file)
 
 
 def old_throw_positioned_error(

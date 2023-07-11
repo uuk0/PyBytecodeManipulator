@@ -399,7 +399,7 @@ class AbstractOpAssembly(
             return
 
         expression = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False
+            allow_primitives=True, include_bracket=False, scope=scope,
         )
 
         if expression is None:
@@ -420,7 +420,7 @@ class AbstractOpAssembly(
     ) -> typing.Optional[IOperation]:
         parser.save()
 
-        lhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+        lhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, scope=scope)
 
         if lhs is None:
             parser.rollback()
@@ -432,7 +432,7 @@ class AbstractOpAssembly(
             parser.rollback()
             return
 
-        rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False)
+        rhs = parser.try_parse_data_source(allow_primitives=True, include_bracket=False, scope=scope)
 
         if rhs is None:
             print("rhs is invalid")
@@ -539,7 +539,7 @@ class AbstractOpAssembly(
         if bracket and not parser.try_consume(SpecialToken(")")):
             raise PropagatingCompilerException("expected ')'").add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
-        return cls.PrefixOperator(operator, operator_tokens, args, base=cls)
+        return cls.PrefixOperator(operator, operator_tokens, args, base=cls, trace_info=scope.get_trace_info())
 
     def __init__(
         self, operation: IOperation, target: AbstractAccessExpression | None = None

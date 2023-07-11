@@ -12,6 +12,7 @@ from bytecodemanipulation.assembler.Parser import (
 )
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel, ParsingScope
 from bytecodemanipulation.assembler import target as assembly_targets
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 
 
 def _visit_for_stack_effect(
@@ -156,8 +157,9 @@ def apply_inline_assemblies(
 
     assemblies = [
         AssemblyParser(
-            Lexer(code).add_line_offset(instr.source_location[0] + 1).lex(),
+            Lexer(code, module_file=target.target.__globals__["__file__"]).add_line_offset(instr.source_location[0]).lex(),
             scope.scope_path.clear() or scope,
+            module_file=target.target.__globals__["__file__"],
         ).parse()
         for code, instr in insertion_points
     ]
@@ -213,7 +215,11 @@ def apply_inline_assemblies(
 
 
 def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction):
-    bytecode = asm.create_bytecode(target, scope)
+    try:
+        bytecode = asm.create_bytecode(target, scope)
+    except PropagatingCompilerException as e:
+        e.print_exception()
+        raise e.underlying_exception(*e.args) from None
 
     if bytecode:
         # link the instructions to each other
@@ -291,7 +297,7 @@ def execute_module_in_instance(
     else:
         GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
-    asm = AssemblyParser(asm_code, scope).parse()
+    asm = AssemblyParser(asm_code, scope, module_file=module.__file__).parse()
     scope.labels = asm.get_labels(scope)
     # asm.fill_scope_complete(scope)
     scope.scope_path.clear()
