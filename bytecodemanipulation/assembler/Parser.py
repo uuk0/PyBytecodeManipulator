@@ -266,6 +266,7 @@ class Parser(AbstractParser):
                 break
 
             print(self[-1].line, self[-1], expr.line)
+            print(root)
 
             raise PropagatingCompilerException(
                 f"Expected <newline> or ';' after assembly instruction, got '{self[0].text}' ({type(self[0]).__name__})"
@@ -342,10 +343,13 @@ class Parser(AbstractParser):
 
             if isinstance(start_token, IdentifierToken):
                 if start_token.text == "None":
+                    self.consume(start_token)
                     return ConstantAccessExpression(None, start_token, trace_info=scope.get_trace_info())
                 elif start_token.text == "True":
+                    self.consume(start_token)
                     return ConstantAccessExpression(True, start_token, trace_info=scope.get_trace_info())
                 elif start_token.text == "False":
+                    self.consume(start_token)
                     return ConstantAccessExpression(False, start_token, trace_info=scope.get_trace_info())
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
