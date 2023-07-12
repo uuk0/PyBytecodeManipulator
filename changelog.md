@@ -7,6 +7,9 @@
 - removed std:print as it can be implemented using ~print(...) in the same way
 - rewritten how exceptions are emitted, making it possible to generate good trace backs without
   all the internal stuff
+- fixed some opcode stack effects
+- more test coverage
+- AttributeAccess itself is no longer evaluated statically, as it may lead to unwanted side effects
 
 # Version 0.3.4
 - improved error messages for assemblies

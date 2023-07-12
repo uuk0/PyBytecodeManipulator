@@ -65,10 +65,4 @@ class AttributeAccessExpression(AbstractAccessExpression):
         )
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
-        base = self.root.evaluate_static_value(scope)
-        name = self.name(scope)
-
-        if not hasattr(base, name):
-            raise NotImplementedError
-
-        return getattr(base, name)
+        raise NotImplementedError
