@@ -105,7 +105,7 @@ def make_macro(export_name: str = None, /, prevent_direct_calls=False):
     return annotation
 
 
-def configurate_makro_parameter(name: str | int, config_pattern: typing.Type):
+def configurate_macro_parameter(name: str | int, config_pattern: typing.Type):
     """
     Configures the type of parameter of a @make_macro annotated function
 

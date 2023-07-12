@@ -6,6 +6,7 @@ import typing
 from bytecodemanipulation.MutableFunction import MutableFunction
 
 from bytecodemanipulation.Optimiser import _OptimisationContainer
+from bytecodemanipulation.assembler.target import assembly, apply_operations
 from tests.util import compare_optimized_results
 from tests.util import BUILTIN_INLINE
 
@@ -89,3 +90,11 @@ class TestSpecializations(TestCase):
             return True
 
         compare_optimized_results(self, target, compare)
+
+    def test_empty_tuple(self):
+        def target():
+            assembly("RETURN OP (tuple ())")
+
+        apply_operations(target)
+
+        compare_optimized_results(self, target, lambda: tuple(), opt_ideal=2)
