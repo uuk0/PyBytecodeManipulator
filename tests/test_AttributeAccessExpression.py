@@ -14,6 +14,27 @@ from bytecodemanipulation.data.shared.instructions.LoadAssembly import LoadAssem
 
 
 class TestParser(TestCase):
+    def test_repr(self):
+        tree = Parser("LOAD $test.x -> $test").parse()
+        self.assertEqual(repr(tree), "Compound(LOAD($!'test'.x, $!'test'))")
+
+    def test_copy(self):
+        tree = Parser("LOAD $test.x -> $test").parse()
+        self.assertEqual(tree, tree.copy())
+
+    def test_visit_parts(self):
+        tree = Parser("LOAD $test.x -> $test").parse()
+
+        visited = False
+
+        def visitor(obj, children, parents):
+            if isinstance(obj, AttributeAccessExpression):
+                nonlocal visited
+                visited = True
+
+        tree.visit_parts(visitor, [])
+        self.assertTrue(visited)
+
     def test_simple_load(self):
         tree = Parser("LOAD $test.x -> $test").parse()
         self.assertEqual(

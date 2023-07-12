@@ -63,7 +63,7 @@ class LoadAssembly(AbstractAssemblyInstruction):
         )
 
     def copy(self) -> "LoadAssembly":
-        return LoadAssembly(self.access_expr, self.target)
+        return LoadAssembly(self.access_expr.copy(), self.target.copy() if self.target else None)
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
