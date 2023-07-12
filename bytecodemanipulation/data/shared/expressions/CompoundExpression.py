@@ -12,7 +12,10 @@ from bytecodemanipulation.MutableFunction import MutableFunction
 
 
 class CompoundExpression(AbstractExpression, IAssemblyStructureVisitable):
-    def __init__(self, children: typing.List[AbstractExpression] = None):
+    def __init__(self, children: typing.List[AbstractExpression] | AbstractExpression = None):
+        if isinstance(children, AbstractExpression):
+            children = [children]
+
         self.children = children or []
 
     def __eq__(self, other):
