@@ -252,7 +252,7 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
         token: AbstractToken | typing.List[AbstractToken] = None,
         trace_info: TraceInfo = None,
     ):
-        self.name = name
+        self.name = name if not isinstance(name, str) else StaticIdentifier(name)
         self.token = token
         self.trace_info: TraceInfo = trace_info
 

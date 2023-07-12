@@ -16,9 +16,6 @@ class DerefAccessExpression(AbstractAccessExpression):
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
 
-        if value.isdigit():
-            value = int(value)
-
         return [
             Instruction.create_with_token(
                 self.token, Opcodes.LOAD_DEREF, value
@@ -29,9 +26,6 @@ class DerefAccessExpression(AbstractAccessExpression):
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
         value = self.get_name(scope)
-
-        if value.isdigit():
-            value = int(value)
 
         return [
             Instruction.create_with_token(

@@ -688,7 +688,7 @@ class Instruction:
             return 1, 1, None
 
         if self.opcode in (Opcodes.STORE_ATTR, Opcodes.STORE_SUBSCR):
-            return 2, 0, None
+            return 0, 2, None
 
         if self.opcode in (
             Opcodes.POP_TOP,
