@@ -92,3 +92,14 @@ class TestAssembly(TestCase):
         mock = MockObject()
         target(mock)
         self.assertEqual(mock.value, 10)
+
+    def test_try_eval_static(self):
+        def target(x):
+            assembly("ASSERT_STATIC $x.value")
+
+        try:
+            apply_operations(target, unwrap_exceptions=False)
+        except PropagatingCompilerException as e:
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'AttributeAccessExpression' as type",))
+        else:
+            self.fail()

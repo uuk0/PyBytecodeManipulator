@@ -1931,7 +1931,7 @@ ASSERT_STATIC 0 $x""")
         try:
             apply_operations(target)
         except SyntaxError as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
 
     def test_assert_static_macro_static_parameter(self):
         @apply_operations
@@ -2122,7 +2122,7 @@ CLASS xy {
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
             self.assertEqual(len(e.levels), 2)
 
     def test_function_add_info_to_exception(self):
@@ -2158,7 +2158,7 @@ DEF xy() {
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
             self.assertEqual(len(e.levels), 2)
 
     def test_namespace_add_info_to_exception(self):
@@ -2196,7 +2196,7 @@ NAMESPACE xy {
             target()
         except PropagatingCompilerException as e:
             self.assertEqual(e.args, (
-            "Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            "Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
             self.assertEqual(len(e.levels), 2)
 
     def test_macro_decl_add_info_to_exception(self):
