@@ -217,7 +217,11 @@ def specialize_range_3rd_argument(container: SpecializationContainer):
             container.method_call_descriptor.lookup_method_instr.arg_value
             == random.Random.randrange
         ):
-            pass
+            container.replace_with_raise_exception(
+                TypeError(
+                    "Random.randrange() missing 1 required positional argument: 'start'"
+                )
+            )
         else:
             raise NotImplementedError
     else:
