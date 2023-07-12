@@ -12,6 +12,7 @@ from bytecodemanipulation.assembler.Parser import (
 )
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel, ParsingScope
 from bytecodemanipulation.assembler import target as assembly_targets
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 
 
 def _visit_for_stack_effect(
@@ -46,7 +47,7 @@ GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
 def apply_inline_assemblies(
-    target: MutableFunction | typing.Callable, store_at_target: bool = None
+    target: MutableFunction | typing.Callable, store_at_target: bool = None, unwrap_exceptions=True,
 ):
     """
     Processes all assembly() calls, label() calls and jump() calls in 'target'
@@ -154,13 +155,21 @@ def apply_inline_assemblies(
     else:
         GLOBAL_SCOPE_CACHE[target.target.__module__] = scope.global_scope
 
-    assemblies = [
-        AssemblyParser(
-            Lexer(code).add_line_offset(instr.source_location[0] + 1).lex(),
-            scope.scope_path.clear() or scope,
-        ).parse()
-        for code, instr in insertion_points
-    ]
+    assemblies = []
+
+    for code, instr in insertion_points:
+        try:
+            assemblies.append(AssemblyParser(
+                Lexer(code, module_file=target.target.__globals__["__file__"]).add_line_offset(instr.source_location[0]).lex(),
+                scope.scope_path.clear() or scope,
+                module_file=target.target.__globals__["__file__"],
+            ).parse())
+        except PropagatingCompilerException as e:
+            if not unwrap_exceptions:
+                raise e
+
+            e.print_exception()
+            raise e.underlying_exception(*e.args) from None
 
     for asm in assemblies:
         asm_labels = asm.collect_label_info(scope)
@@ -174,9 +183,10 @@ def apply_inline_assemblies(
     #     asm.fill_scope_complete(scope)
 
     scope.scope_path.clear()
+    scope.may_get_trace_info = False
 
     for (_, instr), asm in zip(insertion_points, assemblies):
-        _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target)
+        _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target, unwrap_exceptions=unwrap_exceptions)
 
     target.walk_instructions(visit)
 
@@ -212,8 +222,15 @@ def apply_inline_assemblies(
     return target
 
 
-def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction):
-    bytecode = asm.create_bytecode(target, scope)
+def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction, unwrap_exceptions=False):
+    try:
+        bytecode = asm.create_bytecode(target, scope)
+    except PropagatingCompilerException as e:
+        if not unwrap_exceptions:
+            raise e
+
+        e.print_exception()
+        raise e.underlying_exception(*e.args) from None
 
     if bytecode:
         # link the instructions to each other
@@ -277,7 +294,7 @@ def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: 
 
 
 def execute_module_in_instance(
-    asm_code: str, module: types.ModuleType, file: str = None
+    asm_code: str, module: types.ModuleType, file: str = None, unwrap_exceptions=True,
 ):
     scope = ParsingScope()
 
@@ -291,7 +308,15 @@ def execute_module_in_instance(
     else:
         GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
-    asm = AssemblyParser(asm_code, scope).parse()
+    try:
+        asm = AssemblyParser(asm_code, scope, module_file=module.__file__).parse()
+    except PropagatingCompilerException as e:
+        if not unwrap_exceptions:
+            raise e
+
+        e.print_exception()
+        raise e.underlying_exception(*e.args) from None
+
     scope.labels = asm.get_labels(scope)
     # asm.fill_scope_complete(scope)
     scope.scope_path.clear()
@@ -299,7 +324,14 @@ def execute_module_in_instance(
     target = MutableFunction(create_function)
     target.argument_names[0] = "$module$"
 
-    bytecode = asm.create_bytecode(target, scope)
+    try:
+        bytecode = asm.create_bytecode(target, scope)
+    except PropagatingCompilerException as e:
+        if not unwrap_exceptions:
+            raise e
+
+        e.print_exception()
+        raise e.underlying_exception(*e.args) from None
 
     if bytecode is None:
         return

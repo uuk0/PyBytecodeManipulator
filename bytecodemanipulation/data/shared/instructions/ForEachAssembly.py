@@ -5,7 +5,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -48,43 +48,45 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
     ) -> "AbstractForEachAssembly":
         initial = parser.try_consume_access_to_value()
         if initial is None:
-            raise throw_positioned_error(
-                scope, parser[0], "initial <expression> expected"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression> after FOREACH"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         variables = [initial]
 
-        while parser.try_consume(SpecialToken(",")):
+        while separator := parser.try_consume(SpecialToken(",")):
 
             expr = parser.try_consume_access_to_value()
 
             if expr is None:
-                raise throw_positioned_error(
-                    scope, parser[0], "further <expression> expected after ','"
-                )
+                raise PropagatingCompilerException(
+                    "expected <expression> after ','"
+                ).add_trace_level(scope.get_trace_info().with_token(separator, parser[0]))
 
             variables.append(expr)
 
         if not parser.try_consume(IdentifierToken("IN")):
-            raise throw_positioned_error(scope, parser[0], "'IN' expected")
+            raise PropagatingCompilerException(
+                "expected 'IN' after FOREACH and <expression>..."
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         source = parser.try_consume_access_to_value()
         if not source:
-            raise throw_positioned_error(
-                scope, parser[0], "base iterator <expression> expected"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression> after 'IN'"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         sources = [source]
 
         multi = None
-        while parser.try_consume(SpecialToken(",")) or (
+        while separator := (parser.try_consume(SpecialToken(",")) or (
             multi := parser.try_consume(SpecialToken("*"))
-        ):
+        )):
             source = parser.try_consume_access_to_value()
             if not source:
-                raise throw_positioned_error(
-                    scope, parser[0], f"further iterator <expression> expected after '{'*' if multi else ','}'"
-                )
+                raise PropagatingCompilerException(
+                    f"expected <expression> after '{separator.text}' and <expression>..."
+                ).add_trace_level(scope.get_trace_info().with_token(separator, parser[0]))
 
             if multi:
                 s = sources[-1]
@@ -99,11 +101,9 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
                 sources.append(source)
 
         if len(variables) != len(sources):
-            raise throw_positioned_error(
-                scope,
-                scope.last_base_token,
+            raise PropagatingCompilerException(
                 f"Number of Variables ({len(variables)}) must equal number of Sources ({len(sources)})",
-            )
+            ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token))
 
         body = parser.parse_body(scope=scope)
         return cls(

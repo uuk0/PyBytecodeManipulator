@@ -5,6 +5,8 @@
 - fixed YIELD in function definition blocks
 - fix macro-in-macro calls
 - removed std:print as it can be implemented using ~print(...) in the same way
+- rewritten how exceptions are emitted, making it possible to generate good trace backs without
+  all the internal stuff
 
 # Version 0.3.4
 - improved error messages for assemblies

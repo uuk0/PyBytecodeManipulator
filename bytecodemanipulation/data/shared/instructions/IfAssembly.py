@@ -8,7 +8,7 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
     CompoundExpression,
@@ -29,17 +29,17 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
         if source is None:
-            raise throw_positioned_error(
-                scope, parser.try_inspect(), "expected <expression>"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression> after IF"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.parse_jump_target(scope)
 
             if not parser.try_consume(SpecialToken("'")):
-                raise throw_positioned_error(
-                    scope, parser.try_inspect(), "expected ' after label name declaration"
-                )
+                raise PropagatingCompilerException(
+                    "expected ' after label name declaration"
+                ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         else:
             label_name = None

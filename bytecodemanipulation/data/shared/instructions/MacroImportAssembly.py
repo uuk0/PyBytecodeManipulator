@@ -3,6 +3,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -49,6 +50,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
             name,
             target,
             is_relative_target,
+            trace_info=scope.get_trace_info().with_token(name),
         )
 
     def __init__(
@@ -56,10 +58,12 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         name: typing.List[IdentifierToken],
         target: typing.List[IdentifierToken] = None,
         is_relative_target: bool = False,
+        trace_info: TraceInfo = None
     ):
         self.name = name
         self.target = target
         self.is_relative_target = is_relative_target
+        self.trace_info = trace_info
 
     def __repr__(self):
         return f"MACRO_IMPORT('{'.'.join(map(lambda e: e.text, self.name))}'{'' if self.target is None else ('.' if self.is_relative_target else '') + '.'.join(map(lambda e: e.text, self.target))})"
@@ -82,6 +86,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
 
     def fill_scope(self, scope: ParsingScope):
         from bytecodemanipulation.assembler.Emitter import GLOBAL_SCOPE_CACHE
+        import bytecodemanipulation.assembler.hook
 
         if self.target is None:
             namespace = scope.scope_path
@@ -95,7 +100,18 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         module = ".".join(map(lambda e: e.text, self.name))
 
         if module not in GLOBAL_SCOPE_CACHE:
-            __import__(module)
+            prev = bytecodemanipulation.assembler.hook.LET_PROPAGATE_EXCEPTIONS_THROUGH
+            bytecodemanipulation.assembler.hook.LET_PROPAGATE_EXCEPTIONS_THROUGH = True
+
+            try:
+                __import__(module)
+            except PropagatingCompilerException as e:
+                e.add_trace_level(self.trace_info)
+                raise e
+            except Exception as e:
+                raise PropagatingCompilerException("MACRO_IMPORT failed due to the normal import failing").set_underlying_exception(e).add_trace_level(self.trace_info) from None
+
+            bytecodemanipulation.assembler.hook.LET_PROPAGATE_EXCEPTIONS_THROUGH = prev
 
         if not scope_entry:
             scope_entry.update(GLOBAL_SCOPE_CACHE[module])

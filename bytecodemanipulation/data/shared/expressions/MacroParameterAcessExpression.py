@@ -2,7 +2,7 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -12,6 +12,14 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 class MacroParameterAccessExpression(AbstractAccessExpression):
     PREFIX = "&"
 
+    def __init__(
+        self,
+        name: "IIdentifierAccessor | str",
+        token: AbstractToken | typing.List[AbstractToken] = None,
+    ):
+        super().__init__(name, token)
+        self.trace_info: TraceInfo = None
+
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
@@ -20,9 +28,9 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         try:
             value_deref = scope.lookup_macro_parameter(value)
         except KeyError:
-            raise throw_positioned_error(
-                scope, self.token, "Name not found in macro var space"
-            ) from None
+            raise PropagatingCompilerException(
+                f"Name '{value}' not found in macro var space"
+            ).add_trace_level(self.trace_info.with_token(self.token))
 
         if value_deref != self and hasattr(value_deref, "emit_bytecodes"):
             instructions = value_deref.emit_bytecodes(function, scope)
@@ -47,9 +55,7 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         try:
             deref_value = scope.lookup_macro_parameter(value)
         except KeyError:
-            raise throw_positioned_error(
-                scope, self.token, "Name not found in macro var space"
-            ) from None
+            raise PropagatingCompilerException(f"Name '{value}' not found in macro var space").add_trace_level(self.trace_info) from None
 
         if deref_value != self and hasattr(deref_value, "emit_bytecodes"):
             instructions = deref_value.emit_store_bytecodes(function, scope)

@@ -8,9 +8,8 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
-from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
     CompoundExpression,
 )
@@ -30,17 +29,17 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
         if condition is None:
-            raise throw_positioned_error(
-                scope, parser.try_inspect(), "expected <expression>"
-            )
+            raise PropagatingCompilerException(
+                "expected <expression> after WHILE for condition"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         if parser.try_consume(SpecialToken("'")):
             label_name = parser.parse_jump_target(scope)
 
             if not parser.try_consume(SpecialToken("'")):
-                raise throw_positioned_error(
-                    scope, parser.try_inspect(), "expected '"
-                )
+                raise PropagatingCompilerException(
+                    "expected ' closing <label name>"
+                ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
         else:
             label_name = None

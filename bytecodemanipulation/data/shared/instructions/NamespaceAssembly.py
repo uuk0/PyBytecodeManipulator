@@ -3,6 +3,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -36,18 +37,24 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
         while parser.try_consume(SpecialToken(":")):
             name.append(parser.consume(IdentifierToken))
 
-        assembly = parser.parse_body(namespace_part=[e.text for e in name], scope=scope)
+        try:
+            assembly = parser.parse_body(namespace_part=[e.text for e in name], scope=scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(scope.get_trace_info().with_token(name), f"during parsing namespace body of {':'.join(map(lambda e: e.text, name))}")
+            raise e
 
         return cls(
             name,
             assembly,
+            trace_info=scope.get_trace_info().with_token(name),
         )
 
     def __init__(
-        self, name: typing.List[IdentifierToken], assembly: CompoundExpression
+        self, name: typing.List[IdentifierToken], assembly: CompoundExpression, trace_info: TraceInfo = None
     ):
         self.name = name
         self.assembly = assembly
+        self.trace_info = trace_info
 
     def __repr__(self):
         return (
@@ -67,9 +74,13 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
     ) -> typing.List[Instruction]:
-        return self.assembly.emit_bytecodes(
-            function, scope.copy(sub_scope_name=[e.text for e in self.name])
-        )
+        try:
+            return self.assembly.emit_bytecodes(
+                function, scope.copy(sub_scope_name=[e.text for e in self.name])
+            )
+        except PropagatingCompilerException as e:
+            e.add_trace_level(self.trace_info, f"during emitting namespace body of {':'.join(map(lambda e: e.text, self.name))}")
+            raise e
 
     def visit_parts(
         self,

@@ -3,6 +3,7 @@ import types
 import typing
 from abc import ABC
 
+from bytecodemanipulation.assembler.syntax_errors import TraceInfo
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
@@ -53,7 +54,15 @@ class ParsingScope:
 
         self.current_macro_assembly = None
 
+        self.may_get_trace_info = True
+
         self.closure_locals: typing.Set[str] = set()
+
+    def get_trace_info(self) -> TraceInfo:
+        if not self.may_get_trace_info:
+            raise RuntimeError("Cannot get trace info")
+
+        return TraceInfo()
 
     def scope_name_generator(self, suffix="") -> str:
         name = f"%INTERNAL:{self._name_counter}"
@@ -287,6 +296,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
     ):
         self.macro_name = macro_name
         self.token = token
+        self.trace_info: TraceInfo = None
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
         return self.token
@@ -304,7 +314,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
 
     def __call__(self, scope: ParsingScope):
         from bytecodemanipulation.assembler.syntax_errors import (
-            throw_positioned_error,
+            PropagatingCompilerException,
         )
 
         if scope is None:
@@ -313,18 +323,14 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         try:
             value = scope.lookup_macro_parameter(self.token[1].text)
         except KeyError:
-            raise throw_positioned_error(
-                scope,
-                self.token,
-                "Could not find name in macro parameter space",
-            ) from None
+            raise PropagatingCompilerException(
+                f"Could not find name '{self.token[1].text}' in macro parameter space"
+            ).add_trace_level(self.trace_info.with_token(self.token[1])) from None
 
         return self._check_value(scope, value)
 
     def _check_value(self, scope, value, level=1):
-        from bytecodemanipulation.assembler.syntax_errors import (
-            throw_positioned_error,
-        )
+        from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
         from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
             ConstantAccessExpression,
         )
@@ -339,11 +345,9 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         )
         if isinstance(value, ConstantAccessExpression):
             if not isinstance(value.value, str):
-                raise throw_positioned_error(
-                    scope,
-                    self.token,
-                    f"Expected 'string' for name de-referencing, got {value}",
-                )
+                raise PropagatingCompilerException(
+                    f"Expected 'string' for name de-referencing, got '{value}'"
+                ).add_trace_level(self.trace_info.with_token(self.token[0]))
 
             return value.value
 
@@ -367,11 +371,9 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
 
             print("WARN: got some value from macro namespace")
 
-        raise throw_positioned_error(
-            scope,
-            self.token,
-            f"Expected <static evaluated expression> for getting the name for storing, got '{value}'",
-        )
+        raise PropagatingCompilerException(
+            f"Expected <static evaluated expression> for getting the name for storing, got '{value}'"
+        ).add_trace_level(self.trace_info.with_token(self.token[0])) from None
 
 
 class StaticIdentifier(IIdentifierAccessor):

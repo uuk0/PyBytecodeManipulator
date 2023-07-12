@@ -31,18 +31,18 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
 
         if parser.try_consume(IdentifierToken("IF")):
             condition = parser.try_parse_data_source(
-                allow_primitives=True, include_bracket=False, allow_op=True
+                allow_primitives=True, include_bracket=False, allow_op=True, scope=scope
             )
 
         elif parser.try_consume(SpecialToken("(")):
             parser.save()
             condition = parser.try_parse_data_source(
-                allow_primitives=True, include_bracket=False, allow_op=True
+                allow_primitives=True, include_bracket=False, allow_op=True, scope=scope
             )
 
             if condition is None or not parser.try_consume(SpecialToken(")")):
                 parser.rollback()
-                condition = AbstractOpAssembly.IMPLEMENTATION.consume(parser, None)
+                condition = AbstractOpAssembly.IMPLEMENTATION.consume(parser, scope)
                 parser.consume(SpecialToken(")"))
             else:
                 parser.discard_save()

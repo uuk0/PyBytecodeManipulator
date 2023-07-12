@@ -3,7 +3,7 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
 from bytecodemanipulation.data.shared.instructions.OpAssembly import OpcodeBaseOperator
 from bytecodemanipulation.MutableFunction import MutableFunction
 
@@ -23,6 +23,7 @@ class NandOperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("and_skip_second")
 
@@ -55,6 +56,7 @@ class AndOperator(NandOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         return super().emit_bytecodes(function, scope, lhs, rhs) + [
             Instruction(Opcodes.UNARY_NOT, bool)
@@ -74,6 +76,7 @@ class AndEvalOperator(NandOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         inner_label = scope.scope_name_generator("and_eval_swap_skip")
 
@@ -99,6 +102,7 @@ class NorOperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         label_name = scope.scope_name_generator("or_skip_second")
 
@@ -131,6 +135,7 @@ class OrOperator(NorOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         return super().emit_bytecodes(function, scope, lhs, rhs) + [
             Instruction(Opcodes.UNARY_NOT, bool)
@@ -150,6 +155,7 @@ class OrEvalOperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         inner_label = scope.scope_name_generator("or_eval_swap_skip")
 
@@ -175,6 +181,7 @@ class XOROperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -201,6 +208,7 @@ class XNOROperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -227,6 +235,7 @@ class WalrusOperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = rhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -243,6 +252,7 @@ class InverseWalrusOperator(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope)
         bytecode += [
@@ -259,6 +269,7 @@ class InstanceOfChecker(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(
             function, scope
@@ -278,6 +289,7 @@ class SubclassOfChecker(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(
             function, scope
@@ -297,6 +309,7 @@ class HasattrChecker(AbstractOperator):
         scope: ParsingScope,
         lhs: AbstractSourceExpression,
         rhs: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = lhs.emit_bytecodes(function, scope) + rhs.emit_bytecodes(
             function, scope
@@ -314,7 +327,8 @@ class SumOperator(AbstractOperator):
         self,
         function: MutableFunction,
         scope: ParsingScope,
-        *parameters: AbstractSourceExpression
+        *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         if len(parameters) == 0:
             raise SyntaxError("expected at least one parameter")
@@ -344,7 +358,8 @@ class ProdOperator(AbstractOperator):
         self,
         function: MutableFunction,
         scope: ParsingScope,
-        *parameters: AbstractSourceExpression
+        *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         if len(parameters) == 0:
             raise SyntaxError("expected at least one parameter")
@@ -374,7 +389,8 @@ class AvgOperator(AbstractOperator):
         self,
         function: MutableFunction,
         scope: ParsingScope,
-        *parameters: AbstractSourceExpression
+        *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         if len(parameters) == 0:
             raise SyntaxError("expected at least one parameter")
@@ -408,7 +424,8 @@ class AvgIOperator(AbstractOperator):
         self,
         function: MutableFunction,
         scope: ParsingScope,
-        *parameters: AbstractSourceExpression
+        *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         if len(parameters) == 0:
             raise SyntaxError("expected at least one parameter")
@@ -443,6 +460,7 @@ class TupleOperator(AbstractOperator):
         function: MutableFunction,
         scope: ParsingScope,
         *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = []
 
@@ -473,6 +491,7 @@ class ListOperator(AbstractOperator):
         function: MutableFunction,
         scope: ParsingScope,
         *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = []
 
@@ -495,6 +514,7 @@ class SetOperator(AbstractOperator):
         function: MutableFunction,
         scope: ParsingScope,
         *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         bytecode = []
 
@@ -517,13 +537,12 @@ class DictOperator(AbstractOperator):
         function: MutableFunction,
         scope: ParsingScope,
         *parameters: AbstractSourceExpression,
+        trace_info: typing.Optional[TraceInfo] = None,
     ) -> typing.List[Instruction]:
         if len(parameters) % 2 != 0:
-            raise throw_positioned_error(
-                scope,
-                sum([list(param.get_tokens()) for param in parameters], []),
-                "expected even arg count for dict build",
-            )
+            raise PropagatingCompilerException(
+                "expected even arg count for dict build"
+            ).add_trace_level(trace_info.with_token(sum([list(param.get_tokens()) for param in parameters], [])))
 
         bytecode = []
 

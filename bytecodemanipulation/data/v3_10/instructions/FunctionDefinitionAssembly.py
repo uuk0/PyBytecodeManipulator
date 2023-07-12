@@ -2,10 +2,7 @@ import functools
 import inspect
 import typing
 
-from bytecodemanipulation.assembler.AbstractBase import MacroExpandedIdentifier
-from bytecodemanipulation.assembler.syntax_errors import throw_positioned_error
-from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
-from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.FunctionDefinitionAssembly import (
     AbstractFunctionDefinitionAssembly,
 )
@@ -66,7 +63,12 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
             target.argument_names.insert(0, local_variable_buffer)
             target.argument_count += 1
 
-        inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
+        try:
+            inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
+        except PropagatingCompilerException as e:
+            e.add_trace_level(self.trace_info, message=f"during parsing function definition {self.func_name(scope)}")
+            raise e
+
         inner_bytecode[-1].next_instruction = target.instruction_entry_point
 
         for i, instr in enumerate(inner_bytecode[:-1]):
@@ -183,11 +185,9 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         if self.target:
             bytecode += self.target.emit_store_bytecodes(function, scope)
         elif not self.func_name:
-            raise throw_positioned_error(
-                scope,
-                [],
-                "Expected either 'target' or <valid name>",
-            )
+            raise PropagatingCompilerException(
+                "Expected either 'target' or <valid name>"
+            ).add_trace_level(self.trace_info)
         else:
             bytecode += [
                 Instruction(Opcodes.STORE_FAST, self.prefix + self.func_name(scope)),

@@ -55,4 +55,4 @@ class LocalAccessExpression(AbstractAccessExpression):
         raise NotImplementedError  # todo: implement in some cases
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return (self.token,)
+        return (self.token,) + tuple(self.name.get_tokens())
