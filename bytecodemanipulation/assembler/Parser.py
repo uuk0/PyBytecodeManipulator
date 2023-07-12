@@ -7,7 +7,6 @@ from bytecodemanipulation.assembler.AbstractBase import (
     StaticIdentifier,
 )
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import _syntax_wrapper
 from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -120,7 +119,12 @@ def create_instruction(token: AbstractToken, *args, **kwargs) -> Instruction:
 
 Instruction.create_with_token = create_instruction
 
-parser_file.raise_syntax_error = _syntax_wrapper
+
+def _raise_syntax_error(token: AbstractToken, message: str, scope: ParsingScope) -> PropagatingCompilerException:
+    raise PropagatingCompilerException(message).add_trace_level(scope.get_trace_info().with_token(token))
+
+
+parser_file.raise_syntax_error = _raise_syntax_error
 
 
 class Parser(AbstractParser):
