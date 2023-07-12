@@ -16,9 +16,10 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         self,
         name: "IIdentifierAccessor | str",
         token: AbstractToken | typing.List[AbstractToken] = None,
+        trace_info: TraceInfo = None,
     ):
         super().__init__(name, token)
-        self.trace_info: TraceInfo = None
+        self.trace_info: TraceInfo = trace_info
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope

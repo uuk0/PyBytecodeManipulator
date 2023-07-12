@@ -31,14 +31,14 @@ class AbstractYieldAssembly(AbstractAssemblyInstruction, abc.ABC):
         is_star = bool(parser.try_consume(SpecialToken("*")))
 
         expr = parser.try_parse_data_source(
-            allow_primitives=True, allow_op=True, include_bracket=False
+            allow_primitives=True, allow_op=True, include_bracket=False, scope=scope
         )
 
         if parser.try_consume(SpecialToken("-")) and parser.try_consume(
             SpecialToken(">")
         ):
             target = parser.try_parse_data_source(
-                allow_primitives=True, allow_op=True, include_bracket=False
+                allow_primitives=True, allow_op=True, include_bracket=False, scope=scope
             )
 
             if target is None:

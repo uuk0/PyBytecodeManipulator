@@ -17,10 +17,12 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
         base_expr: "AbstractAccessExpression",
         index_expr: AbstractAccessExpression | IntegerToken,
         token=None,
+        trace_info=None,
     ):
         self.base_expr = base_expr
         self.index_expr = index_expr
         self.token = token
+        self.trace_info = trace_info
 
     def __eq__(self, other):
         return (

@@ -17,9 +17,11 @@ class LocalAccessExpression(AbstractAccessExpression):
         name: "IIdentifierAccessor | str",
         token: AbstractToken | typing.List[AbstractToken] = None,
         prefix="",
+        trace_info=None,
     ):
         super(LocalAccessExpression, self).__init__(name, token)
         self.prefix = prefix
+        self.trace_info = trace_info
 
     def __repr__(self):
         return f"{self.PREFIX}{self.prefix}{self.name}"

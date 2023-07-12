@@ -38,7 +38,7 @@ class AbstractStoreFastAssembly(AbstractAssemblyInstruction, abc.ABC):
         parser.try_consume(SpecialToken("$"))
         name = parser.consume([IdentifierToken, IntegerToken])
 
-        source = parser.try_parse_data_source()
+        source = parser.try_parse_data_source(scope=scope)
 
         return cls(name, source)
 

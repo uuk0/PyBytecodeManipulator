@@ -30,7 +30,7 @@ class StoreAssembly(AbstractAssemblyInstruction):
                 "expected <expression> after STORE"
             ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
-        source = parser.try_parse_data_source()
+        source = parser.try_parse_data_source(scope=scope)
 
         return cls(access, source)
 

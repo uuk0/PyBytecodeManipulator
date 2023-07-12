@@ -231,7 +231,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
 
                 expr = parser.try_parse_data_source(
-                    allow_primitives=True, include_bracket=False
+                    allow_primitives=True, include_bracket=False, scope=scope
                 )
 
                 args.append(AbstractCallAssembly.KwArg(key, expr, is_dynamic))

@@ -151,7 +151,11 @@ class Parser(AbstractParser):
             if isinstance(tokens_or_str, list)
             else Lexer(tokens_or_str, initial_line_offset=initial_line_offset, module_file=module_file).lex()
         )
-        self.scope = scope or ParsingScope()
+        if scope:
+            self.scope = scope
+        else:
+            self.scope = ParsingScope()
+            self.scope.may_get_trace_info = True
 
     def parse(self, scope: ParsingScope = None) -> CompoundExpression:
         """
@@ -325,7 +329,7 @@ class Parser(AbstractParser):
 
         if allow_primitives:
             if string := self.try_consume(StringLiteralToken):
-                return ConstantAccessExpression(string.text, string)
+                return ConstantAccessExpression(string.text, string, trace_info=scope.get_trace_info())
 
             if integer := self.try_consume(IntegerToken):
                 return ConstantAccessExpression(
@@ -333,15 +337,16 @@ class Parser(AbstractParser):
                     if "." not in integer.text
                     else float(integer.text),
                     integer,
+                    trace_info=scope.get_trace_info(),
                 )
 
             if isinstance(start_token, IdentifierToken):
                 if start_token.text == "None":
-                    return ConstantAccessExpression(None, start_token)
+                    return ConstantAccessExpression(None, start_token, trace_info=scope.get_trace_info())
                 elif start_token.text == "True":
-                    return ConstantAccessExpression(True, start_token)
+                    return ConstantAccessExpression(True, start_token, trace_info=scope.get_trace_info())
                 elif start_token.text == "False":
-                    return ConstantAccessExpression(False, start_token)
+                    return ConstantAccessExpression(False, start_token, trace_info=scope.get_trace_info())
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
             return
@@ -351,11 +356,11 @@ class Parser(AbstractParser):
 
             if self.try_consume(SpecialToken("!")):
                 expr = GlobalStaticAccessExpression(
-                    self.parse_identifier_like(scope), start_token
+                    self.parse_identifier_like(scope), start_token, trace_info=scope.get_trace_info()
                 )
             else:
                 expr = GlobalAccessExpression(
-                    self.parse_identifier_like(scope), start_token
+                    self.parse_identifier_like(scope), start_token, trace_info=scope.get_trace_info()
                 )
 
         elif start_token.text == "$":
@@ -375,7 +380,7 @@ class Parser(AbstractParser):
                     "Cannot parse '|' and ':' for <local variable name>"
                 ).add_trace_level(scope.get_trace_info().with_token(error))
 
-            expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token, prefix=prefix)
+            expr = LocalAccessExpression(self.parse_identifier_like(scope), start_token, prefix=prefix, trace_info=scope.get_trace_info())
 
         elif start_token.text == "§":
             self.consume(SpecialToken("§"), err_arg=scope)
@@ -387,12 +392,12 @@ class Parser(AbstractParser):
                     "Expected <identifier-like> after '§' for cell-var reference"
                 ).add_trace_level(scope.get_trace_info().with_token(start_token, self[0]))
 
-            expr = DerefAccessExpression(identifier, start_token)
+            expr = DerefAccessExpression(identifier, start_token, trace_info=scope.get_trace_info())
 
         elif start_token.text == "&":
             self.consume(SpecialToken("&"), err_arg=scope)
             expr = MacroParameterAccessExpression(
-                self.parse_identifier_like(scope), start_token
+                self.parse_identifier_like(scope), start_token, trace_info=scope.get_trace_info()
             )
             expr.trace_info = scope.get_trace_info()
             expr.info = scope.get_trace_info()
@@ -410,7 +415,7 @@ class Parser(AbstractParser):
         elif start_token.text == "~":
             self.consume(SpecialToken("~"), err_arg=scope)
             expr = ModuleAccessExpression(
-                self.parse_identifier_like(scope), start_token
+                self.parse_identifier_like(scope), start_token, trace_info=scope.get_trace_info()
             )
 
         elif start_token.text == "\\":
@@ -468,6 +473,7 @@ class Parser(AbstractParser):
                     expr = SubscriptionAccessExpression(
                         expr,
                         index,
+                        trace_info = scope.get_trace_info(),
                     )
 
                 elif self.try_consume(SpecialToken(".")):
@@ -497,19 +503,19 @@ class Parser(AbstractParser):
                                 "expected ')' after '<dynamic name expression>"
                             ).add_trace_level(scope.get_trace_info().with_token(self[-1], opening_bracket))
 
-                        expr = DynamicAttributeAccessExpression(expr, index)
+                        expr = DynamicAttributeAccessExpression(expr, index, trace_info=scope.get_trace_info())
 
                     elif self.try_consume(SpecialToken("!")):
                         name = self.parse_identifier_like(scope)
-                        expr = StaticAttributeAccessExpression(expr, name)
+                        expr = StaticAttributeAccessExpression(expr, name, trace_info=scope.get_trace_info())
 
                     else:
                         name = self.parse_identifier_like(scope)
-                        expr = AttributeAccessExpression(expr, name)
+                        expr = AttributeAccessExpression(expr, name, trace_info=scope.get_trace_info())
 
                 elif self.try_inspect() == SpecialToken("(") and allow_calls:
                     expr = AbstractCallAssembly.IMPLEMENTATION.construct_from_partial(
-                        expr, self, scope
+                        expr, self, scope,
                     )
 
                 else:
@@ -546,17 +552,15 @@ class Parser(AbstractParser):
 
         if allow_primitives:
             if string := self.try_consume(StringLiteralToken):
-                return ConstantAccessExpression(string.text, string)
+                return ConstantAccessExpression(string.text, string, trace_info=scope.get_trace_info())
 
             if integer := self.try_consume(IntegerToken):
-                return ConstantAccessExpression(int(integer.text), integer)
+                return ConstantAccessExpression(int(integer.text), integer, trace_info=scope.get_trace_info())
 
             if boolean := self.try_consume(
                 (IdentifierToken("True"), IdentifierToken("False"))
             ):
-                return ConstantAccessExpression(boolean.text == "True", boolean)
-
-        # print("failed", self.try_inspect())
+                return ConstantAccessExpression(boolean.text == "True", boolean, trace_info=scope.get_trace_info())
 
         self.rollback()
 

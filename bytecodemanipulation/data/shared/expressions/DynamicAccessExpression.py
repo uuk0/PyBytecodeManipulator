@@ -13,10 +13,11 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 class DynamicAttributeAccessExpression(AbstractAccessExpression):
     def __init__(
-        self, root: AbstractAccessExpression, name_expr: AbstractSourceExpression
+        self, root: AbstractAccessExpression, name_expr: AbstractSourceExpression, trace_info=None,
     ):
         self.root = root
         self.name_expr = name_expr
+        self.trace_info = trace_info
 
     def __eq__(self, other):
         return (

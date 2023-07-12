@@ -15,9 +15,10 @@ from bytecodemanipulation.assembler.AbstractBase import (
 
 
 class AttributeAccessExpression(AbstractAccessExpression):
-    def __init__(self, root: AbstractAccessExpression, name: IIdentifierAccessor | str):
+    def __init__(self, root: AbstractAccessExpression, name: IIdentifierAccessor | str, trace_info=None):
         self.root = root
         self.name = name if not isinstance(name, str) else StaticIdentifier(name)
+        self.trace_info = trace_info
 
     def __eq__(self, other):
         return (

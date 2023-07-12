@@ -21,9 +21,11 @@ class StaticAttributeAccessExpression(AbstractAccessExpression):
         self,
         root: AbstractAccessExpression,
         name: typing.Union["IIdentifierAccessor", str],
+        trace_info=None,
     ):
         self.root = root
         self.name = name if not isinstance(name, str) else StaticIdentifier(name)
+        self.trace_info = trace_info
 
     def __eq__(self, other):
         return (

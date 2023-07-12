@@ -159,11 +159,13 @@ def apply_inline_assemblies(
 
     for code, instr in insertion_points:
         try:
+            scope.may_get_trace_info = True
             assemblies.append(AssemblyParser(
                 Lexer(code, module_file=target.target.__globals__["__file__"]).add_line_offset(instr.source_location[0]).lex(),
                 scope.scope_path.clear() or scope,
                 module_file=target.target.__globals__["__file__"],
             ).parse())
+            scope.may_get_trace_info = False
         except PropagatingCompilerException as e:
             if not unwrap_exceptions:
                 raise e
@@ -309,7 +311,9 @@ def execute_module_in_instance(
         GLOBAL_SCOPE_CACHE[module.__name__] = scope.global_scope
 
     try:
+        scope.may_get_trace_info = True
         asm = AssemblyParser(asm_code, scope, module_file=module.__file__).parse()
+        scope.may_get_trace_info = False
     except PropagatingCompilerException as e:
         if not unwrap_exceptions:
             raise e

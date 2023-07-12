@@ -37,7 +37,7 @@ class AbstractLoadConstAssembly(AbstractAssemblyInstruction, abc.ABC):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "AbstractLoadConstAssembly":
         value = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False
+            allow_primitives=True, include_bracket=False, scope=scope
         )
 
         if not isinstance(value, (ConstantAccessExpression, GlobalAccessExpression)):

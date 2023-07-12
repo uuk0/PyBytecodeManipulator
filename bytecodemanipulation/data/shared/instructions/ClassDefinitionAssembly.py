@@ -69,7 +69,7 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         parents = []
 
         if opening_bracket := parser.try_consume(SpecialToken("(")):
-            if parent := parser.try_consume_access_to_value():
+            if parent := parser.try_consume_access_to_value(scope=scope):
                 parents.append(parent)
 
                 while parser.try_consume(SpecialToken(",")):

@@ -54,7 +54,7 @@ class ParsingScope:
 
         self.current_macro_assembly = None
 
-        self.may_get_trace_info = True
+        self.may_get_trace_info = False
 
         self.closure_locals: typing.Set[str] = set()
 
@@ -250,9 +250,11 @@ class AbstractAccessExpression(AbstractSourceExpression, ABC):
         self,
         name: "IIdentifierAccessor | str",
         token: AbstractToken | typing.List[AbstractToken] = None,
+        trace_info: TraceInfo = None,
     ):
         self.name = name
         self.token = token
+        self.trace_info: TraceInfo = trace_info
 
     def __eq__(self, other):
         return type(self) == type(other) and self.name == other.name

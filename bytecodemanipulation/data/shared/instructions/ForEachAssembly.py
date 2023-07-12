@@ -46,7 +46,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractForEachAssembly":
-        initial = parser.try_consume_access_to_value()
+        initial = parser.try_consume_access_to_value(scope=scope)
         if initial is None:
             raise PropagatingCompilerException(
                 "expected <expression> after FOREACH"
@@ -56,7 +56,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
 
         while separator := parser.try_consume(SpecialToken(",")):
 
-            expr = parser.try_consume_access_to_value()
+            expr = parser.try_consume_access_to_value(scope=scope)
 
             if expr is None:
                 raise PropagatingCompilerException(
@@ -70,7 +70,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
                 "expected 'IN' after FOREACH and <expression>..."
             ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
-        source = parser.try_consume_access_to_value()
+        source = parser.try_consume_access_to_value(scope=scope)
         if not source:
             raise PropagatingCompilerException(
                 "expected <expression> after 'IN'"
@@ -82,7 +82,7 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
         while separator := (parser.try_consume(SpecialToken(",")) or (
             multi := parser.try_consume(SpecialToken("*"))
         )):
-            source = parser.try_consume_access_to_value()
+            source = parser.try_consume_access_to_value(scope=scope)
             if not source:
                 raise PropagatingCompilerException(
                     f"expected <expression> after '{separator.text}' and <expression>..."

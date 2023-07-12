@@ -91,7 +91,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             if not star:
                 if equal_sign := parser.try_consume(SpecialToken("=")):
                     default_value = parser.try_parse_data_source(
-                        allow_primitives=True, include_bracket=False, allow_op=True
+                        allow_primitives=True, include_bracket=False, allow_op=True, scope=scope
                     )
 
                     if default_value is None:
