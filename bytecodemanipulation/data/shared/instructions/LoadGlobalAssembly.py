@@ -18,27 +18,10 @@ class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # LOAD_GLOBAL <name> [-> <target>]
     NAME = "LOAD_GLOBAL"
 
-    def __init__(
-        self,
-        name_token: IdentifierToken | IntegerToken | str | int,
-        target: AbstractAccessExpression | None = None,
-    ):
-        self.name_token = (
-            name_token
-            if not isinstance(name_token, (str, int))
-            else (
-                IdentifierToken(name_token)
-                if isinstance(name_token, str)
-                else IntegerToken(str(name_token))
-            )
-        )
-        self.target = target
-
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "AbstractLoadGlobalAssembly":
         parser.try_consume(SpecialToken("@"))
 
-        # todo: make parse_identifier_like()
         name = parser.try_consume(IdentifierToken)
 
         if name is None:
@@ -66,6 +49,22 @@ class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
             target = None
 
         return cls(name, target)
+
+    def __init__(
+        self,
+        name_token: IdentifierToken | IntegerToken | str | int,
+        target: AbstractAccessExpression | None = None,
+    ):
+        self.name_token = (
+            name_token
+            if not isinstance(name_token, (str, int))
+            else (
+                IdentifierToken(name_token)
+                if isinstance(name_token, str)
+                else IntegerToken(str(name_token))
+            )
+        )
+        self.target = target
 
     def __eq__(self, other):
         return (

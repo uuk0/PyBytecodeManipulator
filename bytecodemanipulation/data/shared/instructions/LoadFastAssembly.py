@@ -5,6 +5,7 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
+from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
@@ -16,6 +17,28 @@ from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
 class AbstractLoadFastAssembly(AbstractAssemblyInstruction, abc.ABC):
     # # LOAD_FAST <name> [-> <target>]
     NAME = "LOAD_FAST"
+
+    @classmethod
+    def consume(cls, parser: "Parser", scope) -> "AbstractLoadFastAssembly":
+        parser.try_consume(SpecialToken("$"))
+        name = parser.consume([IdentifierToken, IntegerToken])
+
+        if arrow_0 := parser.try_consume(SpecialToken("-")):
+            if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
+                raise PropagatingCompilerException(
+                    "expected '>' after '-' to complete LOAD_FAST target expression"
+                ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token, arrow_0))
+
+            target = parser.try_consume_access_to_value(scope=scope)
+
+            if target is None:
+                raise PropagatingCompilerException(
+                    "expected <expression> after '->' in LOAD_FAST instruction"
+                ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token, arrow_0, arrow_1))
+        else:
+            target = None
+
+        return cls(name, target)
 
     def __init__(
         self,
@@ -32,23 +55,6 @@ class AbstractLoadFastAssembly(AbstractAssemblyInstruction, abc.ABC):
             )
         )
         self.target = target
-
-    @classmethod
-    def consume(cls, parser: "Parser", scope) -> "AbstractLoadFastAssembly":
-        parser.try_consume(SpecialToken("$"))
-        name = parser.consume([IdentifierToken, IntegerToken])
-
-        if parser.try_consume_multi(
-            [
-                SpecialToken("-"),
-                SpecialToken(">"),
-            ]
-        ):
-            target = parser.try_consume_access_to_value(scope=scope)
-        else:
-            target = None
-
-        return cls(name, target)
 
     def __eq__(self, other):
         return (
