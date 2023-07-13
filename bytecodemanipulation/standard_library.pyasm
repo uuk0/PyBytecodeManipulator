@@ -148,6 +148,51 @@ NAMESPACE std
             LOAD $tmp
         }
 
+        MACRO ASSEMBLY reduce(var VARIABLE, reducer CODE_BLOCK[2], default)
+        {
+            IF OP (~len(&var) == 0)
+            {
+                RETURN &default
+            }
+
+            LOAD &var[0] -> $tmp
+
+            LOAD 1 -> $index
+            LOAD ~len(&var) -> $max_size
+
+            WHILE OP ($index < $max_size)
+            {
+                MACRO_PASTE &reducer [$tmp, &var[$index]] -> $tmp
+                OP $index + 1 -> $index
+            }
+
+            LOAD $tmp
+        }
+
+        MACRO ASSEMBLY grouped(var VARIABLE, group_size, code CODE_BLOCK[1])
+        {
+            ASSERT_STATIC OP (&group_size instanceof ~int)
+
+            IF OP (~len(&var) == 0)
+            {
+                RETURN &var
+            }
+
+            LOAD ~list() -> $result
+
+            FOREACH $i IN ~range(OP (~len(&var) // &group_size))
+            {
+                LOAD &var[~slice(OP ($i * &group_size), OP (OP ($i + 1) * &group_size))] -> $frag
+
+                MACRO_PASTE &code [$frag]
+                CALL $result.append(%)
+            }
+
+            CALL &var.clear()
+            CALL &var.extend($result)
+            RETURN &var
+        }
+
         MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)
         {
             LOAD ~list(&var) -> &output

@@ -461,6 +461,10 @@ class AbstractOpAssembly(
         operator_tokens = cls.try_consume_operator_name(
             parser, scope, cls.PREFIX_OPERATORS
         )
+
+        if operator_tokens is None:
+            return
+
         operator = "".join(map(lambda e: e.text, operator_tokens))
         operator_def, arg_count, has_brackets, has_coma_sep = cls.PREFIX_OPERATORS[
             operator

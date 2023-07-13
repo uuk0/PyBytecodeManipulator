@@ -140,15 +140,14 @@ Expressions can be added as certain parameters to instructions to use instead of
   - new data type: UNION\[...] where ... is a list of data types, separated by ','
   - new data type: LIST\['\[' \<data type> ']'] where data type is the inner type
   - new data type: CONSTANT\['\[' \<type name> ']']
-  - ENFORCED\[\<type>] for runtime enforcing the type also
+  - new data type: DEFAULT'\['\[\<type> ','] \<value>']' making a real optional value
+  - ENFORCED\[\<type>] for runtime enforcing the type additional to the soft checks at compile time
   - new data type: LABEL exposing a label to the macro, which can be used in places were normal labels can be used (handed over only by name)
     (partially implemented via macro name expansion, but compile-time checks should be enforced)
   - new specialization for the & macro expansion system: index operator on result where parameter is list will access that item in the list
-  - new special case for len(...) on & macro parameter where list: returns len of parameter list
+  - new special case for len(...) on macro parameters where the type is a list (e.g. VARIABLE_ARG): returns len of parameter list
   - new special case for using & parameters in local captures: name expansion when VARIABLE_ARG
   - storing a list parameter in a local variable will create a list creation code
-  - maybe also the possibility to define code for emitting assembly instructions
-    - this could be done by a new instruction called EMIT_INSTRUCTION
   - special annotation for return value target parameter ('->' \<target>), with possibility for multiple targets
   - allow macro parameters to be used in places where identifiers would be used (e.g. variable names, function names, class names, ...)
     - compare against static parameter value at emit time
@@ -168,8 +167,7 @@ Expressions can be added as certain parameters to instructions to use instead of
   - GENERIC\[\<name>] as type specifier
 - make the RAW assembly arguments correct; we can no longer set "arg" to the value we want, as the re-assembler
   will not use the raw "arg" attribute, but the "arg_value"
-- rewrite how exceptions are emitted, so each stage might add a trace element, building it piece by piece,
-  and adding cross-file info; store file information in the token objects
+- CODE_BLOCK -> \<target> so we can use MACRO_RETURN in a CODE_BLOCK parameter to return a value to the MACRO_PASTEr
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 

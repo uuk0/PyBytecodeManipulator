@@ -1,4 +1,5 @@
 import abc
+import traceback
 import typing
 from bytecodemanipulation.assembler.util.tokenizer import (
     AbstractToken,
@@ -277,8 +278,8 @@ class AbstractParser(AbstractCursorStateItem, abc.ABC):
         if expected:
             if isinstance(expected, AbstractToken):
                 if token != expected:
-                    raise_syntax_error(token, f"Expected {expected}", err_arg)
-                    raise SyntaxError
+                    traceback.print_stack()
+                    raise raise_syntax_error(token, f"Expected {expected}", err_arg)
 
             elif isinstance(expected, list):
                 for element in expected:

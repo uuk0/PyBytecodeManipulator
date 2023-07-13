@@ -15,7 +15,8 @@ class StandardLibraryTest(TestCase):
         hook.hook()
 
         def target():
-            assembly("""MACRO_IMPORT bytecodemanipulation.standard_library""")
+            assembly("""
+MACRO_IMPORT bytecodemanipulation.standard_library""")
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)

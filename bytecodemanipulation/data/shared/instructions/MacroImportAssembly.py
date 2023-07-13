@@ -1,3 +1,4 @@
+import traceback
 import typing
 
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
@@ -109,7 +110,8 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                 e.add_trace_level(self.trace_info)
                 raise e
             except Exception as e:
-                raise PropagatingCompilerException("MACRO_IMPORT failed due to the normal import failing").set_underlying_exception(e).add_trace_level(self.trace_info) from None
+                traceback.print_exc()
+                raise PropagatingCompilerException("MACRO_IMPORT failed due to the normal import failing", *e.args).set_underlying_exception(type(e)).add_trace_level(self.trace_info) from None
 
             bytecodemanipulation.assembler.hook.LET_PROPAGATE_EXCEPTIONS_THROUGH = prev
 

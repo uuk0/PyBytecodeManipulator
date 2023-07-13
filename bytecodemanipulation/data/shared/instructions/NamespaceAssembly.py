@@ -40,7 +40,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
         try:
             assembly = parser.parse_body(namespace_part=[e.text for e in name], scope=scope)
         except PropagatingCompilerException as e:
-            e.add_trace_level(scope.get_trace_info().with_token(name), f"during parsing namespace body of {':'.join(map(lambda e: e.text, name))}")
+            e.add_trace_level(scope.get_trace_info().with_token(name), f"during parsing namespace body of '{':'.join(map(lambda e: e.text, name))}'")
             raise e
 
         return cls(
@@ -79,7 +79,7 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
                 function, scope.copy(sub_scope_name=[e.text for e in self.name])
             )
         except PropagatingCompilerException as e:
-            e.add_trace_level(self.trace_info, f"during emitting namespace body of {':'.join(map(lambda e: e.text, self.name))}")
+            e.add_trace_level(self.trace_info, f"during emitting namespace body of '{':'.join(map(lambda e: e.text, self.name))}'")
             raise e
 
     def visit_parts(
