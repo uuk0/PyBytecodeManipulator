@@ -1,4 +1,6 @@
 
+# Version 0.3.6
+
 # Version 0.3.5
 - std:comprehension:list is now using internally a generator wrapped in a list() call
 - added std:comprehension:generator, :set, :tuple and :map
