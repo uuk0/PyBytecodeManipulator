@@ -29,7 +29,7 @@ def _visit_for_stack_effect(
     if eff_b is not None:
         max_size = eff_b[1]
 
-    if eff_a is not None:
+    if eff_a is not None and not ins.has_unconditional_jump():
         eff += eff_a[0]
 
         max_size = max(max_size, eff, eff_a[0])
@@ -239,40 +239,40 @@ def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: 
         for i, ins in enumerate(bytecode[:-1]):
             ins.next_instruction = bytecode[i + 1]
 
-        try:
-            stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
-                _visit_for_stack_effect
-            )
-        except RuntimeError:
-            stack_effect = 0
-            max_stack_effect = 0
+    #     try:
+    #         stack_effect, max_stack_effect = bytecode[0].apply_value_visitor(
+    #             _visit_for_stack_effect
+    #         )
+    #     except RuntimeError:
+    #         stack_effect = 0
+    #         max_stack_effect = 0
 
     else:
         max_stack_effects.append(0)
         return
 
-    if (
-        stack_effect != 0
-        and not (
-            bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()
-        )
-    ):
-        # print(asm)
+    # if (
+    #     stack_effect != 0
+    #     and not (
+    #         bytecode[-1].has_unconditional_jump() or bytecode[-1].has_stop_flow()
+    #     )
+    # ):
+    #     # print(asm)
+    #
+    #     total = 0
+    #
+    #     for e in enumerate(bytecode):
+    #         add, subtract, _ = e[1].get_stack_affect()
+    #         total += add - subtract
+    #         print(*e, total)
+    #
+    #     print(stack_effect)
+    #
+    #     raise RuntimeError(
+    #         f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"
+    #     )
 
-        total = 0
-
-        for e in enumerate(bytecode):
-            add, subtract, _ = e[1].get_stack_affect()
-            total += add - subtract
-            print(*e, total)
-
-        print(stack_effect)
-
-        raise RuntimeError(
-            f"Inline assembly code mustn't change overall stack size at exit, got a delta of {stack_effect}!"
-        )
-
-    max_stack_effects.append(max_stack_effect)
+    # max_stack_effects.append(max_stack_effect)
 
     for i, ins in enumerate(bytecode[:-1]):
         if not ins.has_stop_flow() and not ins.has_unconditional_jump():

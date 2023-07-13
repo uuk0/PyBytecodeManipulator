@@ -572,8 +572,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
             else:
                 arg_names.append(None)
 
-        local_prefix = scope.scope_name_generator("macro_local")
-        end_target = scope.scope_name_generator("macro_end")
+        local_prefix = scope.scope_name_generator("macro_local~"+":".join(map(lambda e: e.text, self.name)))
+        end_target = scope.scope_name_generator("macro_end~"+":".join(map(lambda e: e.text, self.name)))
         requires_none_load = (
             self.return_type is not None
             and not inner_bytecode[-1].has_unconditional_jump()

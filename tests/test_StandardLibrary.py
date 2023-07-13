@@ -86,7 +86,7 @@ std:os:file_walker("{file_name}", $file, {{
                 """
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
-std:stream:to_list($stream, $output)
+std:stream:to_list($stream) -> $output
 """
             )
             return output
@@ -193,7 +193,7 @@ std:stream:extend($stream, $data)
 std:stream:filter($stream, [$var] {
     OP $var < 2 -> %
 })
-std:stream:to_list($stream, $output)
+std:stream:to_list($stream) -> $output
 """
             )
             return output
@@ -213,7 +213,7 @@ std:stream:extend($stream, $data)
 std:stream:map($stream, [$var] {
     OP $var + 1 -> $var
 })
-std:stream:to_list($stream, $output)
+std:stream:to_list($stream) -> $output
 """
             )
             return output
@@ -231,7 +231,7 @@ std:stream:to_list($stream, $output)
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:stream:grouped($stream, 2, [_] {})
-std:stream:to_list($stream, $output)
+std:stream:to_list($stream) -> $output
 """
             )
             return output
@@ -251,7 +251,7 @@ std:stream:to_list($stream, $output)
 std:stream:initialize($stream)
 std:stream:extend($stream, $data)
 std:stream:grouped($stream, 2)
-std:stream:to_list($stream, $output)
+std:stream:to_list($stream) -> $output
 """
             )
             return output

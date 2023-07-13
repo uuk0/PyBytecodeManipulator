@@ -12,6 +12,9 @@
 - AttributeAccess itself is no longer evaluated statically, as it may lead to unwanted side effects
 - added std:stream:reduce with start value and std:stream:grouped
 - fixed issue with the lexer when parsing negativ integers
+- std:stream:to_list no longer takes the $output parameter; it is MACRO_RETURN-ed
+- removed check for macro for stack effect; using BYTECODE_LABEL's will invalidate them instantly
+- added std:stream:to_tuple and std:stream:to_set
 
 # Version 0.3.4
 - improved error messages for assemblies

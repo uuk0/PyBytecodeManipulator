@@ -145,7 +145,7 @@ class ForIterTransformer(AbstractInstructionWalkerTransform):
             return "FOR_ITER"
 
     """
-    FOR_ITER<delta> ->
+    FOR_ITER<skip target> ->
 
     DUP_TOP
     LOAD_FAST ~next

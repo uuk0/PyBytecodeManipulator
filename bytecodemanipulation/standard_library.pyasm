@@ -197,9 +197,19 @@ NAMESPACE std
             std:stream:grouped(&var, &group_size, [$_] {})
         }
 
-        MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)
+        MACRO ASSEMBLY to_tuple(var VARIABLE) -> ANY
         {
-            LOAD ~list(&var) -> &output
+            MACRO_RETURN ~tuple(&var)
+        }
+
+        MACRO ASSEMBLY to_list(var VARIABLE) -> ANY
+        {
+            MACRO_RETURN ~list(&var)
+        }
+
+        MACRO ASSEMBLY to_set(var VARIABLE) -> ANY
+        {
+            MACRO_RETURN ~set(&var)
         }
     }
 }
