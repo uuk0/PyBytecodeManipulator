@@ -19,11 +19,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [
-            Instruction.create_with_token(
-                self.token, Opcodes.LOAD_GLOBAL, value
-            )
-        ]
+        return [Instruction.create_with_token(self.token, Opcodes.LOAD_GLOBAL, value)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -33,11 +29,7 @@ class GlobalAccessExpression(AbstractAccessExpression):
         if value.isdigit():
             value = int(value)
 
-        return [
-            Instruction.create_with_token(
-                self.token, Opcodes.STORE_GLOBAL, value
-            )
-        ]
+        return [Instruction.create_with_token(self.token, Opcodes.STORE_GLOBAL, value)]
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
         raise NotImplementedError  # todo: implement in some cases

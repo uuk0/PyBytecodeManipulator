@@ -29,7 +29,6 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
         directories = sys.path if path is None else path
 
         for directory in directories:
-
             csv_path = pathlib.Path(directory) / asm_file_name
 
             if csv_path.exists():
@@ -48,7 +47,12 @@ class ASMFileFinder(importlib.machinery.SourceFileLoader):
 
         module.__file__ = self.path
 
-        Emitter.execute_module_in_instance(asm_code, module, self.path, unwrap_exceptions=not LET_PROPAGATE_EXCEPTIONS_THROUGH)
+        Emitter.execute_module_in_instance(
+            asm_code,
+            module,
+            self.path,
+            unwrap_exceptions=not LET_PROPAGATE_EXCEPTIONS_THROUGH,
+        )
 
         return module
 

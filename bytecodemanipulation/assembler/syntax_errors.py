@@ -68,7 +68,9 @@ class TraceInfo:
     def __init__(self):
         self.tokens = []
 
-    def with_token(self, *token: AbstractToken | typing.List[AbstractToken]) -> "TraceInfo":
+    def with_token(
+        self, *token: AbstractToken | typing.List[AbstractToken]
+    ) -> "TraceInfo":
         instance = TraceInfo()
         instance.with_tokens = self.tokens.copy
         for e in token:
@@ -96,7 +98,9 @@ class PropagatingCompilerException(Exception):
         self.underlying_exception = exc
         return self
 
-    def add_trace_level(self, info: TraceInfo, message: str = None) -> "PropagatingCompilerException":
+    def add_trace_level(
+        self, info: TraceInfo, message: str = None
+    ) -> "PropagatingCompilerException":
         if info is None:
             self.print_exception(file=sys.stderr)
             raise ValueError("info must not be None") from None
@@ -105,7 +109,7 @@ class PropagatingCompilerException(Exception):
         return self
 
     def print_exception(self, file=sys.stderr):
-        print(f"File \"{self.base_file}\", line {self.base_lineno}", file=file)
+        print(f'File "{self.base_file}", line {self.base_lineno}', file=file)
 
         for trace, message in self.levels:
             trace.print_stack(file=file)

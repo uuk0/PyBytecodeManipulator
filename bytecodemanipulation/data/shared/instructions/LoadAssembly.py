@@ -34,7 +34,11 @@ class LoadAssembly(AbstractAssemblyInstruction):
             if not parser.try_consume(SpecialToken(">")):
                 raise PropagatingCompilerException(
                     "expected '>' after '-' to complete '->'"
-                ).add_trace_level(scope.get_trace_info().with_token(parser[-1:1], scope.last_base_token))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(
+                        parser[-1:1], scope.last_base_token
+                    )
+                )
 
             target = parser.try_consume_access_to_value(scope=scope)
         else:
@@ -63,7 +67,9 @@ class LoadAssembly(AbstractAssemblyInstruction):
         )
 
     def copy(self) -> "LoadAssembly":
-        return LoadAssembly(self.access_expr.copy(), self.target.copy() if self.target else None)
+        return LoadAssembly(
+            self.access_expr.copy(), self.target.copy() if self.target else None
+        )
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope

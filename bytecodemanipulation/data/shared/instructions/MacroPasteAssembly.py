@@ -4,10 +4,17 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
-from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import (
+    MacroParameterAccessExpression,
+)
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
@@ -40,7 +47,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                 if base is None:
                     raise PropagatingCompilerException(
                         "Expected <expression> after '[' for dynamic name access"
-                    ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(opening_bracket, parser[0])
+                    )
 
                 dynamic_names.append((base, is_static))
 
@@ -50,7 +59,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
             if not parser.try_consume(SpecialToken("]")):
                 raise PropagatingCompilerException(
                     "expected ']' to close '[' closing dynamic names"
-                ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(opening_bracket, parser[0])
+                )
 
         if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
             target = parser.try_consume_access_to_value(
@@ -59,9 +70,17 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         else:
             target = None
 
-        return cls(name, target, dynamic_names=dynamic_names, trace_info=scope.get_trace_info())
+        return cls(
+            name, target, dynamic_names=dynamic_names, trace_info=scope.get_trace_info()
+        )
 
-    def __init__(self, name: IdentifierToken, target: AbstractAccessExpression = None, dynamic_names: typing.List[typing.Tuple[AbstractAccessExpression, bool]] = None, trace_info: TraceInfo = None):
+    def __init__(
+        self,
+        name: IdentifierToken,
+        target: AbstractAccessExpression = None,
+        dynamic_names: typing.List[typing.Tuple[AbstractAccessExpression, bool]] = None,
+        trace_info: TraceInfo = None,
+    ):
         self.name = name
         self.target = target
         self.dynamic_names = dynamic_names or []
@@ -79,7 +98,11 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
         )
 
     def copy(self) -> "MacroPasteAssembly":
-        return type(self)(self.name, self.target.copy() if self.target else None, [(e[0].copy(), e[1]) for e in self.dynamic_names])
+        return type(self)(
+            self.name,
+            self.target.copy() if self.target else None,
+            [(e[0].copy(), e[1]) for e in self.dynamic_names],
+        )
 
     def emit_bytecodes(
         self, function: MutableFunction, scope: ParsingScope
@@ -89,7 +112,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
 
             level = 0
             while isinstance(deref_name, MacroParameterAccessExpression):
-                deref_name = scope.lookup_macro_parameter(deref_name.name(scope), start=level)
+                deref_name = scope.lookup_macro_parameter(
+                    deref_name.name(scope), start=level
+                )
                 level += 1
 
         except KeyError:
@@ -103,9 +128,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                     f"invalid body, got {body}"
                 ).add_trace_level(self.trace_info.with_token(self.name))
 
-            instructions = body.emit_bytecodes(
-                function, scope
-            )
+            instructions = body.emit_bytecodes(function, scope)
 
             sources = [e(scope) for e in getattr(body, "to_be_stored_at", [])]
 
@@ -122,9 +145,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                     label_name = scope.scope_name_generator(f"dynamic_name_{i}")
 
                     result += code.emit_bytecodes(function, scope)
-                    result += [
-                        Instruction(Opcodes.STORE_FAST, label_name)
-                    ]
+                    result += [Instruction(Opcodes.STORE_FAST, label_name)]
                     special_names.append(label_name)
                 else:
                     special_names.append(None)
@@ -140,7 +161,9 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                         if instr.opcode == Opcodes.LOAD_FAST:
                             if is_static:
                                 result += [
-                                    Instruction(Opcodes.LOAD_FAST, special_names[index]),
+                                    Instruction(
+                                        Opcodes.LOAD_FAST, special_names[index]
+                                    ),
                                 ]
                             else:
                                 result += code.emit_bytecodes(function, scope)
@@ -170,9 +193,7 @@ class MacroPasteAssembly(AbstractAssemblyInstruction):
                 else self.target.emit_store_bytecodes(function, scope)
             )
 
-        return [
-            Instruction(Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)
-        ] + (
+        return [Instruction(Opcodes.MACRO_PARAMETER_EXPANSION, self.name.text)] + (
             []
             if self.target is None
             else self.target.emit_store_bytecodes(function, scope)

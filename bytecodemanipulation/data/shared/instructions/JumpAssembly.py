@@ -94,5 +94,6 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     def copy(self) -> "AbstractJumpAssembly":
         return type(self)(
-            self.label_name_token.copy(), self.condition.copy() if self.condition else None
+            self.label_name_token.copy(),
+            self.condition.copy() if self.condition else None,
         )

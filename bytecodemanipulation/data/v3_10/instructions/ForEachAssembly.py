@@ -18,9 +18,7 @@ class ForEachAssembly(AbstractForEachAssembly):
     ) -> typing.List[Instruction]:
         if len(self.variables) != 1:
             bytecode = [
-                Instruction.create_with_token(
-                    self.base_token, Opcodes.LOAD_CONST, zip
-                ),
+                Instruction.create_with_token(self.base_token, Opcodes.LOAD_CONST, zip),
             ]
         else:
             bytecode = []
@@ -38,9 +36,7 @@ class ForEachAssembly(AbstractForEachAssembly):
                     Opcodes.CALL_FUNCTION,
                     arg=len(self.sources),
                 ),
-                Instruction.create_with_token(
-                    self.base_token, Opcodes.GET_ITER
-                ),
+                Instruction.create_with_token(self.base_token, Opcodes.GET_ITER),
                 Instruction.create_with_token(
                     self.base_token,
                     Opcodes.BYTECODE_LABEL,
@@ -59,9 +55,7 @@ class ForEachAssembly(AbstractForEachAssembly):
             ]
         else:
             bytecode += [
-                Instruction.create_with_token(
-                    self.base_token, Opcodes.GET_ITER
-                ),
+                Instruction.create_with_token(self.base_token, Opcodes.GET_ITER),
                 Instruction.create_with_token(
                     self.base_token,
                     Opcodes.BYTECODE_LABEL,

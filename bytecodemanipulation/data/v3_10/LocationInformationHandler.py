@@ -1,6 +1,8 @@
 import typing
 
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractOpcodeTransformerStage
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    AbstractOpcodeTransformerStage,
+)
 
 
 if typing.TYPE_CHECKING:
@@ -47,4 +49,3 @@ class LocationInformationEncoder(AbstractOpcodeTransformerStage):
 
         builder.line_info_table = bytes(items)
         builder.first_line_number = function.code_object.co_firstlineno
-

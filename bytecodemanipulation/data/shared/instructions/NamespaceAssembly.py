@@ -3,7 +3,10 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import IAssemblyStructureVisitable
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -38,9 +41,14 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
             name.append(parser.consume(IdentifierToken))
 
         try:
-            assembly = parser.parse_body(namespace_part=[e.text for e in name], scope=scope)
+            assembly = parser.parse_body(
+                namespace_part=[e.text for e in name], scope=scope
+            )
         except PropagatingCompilerException as e:
-            e.add_trace_level(scope.get_trace_info().with_token(name), f"during parsing namespace body of '{':'.join(map(lambda e: e.text, name))}'")
+            e.add_trace_level(
+                scope.get_trace_info().with_token(name),
+                f"during parsing namespace body of '{':'.join(map(lambda e: e.text, name))}'",
+            )
             raise e
 
         return cls(
@@ -50,7 +58,10 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
         )
 
     def __init__(
-        self, name: typing.List[IdentifierToken], assembly: CompoundExpression, trace_info: TraceInfo = None
+        self,
+        name: typing.List[IdentifierToken],
+        assembly: CompoundExpression,
+        trace_info: TraceInfo = None,
     ):
         self.name = name
         self.assembly = assembly
@@ -79,7 +90,10 @@ class NamespaceAssembly(AbstractAssemblyInstruction):
                 function, scope.copy(sub_scope_name=[e.text for e in self.name])
             )
         except PropagatingCompilerException as e:
-            e.add_trace_level(self.trace_info, f"during emitting namespace body of '{':'.join(map(lambda e: e.text, self.name))}'")
+            e.add_trace_level(
+                self.trace_info,
+                f"during emitting namespace body of '{':'.join(map(lambda e: e.text, self.name))}'",
+            )
             raise e
 
     def visit_parts(

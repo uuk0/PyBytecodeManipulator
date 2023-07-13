@@ -108,9 +108,7 @@ def replace_opcode_with_other(
     mutable.walk_instructions(replace)
 
 
-def inline_access_to_global(
-    mutable: MutableFunction, global_name: str, value=...
-):
+def inline_access_to_global(mutable: MutableFunction, global_name: str, value=...):
     if value == ...:
         value = mutable.target.__globals__[global_name]
 
@@ -134,7 +132,10 @@ def replace_const_func_call_with_opcode(
     def visitor(instruction: Instruction):
         if instruction.opcode == Opcodes.CALL_FUNCTION:
             counter = instruction.arg
-            args = [next(instruction.trace_stack_position(i)) for i in range(instruction.arg)]
+            args = [
+                next(instruction.trace_stack_position(i))
+                for i in range(instruction.arg)
+            ]
             load_method = next(instruction.trace_stack_position(instruction.arg))
 
             if (
@@ -190,7 +191,9 @@ def _inline_outer_return(
     if len(args) == 0:
         instruction.change_opcode(Opcodes.LOAD_CONST)
         instruction.change_arg_value(None)
-        return_instr = Instruction.create_with_same_info(instruction, Opcodes.RETURN_VALUE)
+        return_instr = Instruction.create_with_same_info(
+            instruction, Opcodes.RETURN_VALUE
+        )
         return_instr.next_instruction = instruction.next_instruction
         instruction.next_instruction = return_instr
 
@@ -264,7 +267,9 @@ def insert_method_into(
 
         if instr.opcode == Opcodes.INTERMEDIATE_INNER_RETURN:
             if drop_return_result:
-                previous.insert_after(Instruction.create_with_same_info(previous, Opcodes.POP_TOP))
+                previous.insert_after(
+                    Instruction.create_with_same_info(previous, Opcodes.POP_TOP)
+                )
 
             instr.change_opcode(
                 Opcodes.JUMP_ABSOLUTE, HEAD_INSTRUCTION.next_instruction

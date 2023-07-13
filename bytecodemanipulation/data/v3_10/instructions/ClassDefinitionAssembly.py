@@ -30,7 +30,9 @@ class ClassDefinitionAssembly(AbstractClassDefinitionAssembly):
         try:
             raw_inner_code = self.code_block.emit_bytecodes(target, inner_scope)
         except PropagatingCompilerException as e:
-            e.add_trace_level(self.trace_info, message=f"during emitting class '{self.name(scope)}'")
+            e.add_trace_level(
+                self.trace_info, message=f"during emitting class '{self.name(scope)}'"
+            )
             raise e
 
         for instr in raw_inner_code:

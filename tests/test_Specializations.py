@@ -21,6 +21,7 @@ def optimise(target: typing.Callable):
 
 x = None
 
+
 class TestSpecializations(TestCase):
     def tearDown(self) -> None:
         from bytecodemanipulation.data.shared import builtin_spec
@@ -106,7 +107,7 @@ class TestSpecializations(TestCase):
         def target():
             range(1, 2, 0)
 
-        @cache_global_name("x", lambda: ValueError('range() arg 3 must not be zero'))
+        @cache_global_name("x", lambda: ValueError("range() arg 3 must not be zero"))
         def compare():
             raise x
 
@@ -117,7 +118,12 @@ class TestSpecializations(TestCase):
         def target():
             x()
 
-        @cache_global_name("x", lambda: ValueError("Random.randrange() missing 1 required positional argument: 'start'"))
+        @cache_global_name(
+            "x",
+            lambda: ValueError(
+                "Random.randrange() missing 1 required positional argument: 'start'"
+            ),
+        )
         def compare():
             raise x
 
@@ -127,7 +133,9 @@ class TestSpecializations(TestCase):
         def target():
             range(1, 2, 3, 4)
 
-        @cache_global_name("x", lambda: TypeError('range expected at most 3 arguments, got 4'))
+        @cache_global_name(
+            "x", lambda: TypeError("range expected at most 3 arguments, got 4")
+        )
         def compare():
             raise x
 
@@ -138,7 +146,12 @@ class TestSpecializations(TestCase):
         def target():
             x(1, 2, 3, 4)
 
-        @cache_global_name("x", lambda: TypeError('Random.randrange() takes from 2 to 4 positional arguments but 4 were given'))
+        @cache_global_name(
+            "x",
+            lambda: TypeError(
+                "Random.randrange() takes from 2 to 4 positional arguments but 4 were given"
+            ),
+        )
         def compare():
             raise x
 
@@ -149,7 +162,12 @@ class TestSpecializations(TestCase):
         def target():
             x(1, 2, 3, 4)
 
-        @cache_global_name("x", lambda: TypeError('Random.randrange() takes from 2 to 4 positional arguments but 4 were given'))
+        @cache_global_name(
+            "x",
+            lambda: TypeError(
+                "Random.randrange() takes from 2 to 4 positional arguments but 4 were given"
+            ),
+        )
         def compare():
             raise x
 
@@ -190,4 +208,3 @@ class TestSpecializations(TestCase):
             return range(0, 1, x)
 
         compare_optimized_results(self, target, compare, opt_ideal=2)
-

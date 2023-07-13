@@ -3,7 +3,9 @@ import typing
 from abc import ABC
 
 from bytecodemanipulation.assembler.util.tokenizer import IntegerToken
-from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
+from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import (
+    MacroParameterAccessExpression,
+)
 from bytecodemanipulation.MutableFunctionHelpers import capture_local
 
 from bytecodemanipulation.MutableFunctionHelpers import outer_return
@@ -12,7 +14,10 @@ from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import JumpToLabel
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -44,7 +49,9 @@ LOCAL_TO_DEREF_OPCODES = {
 }
 
 
-def _manipulate_stack_trace(exc: Exception, file: str, func_name: str, line: int, column: int, span: int):
+def _manipulate_stack_trace(
+    exc: Exception, file: str, func_name: str, line: int, column: int, span: int
+):
     trace = traceback.extract_stack()
 
     entry = traceback.FrameSummary(
@@ -116,7 +123,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             self,
             scope: ParsingScope,
             arg: "MacroAssembly.MacroArg",
-            arg_accessor: AbstractAccessExpression | CompoundExpression | MacroParameterAccessExpression,
+            arg_accessor: AbstractAccessExpression
+            | CompoundExpression
+            | MacroParameterAccessExpression,
         ) -> bool:
             if isinstance(arg_accessor, MacroParameterAccessExpression):
                 arg_accessor = scope.lookup_macro_parameter(arg_accessor.name(scope))
@@ -194,7 +203,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             return f"MACRO_ARG('{self.name.text}', is_static={self.is_static}, type={self.data_type_annotation})"
 
         def is_match(
-            self, scope: ParsingScope, arg_accessor: AbstractAccessExpression | CompoundExpression
+            self,
+            scope: ParsingScope,
+            arg_accessor: AbstractAccessExpression | CompoundExpression,
         ) -> bool:
             if self.data_type_annotation is None:
                 return True
@@ -242,7 +253,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                 if (
                     len(macro.args) == len(args)
-                    and all(arg.is_match(scope, param) for arg, param in zip(macro.args, args))
+                    and all(
+                        arg.is_match(scope, param)
+                        for arg, param in zip(macro.args, args)
+                    )
                     and not has_star_args
                 ):
                     return macro, args
@@ -316,28 +330,46 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
             raise PropagatingCompilerException(
                 f"Could not find overloaded variant of '{':'.join(self.name)}' with args {args}!"
-            ).add_trace_level(self.trace_info.with_token(self.name_token)).set_underlying_exception(NameError)
+            ).add_trace_level(
+                self.trace_info.with_token(self.name_token)
+            ).set_underlying_exception(
+                NameError
+            )
 
         def add_definition(self, macro: "MacroAssembly", override=False):
             # todo: do a safety check!
             self.assemblies.append(macro)
 
     @classmethod
-    def _try_parse_arg_data_type(cls, parser: "Parser", scope: ParsingScope) -> AbstractDataType | None:
+    def _try_parse_arg_data_type(
+        cls, parser: "Parser", scope: ParsingScope
+    ) -> AbstractDataType | None:
         if identifier := parser.try_inspect(IdentifierToken):
             if identifier.text == "CODE_BLOCK":
                 parser.consume(identifier)
 
                 if opening_bracket := parser.try_consume(SpecialToken("[")):
-                    if not (expr := parser.try_consume(IntegerToken)) or not expr.text.isdigit() or (count := int(expr.text)) < 0:
+                    if (
+                        not (expr := parser.try_consume(IntegerToken))
+                        or not expr.text.isdigit()
+                        or (count := int(expr.text)) < 0
+                    ):
                         raise PropagatingCompilerException(
                             "expected <positive integer> after '[' to declare count"
-                        ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(
+                                opening_bracket, parser[0]
+                            )
+                        )
 
                     if not parser.try_consume(SpecialToken("]")):
                         raise PropagatingCompilerException(
                             "expected ']' closing '[' after <count> in CODE_BLOCK"
-                        ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(
+                                opening_bracket, parser[0]
+                            )
+                        )
 
                     inst = cls.CodeBlockDataType(int(expr.text))
                     return inst
@@ -353,12 +385,16 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     if inner_type is None:
                         raise PropagatingCompilerException(
                             "expected <inner type>"
-                        ).add_trace_level(scope.get_trace_info().with_token(identifier, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(identifier, parser[0])
+                        )
 
                     if not parser.try_consume(SpecialToken("]")):
                         raise PropagatingCompilerException(
                             "expected ']' closing '[' after <inner type>"
-                        ).add_trace_level(scope.get_trace_info().with_token(identifier, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(identifier, parser[0])
+                        )
 
                     inst = cls.VariableArgCountDataType(inner_type)
                 else:
@@ -372,7 +408,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 if parser[0] == SpecialToken("["):
                     raise PropagatingCompilerException(
                         "did not expect '[' after 'VARIABLE' in macro type declaration"
-                    ).add_trace_level(scope.get_trace_info().with_token(identifier, parser[0]))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(identifier, parser[0])
+                    )
 
                 return cls.VariableDataType()
 
@@ -382,7 +420,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 if parser[0] == SpecialToken("["):
                     raise PropagatingCompilerException(
                         "did not expect '[' after 'ANY' in macro type declaration"
-                    ).add_trace_level(scope.get_trace_info().with_token(identifier, parser[0]))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(identifier, parser[0])
+                    )
 
                 return cls.AnyDataType()
 
@@ -421,7 +461,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     if not parser.try_consume(SpecialToken(")")):
                         raise PropagatingCompilerException(
                             "Expected ',' for continue or ')' closing MACRO declaration"
-                        ).add_trace_level(scope.get_trace_info().with_token(parser[0], name))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(parser[0], name)
+                        )
 
                     break
 
@@ -514,9 +556,16 @@ class MacroAssembly(AbstractAssemblyInstruction):
         bytecode = []
 
         for arg_decl, arg_code in zip(self.args, args):
-            if isinstance(arg_decl.data_type_annotation, MacroAssembly.CodeBlockDataType):
-                if isinstance(arg_code, CompoundExpression) and hasattr(arg_code, "to_be_stored_at"):
-                    if len(arg_code.to_be_stored_at) != arg_decl.data_type_annotation.count:
+            if isinstance(
+                arg_decl.data_type_annotation, MacroAssembly.CodeBlockDataType
+            ):
+                if isinstance(arg_code, CompoundExpression) and hasattr(
+                    arg_code, "to_be_stored_at"
+                ):
+                    if (
+                        len(arg_code.to_be_stored_at)
+                        != arg_decl.data_type_annotation.count
+                    ):
                         raise PropagatingCompilerException(
                             f"Expected {arg_decl.data_type_annotation.count} dynamic name entries, got {len(arg_code.to_be_stored_at)}"
                         ).add_trace_level(self.trace_info.with_token(arg_decl.name))
@@ -544,7 +593,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                             arg_code, function, scope
                         )
                     except PropagatingCompilerException as e:
-                        e.add_trace_level(self.trace_info.with_token(arg_decl.name), f"during emitting arg lookup for static argument with type annotationwith index {arg_decl.index} and name '{arg_decl.name.text}'")
+                        e.add_trace_level(
+                            self.trace_info.with_token(arg_decl.name),
+                            f"during emitting arg lookup for static argument with type annotationwith index {arg_decl.index} and name '{arg_decl.name.text}'",
+                        )
                         raise e
 
                     bytecode.append(
@@ -559,7 +611,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     try:
                         bytecode += arg_code.emit_bytecodes(function, scope)
                     except PropagatingCompilerException as e:
-                        e.add_trace_level(self.trace_info.with_token(arg_decl.name), f"during emitting arg lookup for static argument with index {arg_decl.index} and name '{arg_decl.name.text}'")
+                        e.add_trace_level(
+                            self.trace_info.with_token(arg_decl.name),
+                            f"during emitting arg lookup for static argument with index {arg_decl.index} and name '{arg_decl.name.text}'",
+                        )
                         raise e
 
                     bytecode.append(
@@ -572,8 +627,12 @@ class MacroAssembly(AbstractAssemblyInstruction):
             else:
                 arg_names.append(None)
 
-        local_prefix = scope.scope_name_generator("macro_local~"+":".join(map(lambda e: e.text, self.name)))
-        end_target = scope.scope_name_generator("macro_end~"+":".join(map(lambda e: e.text, self.name)))
+        local_prefix = scope.scope_name_generator(
+            "macro_local~" + ":".join(map(lambda e: e.text, self.name))
+        )
+        end_target = scope.scope_name_generator(
+            "macro_end~" + ":".join(map(lambda e: e.text, self.name))
+        )
         requires_none_load = (
             self.return_type is not None
             and not inner_bytecode[-1].has_unconditional_jump()
@@ -607,7 +666,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                                 args[arg_decl.index], function, scope
                             )
                         except PropagatingCompilerException as e:
-                            e.add_trace_level(self.trace_info.with_token(arg_decl.name), f"during emitting arg lookup for dynamic argument with type annotation with index {arg_decl.index} and name '{arg_decl.name.text}'")
+                            e.add_trace_level(
+                                self.trace_info.with_token(arg_decl.name),
+                                f"during emitting arg lookup for dynamic argument with type annotation with index {arg_decl.index} and name '{arg_decl.name.text}'",
+                            )
                             raise e
 
                         instr.insert_after(instructions)
@@ -626,7 +688,10 @@ class MacroAssembly(AbstractAssemblyInstruction):
                                 function, scope
                             )
                         except PropagatingCompilerException as e:
-                            e.add_trace_level(self.trace_info.with_token(arg_decl.name), f"during emitting arg lookup for dynamic argument with index {arg_decl.index} and name '{arg_decl.name.text}'")
+                            e.add_trace_level(
+                                self.trace_info.with_token(arg_decl.name),
+                                f"during emitting arg lookup for dynamic argument with index {arg_decl.index} and name '{arg_decl.name.text}'",
+                            )
                             raise e
 
                         instr.insert_after(instructions)
@@ -645,11 +710,16 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 else:
                     if arg_decl.data_type_annotation is not None:
                         try:
-                            instructions = arg_decl.data_type_annotation.emit_for_arg_store(
-                                args[arg_decl.index], function, scope
+                            instructions = (
+                                arg_decl.data_type_annotation.emit_for_arg_store(
+                                    args[arg_decl.index], function, scope
+                                )
                             )
                         except PropagatingCompilerException as e:
-                            e.add_trace_level(self.trace_info.with_token(arg_decl.name), f"during emitting store arg lookup for dynamic argument with index {arg_decl.index} and name '{arg_decl.name.text}'")
+                            e.add_trace_level(
+                                self.trace_info.with_token(arg_decl.name),
+                                f"during emitting store arg lookup for dynamic argument with index {arg_decl.index} and name '{arg_decl.name.text}'",
+                            )
                             raise e
 
                         if instructions is not None:
@@ -660,12 +730,14 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                     raise PropagatingCompilerException(
                         f"Tried to override non-static MACRO parameter '{instr.arg_value}'; This is not allowed as the parameter will be evaluated on each access!"
-                    ).add_trace_level(self.trace_info.with_token(self.name)).set_underlying_exception(RuntimeError)
+                    ).add_trace_level(
+                        self.trace_info.with_token(self.name)
+                    ).set_underlying_exception(
+                        RuntimeError
+                    )
 
             elif instr.has_local() and instr.arg_value.startswith(":"):
-                instr.change_arg_value(
-                    instr.arg_value.removeprefix(":")
-                )
+                instr.change_arg_value(instr.arg_value.removeprefix(":"))
 
             elif instr.has_local():
                 instr.change_arg_value(local_prefix + ":" + instr.arg_value)
@@ -694,7 +766,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
         namespace_level = scope.lookup_namespace(namespace)
 
         if inner_name not in namespace_level:
-            page = self.MacroOverloadPage(name, self.name).set_trace_info(scope.get_trace_info())
+            page = self.MacroOverloadPage(name, self.name).set_trace_info(
+                scope.get_trace_info()
+            )
             namespace_level[inner_name] = page
         elif not isinstance(namespace_level[inner_name], self.MacroOverloadPage):
             raise RuntimeError(
@@ -724,9 +798,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 (
                     instr
                     if instr.opcode != Opcodes.RETURN_VALUE
-                    else instr
-                    .change_opcode(Opcodes.POP_TOP)
-                    .insert_after(
+                    else instr.change_opcode(Opcodes.POP_TOP).insert_after(
                         Instruction(
                             Opcodes.JUMP_ABSOLUTE,
                             JumpToLabel(macro_exit_label),
@@ -734,9 +806,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     )
                 )
                 if not instr.has_local() or instr.arg_value not in self.scoped_names
-                else instr.copy().change_opcode(
-                    LOCAL_TO_DEREF_OPCODES[instr.opcode]
-                )
+                else instr.copy().change_opcode(LOCAL_TO_DEREF_OPCODES[instr.opcode])
                 for instr in builder.temporary_instructions
             ]
 
@@ -774,4 +844,6 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 elif instr.has_local() and instr.arg_value in captured_locals:
                     instr.change_arg_value(":" + instr.arg_value)
 
-            return instructions + [Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)]
+            return instructions + [
+                Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)
+            ]

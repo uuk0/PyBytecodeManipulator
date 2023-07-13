@@ -42,15 +42,19 @@ class AbstractLoadGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
         name = parser.try_consume(IdentifierToken)
 
         if name is None:
-            raise PropagatingCompilerException(
-                "expected <name>"
-            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
+            raise PropagatingCompilerException("expected <name>").add_trace_level(
+                scope.get_trace_info().with_token(parser[0])
+            )
 
         if parser.try_consume(SpecialToken("-")):
             if not parser.try_consume(SpecialToken(">")):
                 raise PropagatingCompilerException(
                     "expected '>' after '-'"
-                ).add_trace_level(scope.get_trace_info().with_token(parser[-1:1], scope.last_base_token))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(
+                        parser[-1:1], scope.last_base_token
+                    )
+                )
 
             target = parser.try_consume_access_to_value(scope=scope)
 

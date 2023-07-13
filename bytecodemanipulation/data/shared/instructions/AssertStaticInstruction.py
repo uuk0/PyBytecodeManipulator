@@ -4,7 +4,10 @@ import warnings
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractSourceExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -15,7 +18,9 @@ from bytecodemanipulation.MutableFunction import MutableFunction
 
 if typing.TYPE_CHECKING:
     from bytecodemanipulation.assembler.Parser import Parser
-    from bytecodemanipulation.data.shared.instructions.AbstractInstruction import AbstractAssemblyInstruction
+    from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
+        AbstractAssemblyInstruction,
+    )
 
 
 class AssertStaticInstruction(AbstractAssemblyInstruction):
@@ -27,9 +32,9 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
         target = parser.try_consume_access_to_value(scope=scope, allow_primitives=True)
 
         if target is None:
-            raise PropagatingCompilerException(
-                "expected <expression>"
-            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
+            raise PropagatingCompilerException("expected <expression>").add_trace_level(
+                scope.get_trace_info().with_token(parser[0])
+            )
 
         return cls(
             target,
@@ -39,7 +44,8 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
         )
 
     def __init__(
-        self, source: AbstractSourceExpression,
+        self,
+        source: AbstractSourceExpression,
         text: AbstractSourceExpression = None,
         base_token: AbstractToken = None,
         trace_info: TraceInfo = None,
@@ -73,7 +79,11 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
 
             raise PropagatingCompilerException(
                 f"Expected <static evaluate-able> at 'expression', got '{type(self.source).__name__}' as type"
-            ).add_trace_level(self.trace_info.with_token(self.base_token, list(self.source.get_tokens()))) from None
+            ).add_trace_level(
+                self.trace_info.with_token(
+                    self.base_token, list(self.source.get_tokens())
+                )
+            ) from None
 
         if not value:
             try:
@@ -83,13 +93,22 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
                     else self.text.evaluate_static_value(scope)
                 )
             except NotImplementedError:
-                print(f"SyntaxWarning: <message> could not be evaluated (got syntax element: {self.text})", file=sys.stderr)
-                self.trace_info.with_token(list(self.source.get_tokens())).print_stack(sys.stderr)
+                print(
+                    f"SyntaxWarning: <message> could not be evaluated (got syntax element: {self.text})",
+                    file=sys.stderr,
+                )
+                self.trace_info.with_token(list(self.source.get_tokens())).print_stack(
+                    sys.stderr
+                )
 
                 message = "expected <true-ish value> (message not arrival)"
 
             raise PropagatingCompilerException(
                 "assertion failed: " + message
-            ).add_trace_level(self.trace_info.with_token(list(self.source.get_tokens()))).set_underlying_exception(AssertionError)
+            ).add_trace_level(
+                self.trace_info.with_token(list(self.source.get_tokens()))
+            ).set_underlying_exception(
+                AssertionError
+            )
 
         return []

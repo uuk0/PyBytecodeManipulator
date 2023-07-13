@@ -21,9 +21,7 @@ class JumpAssembly(AbstractJumpAssembly):
         label_name = ":".join(e(scope) for e in self.label_name_token)
 
         if not scope.exists_label(label_name):
-            raise ValueError(
-                f"Label '{label_name}' is not valid in this context!"
-            )
+            raise ValueError(f"Label '{label_name}' is not valid in this context!")
 
         if self.condition is None:
             return [

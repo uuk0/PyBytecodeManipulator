@@ -55,13 +55,14 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
         variables = [initial]
 
         while separator := parser.try_consume(SpecialToken(",")):
-
             expr = parser.try_consume_access_to_value(scope=scope)
 
             if expr is None:
                 raise PropagatingCompilerException(
                     "expected <expression> after ','"
-                ).add_trace_level(scope.get_trace_info().with_token(separator, parser[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(separator, parser[0])
+                )
 
             variables.append(expr)
 
@@ -79,14 +80,17 @@ class AbstractForEachAssembly(AbstractAssemblyInstruction, abc.ABC):
         sources = [source]
 
         multi = None
-        while separator := (parser.try_consume(SpecialToken(",")) or (
-            multi := parser.try_consume(SpecialToken("*"))
-        )):
+        while separator := (
+            parser.try_consume(SpecialToken(","))
+            or (multi := parser.try_consume(SpecialToken("*")))
+        ):
             source = parser.try_consume_access_to_value(scope=scope)
             if not source:
                 raise PropagatingCompilerException(
                     f"expected <expression> after '{separator.text}' and <expression>..."
-                ).add_trace_level(scope.get_trace_info().with_token(separator, parser[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(separator, parser[0])
+                )
 
             if multi:
                 s = sources[-1]

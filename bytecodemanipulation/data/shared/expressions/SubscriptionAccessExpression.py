@@ -72,11 +72,7 @@ class SubscriptionAccessExpression(AbstractAccessExpression):
                     )
                 ]
             )
-            + [
-                Instruction.create_with_token(
-                    self.name(scope), Opcodes.STORE_SUBSCR
-                )
-            ]
+            + [Instruction.create_with_token(self.name(scope), Opcodes.STORE_SUBSCR)]
         )
 
     def visit_parts(

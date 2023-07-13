@@ -10,7 +10,10 @@ from bytecodemanipulation.assembler.AbstractBase import (
 )
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
     ConstantAccessExpression,
@@ -57,14 +60,18 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 if p is None:
                     raise PropagatingCompilerException(
                         "expected <name> after ':' to complete namespace name"
-                    ).add_trace_level(scope.get_trace_info().with_token(namespace_f, parser[0]))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(namespace_f, parser[0])
+                    )
 
                 namespace.append(p.text)
 
             if parser.try_consume(SpecialToken(">")) is None:
                 raise PropagatingCompilerException(
                     "expected '>' to close namespace declaration"
-                ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(opening_bracket, parser[0])
+                )
 
         parents = []
 
@@ -87,7 +94,9 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             if not parser.try_consume(SpecialToken(")")):
                 raise PropagatingCompilerException(
                     "expected ')' closing '(' for parent declaration"
-                ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(opening_bracket, parser[0])
+                )
 
         if not parents:
             parents = [ConstantAccessExpression(object)]
@@ -95,7 +104,10 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         try:
             code_block = parser.parse_body(scope=scope, namespace_part=namespace)
         except PropagatingCompilerException as e:
-            e.add_trace_level(scope.get_trace_info().with_token(list(name.get_tokens())), message=f"during parsing class '{name(scope)}'")
+            e.add_trace_level(
+                scope.get_trace_info().with_token(list(name.get_tokens())),
+                message=f"during parsing class '{name(scope)}'",
+            )
             raise e
 
         return cls(
@@ -106,7 +118,11 @@ class AbstractClassDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __init__(
-        self, name: IIdentifierAccessor, parents, code_block: CompoundExpression, trace_info: TraceInfo = None
+        self,
+        name: IIdentifierAccessor,
+        parents,
+        code_block: CompoundExpression,
+        trace_info: TraceInfo = None,
     ):
         self.name = name
         self.parents = parents

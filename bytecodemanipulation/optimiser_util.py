@@ -102,7 +102,9 @@ def inline_const_value_pop_pairs(mutable: MutableFunction, builder) -> bool:
                             return
 
                         for _ in range(pops):
-                            nop = Instruction.create_with_same_info(func_resolve, Opcodes.NOP)
+                            nop = Instruction.create_with_same_info(
+                                func_resolve, Opcodes.NOP
+                            )
                             nop.next_instruction = func_resolve.next_instruction
                             func_resolve.next_instruction = nop
 

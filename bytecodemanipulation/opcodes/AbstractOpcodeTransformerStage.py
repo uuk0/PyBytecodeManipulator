@@ -26,7 +26,7 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 
         extra: int = 0
         for i in range(0, len(function.get_raw_code_unsafe()), 2):
-            opcode, arg = function.get_raw_code_unsafe()[i: i + 2]
+            opcode, arg = function.get_raw_code_unsafe()[i : i + 2]
 
             if opcode == Opcodes.EXTENDED_ARG:
                 extra = extra * 256 + arg
@@ -84,7 +84,7 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 
         for i, instr in enumerate(instructions[:-1]):
             if not instr.has_stop_flow() and not instr.has_unconditional_jump():
-                instr.next_instruction = instructions[i+1]
+                instr.next_instruction = instructions[i + 1]
 
         function.instruction_entry_point = instructions[0]
         metadata[:] = instructions
@@ -93,7 +93,9 @@ class InstructionDecoder(AbstractOpcodeTransformerStage):
 class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
     @classmethod
     def apply(cls, function: "MutableFunction", metadata: typing.Any):
-        visiting = {function.get_instruction_entry_point()} | set(function.exception_table.table.keys())
+        visiting = {function.get_instruction_entry_point()} | set(
+            function.exception_table.table.keys()
+        )
         visited = set()
 
         while visiting:
@@ -123,15 +125,24 @@ class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
                 visiting.add(instr.arg_value)
 
     @classmethod
-    def get_handed_over_metadata(cls, function: "MutableFunction", metadata: typing.Any) -> typing.Any:
+    def get_handed_over_metadata(
+        cls, function: "MutableFunction", metadata: typing.Any
+    ) -> typing.Any:
         return metadata
 
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+    def visit(
+        cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction"
+    ) -> typing.Any:
         pass
 
     @classmethod
-    def get_new_metadata(cls, function: "MutableFunction", old_meta: typing.Any, metadata: typing.List[typing.Tuple["Instruction", typing.Any]]) -> typing.Any:
+    def get_new_metadata(
+        cls,
+        function: "MutableFunction",
+        old_meta: typing.Any,
+        metadata: typing.List[typing.Tuple["Instruction", typing.Any]],
+    ) -> typing.Any:
         return old_meta
 
 
@@ -165,7 +176,9 @@ class ForIterTransformer(AbstractInstructionWalkerTransform):
     DEFAULT_VALUE = _ForIterDefault()
 
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+    def visit(
+        cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction"
+    ) -> typing.Any:
         if target.opcode == Opcodes.FOR_ITER:
             section = [
                 Instruction(Opcodes.DUP_TOP),
@@ -176,14 +189,16 @@ class ForIterTransformer(AbstractInstructionWalkerTransform):
                 Instruction(Opcodes.DUP_TOP),
                 Instruction(Opcodes.LOAD_CONST, cls.DEFAULT_VALUE),
                 Instruction(Opcodes.COMPARE_EQ),
-                Instruction(Opcodes.POP_JUMP_IF_FALSE, arg_value=target.next_instruction),
+                Instruction(
+                    Opcodes.POP_JUMP_IF_FALSE, arg_value=target.next_instruction
+                ),
                 Instruction(Opcodes.POP_TOP),
                 Instruction(Opcodes.POP_TOP),
                 Instruction(Opcodes.JUMP_FORWARD, arg_value=target.arg_value),
             ]
 
             for i, instr in enumerate(section[:-1]):
-                instr.next_instruction = section[i+1]
+                instr.next_instruction = section[i + 1]
 
             target.change_opcode(Opcodes.NOP)
             target.next_instruction = section[0]
@@ -191,7 +206,12 @@ class ForIterTransformer(AbstractInstructionWalkerTransform):
 
 class ArgRealValueSetter(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", builder: CodeObjectBuilder, target: "Instruction") -> typing.Any:
+    def visit(
+        cls,
+        function: "MutableFunction",
+        builder: CodeObjectBuilder,
+        target: "Instruction",
+    ) -> typing.Any:
         if target.has_local():
             target.arg = builder.reserve_local_name(target.arg_value)
         elif target.has_name():
@@ -207,7 +227,12 @@ class ArgRealValueSetter(AbstractInstructionWalkerTransform):
 
 class ExtendedArgInserter(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", builder: CodeObjectBuilder, target: "Instruction") -> typing.Any:
+    def visit(
+        cls,
+        function: "MutableFunction",
+        builder: CodeObjectBuilder,
+        target: "Instruction",
+    ) -> typing.Any:
         if target.arg is not None and target.arg > 255:
             arg = target.arg
             target.arg = arg % 256
@@ -225,10 +250,16 @@ class ExtendedArgInserter(AbstractInstructionWalkerTransform):
 
 class LinearStreamGenerator(AbstractOpcodeTransformerStage):
     @classmethod
-    def apply(cls, function: "MutableFunction", builder: CodeObjectBuilder, breaks_flow=tuple()):
-
+    def apply(
+        cls,
+        function: "MutableFunction",
+        builder: CodeObjectBuilder,
+        breaks_flow=tuple(),
+    ):
         # While we have branches, we need to decode them
-        pending_instructions = {function.get_instruction_entry_point()} | set(function.exception_table.table.keys())
+        pending_instructions = {function.get_instruction_entry_point()} | set(
+            function.exception_table.table.keys()
+        )
         visited: typing.Set[Instruction] = set()
         instructions: typing.List[Instruction] = []
 
@@ -294,7 +325,9 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
         LinearStreamGenerator.apply(function, builder)
 
     @classmethod
-    def insert_needed_jumps(cls, function: "MutableFunction", builder: CodeObjectBuilder):
+    def insert_needed_jumps(
+        cls, function: "MutableFunction", builder: CodeObjectBuilder
+    ):
         for i, instruction in enumerate(builder.temporary_instructions):
             instruction.offset = i
 
@@ -324,7 +357,9 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
                 )
                 jump.next_instruction = instruction
                 instruction.next_instruction = jump
-                builder.temporary_instructions.insert(builder.temporary_instructions.index(instruction) + 1, jump)
+                builder.temporary_instructions.insert(
+                    builder.temporary_instructions.index(instruction) + 1, jump
+                )
 
         for i, instruction in enumerate(builder.temporary_instructions):
             instruction.offset = i
@@ -340,13 +375,19 @@ class JumpArgAssembler(AbstractOpcodeTransformerStage):
                 instruction.change_arg(instruction.arg_value.offset)
 
             elif instruction.opcode in (Opcodes.FOR_ITER, Opcodes.SETUP_FINALLY):
-                instruction.change_arg(instruction.arg_value.offset - instruction.offset - 2)
+                instruction.change_arg(
+                    instruction.arg_value.offset - instruction.offset - 2
+                )
 
             elif instruction.has_jump_forward():
-                instruction.change_arg(instruction.arg_value.offset - instruction.offset)
+                instruction.change_arg(
+                    instruction.arg_value.offset - instruction.offset
+                )
 
             elif instruction.has_jump_backward():
-                instruction.change_arg(instruction.offset - instruction.arg_value.offset)
+                instruction.change_arg(
+                    instruction.offset - instruction.arg_value.offset
+                )
 
 
 class InstructionAssembler(AbstractOpcodeTransformerStage):
@@ -382,7 +423,7 @@ class InstructionAssembler(AbstractOpcodeTransformerStage):
                             f"Cannot assemble fast, not enough NOP's for instruction {instruction}"
                         )
 
-                    function._raw_code[(i - offset) * 2: (i - offset + 1) * 2] = bytes(
+                    function._raw_code[(i - offset) * 2 : (i - offset + 1) * 2] = bytes(
                         [Opcodes.EXTENDED_ARG, iarg]
                     )
                     offset += 1
@@ -398,4 +439,3 @@ class InstructionAssembler(AbstractOpcodeTransformerStage):
                 print("----")
 
             function._raw_code += bytes([instruction.opcode, arg])
-

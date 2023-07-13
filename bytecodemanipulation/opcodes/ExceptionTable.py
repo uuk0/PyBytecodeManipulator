@@ -19,7 +19,9 @@ class ExceptionTable:
         else:
             self.table[handle] = list(span)
 
-    def remove_handle(self, handle: "Instruction", span: typing.Iterable["Instruction"] = None):
+    def remove_handle(
+        self, handle: "Instruction", span: typing.Iterable["Instruction"] = None
+    ):
         if handle not in self.table:
             return
 
@@ -31,11 +33,12 @@ class ExceptionTable:
             if e in self.table[handle]:
                 self.table[handle].remove(e)
 
-    def get_handles_for_instructions(self, instr: "Instruction") -> typing.Iterable["Instruction"]:
+    def get_handles_for_instructions(
+        self, instr: "Instruction"
+    ) -> typing.Iterable["Instruction"]:
         for handle, instructions in self.table.items():
             if instr in instructions:
                 yield handle
 
     def get_span_for_handle(self, instr: "Instruction") -> typing.List["Instruction"]:
         return self.table.get(instr, None) or []
-

@@ -66,7 +66,10 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         try:
             inner_bytecode += self.body.emit_bytecodes(target, inner_scope)
         except PropagatingCompilerException as e:
-            e.add_trace_level(self.trace_info, message=f"during parsing function definition {self.func_name(scope)}")
+            e.add_trace_level(
+                self.trace_info,
+                message=f"during parsing function definition {self.func_name(scope)}",
+            )
             raise e
 
         inner_bytecode[-1].next_instruction = target.instruction_entry_point
@@ -89,26 +92,41 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
         has_yield_statement = False
 
         def rewrite_outer_access(instruction: Instruction):
-            if instruction.opcode == Opcodes.LOAD_DEREF and instruction.arg_value in scope.closure_locals:
-                instruction.insert_after([
-                    Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
-                    Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
-                    Instruction(Opcodes.BINARY_SUBSCR),
-                ])
+            if (
+                instruction.opcode == Opcodes.LOAD_DEREF
+                and instruction.arg_value in scope.closure_locals
+            ):
+                instruction.insert_after(
+                    [
+                        Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
+                        Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
+                        Instruction(Opcodes.BINARY_SUBSCR),
+                    ]
+                )
                 instruction.change_opcode(Opcodes.NOP)
-            elif instruction.opcode == Opcodes.STORE_DEREF and instruction.arg_value in scope.closure_locals:
-                instruction.insert_after([
-                    Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
-                    Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
-                    Instruction(Opcodes.STORE_SUBSCR),
-                ])
+            elif (
+                instruction.opcode == Opcodes.STORE_DEREF
+                and instruction.arg_value in scope.closure_locals
+            ):
+                instruction.insert_after(
+                    [
+                        Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
+                        Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
+                        Instruction(Opcodes.STORE_SUBSCR),
+                    ]
+                )
                 instruction.change_opcode(Opcodes.NOP)
-            elif instruction.opcode == Opcodes.DELETE_DEREF and instruction.arg_value in scope.closure_locals:
-                instruction.insert_after([
-                    Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
-                    Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
-                    Instruction(Opcodes.DELETE_SUBSCR),
-                ])
+            elif (
+                instruction.opcode == Opcodes.DELETE_DEREF
+                and instruction.arg_value in scope.closure_locals
+            ):
+                instruction.insert_after(
+                    [
+                        Instruction(Opcodes.LOAD_FAST, local_variable_buffer),
+                        Instruction(Opcodes.LOAD_CONST, instruction.arg_value),
+                        Instruction(Opcodes.DELETE_SUBSCR),
+                    ]
+                )
                 instruction.change_opcode(Opcodes.NOP)
             elif instruction.opcode in (Opcodes.YIELD_VALUE, Opcodes.YIELD_FROM):
                 nonlocal has_yield_statement
@@ -142,7 +160,9 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
             for arg in self.args:
                 if isinstance(arg, CallAssembly.KwArg):
-                    defaults += typing.cast(CallAssembly.KwArg, arg).source.emit_bytecodes(function, scope)
+                    defaults += typing.cast(
+                        CallAssembly.KwArg, arg
+                    ).source.emit_bytecodes(function, scope)
                     c += 1
 
             defaults += [

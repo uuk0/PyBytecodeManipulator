@@ -2,7 +2,10 @@ import string
 import types
 import typing
 
-from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, StaticIdentifier
+from bytecodemanipulation.assembler.AbstractBase import (
+    IIdentifierAccessor,
+    StaticIdentifier,
+)
 from bytecodemanipulation.assembler.Lexer import Lexer
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.opcodes.Instruction import Instruction
@@ -47,7 +50,9 @@ GLOBAL_SCOPE_CACHE: typing.Dict[str, dict] = {}
 
 
 def apply_inline_assemblies(
-    target: MutableFunction | typing.Callable, store_at_target: bool = None, unwrap_exceptions=True,
+    target: MutableFunction | typing.Callable,
+    store_at_target: bool = None,
+    unwrap_exceptions=True,
 ):
     """
     Processes all assembly() calls, label() calls and jump() calls in 'target'
@@ -76,7 +81,9 @@ def apply_inline_assemblies(
                     raise SyntaxError("<assembly> must be constant!")
 
                 if invoke.next_instruction.opcode == Opcodes.POP_TOP:
-                    insertion_points.append((typing.cast(str, arg.arg_value), invoke.next_instruction))
+                    insertion_points.append(
+                        (typing.cast(str, arg.arg_value), invoke.next_instruction)
+                    )
                 else:
                     insertion_points.append((typing.cast(str, arg.arg_value), invoke))
 
@@ -88,7 +95,9 @@ def apply_inline_assemblies(
                 invoke = next(instr.trace_stack_position_use(0))
 
                 if invoke.arg not in (1, 2):
-                    raise SyntaxError(f"expected one to two args, not {invoke.arg} for <jump>")
+                    raise SyntaxError(
+                        f"expected one to two args, not {invoke.arg} for <jump>"
+                    )
 
                 label_name = next(invoke.trace_stack_position(0))
 
@@ -106,7 +115,9 @@ def apply_inline_assemblies(
                     raise NotImplementedError("<condition> on jump() target")
 
                 if not typing.cast(str, label_name.arg_value).isalnum():
-                    raise SyntaxError("label name only characters and digits are allowed for label names!")
+                    raise SyntaxError(
+                        "label name only characters and digits are allowed for label names!"
+                    )
 
                 if invoke.next_instruction.opcode == Opcodes.POP_TOP:
                     insertion_points.append(
@@ -128,10 +139,14 @@ def apply_inline_assemblies(
 
                 labels.add(StaticIdentifier(typing.cast(str, arg.arg_value)))
                 invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
-                invoke.insert_after(Instruction.create_with_same_info(invoke, Opcodes.LOAD_CONST, None))
+                invoke.insert_after(
+                    Instruction.create_with_same_info(invoke, Opcodes.LOAD_CONST, None)
+                )
                 instr.change_opcode(Opcodes.NOP)
                 arg.change_opcode(Opcodes.NOP)
-                label_targets[typing.cast(str, invoke.arg_value)] = invoke.next_instruction
+                label_targets[
+                    typing.cast(str, invoke.arg_value)
+                ] = invoke.next_instruction
 
     target.walk_instructions(visit)
 
@@ -147,7 +162,6 @@ def apply_inline_assemblies(
         if instr.opcode == Opcodes.STORE_FAST:
             scope.filled_locals.add(instr.arg_value)
 
-
     target.walk_instructions(visit)
 
     if target.target.__module__ in GLOBAL_SCOPE_CACHE:
@@ -160,11 +174,15 @@ def apply_inline_assemblies(
     for code, instr in insertion_points:
         try:
             scope.may_get_trace_info = True
-            assemblies.append(AssemblyParser(
-                Lexer(code, module_file=target.target.__globals__["__file__"]).add_line_offset(instr.source_location[0]).lex(),
-                scope.scope_path.clear() or scope,
-                module_file=target.target.__globals__["__file__"],
-            ).parse())
+            assemblies.append(
+                AssemblyParser(
+                    Lexer(code, module_file=target.target.__globals__["__file__"])
+                    .add_line_offset(instr.source_location[0])
+                    .lex(),
+                    scope.scope_path.clear() or scope,
+                    module_file=target.target.__globals__["__file__"],
+                ).parse()
+            )
             scope.may_get_trace_info = False
         except PropagatingCompilerException as e:
             if not unwrap_exceptions:
@@ -188,7 +206,15 @@ def apply_inline_assemblies(
     scope.may_get_trace_info = False
 
     for (_, instr), asm in zip(insertion_points, assemblies):
-        _create_fragment_bytecode(asm, instr, label_targets, max_stack_effects, scope, target, unwrap_exceptions=unwrap_exceptions)
+        _create_fragment_bytecode(
+            asm,
+            instr,
+            label_targets,
+            max_stack_effects,
+            scope,
+            target,
+            unwrap_exceptions=unwrap_exceptions,
+        )
 
     target.walk_instructions(visit)
 
@@ -212,9 +238,7 @@ def apply_inline_assemblies(
 
             obj = source.arg_value
             source.change_opcode(Opcodes.NOP)
-            ins.change_opcode(
-                Opcodes.LOAD_CONST, getattr(obj, ins.arg_value)
-            )
+            ins.change_opcode(Opcodes.LOAD_CONST, getattr(obj, ins.arg_value))
 
     target.walk_instructions(resolve_special_code)
 
@@ -224,7 +248,15 @@ def apply_inline_assemblies(
     return target
 
 
-def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: typing.Dict[str, Instruction], max_stack_effects: typing.List, scope: ParsingScope, target: MutableFunction, unwrap_exceptions=False):
+def _create_fragment_bytecode(
+    asm,
+    insertion_point: Instruction,
+    label_targets: typing.Dict[str, Instruction],
+    max_stack_effects: typing.List,
+    scope: ParsingScope,
+    target: MutableFunction,
+    unwrap_exceptions=False,
+):
     try:
         bytecode = asm.create_bytecode(target, scope)
     except PropagatingCompilerException as e:
@@ -296,7 +328,10 @@ def _create_fragment_bytecode(asm, insertion_point: Instruction, label_targets: 
 
 
 def execute_module_in_instance(
-    asm_code: str, module: types.ModuleType, file: str = None, unwrap_exceptions=True,
+    asm_code: str,
+    module: types.ModuleType,
+    file: str = None,
+    unwrap_exceptions=True,
 ):
     scope = ParsingScope()
 
@@ -364,22 +399,34 @@ def execute_module_in_instance(
 
     def visit(instr):
         if instr.opcode == Opcodes.STORE_FAST:
-            load_module = Instruction.create_with_same_info(instr, Opcodes.LOAD_FAST, "$module$")
-            store = Instruction.create_with_same_info(instr, Opcodes.STORE_ATTR, instr.arg_value)
+            load_module = Instruction.create_with_same_info(
+                instr, Opcodes.LOAD_FAST, "$module$"
+            )
+            store = Instruction.create_with_same_info(
+                instr, Opcodes.STORE_ATTR, instr.arg_value
+            )
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, store])
 
         elif instr.opcode == Opcodes.LOAD_FAST:
-            load_module = Instruction.create_with_same_info(instr, Opcodes.LOAD_FAST, "$module$")
-            load = Instruction.create_with_same_info(instr, Opcodes.LOAD_ATTR, instr.arg_value)
+            load_module = Instruction.create_with_same_info(
+                instr, Opcodes.LOAD_FAST, "$module$"
+            )
+            load = Instruction.create_with_same_info(
+                instr, Opcodes.LOAD_ATTR, instr.arg_value
+            )
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, load])
 
         elif instr.opcode == Opcodes.DELETE_FAST:
-            load_module = Instruction.create_with_same_info(instr, Opcodes.LOAD_FAST, "$module$")
-            delete = Instruction.create_with_same_info(instr, Opcodes.DELETE_ATTR, instr.arg_value)
+            load_module = Instruction.create_with_same_info(
+                instr, Opcodes.LOAD_FAST, "$module$"
+            )
+            delete = Instruction.create_with_same_info(
+                instr, Opcodes.DELETE_ATTR, instr.arg_value
+            )
 
             instr.change_opcode(Opcodes.NOP)
             instr.insert_after([load_module, delete])

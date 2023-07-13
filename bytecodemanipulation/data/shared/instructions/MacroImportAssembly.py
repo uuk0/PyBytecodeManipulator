@@ -4,7 +4,10 @@ import typing
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -59,7 +62,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         name: typing.List[IdentifierToken],
         target: typing.List[IdentifierToken] = None,
         is_relative_target: bool = False,
-        trace_info: TraceInfo = None
+        trace_info: TraceInfo = None,
     ):
         self.name = name
         self.target = target
@@ -111,7 +114,11 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                 raise e
             except Exception as e:
                 traceback.print_exc()
-                raise PropagatingCompilerException("MACRO_IMPORT failed due to the normal import failing", *e.args).set_underlying_exception(type(e)).add_trace_level(self.trace_info) from None
+                raise PropagatingCompilerException(
+                    "MACRO_IMPORT failed due to the normal import failing", *e.args
+                ).set_underlying_exception(type(e)).add_trace_level(
+                    self.trace_info
+                ) from None
 
             bytecodemanipulation.assembler.hook.LET_PROPAGATE_EXCEPTIONS_THROUGH = prev
 

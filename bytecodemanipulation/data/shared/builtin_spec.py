@@ -25,9 +25,7 @@ def specialize_typing_cast(container: SpecializationContainer):
             data_type,
             Instruction(Opcodes.CALL_FUNCTION, arg=2),
             Instruction(Opcodes.POP_JUMP_IF_TRUE, nop),
-            Instruction(
-                Opcodes.LOAD_CONST, "expected data type '"
-            ),
+            Instruction(Opcodes.LOAD_CONST, "expected data type '"),
             Instruction(Opcodes.LOAD_CONST, repr),
             data_type,
             Instruction(Opcodes.CALL_FUNCTION, arg=1),

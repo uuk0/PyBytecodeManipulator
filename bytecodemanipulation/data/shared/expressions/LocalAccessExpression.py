@@ -33,7 +33,12 @@ class LocalAccessExpression(AbstractAccessExpression):
 
         if value not in scope.filled_locals:
             # todo: why is it warning for some stream tests?
-            warnings.warn(SyntaxWarning(f"Expected local variable '{value}' to be set ahead of time, but might be not set (cannot infer for custom jumps)"), stacklevel=2)
+            warnings.warn(
+                SyntaxWarning(
+                    f"Expected local variable '{value}' to be set ahead of time, but might be not set (cannot infer for custom jumps)"
+                ),
+                stacklevel=2,
+            )
 
         return [
             Instruction.create_with_token(
@@ -50,7 +55,9 @@ class LocalAccessExpression(AbstractAccessExpression):
         scope.filled_locals.add(self.prefix + value)
 
         return [
-            Instruction.create_with_token(self.token, Opcodes.STORE_FAST, self.prefix + value)
+            Instruction.create_with_token(
+                self.token, Opcodes.STORE_FAST, self.prefix + value
+            )
         ]
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:

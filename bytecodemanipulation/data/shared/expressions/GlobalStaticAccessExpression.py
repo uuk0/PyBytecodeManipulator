@@ -25,7 +25,9 @@ class GlobalStaticAccessExpression(AbstractAccessExpression):
             value = global_dict.get(key)
 
         return [
-            Instruction.create_with_token(tuple(self.name.get_tokens())[0], Opcodes.LOAD_CONST, value)
+            Instruction.create_with_token(
+                tuple(self.name.get_tokens())[0], Opcodes.LOAD_CONST, value
+            )
         ]
 
     def emit_store_bytecodes(

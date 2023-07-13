@@ -7,7 +7,10 @@ from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.AbstractBase import StaticIdentifier
 from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
@@ -84,22 +87,33 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                         "Expected <identifier> after '*'"
                         if not star_star
                         else "Expected <identifier> after '**'"
-                    ).add_trace_level(scope.get_trace_info().with_token(star, star_star))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(star, star_star)
+                    )
 
                 break
 
             if not star:
                 if equal_sign := parser.try_consume(SpecialToken("=")):
                     default_value = parser.try_parse_data_source(
-                        allow_primitives=True, include_bracket=False, allow_op=True, scope=scope
+                        allow_primitives=True,
+                        include_bracket=False,
+                        allow_op=True,
+                        scope=scope,
                     )
 
                     if default_value is None:
                         raise PropagatingCompilerException(
                             "expected <expression> after '='"
-                        ).add_trace_level(scope.get_trace_info().with_token(list(identifier.get_tokens()), equal_sign, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(
+                                list(identifier.get_tokens()), equal_sign, parser[0]
+                            )
+                        )
 
-                    arg = AbstractCallAssembly.KwArg(identifier, default_value, token=identifier)
+                    arg = AbstractCallAssembly.KwArg(
+                        identifier, default_value, token=identifier
+                    )
 
             if not arg:
                 if star_star:
@@ -119,7 +133,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         if not parser.try_consume(SpecialToken(")")):
             raise PropagatingCompilerException(
                 "expected ')' matching '(' in function definition"
-            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+            ).add_trace_level(
+                scope.get_trace_info().with_token(opening_bracket, parser[0])
+            )
 
         if expr := parser.try_consume(SpecialToken("<")):
             if bound_variables:
@@ -131,15 +147,17 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 "Respect ordering (got '<' before 'args'): DEF ['name'] ['captured'] ('args') [-> 'target'] { 'code' }"
             ).add_trace_level(scope.get_trace_info().with_token(expr))
 
-        if (arrow_0 := parser.try_consume(SpecialToken("-"))) and (arrow_1 := parser.try_consume(
-            SpecialToken(">")
-        )):
+        if (arrow_0 := parser.try_consume(SpecialToken("-"))) and (
+            arrow_1 := parser.try_consume(SpecialToken(">"))
+        ):
             target = parser.try_consume_access_to_value(scope=scope)
 
             if target is None:
                 raise PropagatingCompilerException(
                     "expected <expression> after '->' as target"
-                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0])
+                )
 
         elif arrow_0:
             raise PropagatingCompilerException(
@@ -152,7 +170,10 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         try:
             body = parser.parse_body(scope=scope)
         except PropagatingCompilerException as e:
-            e.add_trace_level(scope.get_trace_info().with_token(list(func_name.get_tokens())), message=f"during parsing function definition {func_name(scope)}")
+            e.add_trace_level(
+                scope.get_trace_info().with_token(list(func_name.get_tokens())),
+                message=f"during parsing function definition {func_name(scope)}",
+            )
             raise e
 
         if expr := parser.try_consume(SpecialToken("-")):
@@ -160,7 +181,15 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 "Respect ordering (got '-' before 'args'): DEF ['name'] ['captured'] ('args') [-> 'target'] { 'code' }"
             ).add_trace_level(scope.get_trace_info().with_token(expr))
 
-        return cls(func_name, bound_variables, args, body, target, prefix=prefix, trace_info=scope.get_trace_info().with_token(list(func_name.get_tokens())))
+        return cls(
+            func_name,
+            bound_variables,
+            args,
+            body,
+            target,
+            prefix=prefix,
+            trace_info=scope.get_trace_info().with_token(list(func_name.get_tokens())),
+        )
 
     def __init__(
         self,

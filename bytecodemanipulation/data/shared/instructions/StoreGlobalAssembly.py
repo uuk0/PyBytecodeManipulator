@@ -42,9 +42,9 @@ class AbstractStoreGlobalAssembly(AbstractAssemblyInstruction, abc.ABC):
         name = parser.try_consume(IdentifierToken)
 
         if name is None:
-            raise PropagatingCompilerException(
-                "expected <name>"
-            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
+            raise PropagatingCompilerException("expected <name>").add_trace_level(
+                scope.get_trace_info().with_token(parser[0])
+            )
 
         source = parser.try_parse_data_source(scope=scope)
 

@@ -3,16 +3,29 @@ import types
 import typing
 import simplejson
 
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import ArgRealValueSetter
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import ExtendedArgInserter
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import InstructionAssembler
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    ArgRealValueSetter,
+)
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    ExtendedArgInserter,
+)
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    InstructionAssembler,
+)
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import JumpArgAssembler
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import LinearStreamGenerator
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import ForIterTransformer
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    LinearStreamGenerator,
+)
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    ForIterTransformer,
+)
 from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.ExceptionTable import ExceptionTable
 from bytecodemanipulation.opcodes.Instruction import Instruction
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractOpcodeTransformerStage, InstructionDecoder
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    AbstractOpcodeTransformerStage,
+    InstructionDecoder,
+)
 import bytecodemanipulation.data_loader
 from bytecodemanipulation.opcodes.OpcodeReplacer import IntermediateToRawOpcodeTransform
 from bytecodemanipulation.opcodes.OpcodeReplacer import RawToIntermediateOpcodeTransform
@@ -23,34 +36,46 @@ class LinearCodeConstraintViolationException(Exception):
 
 
 class MutableFunction:
-    INSTRUCTION_DECODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
+    INSTRUCTION_DECODING_PIPE: typing.List[
+        typing.Type[AbstractOpcodeTransformerStage]
+    ] = [
         InstructionDecoder,
         RawToIntermediateOpcodeTransform,
     ]
 
     if sys.version_info[1] == 10:
-        from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import ExceptionInstructionDecoder
-        from bytecodemanipulation.data.v3_10.LocationInformationHandler import LocationInformationDecoder
+        from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import (
+            ExceptionInstructionDecoder,
+        )
+        from bytecodemanipulation.data.v3_10.LocationInformationHandler import (
+            LocationInformationDecoder,
+        )
 
         INSTRUCTION_DECODING_PIPE += [
             ExceptionInstructionDecoder,
             LocationInformationDecoder,
         ]
 
-    INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
+    INSTRUCTION_ENCODING_PIPE: typing.List[
+        typing.Type[AbstractOpcodeTransformerStage]
+    ] = [
         ForIterTransformer,  # todo: how can we remove this hack?
         IntermediateToRawOpcodeTransform,
     ]
 
     if sys.version_info[1] == 10:
-        from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import ExceptionInstructionEncoder
+        from bytecodemanipulation.data.v3_10.ExceptionInstructionCodec import (
+            ExceptionInstructionEncoder,
+        )
 
         INSTRUCTION_ENCODING_PIPE += [
             ExceptionInstructionEncoder,
         ]
 
     elif sys.version_info[1] == 11:
-        from bytecodemanipulation.opcodes.CacheEntryCreation import CacheInstructionCreator
+        from bytecodemanipulation.opcodes.CacheEntryCreation import (
+            CacheInstructionCreator,
+        )
         from bytecodemanipulation.opcodes.OpcodeReplacer import PrecallInserterTransform
 
         INSTRUCTION_ENCODING_PIPE += [
@@ -66,7 +91,9 @@ class MutableFunction:
     ]
 
     if sys.version_info[1] == 10:
-        from bytecodemanipulation.data.v3_10.LocationInformationHandler import LocationInformationEncoder
+        from bytecodemanipulation.data.v3_10.LocationInformationHandler import (
+            LocationInformationEncoder,
+        )
 
         INSTRUCTION_ENCODING_PIPE += [
             LocationInformationEncoder,
@@ -119,7 +146,7 @@ class MutableFunction:
 
             self.function_name = obj.co_name
             self.positional_only_argument_count = obj.co_posonlyargcount
-            self.argument_names = list(obj.co_varnames[:self.argument_count])
+            self.argument_names = list(obj.co_varnames[: self.argument_count])
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
 
@@ -135,7 +162,7 @@ class MutableFunction:
 
             self.function_name = obj.co_name
             self.positional_only_argument_count = obj.co_posonlyargcount
-            self.argument_names = list(obj.co_varnames[:self.argument_count])
+            self.argument_names = list(obj.co_varnames[: self.argument_count])
 
             # self.exception_table = bytearray(obj.co_exceptiontable)
 
@@ -158,7 +185,9 @@ class MutableFunction:
         instance = self.copy()
 
         copied = {}
-        instance._instruction_entry_point = instance._instruction_entry_point.copy_deep(copied)
+        instance._instruction_entry_point = instance._instruction_entry_point.copy_deep(
+            copied
+        )
 
         return instance
 
@@ -215,7 +244,7 @@ class MutableFunction:
                 print(len(builder.shared_variable_names))
 
                 for i in range(0, len(self.raw_code), 2):
-                    frag = self.raw_code[i:i+2]
+                    frag = self.raw_code[i : i + 2]
                     print(tuple(frag))
 
                 self.walk_instructions(lambda instr: print(instr))
@@ -262,7 +291,9 @@ class MutableFunction:
 
         self.walk_instructions(reset)
 
-        visiting = {self.get_instruction_entry_point()} | set(self.exception_table.table.keys())
+        visiting = {self.get_instruction_entry_point()} | set(
+            self.exception_table.table.keys()
+        )
         visiting_2 = set()
         visited = set()
 
@@ -385,7 +416,11 @@ class MutableFunction:
 
         return stack_size
 
-    def walk_instructions(self, callback: typing.Callable[[Instruction], None], include_exception_entries=True):
+    def walk_instructions(
+        self,
+        callback: typing.Callable[[Instruction], None],
+        include_exception_entries=True,
+    ):
         """
         Walks the graph of instructions, visiting all "reachable" instructions
         in the function
@@ -403,7 +438,7 @@ class MutableFunction:
 
         if include_exception_entries:
             visiting |= set(self.exception_table.table.keys())
-        
+
         visited = set()
 
         while visiting:
@@ -425,7 +460,11 @@ class MutableFunction:
             if instr.has_jump():
                 visiting.add(instr.arg_value)
 
-    def walk_instructions_stable(self, callback: typing.Callable[[Instruction], None], include_exception_entries=True):
+    def walk_instructions_stable(
+        self,
+        callback: typing.Callable[[Instruction], None],
+        include_exception_entries=True,
+    ):
         """
         "Stable" variant of walk_instructions()
         Allows <param>.insert_after() to be called without recursion happening
@@ -490,7 +529,9 @@ class MutableFunction:
                 instr.next_instruction.previous_instructions.append(instr)
 
             if instr.has_jump():
-                typing.cast(Instruction, instr.arg_value).previous_instructions.append(instr)
+                typing.cast(Instruction, instr.arg_value).previous_instructions.append(
+                    instr
+                )
 
         self.walk_instructions(clear)
         self.walk_instructions(callback)
@@ -522,7 +563,9 @@ class MutableFunction:
     def set_instruction_entry_point(self, entry_point: Instruction):
         self._instruction_entry_point = entry_point
 
-    instruction_entry_point = property(get_instruction_entry_point, set_instruction_entry_point)
+    instruction_entry_point = property(
+        get_instruction_entry_point, set_instruction_entry_point
+    )
 
     def assemble_fast(self, instructions: typing.List[Instruction]):
         """

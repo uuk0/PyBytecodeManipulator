@@ -9,14 +9,16 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 @Parser.register
 class IFAssembly(AbstractIFAssembly):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
-        label_name = ":".join(e(scope) for e in self.label_name) if self.label_name is not None else None
+        label_name = (
+            ":".join(e(scope) for e in self.label_name)
+            if self.label_name is not None
+            else None
+        )
 
         if label_name is None:
             end = Instruction(Opcodes.NOP)
         else:
-            end = Instruction(
-                Opcodes.BYTECODE_LABEL, label_name + ":END"
-            )
+            end = Instruction(Opcodes.BYTECODE_LABEL, label_name + ":END")
 
         try:
             value = self.source.evaluate_static_value(scope)
@@ -37,11 +39,7 @@ class IFAssembly(AbstractIFAssembly):
                 + (
                     []
                     if label_name is None
-                    else [
-                        Instruction(
-                            Opcodes.BYTECODE_LABEL, label_name
-                        )
-                    ]
+                    else [Instruction(Opcodes.BYTECODE_LABEL, label_name)]
                 )
                 + self.body.emit_bytecodes(function, scope)
                 + [end]
@@ -49,30 +47,6 @@ class IFAssembly(AbstractIFAssembly):
 
         if value:
             return (
-                    (
-                        []
-                        if label_name is None
-                        else [
-                            Instruction(
-                                Opcodes.BYTECODE_LABEL,
-                                label_name + ":HEAD",
-                            )
-                        ]
-                    )
-                    + (
-                        []
-                        if label_name is None
-                        else [
-                            Instruction(
-                                Opcodes.BYTECODE_LABEL, label_name
-                            )
-                        ]
-                    )
-                    + self.body.emit_bytecodes(function, scope)
-                    + [end]
-            )
-
-        return (
                 (
                     []
                     if label_name is None
@@ -86,11 +60,27 @@ class IFAssembly(AbstractIFAssembly):
                 + (
                     []
                     if label_name is None
-                    else [
-                        Instruction(
-                            Opcodes.BYTECODE_LABEL, label_name
-                        )
-                    ]
+                    else [Instruction(Opcodes.BYTECODE_LABEL, label_name)]
                 )
+                + self.body.emit_bytecodes(function, scope)
                 + [end]
+            )
+
+        return (
+            (
+                []
+                if label_name is None
+                else [
+                    Instruction(
+                        Opcodes.BYTECODE_LABEL,
+                        label_name + ":HEAD",
+                    )
+                ]
+            )
+            + (
+                []
+                if label_name is None
+                else [Instruction(Opcodes.BYTECODE_LABEL, label_name)]
+            )
+            + [end]
         )

@@ -2,7 +2,10 @@ import typing
 from abc import ABC
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
-from bytecodemanipulation.assembler.AbstractBase import IIdentifierAccessor, StaticIdentifier
+from bytecodemanipulation.assembler.AbstractBase import (
+    IIdentifierAccessor,
+    StaticIdentifier,
+)
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
@@ -17,7 +20,10 @@ from bytecodemanipulation.assembler.Lexer import SpecialToken
 from bytecodemanipulation.data.shared.expressions.MacroAccessExpression import (
     MacroAccessExpression,
 )
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.parser import AbstractExpression
 
 
@@ -41,7 +47,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             self,
             source: typing.Union["AbstractAccessExpression", IIdentifierAccessor],
             is_dynamic: bool = False,
-            token: AbstractToken =None,
+            token: AbstractToken = None,
         ):
             self.source = source
             self.is_dynamic = is_dynamic
@@ -178,7 +184,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
                     raise PropagatingCompilerException(
                         "Must not be <call assembly> (internal error)"
-                    ).add_trace_level(scope.get_trace_info().with_token(list(call_target.get_tokens())))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(
+                            list(call_target.get_tokens())
+                        )
+                    )
 
             else:
                 name = [parser.consume(IdentifierToken, err_arg=scope)]
@@ -190,7 +200,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     if part is None:
                         raise PropagatingCompilerException(
                             "<identifier> expected after '.'"
-                        ).add_trace_level(scope.get_trace_info().with_token(expr, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(expr, parser[0])
+                        )
 
                     name.append(part)
 
@@ -208,7 +220,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         if not (opening_bracket := parser.try_consume(SpecialToken("("))):
             raise PropagatingCompilerException(
                 "Expected '(' after <call target>"
-            ).add_trace_level(scope.get_trace_info().with_token(parser[0], list(call_target.get_tokens())))
+            ).add_trace_level(
+                scope.get_trace_info().with_token(
+                    parser[0], list(call_target.get_tokens())
+                )
+            )
 
         has_seen_keyword_arg = False
 
@@ -216,7 +232,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             parser.save()
 
             identifier = parser.try_parse_identifier_like()
-            is_keyword = identifier and parser.try_inspect() == SpecialToken("=") and not is_macro
+            is_keyword = (
+                identifier
+                and parser.try_inspect() == SpecialToken("=")
+                and not is_macro
+            )
 
             if is_keyword:
                 parser.discard_save()
@@ -261,7 +281,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
             elif not has_seen_keyword_arg:
-                if is_macro and ((inner_opening_bracket := parser[0]) == SpecialToken("[")):
+                if is_macro and (
+                    (inner_opening_bracket := parser[0]) == SpecialToken("[")
+                ):
                     parser.consume(SpecialToken("["))
 
                     to_be_stored_at = []
@@ -273,7 +295,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         if base is None:
                             raise PropagatingCompilerException(
                                 "Expected <expression> after ','"
-                            ).add_trace_level(scope.get_trace_info().with_token(inner_opening_bracket, parser[0]))
+                            ).add_trace_level(
+                                scope.get_trace_info().with_token(
+                                    inner_opening_bracket, parser[0]
+                                )
+                            )
 
                         to_be_stored_at.append(base)
 
@@ -283,7 +309,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     if not parser.try_consume(SpecialToken("]")):
                         raise PropagatingCompilerException(
                             "Expected ']' closing '['"
-                        ).add_trace_level(scope.get_trace_info().with_token(inner_opening_bracket, parser[0]))
+                        ).add_trace_level(
+                            scope.get_trace_info().with_token(
+                                inner_opening_bracket, parser[0]
+                            )
+                        )
 
                     expr = parser.parse_body(scope=scope)
                     expr.to_be_stored_at = to_be_stored_at
@@ -300,7 +330,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                         parser.try_consume(SpecialToken("?"))
                     )
 
-                    expr = parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
+                    expr = parser.try_consume_access_to_value(
+                        allow_primitives=True, scope=scope
+                    )
 
                     if expr is None:
                         if parser[0] == SpecialToken(")"):
@@ -323,10 +355,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         if bracket is None and not parser.try_consume(SpecialToken(")")):
             raise PropagatingCompilerException(
                 "Expected ')' matching '('"
-            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, parser[0]))
+            ).add_trace_level(
+                scope.get_trace_info().with_token(opening_bracket, parser[0])
+            )
 
         if allow_target and (arrow_0 := parser.try_consume(SpecialToken("-"))):
-
             if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
                 raise PropagatingCompilerException(
                     "Expected '>' after '-' to fill out <target> expression"
@@ -341,7 +374,16 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         else:
             target = None
 
-        return cls(call_target, args, target, is_partial, is_macro, trace_info=scope.get_trace_info().with_token(list(call_target.get_tokens())))
+        return cls(
+            call_target,
+            args,
+            target,
+            is_partial,
+            is_macro,
+            trace_info=scope.get_trace_info().with_token(
+                list(call_target.get_tokens())
+            ),
+        )
 
     def __init__(
         self,

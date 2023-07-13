@@ -82,7 +82,6 @@ class SpecializationContainer:
     def replace_with_constant_value(
         self, value: object, side_effect: typing.Callable[[...], None] = None
     ):
-
         if side_effect is None:
             for arg in self.arg_descriptors:
                 arg.discard()
@@ -262,7 +261,9 @@ class SpecializationContainer:
 
                 call.insert_after(
                     Instruction.create_with_same_info(call, Opcodes.POP_TOP),
-                    Instruction.create_with_same_info(call, Opcodes.LOAD_CONST, self.constant_value[0]),
+                    Instruction.create_with_same_info(
+                        call, Opcodes.LOAD_CONST, self.constant_value[0]
+                    ),
                 )
 
             else:

@@ -55,7 +55,7 @@ class CodeObjectBuilder:
 
         self.cell_variables.append(name)
         return len(self.cell_variables) - 1
-    
+
     def reserve_free_name(self, name: str) -> int:
         assert isinstance(name, str)
 
@@ -79,4 +79,3 @@ class CodeObjectBuilder:
             return self.constants.index(constant)
         self.constants.append(constant)
         return len(self.constants) - 1
-

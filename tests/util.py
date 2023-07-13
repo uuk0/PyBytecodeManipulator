@@ -56,7 +56,10 @@ def compare_optimized_results(
 
     if eq:
         eq = all(
-            a.lossy_eq(b) for a, b in zip(builder_1.temporary_instructions, builder_2.temporary_instructions)
+            a.lossy_eq(b)
+            for a, b in zip(
+                builder_1.temporary_instructions, builder_2.temporary_instructions
+            )
         )
 
     if not eq:

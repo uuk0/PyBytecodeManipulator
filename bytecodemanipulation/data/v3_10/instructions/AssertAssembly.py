@@ -27,9 +27,7 @@ class AssertAssembly(AbstractAssertAssembly):
         if self.text:
             bytecode += self.text.emit_bytecodes(function, scope)
         else:
-            bytecode += [
-                Instruction(Opcodes.LOAD_CONST, "assertion failed")
-            ]
+            bytecode += [Instruction(Opcodes.LOAD_CONST, "assertion failed")]
 
         bytecode += [
             Instruction(Opcodes.LOAD_CONST, AssertionError),

@@ -1490,7 +1490,8 @@ CALL MACRO test_macro_capture_arg_in_inner_func_2({ RETURN 2 })
     def test_macro_func_definition_keyword_expansion(self):
         @apply_operations
         def target():
-            assembly("""
+            assembly(
+                """
 MACRO test_macro_func_definition_keyword_expansion(keyword) -> ANY
 {
     DEF export(&keyword=0)
@@ -1503,7 +1504,8 @@ MACRO test_macro_func_definition_keyword_expansion(keyword) -> ANY
 
 CALL MACRO test_macro_func_definition_keyword_expansion("key") -> $func
 RETURN $func
-""")
+"""
+            )
             return 0
 
         inter = target()
@@ -1515,7 +1517,8 @@ RETURN $func
     def test_macro_func_call_keyword_expansion(self):
         @apply_operations
         def target():
-            assembly("""
+            assembly(
+                """
 
 DEF xy(a=0)
 {
@@ -1528,7 +1531,8 @@ MACRO test_macro_func_call_keyword_expansion(keyword)
 }
 
 CALL MACRO test_macro_func_call_keyword_expansion("a")
-""")
+"""
+            )
             return 0
 
         self.assertEqual(target(), 4)
@@ -1536,7 +1540,8 @@ CALL MACRO test_macro_func_call_keyword_expansion("a")
     def test_macro_paste_parameterized_code_block_1(self):
         @apply_operations
         def target():
-            assembly("""    
+            assembly(
+                """    
 
 MACRO test_macro_paste_parameterized_code_block_1(code CODE_BLOCK[1])
 {
@@ -1545,7 +1550,8 @@ MACRO test_macro_paste_parameterized_code_block_1(code CODE_BLOCK[1])
 }
 
 CALL MACRO test_macro_paste_parameterized_code_block_1([$local] { RETURN $local })
-        """)
+        """
+            )
             return 0
 
         self.assertEqual(target(), 10)
@@ -1553,7 +1559,8 @@ CALL MACRO test_macro_paste_parameterized_code_block_1([$local] { RETURN $local 
     def test_macro_paste_parameterized_code_block_non_static(self):
         @apply_operations
         def target():
-            assembly("""    
+            assembly(
+                """    
 
 MACRO test_macro_paste_parameterized_code_block_non_static(code CODE_BLOCK[1])
 {
@@ -1562,7 +1569,8 @@ MACRO test_macro_paste_parameterized_code_block_non_static(code CODE_BLOCK[1])
 }
 
 CALL MACRO test_macro_paste_parameterized_code_block_non_static([$local] { LOAD 0 -> $|var\nRETURN $local })
-        """)
+        """
+            )
             return -1
 
         dis.dis(target)
@@ -1572,7 +1580,8 @@ CALL MACRO test_macro_paste_parameterized_code_block_non_static([$local] { LOAD 
     def test_macro_paste_parameterized_code_block_static(self):
         @apply_operations
         def target():
-            assembly("""    
+            assembly(
+                """    
 
 MACRO test_macro_paste_parameterized_code_block_static(code CODE_BLOCK[1])
 {
@@ -1581,7 +1590,8 @@ MACRO test_macro_paste_parameterized_code_block_static(code CODE_BLOCK[1])
 }
 
 CALL MACRO test_macro_paste_parameterized_code_block_static([$local] { LOAD 0 -> $|var\nRETURN $local })
-        """)
+        """
+            )
             return 0
 
         dis.dis(target)
@@ -1881,8 +1891,10 @@ class TestAssert(TestCase):
 
     def test_assert_static_fail_message_invalid(self):
         def target():
-            assembly("""
-ASSERT_STATIC 0 $x""")
+            assembly(
+                """
+ASSERT_STATIC 0 $x"""
+            )
 
         try:
             apply_operations(target)
@@ -1899,7 +1911,12 @@ ASSERT_STATIC 0 $x""")
         try:
             apply_operations(target)
         except SyntaxError as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",
+                ),
+            )
 
     def test_assert_static_macro_static_parameter(self):
         @apply_operations
@@ -1940,7 +1957,8 @@ class TestIfLabel(TestCase):
     def test_if_label_jump(self):
         @apply_operations
         def target(x):
-            assembly("""
+            assembly(
+                """
 
 IF $x 'label' 
 {
@@ -1949,7 +1967,8 @@ IF $x 'label'
 }
 
 RETURN 1
-""")
+"""
+            )
 
         self.assertEqual(target(0), 1)
         self.assertEqual(target(1), 1)
@@ -1957,21 +1976,30 @@ RETURN 1
     def test_version_constants(self):
         @apply_operations
         def target():
-            assembly("""
+            assembly(
+                """
 
 RETURN ~PY_VERSION
-        """)
+        """
+            )
 
-        self.assertEqual(target(), sys.version_info.major * 100 + sys.version_info.minor)
+        self.assertEqual(
+            target(), sys.version_info.major * 100 + sys.version_info.minor
+        )
 
 
 class TestStaticIf(TestCase):
     def test_static_version_check(self):
         version_id = sys.version_info.major * 100 + sys.version_info.minor
 
-        scope = {"__file__": __file__, "apply_operations": apply_operations, "assembly": assembly}
+        scope = {
+            "__file__": __file__,
+            "apply_operations": apply_operations,
+            "assembly": assembly,
+        }
 
-        exec(f'''
+        exec(
+            f'''
 @apply_operations
 def target():
     assembly("""
@@ -1980,7 +2008,9 @@ IF OP(~PY_VERSION == {version_id})
     RETURN 1
 }}
 RETURN 0
-""")''', scope)
+""")''',
+            scope,
+        )
 
         target = scope["target"]
 
@@ -1992,7 +2022,8 @@ class TestFunctionDefinitionLocalCapture(TestCase):
     def test_simple(self):
         @apply_operations
         def target():
-            assembly("""
+            assembly(
+                """
 LOAD 10 -> $test
 
 DEF func<test>()
@@ -2001,14 +2032,16 @@ DEF func<test>()
 }
 
 RETURN $func()
-""")
+"""
+            )
 
         self.assertEqual(target(), 10)
 
     def test_write(self):
         @apply_operations
         def target():
-            assembly("""
+            assembly(
+                """
 LOAD 0 -> $test            
 
 DEF func<test>()
@@ -2023,7 +2056,8 @@ LOAD $func() -> $result
 # ASSERT OP ($test == 10)  # wont work as we currently cannot write back outside
 ASSERT OP ($test == 0) "old implementation limitation lifted?"
 RETURN $result 
-""")
+"""
+            )
 
         dis.dis(target)
 
@@ -2032,7 +2066,8 @@ RETURN $result
     def test_change_after_create(self):
         @apply_operations
         def target():
-            assembly("""
+            assembly(
+                """
 LOAD 0 -> $test            
 
 DEF func<test>()
@@ -2046,7 +2081,8 @@ LOAD $func() -> $result
 # ASSERT OP ($test == 10)  # wont work as we currently cannot write back outside
 ASSERT OP ($test == 1) "old implementation limitation lifted?"
 RETURN $result 
-""")
+"""
+            )
 
         dis.dis(target)
 
@@ -2060,7 +2096,8 @@ class TestPropagateException(TestCase):
     def test_class_add_info_to_exception(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 CLASS xy {
     LOAD 10 -> 20
 }
@@ -2072,117 +2109,156 @@ CLASS xy {
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
 
     def test_class_add_info_to_exception_emitting(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 CLASS xy {
     ASSERT_STATIC $test
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
 
     def test_function_add_info_to_exception(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 DEF xy() {
     LOAD 10 -> 20
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
 
     def test_function_add_info_to_exception_emitting(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 DEF xy() {
     ASSERT_STATIC $test
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
 
     def test_namespace_add_info_to_exception(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 NAMESPACE xy {
     LOAD 10 -> 20
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args,
-                             ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
 
     def test_namespace_add_info_to_exception_emitting(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 NAMESPACE xy {
     ASSERT_STATIC $test
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, (
-            "Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <static evaluate-able> at 'expression', got 'LocalAccessExpression' as type",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
 
     def test_macro_decl_add_info_to_exception(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 MACRO xy_1() {
     LOAD 10 -> 20
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <newline> or ';' after assembly instruction, got '20' (IntegerToken)",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
             self.assertEqual(e.levels[0][0].tokens[0].text, "20")
             self.assertEqual(e.levels[1][0].tokens[0].text, "xy_1")
@@ -2190,19 +2266,25 @@ MACRO xy_1() {
     def test_macro_decl_add_info_to_exception_emitting(self):
         def target():
             def test():
-                assembly("""
+                assembly(
+                    """
 MACRO xy_2() {
     ASSERT_STATIC $test
 }
 """
-                         )
+                )
 
             apply_inline_assemblies(test, unwrap_exceptions=False)
 
         try:
             target()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <static evaluate-able> at 'expression', got LocalAccessExpression as type",
+                ),
+            )
             self.assertEqual(len(e.levels), 2)
             self.assertEqual(e.levels[0][0].tokens[0].text, "20")
             self.assertEqual(e.levels[1][0].tokens[0].text, "xy_1")

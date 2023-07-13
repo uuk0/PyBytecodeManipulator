@@ -15,7 +15,12 @@ from bytecodemanipulation.assembler.AbstractBase import (
 
 
 class AttributeAccessExpression(AbstractAccessExpression):
-    def __init__(self, root: AbstractAccessExpression, name: IIdentifierAccessor | str, trace_info=None):
+    def __init__(
+        self,
+        root: AbstractAccessExpression,
+        name: IIdentifierAccessor | str,
+        trace_info=None,
+    ):
         self.root = root
         self.name = name if not isinstance(name, str) else StaticIdentifier(name)
         self.trace_info = trace_info
@@ -60,9 +65,7 @@ class AttributeAccessExpression(AbstractAccessExpression):
         )
 
     def get_tokens(self) -> typing.Iterable[AbstractToken]:
-        return (
-            list(self.root.get_tokens()) + list(self.name.get_tokens())
-        )
+        return list(self.root.get_tokens()) + list(self.name.get_tokens())
 
     def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
         raise NotImplementedError

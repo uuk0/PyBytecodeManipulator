@@ -30,7 +30,11 @@ class LabelAssembly(AbstractAssemblyInstruction):
         return cls(name)
 
     def __init__(self, name: typing.List[IIdentifierAccessor] | str):
-        self.name = name if not isinstance(name, str) else [StaticIdentifier(e) for e in name.split(":")]
+        self.name = (
+            name
+            if not isinstance(name, str)
+            else [StaticIdentifier(e) for e in name.split(":")]
+        )
 
     def __repr__(self):
         return f"LABEL({self.name})"

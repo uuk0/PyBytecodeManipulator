@@ -4,12 +4,20 @@ from bytecodemanipulation.assembler.target import apply_operations
 from bytecodemanipulation.assembler.target import assembly
 from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
 from bytecodemanipulation.assembler.Parser import Parser
-from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
-from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
+    ConstantAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
+    LocalAccessExpression,
+)
 
-from bytecodemanipulation.data.shared.expressions.AttributeAccessExpression import AttributeAccessExpression
+from bytecodemanipulation.data.shared.expressions.AttributeAccessExpression import (
+    AttributeAccessExpression,
+)
 
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
 from bytecodemanipulation.data.shared.instructions.LoadAssembly import LoadAssembly
 
 
@@ -121,6 +129,11 @@ class TestAssembly(TestCase):
         try:
             apply_operations(target, unwrap_exceptions=False)
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ("Expected <static evaluate-able> at 'expression', got 'AttributeAccessExpression' as type",))
+            self.assertEqual(
+                e.args,
+                (
+                    "Expected <static evaluate-able> at 'expression', got 'AttributeAccessExpression' as type",
+                ),
+            )
         else:
             self.fail()

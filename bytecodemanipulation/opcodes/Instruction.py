@@ -55,7 +55,13 @@ class Instruction:
         raise NotImplementedError("not bound!")
 
     @classmethod
-    def create_with_same_info(cls, instruction: "Instruction", opname_or_code: int | str, arg_value: object = None, arg: int = None) -> "Instruction":
+    def create_with_same_info(
+        cls,
+        instruction: "Instruction",
+        opname_or_code: int | str,
+        arg_value: object = None,
+        arg: int = None,
+    ) -> "Instruction":
         instr = cls(opname_or_code, arg_value, arg)
         instr.offset = instruction.offset
         instr.source_location = instruction.source_location
@@ -343,7 +349,11 @@ class Instruction:
         while self.next_instruction is not None:
             assert isinstance(self.next_instruction, Instruction)
 
-            if self.next_instruction.opcode in (Opcodes.NOP, Opcodes.CACHE, Opcodes.PRECALL):
+            if self.next_instruction.opcode in (
+                Opcodes.NOP,
+                Opcodes.CACHE,
+                Opcodes.PRECALL,
+            ):
                 self.next_instruction = self.next_instruction.next_instruction
                 continue
 
@@ -395,7 +405,7 @@ class Instruction:
     def trace_stack_position(
         self, stack_position: int
     ) -> typing.Iterator["Instruction"]:
-        for instr in self.previous_instructions: # self.get_priorities_previous():
+        for instr in self.previous_instructions:  # self.get_priorities_previous():
             yield from instr._trace_stack_position(stack_position, set(), self)
 
     def get_priorities_previous(self) -> typing.List["Instruction"]:
@@ -753,7 +763,9 @@ class Instruction:
 
         return self
 
-    def insert_after_arg(self, *instructions: "Instruction" | typing.List["Instruction"]):
+    def insert_after_arg(
+        self, *instructions: "Instruction" | typing.List["Instruction"]
+    ):
         if not self.has_jump():
             raise ValueError("expected <jump>")
 
@@ -775,7 +787,9 @@ class Instruction:
         self.arg_value.insert_after(instructions[1:])
         return self
 
-    def insert_before(self, *instructions: "Instruction" | typing.List["Instruction"]) -> "Instruction":
+    def insert_before(
+        self, *instructions: "Instruction" | typing.List["Instruction"]
+    ) -> "Instruction":
         if not instructions:
             return self
 

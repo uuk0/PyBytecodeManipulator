@@ -104,7 +104,9 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
 
     INCLUDE_LINE_INFO = True
 
-    def __init__(self, text: str, initial_line_offset=0, module_file: str | None = None):
+    def __init__(
+        self, text: str, initial_line_offset=0, module_file: str | None = None
+    ):
         super().__init__()
         self.text = text
         self.old_line_number = 1

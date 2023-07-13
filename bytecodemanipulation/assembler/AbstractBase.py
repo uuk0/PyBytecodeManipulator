@@ -136,7 +136,9 @@ class ParsingScope:
         instance.global_scope = self.global_scope
         instance.scope_path = self.scope_path.copy()
         instance.module_file = self.module_file
-        instance.macro_parameter_namespace_stack = [e.copy() for e in self.macro_parameter_namespace_stack]
+        instance.macro_parameter_namespace_stack = [
+            e.copy() for e in self.macro_parameter_namespace_stack
+        ]
 
         if sub_scope_name is not None:
             if isinstance(sub_scope_name, str):
@@ -169,14 +171,28 @@ class ParsingScope:
         scope[name[-1]] = data
 
     def lookup_macro_parameter(self, name: str, start: int = 0):
-        for space in reversed(self.macro_parameter_namespace_stack[:-start] if start != 0 else self.macro_parameter_namespace_stack):
+        for space in reversed(
+            self.macro_parameter_namespace_stack[:-start]
+            if start != 0
+            else self.macro_parameter_namespace_stack
+        ):
             if name in space:
                 return space[name]
 
         raise KeyError(name)
 
-    def lookup_macro_parameter_with_level(self, name: str, start: int = 0) -> typing.Tuple[typing.Any, int]:
-        for i, space in enumerate(list(reversed(self.macro_parameter_namespace_stack[:-start] if start != 0 else self.macro_parameter_namespace_stack))):
+    def lookup_macro_parameter_with_level(
+        self, name: str, start: int = 0
+    ) -> typing.Tuple[typing.Any, int]:
+        for i, space in enumerate(
+            list(
+                reversed(
+                    self.macro_parameter_namespace_stack[:-start]
+                    if start != 0
+                    else self.macro_parameter_namespace_stack
+                )
+            )
+        ):
             if name in space:
                 return space[name], i
 
@@ -332,7 +348,9 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         return self._check_value(scope, value)
 
     def _check_value(self, scope, value, level=1):
-        from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
+        from bytecodemanipulation.assembler.syntax_errors import (
+            PropagatingCompilerException,
+        )
         from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
             ConstantAccessExpression,
         )
@@ -345,6 +363,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
             LocalAccessExpression,
         )
+
         if isinstance(value, ConstantAccessExpression):
             if not isinstance(value.value, str):
                 raise PropagatingCompilerException(
@@ -363,13 +382,15 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         ):
             return value.get_name(scope)
 
-        from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import MacroParameterAccessExpression
+        from bytecodemanipulation.data.shared.expressions.MacroParameterAcessExpression import (
+            MacroParameterAccessExpression,
+        )
 
         if isinstance(value, MacroParameterAccessExpression):
             new_value = scope.lookup_macro_parameter(value.name(scope), start=level)
 
             if value != new_value:
-                return self._check_value(scope, new_value, level=level+1)
+                return self._check_value(scope, new_value, level=level + 1)
 
             print("WARN: got some value from macro namespace")
 

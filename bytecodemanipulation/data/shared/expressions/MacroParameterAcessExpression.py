@@ -2,7 +2,10 @@ import typing
 
 from bytecodemanipulation.assembler.AbstractBase import AbstractAccessExpression
 from bytecodemanipulation.assembler.AbstractBase import ParsingScope
-from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException, TraceInfo
+from bytecodemanipulation.assembler.syntax_errors import (
+    PropagatingCompilerException,
+    TraceInfo,
+)
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
@@ -56,7 +59,9 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
         try:
             deref_value = scope.lookup_macro_parameter(value)
         except KeyError:
-            raise PropagatingCompilerException(f"Name '{value}' not found in macro var space").add_trace_level(self.trace_info) from None
+            raise PropagatingCompilerException(
+                f"Name '{value}' not found in macro var space"
+            ).add_trace_level(self.trace_info) from None
 
         if deref_value != self and hasattr(deref_value, "emit_bytecodes"):
             instructions = deref_value.emit_store_bytecodes(function, scope)

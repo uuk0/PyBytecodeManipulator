@@ -1,6 +1,8 @@
 import typing
 
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractInstructionWalkerTransform
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    AbstractInstructionWalkerTransform,
+)
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 if typing.TYPE_CHECKING:
@@ -11,7 +13,12 @@ if typing.TYPE_CHECKING:
 
 class ExceptionInstructionDecoder(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.List["Instruction"], target: "Instruction") -> typing.Any:
+    def visit(
+        cls,
+        function: "MutableFunction",
+        metadata: typing.List["Instruction"],
+        target: "Instruction",
+    ) -> typing.Any:
         if target.opcode == Opcodes.SETUP_FINALLY:
             handle = target.arg_value
             target.change_opcode(Opcodes.NOP)
@@ -33,7 +40,12 @@ class ExceptionInstructionDecoder(AbstractInstructionWalkerTransform):
 
 class ExceptionInstructionEncoder(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", builder: "CodeObjectBuilder", target: "Instruction"):
+    def visit(
+        cls,
+        function: "MutableFunction",
+        builder: "CodeObjectBuilder",
+        target: "Instruction",
+    ):
         # todo: how to handle overlapping but not fully overlapping spans?
 
         for handle, span in function.exception_table.table.items():
@@ -60,4 +72,3 @@ class ExceptionInstructionEncoder(AbstractInstructionWalkerTransform):
                     handled |= {item, new_item}
 
         function.exception_table.table.clear()
-

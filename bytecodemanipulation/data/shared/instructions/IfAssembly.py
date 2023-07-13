@@ -61,10 +61,14 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.source = source
         self.body = body
         self.label_name = (
-            label_name
-            if not isinstance(label_name, str)
-            else [StaticIdentifier(e) for e in label_name.split(":")]
-        ) if label_name is not None else None
+            (
+                label_name
+                if not isinstance(label_name, str)
+                else [StaticIdentifier(e) for e in label_name.split(":")]
+            )
+            if label_name is not None
+            else None
+        )
 
     def copy(self):
         return type(self)(self.source.copy(), self.body.copy(), self.label_name.copy())
@@ -104,7 +108,11 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         return visitor(self, (self.body.visit_assembly_instructions(visitor),))
 
     def get_labels(self, scope: ParsingScope) -> typing.Set[str]:
-        label_name = ":".join(e(scope) for e in self.label_name) if self.label_name is not None else None
+        label_name = (
+            ":".join(e(scope) for e in self.label_name)
+            if self.label_name is not None
+            else None
+        )
 
         return (
             set()

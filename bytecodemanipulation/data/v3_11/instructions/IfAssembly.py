@@ -9,7 +9,6 @@ from bytecodemanipulation.opcodes.Opcodes import Opcodes
 @Parser.register
 class IFAssembly(AbstractIFAssembly):
     def emit_bytecodes(self, function: MutableFunction, scope: ParsingScope):
-
         if self.label_name is None:
             end = Instruction("NOP")
         else:

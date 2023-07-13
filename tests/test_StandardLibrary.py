@@ -16,8 +16,10 @@ class StandardLibraryTest(TestCase):
         hook.hook()
 
         def target():
-            assembly("""
-MACRO_IMPORT bytecodemanipulation.standard_library""")
+            assembly(
+                """
+MACRO_IMPORT bytecodemanipulation.standard_library"""
+            )
 
         mutable = MutableFunction(target)
         apply_inline_assemblies(mutable)
@@ -180,7 +182,6 @@ STORE $output
         self.assertEqual(target(), 2)
 
     def test_stream_simple_filter(self):
-
         @apply_operations
         def target():
             data = (0, 1, 2)
@@ -264,8 +265,10 @@ std:stream:to_list($stream) -> $output
         @apply_operations
         def target():
             l = [1, 2, 3, 4]
-            assembly("""
+            assembly(
+                """
 std:comprehension:list($l, [$value] { OP $value + 1 -> % }) -> %
-RETURN %""")
+RETURN %"""
+            )
 
         self.assertEqual(target(), [2, 3, 4, 5])

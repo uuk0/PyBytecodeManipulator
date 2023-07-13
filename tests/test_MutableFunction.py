@@ -81,4 +81,3 @@ class TestMutableFunction(TestCase):
         mut.reassign_to_function()
 
         self.assertEqual(target(), 0)
-

@@ -54,7 +54,6 @@ class _OptimisationContainer:
         cls,
         target: types.FunctionType | types.MethodType | typing.Type | types.ModuleType,
     ):
-
         if hasattr(target, "_OPTIMISER_CONTAINER"):
             return target._OPTIMISER_CONTAINER
 
@@ -421,7 +420,9 @@ class AbstractOptimisationWalker:
     Optimisation walker for classes and functions, constructed by the optimiser annotations
     """
 
-    def apply(self, container: "_OptimisationContainer", mutable: MutableFunction, builder) -> bool:
+    def apply(
+        self, container: "_OptimisationContainer", mutable: MutableFunction, builder
+    ) -> bool:
         """
         Applies this optimisation on the given container with the MutableFunction as target
         :param builder:

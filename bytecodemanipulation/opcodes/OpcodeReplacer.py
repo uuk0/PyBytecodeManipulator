@@ -1,7 +1,9 @@
 import sys
 import typing
 
-from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import AbstractInstructionWalkerTransform
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import (
+    AbstractInstructionWalkerTransform,
+)
 from bytecodemanipulation.opcodes.Opcodes import Opcodes
 
 if typing.TYPE_CHECKING:
@@ -14,7 +16,9 @@ from bytecodemanipulation.data_loader import load_opcode_data
 load_opcode_data()
 
 
-OPCODE_DATA: typing.List[typing.Tuple[int | typing.Tuple[int, int], int | typing.Tuple[int, int]]] = [
+OPCODE_DATA: typing.List[
+    typing.Tuple[int | typing.Tuple[int, int], int | typing.Tuple[int, int]]
+] = [
     ((Opcodes.COMPARE_OP, 0), Opcodes.COMPARE_LT),
     ((Opcodes.COMPARE_OP, 1), Opcodes.COMPARE_LE),
     ((Opcodes.COMPARE_OP, 2), Opcodes.COMPARE_EQ),
@@ -36,7 +40,9 @@ REVERSE_MAP = {e[1]: e[0] for e in OPCODE_DATA}
 
 class RawToIntermediateOpcodeTransform(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+    def visit(
+        cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction"
+    ) -> typing.Any:
         if (target.opcode, target.arg) in FORWARD_MAP:
             e = FORWARD_MAP[(target.opcode, target.arg)]
 
@@ -65,7 +71,9 @@ class RawToIntermediateOpcodeTransform(AbstractInstructionWalkerTransform):
 
 class IntermediateToRawOpcodeTransform(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+    def visit(
+        cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction"
+    ) -> typing.Any:
         if target.opcode in REVERSE_MAP:
             e = REVERSE_MAP[target.opcode]
 
@@ -95,8 +103,12 @@ class IntermediateToRawOpcodeTransform(AbstractInstructionWalkerTransform):
 
 class PrecallInserterTransform(AbstractInstructionWalkerTransform):
     @classmethod
-    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
-        if target.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL) and not any(e.opcode == Opcodes.PRECALL for e in target.previous_instructions):
+    def visit(
+        cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction"
+    ) -> typing.Any:
+        if target.opcode in (Opcodes.CALL_FUNCTION, Opcodes.CALL) and not any(
+            e.opcode == Opcodes.PRECALL for e in target.previous_instructions
+        ):
             call = target.copy()
             target.insert_after(call)
             target.change_opcode(Opcodes.PRECALL)

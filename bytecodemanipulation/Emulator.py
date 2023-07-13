@@ -877,7 +877,6 @@ def for_iter(
     call_stack: list,
     exception_handle_stack: list,
 ) -> typing.Tuple[Instruction, MutableFunction]:
-
     if not stack:
         raise StackSizeIssue("StackUnderflow: could not get TOS for FOR_ITER opcode")
 

@@ -18,13 +18,13 @@ for _ in range(5):
     root = os.path.dirname(root)
 
 
-with open(root+"/setup.py", mode="r") as f :
+with open(root + "/setup.py", mode="r") as f:
     line = list(f.readlines())[8].strip()
 
     if not line.startswith("version="):
         raise RuntimeError("could not find version information")
 
-    parts = list(map(int, line.removeprefix("version=\"").removesuffix("\",").split(".")))
+    parts = list(map(int, line.removeprefix('version="').removesuffix('",').split(".")))
     BCM_VERSION = parts[0] * 10000 + parts[1] * 100 + parts[2]
 
 
@@ -33,10 +33,12 @@ class ModuleAccessExpression(AbstractAccessExpression):
     PREFIX = "~"
     _CACHE = builtins.__dict__.copy()
 
-    _CACHE.update({
-        "PY_VERSION": sys.version_info.major * 100 + sys.version_info.minor,
-        "BCM_VERSION": BCM_VERSION,
-    })
+    _CACHE.update(
+        {
+            "PY_VERSION": sys.version_info.major * 100 + sys.version_info.minor,
+            "BCM_VERSION": BCM_VERSION,
+        }
+    )
 
     @classmethod
     def _cached_lookup(cls, module_name: str) -> types.ModuleType:
@@ -54,13 +56,12 @@ class ModuleAccessExpression(AbstractAccessExpression):
         except (ModuleNotFoundError, ImportError) as e:
             raise PropagatingCompilerException(
                 f"expected <module>, got '{self.name(scope)}'"
-            ).add_trace_level(scope.get_trace_info().with_token(self.token), "\n".join(map(str, e.args))) from None
+            ).add_trace_level(
+                scope.get_trace_info().with_token(self.token),
+                "\n".join(map(str, e.args)),
+            ) from None
 
-        return [
-            Instruction.create_with_token(
-                self.token, Opcodes.LOAD_CONST, value
-            )
-        ]
+        return [Instruction.create_with_token(self.token, Opcodes.LOAD_CONST, value)]
 
     def emit_store_bytecodes(
         self, function: MutableFunction, scope: ParsingScope

@@ -61,10 +61,14 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.source = source
         self.body = body
         self.label_name = (
-            label_name
-            if not isinstance(label_name, str)
-            else [StaticIdentifier(e) for e in label_name.split(":")]
-        ) if label_name is not None else None
+            (
+                label_name
+                if not isinstance(label_name, str)
+                else [StaticIdentifier(e) for e in label_name.split(":")]
+            )
+            if label_name is not None
+            else None
+        )
 
     def copy(self):
         return type(self)(self.source.copy(), self.body.copy(), self.label_name.copy())

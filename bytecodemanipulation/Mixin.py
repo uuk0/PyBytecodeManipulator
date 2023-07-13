@@ -481,7 +481,9 @@ class Mixin:
             if self.inject.argument_names[0] in ("cls", "self"):
                 protected_locals.append(self.inject.argument_names[0])
 
-            for position_instr in self.at.get_positions(mutable.instruction_entry_point)[:]:
+            for position_instr in self.at.get_positions(
+                mutable.instruction_entry_point
+            )[:]:
                 insert_method_into(
                     mutable,
                     position_instr.offset - 1,

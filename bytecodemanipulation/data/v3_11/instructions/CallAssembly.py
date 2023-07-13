@@ -40,9 +40,7 @@ class CallAssembly(AbstractCallAssembly):
 
         if not has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
             if self.is_partial:
-                bytecode = [
-                    Instruction(Opcodes.LOAD_CONST, functools.partial)
-                ]
+                bytecode = [Instruction(Opcodes.LOAD_CONST, functools.partial)]
                 extra_args = 1
             else:
                 bytecode = []
@@ -54,16 +52,12 @@ class CallAssembly(AbstractCallAssembly):
                 bytecode += arg.source.emit_bytecodes(function, scope)
 
             bytecode += [
-                Instruction(
-                    Opcodes.CALL_FUNCTION, arg=len(self.args) + extra_args
-                ),
+                Instruction(Opcodes.CALL_FUNCTION, arg=len(self.args) + extra_args),
             ]
 
         elif has_seen_kw_arg and not has_seen_star and not has_seen_star_star:
             if self.is_partial:
-                bytecode = [
-                    Instruction(Opcodes.LOAD_CONST, functools.partial)
-                ]
+                bytecode = [Instruction(Opcodes.LOAD_CONST, functools.partial)]
                 extra_args = 1
             else:
                 bytecode = []

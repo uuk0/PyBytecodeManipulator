@@ -1,13 +1,23 @@
 from unittest import TestCase
 
 from bytecodemanipulation.assembler.syntax_errors import PropagatingCompilerException
-from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import ConstantAccessExpression
-from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import LocalAccessExpression
+from bytecodemanipulation.data.shared.expressions.ConstantAccessExpression import (
+    ConstantAccessExpression,
+)
+from bytecodemanipulation.data.shared.expressions.LocalAccessExpression import (
+    LocalAccessExpression,
+)
 
-from bytecodemanipulation.data.shared.expressions.AttributeAccessExpression import AttributeAccessExpression
+from bytecodemanipulation.data.shared.expressions.AttributeAccessExpression import (
+    AttributeAccessExpression,
+)
 
-from bytecodemanipulation.data.shared.expressions.CompoundExpression import CompoundExpression
-from bytecodemanipulation.data.shared.instructions.AssertAssembly import AbstractAssertAssembly
+from bytecodemanipulation.data.shared.expressions.CompoundExpression import (
+    CompoundExpression,
+)
+from bytecodemanipulation.data.shared.instructions.AssertAssembly import (
+    AbstractAssertAssembly,
+)
 
 from bytecodemanipulation.assembler.target import apply_operations
 from bytecodemanipulation.assembler.target import assembly
@@ -18,15 +28,29 @@ class TestParser(TestCase):
     def test_simple(self):
         expr = Parser("ASSERT $x").parse()
 
-        self.assertEqual(expr, CompoundExpression(AbstractAssertAssembly.IMPLEMENTATION(LocalAccessExpression("x"))))
+        self.assertEqual(
+            expr,
+            CompoundExpression(
+                AbstractAssertAssembly.IMPLEMENTATION(LocalAccessExpression("x"))
+            ),
+        )
 
     def test_simple_with_message(self):
-        expr = Parser("ASSERT $x \"test\"").parse()
+        expr = Parser('ASSERT $x "test"').parse()
 
-        self.assertEqual(expr, CompoundExpression(AbstractAssertAssembly.IMPLEMENTATION(LocalAccessExpression("x"), ConstantAccessExpression("test"))))
+        self.assertEqual(
+            expr,
+            CompoundExpression(
+                AbstractAssertAssembly.IMPLEMENTATION(
+                    LocalAccessExpression("x"), ConstantAccessExpression("test")
+                )
+            ),
+        )
 
     def test_repr(self):
-        self.assertEqual(repr(Parser("ASSERT $x").parse()), "Compound(ASSERT($!'x', None))")
+        self.assertEqual(
+            repr(Parser("ASSERT $x").parse()), "Compound(ASSERT($!'x', None))"
+        )
 
     def test_copy(self):
         expr = Parser("ASSERT $x").parse()
@@ -36,7 +60,7 @@ class TestParser(TestCase):
         try:
             expr = Parser("ASSERT").parse()
         except PropagatingCompilerException as e:
-            self.assertEqual(e.args, ('expected <expression> after ASSERT',))
+            self.assertEqual(e.args, ("expected <expression> after ASSERT",))
         else:
             self.fail()
 
