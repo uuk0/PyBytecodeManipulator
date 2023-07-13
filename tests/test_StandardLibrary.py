@@ -3,6 +3,7 @@ import time
 from unittest import TestCase
 import dis
 
+from bytecodemanipulation.Emulator import run_code
 from bytecodemanipulation.MutableFunction import MutableFunction
 from bytecodemanipulation.assembler.target import *
 from bytecodemanipulation.assembler.Emitter import apply_inline_assemblies
@@ -97,6 +98,7 @@ std:stream:to_list($stream, $output)
         self.assertEqual(target(), [0, 1, 2])
 
     def test_stream_simple_reduce(self):
+        @apply_operations
         def target():
             data = (0, 1, 2)
             stream = None
@@ -113,11 +115,69 @@ STORE $output
             )
             return output
 
-        mutable = MutableFunction(target)
-        apply_inline_assemblies(mutable)
-        mutable.reassign_to_function()
-
         self.assertEqual(target(), 3)
+
+    def test_stream_simple_reduce_empty(self):
+        @apply_operations
+        def target():
+            data = tuple()
+            stream = None
+            output = None
+            assembly(
+                """
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:reduce($stream, [$lhs, $rhs] {
+    OP $lhs + $rhs
+})
+STORE $output
+"""
+            )
+            return output
+
+        dis.dis(target)
+
+        self.assertEqual(target(), -1)
+
+    def test_stream_simple_reduce_with_start(self):
+        @apply_operations
+        def target():
+            data = (0, 1, 2)
+            stream = None
+            output = None
+            assembly(
+                """
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:reduce($stream, [$lhs, $rhs] {
+    OP $lhs + $rhs
+}, 2)
+STORE $output
+"""
+            )
+            return output
+
+        self.assertEqual(target(), 5)
+
+    def test_stream_simple_reduce_with_start_empty(self):
+        @apply_operations
+        def target():
+            data = tuple()
+            stream = None
+            output = None
+            assembly(
+                """
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:reduce($stream, [$lhs, $rhs] {
+    OP $lhs + $rhs
+}, 2)
+STORE $output
+"""
+            )
+            return output
+
+        self.assertEqual(target(), 2)
 
     def test_stream_simple_filter(self):
 
@@ -159,6 +219,46 @@ std:stream:to_list($stream, $output)
             return output
 
         self.assertEqual(target(), [1, 2, 3])
+
+#     def test_stream_grouped(self):
+#         @apply_operations
+#         def target():
+#             data = (0, 1, 2, 3)
+#             stream = None
+#             output = None
+#             assembly(
+#                 """
+# std:stream:initialize($stream)
+# std:stream:extend($stream, $data)
+# std:stream:grouped($stream, 2, [_] {})
+# std:stream:to_list($stream, $output)
+# """
+#             )
+#             return output
+#
+#         dis.dis(target)
+#         # self.assertEqual(run_code(target), [1, 2, 3])
+#         self.assertEqual(target(), [1, 2, 3])
+
+#     def test_stream_grouped_without_handle(self):
+#         @apply_operations
+#         def target():
+#             data = (0, 1, 2, 3)
+#             stream = None
+#             output = None
+#             assembly(
+#                 """
+# std:stream:initialize($stream)
+# std:stream:extend($stream, $data)
+# std:stream:grouped($stream, 2)
+# std:stream:to_list($stream, $output)
+# """
+#             )
+#             return output
+#
+#         dis.dis(target)
+#
+#         self.assertEqual(target(), [1, 2, 3])
 
     def test_comprehension_list(self):
         @apply_operations

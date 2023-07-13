@@ -73,13 +73,19 @@ class MacroParameterAccessExpression(AbstractAccessExpression):
             )
         ]
 
-    def evaluate_static_value(self, scope: ParsingScope) -> typing.Any:
+    def evaluate_static_value(self, scope: ParsingScope, prev=None) -> typing.Any:
         name = self.name(scope)
 
         try:
             obj = scope.lookup_macro_parameter(name)
         except KeyError:
             raise NotImplementedError from None
+
+        if obj == self:
+            try:
+                obj = scope.lookup_macro_parameter(name, start=1)
+            except KeyError:
+                raise NotImplementedError from None
 
         return obj.evaluate_static_value(scope)
 

@@ -281,6 +281,12 @@ class InstanceOfChecker(AbstractOperator):
         ]
         return bytecode
 
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        lhs = lhs.evaluate_static_value(scope)
+        rhs = rhs.evaluate_static_value(scope)
+
+        return isinstance(lhs, rhs)
+
 
 class SubclassOfChecker(AbstractOperator):
     def emit_bytecodes(
@@ -300,6 +306,12 @@ class SubclassOfChecker(AbstractOperator):
             Instruction(Opcodes.CALL_FUNCTION, arg=2),
         ]
         return bytecode
+
+    def evaluate_static_value(self, scope: ParsingScope, lhs: AbstractSourceExpression, rhs: AbstractSourceExpression):
+        lhs = lhs.evaluate_static_value(scope)
+        rhs = rhs.evaluate_static_value(scope)
+
+        return issubclass(lhs, rhs)
 
 
 class HasattrChecker(AbstractOperator):

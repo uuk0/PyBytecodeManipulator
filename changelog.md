@@ -10,7 +10,8 @@
 - fixed some opcode stack effects
 - more test coverage
 - AttributeAccess itself is no longer evaluated statically, as it may lead to unwanted side effects
-- added std:stream:reduce with default and std:stream:grouped
+- added std:stream:reduce with start value and std:stream:grouped
+- fixed issue with the lexer when parsing negativ integers
 
 # Version 0.3.4
 - improved error messages for assemblies

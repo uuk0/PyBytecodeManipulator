@@ -110,6 +110,7 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
     while True:
         print(instruction)
         print(stack)
+
         target = OPCODE_FUNCS[instruction.opcode]
 
         if target is None:
@@ -137,7 +138,7 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
             raise StackSizeIssue(f"{len(stack)} > {max_stack_size}")
 
 
-OPCODE_FUNCS: typing.List[typing.Callable | None] = [None] * 256
+OPCODE_FUNCS: typing.List[typing.Callable | None] = [None] * 512
 
 
 def execution(opcode: int):
@@ -355,8 +356,12 @@ def call_method(
     try:
         mutable = MutableFunction(target)
     except AttributeError:
-        stack.append(target(*args))
-        return instr.next_instruction, func
+        try:
+            stack.append(target(*args))
+            return instr.next_instruction, func
+        except Exception as e:
+            print(target, args)
+            raise e from None
 
     if mutable.code_flags & CO_GENERATOR:
         stack.append(EmulatorGeneratorContainer(mutable, args))
@@ -566,9 +571,22 @@ def compare_op(
 ) -> typing.Tuple[Instruction, MutableFunction]:
     op = ("<", "<=", "==", "!=", ">", ">=")[instr.arg]
     a, b = stack.pop(-2), stack.pop(-1)
-
     stack.append(eval(f"a {op} b", {"a": a, "b": b}))
+    return instr.next_instruction, func
 
+
+@execution(Opcodes.COMPARE_EQ)
+def compare_eq_op(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    a, b = stack.pop(-2), stack.pop(-1)
+    stack.append(a == b)
     return instr.next_instruction, func
 
 
@@ -683,6 +701,70 @@ def binary_subtract(
     return instr.next_instruction, func
 
 
+@execution(Opcodes.BINARY_FLOOR_DIVIDE)
+def binary_subtract(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    stack.append(stack.pop(-2) // stack.pop(-1))
+
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.INPLACE_FLOOR_DIVIDE)
+def binary_subtract(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    a, b = stack.pop(-2), stack.pop(-1)
+    a //= b
+    stack.append(a)
+
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.BINARY_TRUE_DIVIDE)
+def binary_subtract(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    stack.append(stack.pop(-2) / stack.pop(-1))
+
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.INPLACE_TRUE_DIVIDE)
+def binary_subtract(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    a, b = stack.pop(-2), stack.pop(-1)
+    a /= b
+    stack.append(a)
+
+    return instr.next_instruction, func
+
+
 @execution(Opcodes.SETUP_FINALLY)
 def setup_finally(
     func: MutableFunction,
@@ -764,6 +846,9 @@ def for_iter(
     call_stack: list,
     exception_handle_stack: list,
 ) -> typing.Tuple[Instruction, MutableFunction]:
+
+    if not stack:
+        raise StackSizeIssue("StackUnderflow: could not get TOS for FOR_ITER opcode")
 
     iterator = stack[-1]
 

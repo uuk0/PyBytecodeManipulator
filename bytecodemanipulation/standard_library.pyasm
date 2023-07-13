@@ -148,16 +148,16 @@ NAMESPACE std
             LOAD $tmp
         }
 
-        MACRO ASSEMBLY reduce(var VARIABLE, reducer CODE_BLOCK[2], default)
+        MACRO ASSEMBLY reduce(var VARIABLE, reducer CODE_BLOCK[2], start)
         {
             IF OP (~len(&var) == 0)
             {
-                RETURN &default
+                RETURN &start
             }
 
-            LOAD &var[0] -> $tmp
+            LOAD &start -> $tmp
 
-            LOAD 1 -> $index
+            LOAD 0 -> $index
             LOAD ~len(&var) -> $max_size
 
             WHILE OP ($index < $max_size)
@@ -185,12 +185,16 @@ NAMESPACE std
                 LOAD &var[~slice(OP ($i * &group_size), OP (OP ($i + 1) * &group_size))] -> $frag
 
                 MACRO_PASTE &code [$frag]
-                CALL $result.append(%)
+                CALL $result.append($frag) -> \
             }
 
-            CALL &var.clear()
-            CALL &var.extend($result)
-            RETURN &var
+            CALL &var.clear() -> \
+            CALL &var.extend($result) -> \
+        }
+
+        MACRO ASSEMBLY grouped(var VARIABLE, group_size)
+        {
+            std:stream:grouped(&var, &group_size, [$_] {})
         }
 
         MACRO ASSEMBLY to_list(var VARIABLE, output VARIABLE)

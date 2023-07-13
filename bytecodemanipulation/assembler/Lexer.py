@@ -71,7 +71,7 @@ class Lexer(AbstractLexer):
         ):
             text = ""
             if self.try_consume("-"):
-                text += "."
+                text += "-"
             text += self.consume_while(string.digits + "_")
 
             if self.try_inspect() == ".":

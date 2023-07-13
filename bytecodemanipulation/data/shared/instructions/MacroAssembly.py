@@ -137,6 +137,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
             arg: "MacroAssembly.MacroArg",
             arg_accessor: AbstractAccessExpression | CompoundExpression,
         ) -> bool:
+            if isinstance(arg_accessor, MacroParameterAccessExpression):
+                arg_accessor = scope.lookup_macro_parameter(arg_accessor.name(scope))
+
             return isinstance(arg_accessor, tuple(self.VALID_ACCESSOR_TYPES))
 
         def emit_for_arg_store(
@@ -186,6 +189,9 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
         def copy(self):
             return type(self)(self.name, self.is_static)
+
+        def __repr__(self):
+            return f"MACRO_ARG('{self.name.text}', is_static={self.is_static}, type={self.data_type_annotation})"
 
         def is_match(
             self, scope: ParsingScope, arg_accessor: AbstractAccessExpression | CompoundExpression
@@ -302,6 +308,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                     args[:] = prefix + [inner] + postfix
                     return macro, args
+
+            print(args)
+
+            for decl in self.assemblies:
+                print(decl.args)
 
             raise PropagatingCompilerException(
                 f"Could not find overloaded variant of '{':'.join(self.name)}' with args {args}!"
