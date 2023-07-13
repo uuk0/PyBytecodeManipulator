@@ -8,6 +8,7 @@ from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import Extended
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import InstructionAssembler
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import JumpArgAssembler
 from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import LinearStreamGenerator
+from bytecodemanipulation.opcodes.AbstractOpcodeTransformerStage import ForIterTransformer
 from bytecodemanipulation.opcodes.CodeObjectBuilder import CodeObjectBuilder
 from bytecodemanipulation.opcodes.ExceptionTable import ExceptionTable
 from bytecodemanipulation.opcodes.Instruction import Instruction
@@ -37,6 +38,7 @@ class MutableFunction:
         ]
 
     INSTRUCTION_ENCODING_PIPE: typing.List[typing.Type[AbstractOpcodeTransformerStage]] = [
+        ForIterTransformer,  # todo: how can we remove this hack?
         IntermediateToRawOpcodeTransform,
     ]
 

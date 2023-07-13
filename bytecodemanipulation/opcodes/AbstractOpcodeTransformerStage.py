@@ -135,6 +135,60 @@ class AbstractInstructionWalkerTransform(AbstractOpcodeTransformerStage):
         return old_meta
 
 
+class ForIterTransformer(AbstractInstructionWalkerTransform):
+    """
+    This is a hack to make the strange FOR_ITER opcode work, by replacing it by a sequence of equal opcodes
+    """
+
+    class _ForIterDefault:
+        def __repr__(self):
+            return "FOR_ITER"
+
+    """
+    FOR_ITER<delta> ->
+
+    DUP_TOP
+    LOAD_FAST ~next
+    ROT_TWO
+    LOAD_CONST <empty value>
+    CALL_METHOD 2
+    DUP_TOP
+    LOAD_CONST <empty value>
+    COMPARE_EQ
+    POP_JUMP_IF_FALSE <skip>
+    POP_TOP
+    POP_TOP
+    JUMP <target>
+    [continue]
+    """
+
+    DEFAULT_VALUE = _ForIterDefault()
+
+    @classmethod
+    def visit(cls, function: "MutableFunction", metadata: typing.Any, target: "Instruction") -> typing.Any:
+        if target.opcode == Opcodes.FOR_ITER:
+            section = [
+                Instruction(Opcodes.DUP_TOP),
+                Instruction(Opcodes.LOAD_CONST, next),
+                Instruction(Opcodes.ROT_TWO),
+                Instruction(Opcodes.LOAD_CONST, cls.DEFAULT_VALUE),
+                Instruction(Opcodes.CALL_FUNCTION, arg=2),
+                Instruction(Opcodes.DUP_TOP),
+                Instruction(Opcodes.LOAD_CONST, cls.DEFAULT_VALUE),
+                Instruction(Opcodes.COMPARE_EQ),
+                Instruction(Opcodes.POP_JUMP_IF_FALSE, arg_value=target.next_instruction),
+                Instruction(Opcodes.POP_TOP),
+                Instruction(Opcodes.POP_TOP),
+                Instruction(Opcodes.JUMP_FORWARD, arg_value=target.arg_value),
+            ]
+
+            for i, instr in enumerate(section[:-1]):
+                instr.next_instruction = section[i+1]
+
+            target.change_opcode(Opcodes.NOP)
+            target.next_instruction = section[0]
+
+
 class ArgRealValueSetter(AbstractInstructionWalkerTransform):
     @classmethod
     def visit(cls, function: "MutableFunction", builder: CodeObjectBuilder, target: "Instruction") -> typing.Any:

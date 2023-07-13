@@ -5,6 +5,7 @@ import sys
 from unittest import TestCase
 
 import bytecodemanipulation.data_loader
+from bytecodemanipulation.Emulator import run_code
 from bytecodemanipulation.data.shared.instructions.LabelAssembly import LabelAssembly
 from bytecodemanipulation.data.shared.instructions.PythonCodeAssembly import (
     PythonCodeAssembly,

@@ -220,45 +220,45 @@ std:stream:to_list($stream, $output)
 
         self.assertEqual(target(), [1, 2, 3])
 
-#     def test_stream_grouped(self):
-#         @apply_operations
-#         def target():
-#             data = (0, 1, 2, 3)
-#             stream = None
-#             output = None
-#             assembly(
-#                 """
-# std:stream:initialize($stream)
-# std:stream:extend($stream, $data)
-# std:stream:grouped($stream, 2, [_] {})
-# std:stream:to_list($stream, $output)
-# """
-#             )
-#             return output
-#
-#         dis.dis(target)
-#         # self.assertEqual(run_code(target), [1, 2, 3])
-#         self.assertEqual(target(), [1, 2, 3])
+    def test_stream_grouped(self):
+        @apply_operations
+        def target():
+            data = (0, 1, 2, 3)
+            stream = None
+            output = None
+            assembly(
+                """
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:grouped($stream, 2, [_] {})
+std:stream:to_list($stream, $output)
+"""
+            )
+            return output
 
-#     def test_stream_grouped_without_handle(self):
-#         @apply_operations
-#         def target():
-#             data = (0, 1, 2, 3)
-#             stream = None
-#             output = None
-#             assembly(
-#                 """
-# std:stream:initialize($stream)
-# std:stream:extend($stream, $data)
-# std:stream:grouped($stream, 2)
-# std:stream:to_list($stream, $output)
-# """
-#             )
-#             return output
-#
-#         dis.dis(target)
-#
-#         self.assertEqual(target(), [1, 2, 3])
+        dis.dis(target)
+        # self.assertEqual(run_code(target), [1, 2, 3])
+        self.assertEqual(target(), [[0, 1], [2, 3]])
+
+    def test_stream_grouped_without_handle(self):
+        @apply_operations
+        def target():
+            data = (0, 1, 2, 3)
+            stream = None
+            output = None
+            assembly(
+                """
+std:stream:initialize($stream)
+std:stream:extend($stream, $data)
+std:stream:grouped($stream, 2)
+std:stream:to_list($stream, $output)
+"""
+            )
+            return output
+
+        dis.dis(target)
+
+        self.assertEqual(target(), [[0, 1], [2, 3]])
 
     def test_comprehension_list(self):
         @apply_operations

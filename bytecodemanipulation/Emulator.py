@@ -182,6 +182,37 @@ def pop_top(
     return instr.next_instruction, func
 
 
+@execution(Opcodes.DUP_TOP)
+def dup_top(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    stack.append(stack[-1])
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.ROT_TWO)
+def rot_two(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    a = stack.pop(-1)
+    b = stack.pop(-1)
+    stack.append(a)
+    stack.append(b)
+    return instr.next_instruction, func
+
+
 @execution(Opcodes.JUMP_ABSOLUTE)
 @execution(Opcodes.JUMP_FORWARD)
 def jump_unconditional(
