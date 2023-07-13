@@ -177,7 +177,7 @@ def apply_inline_assemblies(
             assemblies.append(
                 AssemblyParser(
                     Lexer(code, module_file=target.target.__globals__["__file__"])
-                    .add_line_offset(instr.source_location[0])
+                    .add_line_offset(instr.source_location[0]-1)
                     .lex(),
                     scope.scope_path.clear() or scope,
                     module_file=target.target.__globals__["__file__"],

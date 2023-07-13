@@ -76,7 +76,7 @@ class TraceInfo:
         for e in token:
             if isinstance(e, AbstractToken):
                 instance.tokens.append(e)
-            else:
+            elif e is not None:
                 instance.tokens.extend(e)
 
         return instance

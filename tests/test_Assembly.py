@@ -1119,12 +1119,12 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-        MACRO test_macro_parameter_static_invalid (param) {
-            LOAD 2 -> &param
-        }
+MACRO test_macro_parameter_static_invalid (param) {
+    LOAD 2 -> &param
+}
 
-        CALL MACRO test_macro_parameter_static_invalid(1)
-        RETURN $local
+CALL MACRO test_macro_parameter_static_invalid(1)
+RETURN $local
         """
             )
             return -1
@@ -1307,13 +1307,13 @@ RETURN $test
         def target():
             assembly(
                 """
-        MACRO test_macro_paste_with_type_annotation_failure (param CODE_BLOCK) {
-            MACRO_PASTE param
-        }
+MACRO test_macro_paste_with_type_annotation_failure (param CODE_BLOCK) {
+    MACRO_PASTE param
+}
 
-        LOAD 0 -> $test
-        CALL MACRO test_macro_paste_with_type_annotation_failure(10)
-        RETURN $test
+LOAD 0 -> $test
+CALL MACRO test_macro_paste_with_type_annotation_failure(10)
+RETURN $test
         """
             )
             return -1
@@ -1873,7 +1873,8 @@ class TestAssert(TestCase):
 
     def test_assert_static_fail(self):
         def target():
-            assembly("ASSERT_STATIC 0")
+            assembly("""
+ASSERT_STATIC 0""")
 
         try:
             apply_operations(target)
@@ -1882,7 +1883,8 @@ class TestAssert(TestCase):
 
     def test_assert_static_fail_message(self):
         def target():
-            assembly('ASSERT_STATIC 0 "hello world"')
+            assembly('''
+ASSERT_STATIC 0 "hello world"''')
 
         try:
             apply_operations(target)
@@ -1906,7 +1908,8 @@ ASSERT_STATIC 0 $x"""
 
     def test_assert_static_dynamic_expression(self):
         def target():
-            assembly("ASSERT_STATIC $a")
+            assembly("""
+ASSERT_STATIC $a""")
 
         try:
             apply_operations(target)
