@@ -63,26 +63,7 @@ def compare_optimized_results(
         )
 
     if not eq:
-        local = os.path.dirname(__file__)
-        mutable.dump_info(local + "/target.json")
-        mutable.dump_info(local + "/ideal.json")
-
-        print(f"target ({target.__name__})")
-        if hasattr(target, "_debug_wrapper"):
-            for instr in target._debug_wrapper.instructions:
-                print(instr)
-        else:
-            if sys.version_info[1] <= 10:
-                dis.dis(target)
-            else:
-                dis.dis(target, show_caches=True)
-
-        print(f"compare ({ideal.__name__})")
-
-        if sys.version_info[1] <= 10:
-            dis.dis(ideal)
-        else:
-            dis.dis(ideal, show_caches=True)
+        _compare_not_equal_error(mutable, target, ideal)
 
     case.assertEqual(
         len(builder_1.temporary_instructions),
@@ -104,11 +85,33 @@ def compare_optimized_results(
             )
 
 
+def _compare_not_equal_error(mutable, target, ideal):
+    local = os.path.dirname(__file__)
+    mutable.dump_info(f"{local}/target.json")
+    mutable.dump_info(f"{local}/ideal.json")
+
+    print(f"target ({target.__name__})")
+    if hasattr(target, "_debug_wrapper"):
+        for instr in target._debug_wrapper.instructions:
+            print(instr)
+    elif sys.version_info[1] <= 10:
+        dis.dis(target)
+    else:
+        dis.dis(target, show_caches=True)
+
+    print(f"compare ({ideal.__name__})")
+
+    if sys.version_info[1] <= 10:
+        dis.dis(ideal)
+    else:
+        dis.dis(ideal, show_caches=True)
+
+
 class JsonTestEntry:
     @classmethod
     def from_file(cls, file: str) -> "JsonTestEntry":
         if not os.path.isfile(file):
-            file = root + "/" + file
+            file = f"{root}/{file}"
 
         with open(file) as f:
             return cls.from_data(json.load(f))
@@ -165,34 +168,35 @@ class JsonTestEntry:
     def run_tests(self, test: unittest.TestCase, prefix: str = ""):
         if self.code:
             if isinstance(self.code, str):
-                target = eval("lambda: " + self.code)
+                target = eval(f"lambda: {self.code}")
             else:
-                target = lambda: None
-
-                obj = MutableFunction(target)
-                obj.assemble_fast(self.code)
-                obj.reassign_to_function()
+                target = self._create_empty_method(self.code)
 
             if isinstance(self.compare, str):
-                compare = eval("lambda: " + self.compare)
+                compare = eval(f"lambda: {self.compare}")
             else:
-                compare = lambda: None
+                compare = self._create_empty_method(self.compare)
 
-                obj = MutableFunction(compare)
-                obj.assemble_fast(self.code)
-                obj.reassign_to_function()
-
-            print("running", prefix + ":" + self.name)
+            print(f"running {prefix}:{self.name}")
             compare_optimized_results(
                 test,
                 target,
                 compare,
                 opt_ideal=self.opt_mode,
-                msg=prefix + ":" + self.name,
+                msg=f"{prefix}:{self.name}",
             )
 
         for child in self.children:
-            child.run_tests(test, prefix + ":" + self.name if prefix else self.name)
+            child.run_tests(test, f"{prefix}:{self.name}" if prefix else self.name)
+
+    def _create_empty_method(self, c):
+        result = lambda: None
+
+        obj = MutableFunction(result)
+        obj.assemble_fast(c)
+        obj.reassign_to_function()
+
+        return result
 
 
 BUILTIN_INLINE = _OptimisationContainer(None)

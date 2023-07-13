@@ -61,21 +61,19 @@ class Lexer(AbstractLexer):
         self.had_newline = False
 
         if char == "#":
-            token = CommentToken(
+            return CommentToken(
                 self.consume_until("\n", include=False).removesuffix("\r")
             )
-            return token
-
         if char in string.digits or (
             char == "-" and self.try_inspect_multi(2)[1] in string.digits
         ):
             text = ""
             if self.try_consume("-"):
                 text += "-"
-            text += self.consume_while(string.digits + "_")
+            text += self.consume_while(f"{string.digits}_")
 
             if self.try_inspect() == ".":
-                remaining = self.consume(".") + self.consume_while(string.digits + "_")
+                remaining = self.consume(".") + self.consume_while(f"{string.digits}_")
 
                 if self.try_inspect() and self.try_inspect() in string.ascii_letters:
                     return [
@@ -98,7 +96,7 @@ class Lexer(AbstractLexer):
 
             return IntegerToken(text)
 
-        if char in string.ascii_letters + "_":
+        if char in f"{string.ascii_letters}_":
             identifier = self.consume_while(string.ascii_letters + string.digits + "_")
 
             if identifier == "PYTHON" and self.try_consume_multi(2, " {"):
@@ -113,25 +111,27 @@ class Lexer(AbstractLexer):
             return SpecialToken(self.consume(char))
 
         if char == '"':
-            self.consume(char)
-            text = ""
-
-            escape_count = 0
-            while (c := self.try_inspect()) and (c != '"' or escape_count % 2 == 1):
-                if c == "\\":
-                    escape_count += 1
-                else:
-                    escape_count = 0
-                text += c
-                self.consume(c)
-            self.consume('"')
-            return StringLiteralToken(text, '"')
-
+            return self._parseStringLiteral(char)
         if char in string.whitespace:
             self.consume_while(string.whitespace)
             return
 
         raise SyntaxError(f"Invalid char: '{char}' (at {self.cursor})")
+
+    def _parseStringLiteral(self, char):
+        self.consume(char)
+        text = ""
+
+        escape_count = 0
+        while (c := self.try_inspect()) and (c != '"' or escape_count % 2 == 1):
+            if c == "\\":
+                escape_count += 1
+            else:
+                escape_count = 0
+            text += c
+            self.consume(c)
+        self.consume('"')
+        return StringLiteralToken(text, '"')
 
     def consume_python_code(self):
         bracket_level = 0
@@ -169,7 +169,6 @@ class Lexer(AbstractLexer):
                         and _count_chars_at_end(text.removesuffix(triple), "\\") % 1
                         == 0
                     )
-                    pass
 
                 code += self.consume(n) + self.consume_until(
                     lambda text, c: text.endswith(n)

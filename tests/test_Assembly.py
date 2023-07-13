@@ -70,9 +70,6 @@ except ImportError:
 
 bytecodemanipulation.data_loader.load_assembly_instructions()
 
-if typing.TYPE_CHECKING:
-    pass
-
 from tests.util import compare_optimized_results
 from bytecodemanipulation.Optimiser import cache_global_name, _OptimisationContainer
 
@@ -820,6 +817,7 @@ class TestInlineAssembly(TestCase):
     def test_jump(self):
         def target(x):
             assembly("JUMP test")
+# sourcery skip: no-conditionals-in-tests
             if x:
                 return 4
             label("test")
@@ -871,6 +869,7 @@ class TestInlineAssembly(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
+# sourcery skip: swap-if-expression
         compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
 
     def test_conditional_jump_external_target(self):
@@ -882,6 +881,7 @@ class TestInlineAssembly(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
+# sourcery skip: swap-if-expression
         compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
 
     def test_yield(self):

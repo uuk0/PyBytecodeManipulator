@@ -105,10 +105,7 @@ class MutableFunction:
 
     @classmethod
     def create(cls, target):
-        if isinstance(target, staticmethod):
-            return cls(target.__func__)
-
-        elif isinstance(target, classmethod):
+        if isinstance(target, (staticmethod, classmethod)):
             return cls(target.__func__)
 
         return cls(target)
@@ -239,18 +236,21 @@ class MutableFunction:
                     tuple(builder.free_variables),
                     tuple(builder.cell_variables),
                 )
-            except:
-                print(builder.shared_variable_names)
-                print(len(builder.shared_variable_names))
+            except Exception:
+                self._handle_error_create_code_object(builder)
 
-                for i in range(0, len(self.raw_code), 2):
-                    frag = self.raw_code[i : i + 2]
-                    print(tuple(frag))
+        def _handle_error_create_code_object(self, builder):
+            print(builder.shared_variable_names)
+            print(len(builder.shared_variable_names))
 
-                self.walk_instructions(lambda instr: print(instr))
+            for i in range(0, len(self.raw_code), 2):
+                frag = self.raw_code[i : i + 2]
+                print(tuple(frag))
 
-                print(self)
-                raise
+            self.walk_instructions(lambda instr: print(instr))
+
+            print(self)
+            raise
 
     elif sys.version_info.major == 3 and sys.version_info.minor == 11:
 

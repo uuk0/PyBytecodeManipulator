@@ -104,7 +104,7 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
                 message = "expected <true-ish value> (message not arrival)"
 
             raise PropagatingCompilerException(
-                "assertion failed: " + message
+                f"assertion failed: {message}"
             ).add_trace_level(
                 self.trace_info.with_token(list(self.source.get_tokens()))
             ).set_underlying_exception(

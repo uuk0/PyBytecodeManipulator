@@ -1,3 +1,4 @@
+import contextlib
 import string
 import types
 import typing
@@ -27,11 +28,7 @@ def _visit_for_stack_effect(
         raise RuntimeError
 
     eff = 0
-    max_size = 0
-
-    if eff_b is not None:
-        max_size = eff_b[1]
-
+    max_size = eff_b[1] if eff_b is not None else 0
     if eff_a is not None and not ins.has_unconditional_jump():
         eff += eff_a[0]
 
@@ -67,86 +64,87 @@ def apply_inline_assemblies(
     insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
 
     def visit(instr: Instruction):
-        if instr.opcode == Opcodes.LOAD_GLOBAL:
-            try:
-                value = target.target.__globals__.get(instr.arg_value)
-            except KeyError:
-                return
+        if instr.opcode != Opcodes.LOAD_GLOBAL:
+            return
+        try:
+            value = target.target.__globals__.get(instr.arg_value)
+        except KeyError:
+            return
 
-            if value == assembly_targets.assembly:
-                invoke = next(instr.trace_stack_position_use(0))
-                arg = next(invoke.trace_stack_position(0))
+        if value == assembly_targets.assembly:
+            invoke = next(instr.trace_stack_position_use(0))
+            arg = next(invoke.trace_stack_position(0))
 
-                if arg.opcode != Opcodes.LOAD_CONST:
-                    raise SyntaxError("<assembly> must be constant!")
+            if arg.opcode != Opcodes.LOAD_CONST:
+                raise SyntaxError("<assembly> must be constant!")
 
-                if invoke.next_instruction.opcode == Opcodes.POP_TOP:
-                    insertion_points.append(
-                        (typing.cast(str, arg.arg_value), invoke.next_instruction)
-                    )
-                else:
-                    insertion_points.append((typing.cast(str, arg.arg_value), invoke))
+            if invoke.next_instruction.opcode == Opcodes.POP_TOP:
+                insertion_points.append(
+                    (typing.cast(str, arg.arg_value), invoke.next_instruction)
+                )
+            else:
+                insertion_points.append((typing.cast(str, arg.arg_value), invoke))
 
-                instr.change_opcode(Opcodes.NOP)
-                arg.change_opcode(Opcodes.NOP)
-                invoke.change_opcode(Opcodes.LOAD_CONST, None)
+            instr.change_opcode(Opcodes.NOP)
+            arg.change_opcode(Opcodes.NOP)
+            invoke.change_opcode(Opcodes.LOAD_CONST, None)
 
-            elif value == assembly_targets.jump:
-                invoke = next(instr.trace_stack_position_use(0))
+        elif value == assembly_targets.jump:
+            invoke = next(instr.trace_stack_position_use(0))
 
-                if invoke.arg not in (1, 2):
-                    raise SyntaxError(
-                        f"expected one to two args, not {invoke.arg} for <jump>"
-                    )
+            if invoke.arg not in (1, 2):
+                raise SyntaxError(
+                    f"expected one to two args, not {invoke.arg} for <jump>"
+                )
 
+            label_name = next(invoke.trace_stack_position(0))
+
+            if label_name.opcode != Opcodes.LOAD_CONST:
+                raise SyntaxError(f"expected <constant>, got {label_name}")
+
+            condition = None
+            if invoke.arg == 2:
+                condition = label_name
                 label_name = next(invoke.trace_stack_position(0))
 
                 if label_name.opcode != Opcodes.LOAD_CONST:
                     raise SyntaxError(f"expected <constant>, got {label_name}")
 
-                condition = None
-                if invoke.arg == 2:
-                    condition = label_name
-                    label_name = next(invoke.trace_stack_position(0))
+                raise NotImplementedError("<condition> on jump() target")
 
-                    if label_name.opcode != Opcodes.LOAD_CONST:
-                        raise SyntaxError(f"expected <constant>, got {label_name}")
-
-                    raise NotImplementedError("<condition> on jump() target")
-
-                if not typing.cast(str, label_name.arg_value).isalnum():
-                    raise SyntaxError(
-                        "label name only characters and digits are allowed for label names!"
-                    )
-
-                if invoke.next_instruction.opcode == Opcodes.POP_TOP:
-                    insertion_points.append(
-                        (f"JUMP {label_name.arg_value}", invoke.next_instruction)
-                    )
-                else:
-                    raise SyntaxError(invoke.next_instruction)
-
-                instr.change_opcode(Opcodes.NOP)
-                label_name.change_opcode(Opcodes.NOP)
-                invoke.change_opcode(Opcodes.LOAD_CONST, None)
-
-            elif value == assembly_targets.label:
-                invoke = next(instr.trace_stack_position_use(0))
-                arg = next(invoke.trace_stack_position(0))
-
-                if arg.opcode != Opcodes.LOAD_CONST:
-                    raise SyntaxError("<label name> must be constant")
-
-                labels.add(StaticIdentifier(typing.cast(str, arg.arg_value)))
-                invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
-                invoke.insert_after(
-                    Instruction.create_with_same_info(invoke, Opcodes.LOAD_CONST, None)
+            if not typing.cast(str, label_name.arg_value).isalnum():
+                raise SyntaxError(
+                    "label name only characters and digits are allowed for label names!"
                 )
-                instr.change_opcode(Opcodes.NOP)
-                arg.change_opcode(Opcodes.NOP)
-                label_targets[
-                    typing.cast(str, invoke.arg_value)
-                ] = invoke.next_instruction
+
+            if invoke.next_instruction.opcode == Opcodes.POP_TOP:
+                insertion_points.append(
+                    (f"JUMP {label_name.arg_value}", invoke.next_instruction)
+                )
+            else:
+                raise SyntaxError(invoke.next_instruction)
+
+            instr.change_opcode(Opcodes.NOP)
+            label_name.change_opcode(Opcodes.NOP)
+            invoke.change_opcode(Opcodes.LOAD_CONST, None)
+
+        elif value == assembly_targets.label:
+            invoke = next(instr.trace_stack_position_use(0))
+            arg = next(invoke.trace_stack_position(0))
+
+            if arg.opcode != Opcodes.LOAD_CONST:
+                raise SyntaxError("<label name> must be constant")
+
+            labels.add(StaticIdentifier(typing.cast(str, arg.arg_value)))
+            invoke.change_opcode(Opcodes.BYTECODE_LABEL, arg.arg_value)
+            invoke.insert_after(
+                Instruction.create_with_same_info(invoke, Opcodes.LOAD_CONST, None)
+            )
+            instr.change_opcode(Opcodes.NOP)
+            arg.change_opcode(Opcodes.NOP)
+            label_targets[
+                typing.cast(str, invoke.arg_value)
+            ] = invoke.next_instruction
 
     target.walk_instructions(visit)
 
@@ -335,10 +333,8 @@ def execute_module_in_instance(
 ):
     scope = ParsingScope()
 
-    try:
+    with contextlib.suppress(AttributeError):
         scope.module_file = file or module.__file__
-    except AttributeError:
-        pass
 
     if module.__name__ in GLOBAL_SCOPE_CACHE:
         scope.global_scope = GLOBAL_SCOPE_CACHE[module.__name__]
