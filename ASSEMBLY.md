@@ -57,14 +57,15 @@ for cross-version support.
     * CODE_BLOCK\[\<count>] (a code block in {}, where \<count> is the amount of dynamic variables, defaults to 0); 
       when count != 0, it is expected to prefix the {} with \[\<target name> {',' \<target name>}] to declare where the values go (local variable only)
     * VARIABLE_ARG\[...] (a dynamic count (including 0) of the specific type; if no type should be specified, omit the \[])
-    * VARIABLE (a variable reference, similar to C#'s 'out' keyword; can be used as a store target than; requires special inputs to work (currently only local, global or cell variables are allowed, in the future more might work))
-  * Macro names can be overloaded
+    * VARIABLE (a variable reference, similar to C#'s 'out' keyword; can be used as a store target than; requires special inputs to work 
+      (currently only local, global or cell variables (or macro parameters of these kinds) are allowed, in the future more might work))
+  * Macro names can be overloaded by arg count and types (hard checking is only done currently by CODE_BLOCK)
   * Comes with an extra instruction, which should only be used in macros:
 * MACRO_PASTE \<macro param name> \['\[' \<access> {',' \<access>} ']'] \['->' \<target>]: pastes the code for a macro-parameter, 
   and optionally pushes the result into the target; Can be used to define special exchangeable sections in code (it is intended to be used with code blocks as parameters)
   \<access> can be used to expose parameter names for dynamic replacement, optionally prefixed with '!' to make the value static inlined (single eval)
   WARNING: will raise an exception when trying to use a STORE on a complex \<expression> as \<access>, as that is generally not supported
-* MACRO_IMPORT \<module name with '.'> \['->' \['.'\] \<namespace with '.'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
+* MACRO_IMPORT \<module name with '.'> \['->' \[':'\] \<namespace with ':'>]: imports the global scope of another module into this scope. If '->' is used, it defines where to put the scope. If it starts with '.', it is relative to the current position, otherwise global.
   * WARNING: the other module must be imported first (TODO: import it manually here!)
 
 * NAMESPACE \[\{\<namespace parts> ':'}] \<main name> '{' \<code> '}': Namespace (internal only, not compiled into bytecode)

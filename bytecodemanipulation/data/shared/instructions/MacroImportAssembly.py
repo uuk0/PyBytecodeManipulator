@@ -17,7 +17,7 @@ from bytecodemanipulation.MutableFunction import MutableFunction
 
 
 class MacroImportAssembly(AbstractAssemblyInstruction):
-    # MACRO_IMPORT <module name with '.'> ['->' ['.'] <namespace with '.'>]
+    # MACRO_IMPORT <module name with '.'> ['->' [':'] <namespace with ':'>]
     NAME = "MACRO_IMPORT"
 
     @classmethod
@@ -33,18 +33,22 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
 
         is_relative_target = False
 
-        if parser.try_consume_multi([SpecialToken("-"), SpecialToken(">")]):
-            target = []
+        if arrow_0 := parser.try_consume(SpecialToken("-")):
+            if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
+                raise PropagatingCompilerException(
+                    "expected '>' after '-' to complete <target>-expression in MACRO_IMPORT"
+                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, parser[0]))
 
-            if expr := parser.try_consume(IdentifierToken):
-                target.append(expr)
-            else:
-                parser.save()
-                parser.consume(SpecialToken("."))
-                parser.rollback()
-                is_relative_target = True
+            relative_target_token = parser.try_consume(SpecialToken(":"))
+            is_relative_target = bool(relative_target_token)
 
-            while parser.try_consume(SpecialToken(".")):
+            if not (expr := parser.try_consume(IdentifierToken)):
+                raise PropagatingCompilerException(
+                    f"expected <expression> {' or :' if is_relative_target else ''} after '->' in MACRO_IMPORT"
+                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0], relative_target_token))
+
+            target = [expr]
+            while parser.try_consume(SpecialToken(":")):
                 target.append(parser.consume(IdentifierToken))
 
         else:
@@ -70,7 +74,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         self.trace_info = trace_info
 
     def __repr__(self):
-        return f"MACRO_IMPORT('{'.'.join(map(lambda e: e.text, self.name))}'{'' if self.target is None else ('.' if self.is_relative_target else '') + '.'.join(map(lambda e: e.text, self.target))})"
+        return f"MACRO_IMPORT('{'.'.join(map(lambda e: e.text, self.name))}'{'' if self.target is None else (':' if self.is_relative_target else '') + ':'.join(map(lambda e: e.text, self.target))})"
 
     def __eq__(self, other):
         return (
@@ -123,6 +127,11 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
             bytecodemanipulation.assembler.hook.LET_PROPAGATE_EXCEPTIONS_THROUGH = prev
 
         if not scope_entry:
+            if module not in GLOBAL_SCOPE_CACHE:
+                raise PropagatingCompilerException(
+                    f"could not find module '{module}'"
+                ).add_trace_level(scope.get_trace_info().with_token(self.name))
+
             scope_entry.update(GLOBAL_SCOPE_CACHE[module])
 
         else:
