@@ -88,13 +88,11 @@ class Instruction:
         self.previous_instructions: typing.List["Instruction"] | None = None
 
     def copy(self) -> "Instruction":
-        instance = type(self)(
+        return type(self)(
             self.opcode,
             self.arg_value,
             self.arg,
         )
-
-        return instance
 
     def copy_deep(self, copied: dict = None) -> "Instruction":
         copied = copied or {}
@@ -218,12 +216,12 @@ class Instruction:
         assert isinstance(self.opcode, int)
         assert isinstance(self.arg, int) or self.arg is None
         if id(self) == id(self.arg_value):
-            return self.repr_safe() + "@self_arg_value"
+            return f"{self.repr_safe()}@self_arg_value"
 
         return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={self.arg_value.repr_safe() if self.arg_value is not None and isinstance(self.arg_value, Instruction) else self.arg_value}, has_next={self.next_instruction is not None})"
 
     def repr_safe(self):
-        return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={'... (' + str(type(self.arg_value)) + ')' if self.arg_value is not None else None}, has_next={self.next_instruction is not None})"
+        return f"Instruction(position={self.offset}, opcode={self.opcode}, opname={self.opname}, arg={self.arg}, arg_value={f'... ({str(type(self.arg_value))})' if self.arg_value is not None else None}, has_next={self.next_instruction is not None})"
 
     def __eq__(self, other):
         if not isinstance(other, Instruction):
@@ -254,9 +252,9 @@ class Instruction:
 
         return self.opcode == other.opcode and (
             (
-                (self.arg_value == other.arg_value)
-                if not isinstance(self.arg_value, Instruction)
-                else self.arg_value.lossy_eq(other.arg_value)
+                self.arg_value.lossy_eq(other.arg_value)
+                if isinstance(self.arg_value, Instruction)
+                else self.arg_value == other.arg_value
             )
             if (self.arg_value is not None and other.arg_value is not None)
             or self.opcode == Opcodes.LOAD_CONST

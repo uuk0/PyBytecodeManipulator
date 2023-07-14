@@ -1,4 +1,5 @@
 import builtins
+import contextlib
 import importlib
 import string
 import typing
@@ -26,27 +27,30 @@ class StackSizeIssue(Exception):
 
 
 class EmulatorGeneratorContainer:
-    def __init__(self, mutable: MutableFunction, args: typing.Sized = tuple()):
+    def __init__(self, mutable: MutableFunction, args: typing.Sized = ()):
         self.mutable = mutable
-        self.instruction = mutable.instructions[0]
+
+        if not isinstance(self.mutable, MutableFunction):
+            self.mutable = MutableFunction(self.mutable)
+
+        self.instruction = mutable.instruction_entry_point
         self.args = args
 
         if len(self.args) != self.mutable.argument_count:
             raise ValueError()
 
+        builder = self.mutable.create_filled_builder()
+
         self.stack = []
-        self.local_variables = [None] * len(self.mutable.shared_variable_names)
+        self.local_variables = [None] * len(builder.shared_variable_names)
         self.local_variables[: len(self.args)] = self.args
-        self.free_vars = [None] * len(mutable.free_variables)
+        self.free_vars = [None] * len(builder.free_variables)
         self.exception_handle_stack = []
 
-        self.instruction = self.mutable.instructions[0]
+        self.instruction = self.mutable.instruction_entry_point
         self.continue_stack = []
 
-        if not isinstance(self.mutable, MutableFunction):
-            self.mutable = MutableFunction(self.mutable)
-
-    def run(self):
+    def run(self):  # sourcery skip: raise-from-previous-error
         print("yield-calling", self.mutable)
 
         while True:
@@ -84,6 +88,7 @@ class EmulatorGeneratorContainer:
 
 
 def run_code(mutable: MutableFunction | typing.Callable, *args):
+    # sourcery skip: raise-from-previous-error
     print("calling", mutable)
 
     if not isinstance(mutable, MutableFunction):
@@ -92,7 +97,7 @@ def run_code(mutable: MutableFunction | typing.Callable, *args):
     mutable: MutableFunction
 
     if len(args) != mutable.argument_count:
-        raise ValueError()
+        raise ValueError(f"expected {mutable.argument_count} args, got {len(args)}")
 
     builder = mutable.create_filled_builder()
 
@@ -215,6 +220,7 @@ def rot_two(
 
 @execution(Opcodes.JUMP_ABSOLUTE)
 @execution(Opcodes.JUMP_FORWARD)
+@execution(Opcodes.JUMP_BACKWARD)
 def jump_unconditional(
     func: MutableFunction,
     instr: Instruction,
@@ -224,7 +230,7 @@ def jump_unconditional(
     call_stack: list,
     exception_handle_stack: list,
 ) -> typing.Tuple[Instruction, MutableFunction]:
-    return instr.arg_value, func
+    return typing.cast(Instruction, instr.arg_value), func
 
 
 @execution(Opcodes.LOAD_GLOBAL)
@@ -384,9 +390,12 @@ def call_method(
     if hasattr(target, "__self__") and hasattr(target, "__code__"):
         args.insert(0, target.__self__)
 
-    try:
-        mutable = MutableFunction(target)
-    except AttributeError:
+    mutable = None
+    if not hasattr(target, "_no_emulation"):
+        with contextlib.suppress(AttributeError):
+            mutable = MutableFunction(target)
+
+    if not mutable:
         try:
             stack.append(target(*args))
             return instr.next_instruction, func
@@ -411,18 +420,20 @@ def call_method(
 
     free_vars.clear()
 
-    free_vars[:] = [None] * len(mutable.free_variables)
+    builder = mutable.create_filled_builder()
+
+    free_vars[:] = [None] * len(builder.free_variables)
 
     if hasattr(target, "_CELL_SPACE"):
         free_vars[: len(target._CELL_SPACE)] = target._CELL_SPACE
 
     stack.clear()
-    local[:] = [None] * len(mutable.shared_variable_names)
+    local[:] = [None] * len(builder.shared_variable_names)
     local[: len(args)] = args
 
     print("calling", mutable)
 
-    return mutable.instructions[0], mutable
+    return mutable.instruction_entry_point, mutable
 
 
 @execution(Opcodes.RETURN_VALUE)
@@ -440,7 +451,7 @@ def return_value(
     print("returning", func)
     print(return_obj)
 
-    if len(call_stack) == 0:
+    if not call_stack:
         raise FinalReturn(return_obj)
 
     (
@@ -485,7 +496,7 @@ def yield_from(
     null = stack.pop(-1)
 
     if null is not None:
-        raise RuntimeError("expected None, got " + repr(null))
+        raise RuntimeError(f"expected None, got {repr(null)}")
 
     tos = stack[-1]
 
@@ -507,10 +518,8 @@ def pop_jump_if_true(
     call_stack: list,
     exception_handle_stack: list,
 ) -> typing.Tuple[Instruction, MutableFunction]:
-    case = stack.pop(-1)
-
-    if case:
-        return instr.arg_value, func
+    if case := stack.pop(-1):
+        return typing.cast(Instruction, instr.arg_value), func
     return instr.next_instruction, func
 
 
@@ -545,9 +554,7 @@ def pop_jump_if_false(
 ) -> typing.Tuple[Instruction, MutableFunction]:
     case = stack.pop(-1)
 
-    if not case:
-        return instr.arg_value, func
-    return instr.next_instruction, func
+    return (instr.next_instruction, func) if case else (typing.cast(Instruction, instr.arg_value), func)
 
 
 @execution(Opcodes.CONTAINS_OP)
@@ -929,7 +936,7 @@ def build_set(
     call_stack: list,
     exception_handle_stack: list,
 ) -> typing.Tuple[Instruction, MutableFunction]:
-    stack.append(set([stack.pop(-1) for _ in range(instr.arg)]))
+    stack.append({stack.pop(-1) for _ in range(instr.arg)})
     return instr.next_instruction, func
 
 
@@ -1027,3 +1034,21 @@ def init():
     )
 
     return instr.next_instruction, func
+
+
+@execution(Opcodes.RAISE_VARARGS)
+def raise_varargs(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+):
+    if instr.arg == 0:
+        raise
+    elif instr.arg == 1:
+        raise stack.pop(-1)
+    else:
+        raise stack.pop(-1) from stack.pop(-1)

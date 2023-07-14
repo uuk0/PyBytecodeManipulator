@@ -2,6 +2,7 @@
 # Version 0.3.6
 - fixed some issues with exception locations
 - MACRO_IMPORT uses now ':' in namespace target, and gives better exception messages to the user
+- the bytecode emulator works now a little bit better
 
 # Version 0.3.5
 - std:comprehension:list is now using internally a generator wrapped in a list() call

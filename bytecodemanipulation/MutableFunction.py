@@ -110,6 +110,10 @@ class MutableFunction:
 
         return cls(target)
 
+    @classmethod
+    def create_empty(cls):
+        return cls.create(lambda: None)
+
     def __init__(self, target: types.FunctionType | types.MethodType):
         self.target = target
         self.code_object: types.CodeType = target.__code__
@@ -583,6 +587,13 @@ class MutableFunction:
         builder.temporary_instructions = instructions
 
         InstructionAssembler.apply(self, builder)
+
+    def assemble_fast_unchained(self, instructions: typing.List[Instruction]):
+        for i, instr in enumerate(instructions[:-1]):
+            instr.next_instruction = instructions[i+1]
+
+        self.instruction_entry_point = instructions[0]
+        self.create_filled_builder()
 
     def get_raw_code(self):
         self.create_filled_builder()
