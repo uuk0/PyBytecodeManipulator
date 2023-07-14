@@ -168,7 +168,8 @@ Expressions can be added as certain parameters to instructions to use instead of
   - GENERIC\[\<name>] as type specifier
 - make the RAW assembly arguments correct; we can no longer set "arg" to the value we want, as the re-assembler
   will not use the raw "arg" attribute, but the "arg_value"
-- CODE_BLOCK -> \<target> so we can use MACRO_RETURN in a CODE_BLOCK parameter to return a value to the MACRO_PASTEr
+- CODE_BLOCK -> \<target> so we can use MACRO_RETURN in a CODE_BLOCK parameter to return a value to the MACRO_PASTE
+- Add LineBreak-Token, and require it to be consumed explicit
 
 - make the system more abstract preparing for python 3.11 (CACHE entries, redesigned CALL pattern, ...)
 

@@ -32,110 +32,12 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(
         cls, parser: "Parser", scope: ParsingScope
     ) -> "AbstractFunctionDefinitionAssembly":
-        prefix = ""
-
-        while parser.try_consume(SpecialToken("|")):
-            prefix += "|"
-
-        if prefix == "":
-            while parser.try_consume(SpecialToken(":")):
-                prefix += ":"
-
-        elif error := parser.try_consume(SpecialToken(":")):
-            raise PropagatingCompilerException(
-                "Cannot parser '|' and ':' as inter-fix for <function name>",
-            ).add_trace_level(scope.get_trace_info().with_token(error))
+        prefix = cls._parse_name_prefix(parser, scope)
 
         func_name = parser.parse_identifier_like(scope)
 
-        bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []
-        args = []
-
-        if parser.try_consume(SpecialToken("<")):
-            is_static = bool(parser.try_consume(SpecialToken("!")))
-
-            expr = parser.try_parse_identifier_like()
-
-            if expr:
-                bound_variables.append((expr, is_static))
-
-                while True:
-                    if not parser.try_consume(SpecialToken(",")) or not (
-                        expr := parser.try_parse_identifier_like()
-                    ):
-                        break
-
-                    bound_variables.append((expr, is_static))
-
-            parser.consume(SpecialToken(">"), err_arg=scope)
-
-        if (opening_bracket := parser.try_consume(SpecialToken("("))) is None:
-            raise PropagatingCompilerException(
-                f"expected '(' after <{'identifier' if not bound_variables else 'bound variables'}>"
-            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
-
-        while parser.try_inspect() != SpecialToken(")"):
-            arg = None
-
-            star = parser.try_consume(SpecialToken("*"))
-            star_star = parser.try_consume(SpecialToken("*"))
-            identifier = parser.try_parse_identifier_like()
-
-            if not identifier:
-                if star:
-                    raise PropagatingCompilerException(
-                        "Expected <identifier> after '*'"
-                        if not star_star
-                        else "Expected <identifier> after '**'"
-                    ).add_trace_level(
-                        scope.get_trace_info().with_token(star, star_star)
-                    )
-
-                break
-
-            if not star:
-                if equal_sign := parser.try_consume(SpecialToken("=")):
-                    default_value = parser.try_parse_data_source(
-                        allow_primitives=True,
-                        include_bracket=False,
-                        allow_op=True,
-                        scope=scope,
-                    )
-
-                    if default_value is None:
-                        raise PropagatingCompilerException(
-                            "expected <expression> after '='"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(
-                                list(identifier.get_tokens()), equal_sign, parser[0]
-                            )
-                        )
-
-                    arg = AbstractCallAssembly.KwArg(
-                        identifier, default_value, token=identifier
-                    )
-
-            if not arg:
-                if star_star:
-                    arg = AbstractCallAssembly.KwArgStar(identifier, token=identifier)
-
-                elif star:
-                    arg = AbstractCallAssembly.StarArg(identifier, token=identifier)
-
-                else:
-                    arg = AbstractCallAssembly.Arg(identifier, token=identifier)
-
-            args.append(arg)
-
-            if not parser.try_consume(SpecialToken(",")):
-                break
-
-        if not parser.try_consume(SpecialToken(")")):
-            raise PropagatingCompilerException(
-                "expected ')' matching '(' in function definition"
-            ).add_trace_level(
-                scope.get_trace_info().with_token(opening_bracket, parser[0])
-            )
+        bound_variables = cls._parse_bound_variables(parser, scope)
+        args = cls._parse_arg_list(parser, bound_variables, scope)
 
         if expr := parser.try_consume(SpecialToken("<")):
             if bound_variables:
@@ -147,25 +49,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 "Respect ordering (got '<' before 'args'): DEF ['name'] ['captured'] ('args') [-> 'target'] { 'code' }"
             ).add_trace_level(scope.get_trace_info().with_token(expr))
 
-        if (arrow_0 := parser.try_consume(SpecialToken("-"))) and (
-            arrow_1 := parser.try_consume(SpecialToken(">"))
-        ):
-            target = parser.try_consume_access_to_value(scope=scope)
-
-            if target is None:
-                raise PropagatingCompilerException(
-                    "expected <expression> after '->' as target"
-                ).add_trace_level(
-                    scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0])
-                )
-
-        elif arrow_0:
-            raise PropagatingCompilerException(
-                "expected '>' after '-' to complete <target> expression"
-            ).add_trace_level(scope.get_trace_info().with_token(arrow_0, parser[0]))
-
-        else:
-            target = None
+        target = parser.try_parse_target_expression(scope)
 
         try:
             body = parser.parse_body(scope=scope)
@@ -191,6 +75,117 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
             trace_info=scope.get_trace_info().with_token(list(func_name.get_tokens())),
         )
 
+    @classmethod
+    def _parse_arg_list(cls, parser: Parser, bound_variables, scope):
+        args = []
+
+        if (opening_bracket := parser.try_consume(SpecialToken("("))) is None:
+            raise PropagatingCompilerException(
+                f"expected '(' after <{'bound variables' if bound_variables else 'identifier'}>"
+            ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
+
+        while parser.try_inspect() != SpecialToken(")"):
+            arg = cls._pare_argument(parser, scope)
+
+            if arg is None:
+                break
+
+            args.append(arg)
+
+            if not parser.try_consume(SpecialToken(",")):
+                break
+
+        if not parser.try_consume(SpecialToken(")")):
+            raise PropagatingCompilerException(
+                "expected ')' matching '(' in function definition"
+            ).add_trace_level(
+                scope.get_trace_info().with_token(opening_bracket, parser[0])
+            )
+
+        return args
+
+    @classmethod
+    def _pare_argument(cls, parser: Parser, scope: ParsingScope) -> AbstractCallAssembly.IArg | None:
+        arg = None
+
+        star = parser.try_consume(SpecialToken("*"))
+        star_star = parser.try_consume(SpecialToken("*"))
+        identifier = parser.try_parse_identifier_like()
+
+        if not identifier:
+            if star:
+                raise PropagatingCompilerException(
+                    "Expected <identifier> after '**'" if star_star else "Expected <identifier> after '*'"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(star, star_star)
+                )
+            return
+
+        if not star:
+            if equal_sign := parser.try_consume(SpecialToken("=")):
+                default_value = parser.try_consume_access_to_value(
+                    allow_primitives=True,
+                    allow_op=True,
+                    scope=scope,
+                )
+
+                if default_value is None:
+                    raise PropagatingCompilerException(
+                        "expected <expression> after '='"
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(
+                            list(identifier.get_tokens()), equal_sign, parser[0]
+                        )
+                    )
+
+                arg = AbstractCallAssembly.KwArg(
+                    identifier, default_value, token=identifier
+                )
+
+        if not arg:
+            if star_star:
+                arg = AbstractCallAssembly.KwArgStar(identifier, token=identifier)
+
+            elif star:
+                arg = AbstractCallAssembly.StarArg(identifier, token=identifier)
+
+            else:
+                arg = AbstractCallAssembly.Arg(identifier, token=identifier)
+
+        return arg
+
+    @classmethod
+    def _parse_bound_variables(cls, parser, scope):
+        bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []
+        if parser.try_consume(SpecialToken("<")):
+            is_static = bool(parser.try_consume(SpecialToken("!")))
+
+            if expr := parser.try_parse_identifier_like():
+                bound_variables.append((expr, is_static))
+
+                while parser.try_consume(SpecialToken(",")) and (
+                        expr := parser.try_parse_identifier_like()
+                ):
+                    bound_variables.append((expr, is_static))
+
+            parser.consume(SpecialToken(">"), err_arg=scope)
+        return bound_variables
+
+    @classmethod
+    def _parse_name_prefix(cls, parser, scope):
+        prefix = ""
+        while parser.try_consume(SpecialToken("|")):
+            prefix += "|"
+        if prefix == "":
+            while parser.try_consume(SpecialToken(":")):
+                prefix += ":"
+
+        elif error := parser.try_consume(SpecialToken(":")):
+            raise PropagatingCompilerException(
+                "Cannot parser '|' and ':' as inter-fix for <function name>",
+            ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token, error))
+        return prefix
+
     def __init__(
         self,
         func_name: IIdentifierAccessor | str | None,
@@ -202,7 +197,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         trace_info: TraceInfo = None,
     ):
         self.func_name = (
-            func_name if not isinstance(func_name, str) else StaticIdentifier(func_name)
+            StaticIdentifier(func_name) if isinstance(func_name, str) else func_name
         )
         self.bound_variables: typing.List[typing.Tuple[IIdentifierAccessor, bool]] = []
         # var if isinstance(var, IdentifierToken) else IdentifierToken(var) for var in bound_variables]
@@ -262,7 +257,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __repr__(self):
-        return f"DEF({self.prefix}{self.func_name}<{repr([('!:' if name[1] else '') + name[0](None) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){'-> ' + repr(self.target) if self.target else ''} {{ {self.body} }})"
+        return f"DEF({self.prefix}{self.func_name}<{repr([('!:' if name[1] else '') + name[0](None) for name in self.bound_variables])[1:-1]}>({repr(self.args)[1:-1]}){f'-> {repr(self.target)}' if self.target else ''} {{ {self.body} }})"
 
     def copy(self) -> "AbstractFunctionDefinitionAssembly":
         return type(self)(

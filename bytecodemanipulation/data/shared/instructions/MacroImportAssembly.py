@@ -12,6 +12,7 @@ from bytecodemanipulation.assembler.util.tokenizer import IdentifierToken
 from bytecodemanipulation.data.shared.instructions.AbstractInstruction import (
     AbstractAssemblyInstruction,
 )
+from bytecodemanipulation.data.shared.instructions.MacroAssembly import MacroAssembly
 from bytecodemanipulation.opcodes.Instruction import Instruction
 from bytecodemanipulation.MutableFunction import MutableFunction
 
@@ -28,8 +29,13 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
     def consume(cls, parser: "Parser", scope) -> "AbstractAssemblyInstruction":
         name = [parser.consume(IdentifierToken)]
 
-        while parser.try_consume(SpecialToken(".")):
-            name.append(parser.consume(IdentifierToken))
+        while sep := parser.try_consume(SpecialToken(".")):
+            if not (expr := parser.consume(IdentifierToken)):
+                raise PropagatingCompilerException(
+                    "expected <identifier> after '.' in <source> of MACRO_IMPORT"
+                ).add_trace_level(scope.get_trace_info().with_token(name, sep))
+
+            name.append(expr)
 
         is_relative_target = False
 
@@ -48,8 +54,13 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                 ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0], relative_target_token))
 
             target = [expr]
-            while parser.try_consume(SpecialToken(":")):
-                target.append(parser.consume(IdentifierToken))
+            while sep := parser.try_consume(SpecialToken(":")):
+                if not (expr := parser.try_consume(IdentifierToken)):
+                    raise PropagatingCompilerException(
+                        "expected <expression> after ':' in <target> of MACRO_IMPORT"
+                    ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, target, sep))
+
+                target.append(expr)
 
         else:
             target = None
@@ -57,7 +68,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         return cls(
             name,
             target,
-            is_relative_target,
+            is_relative_target=is_relative_target,
             trace_info=scope.get_trace_info().with_token(name),
         )
 
@@ -93,6 +104,7 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         return []
 
     def fill_scope(self, scope: ParsingScope):
+        # sourcery skip: remove-redundant-if, remove-unreachable-code
         from bytecodemanipulation.assembler.Emitter import GLOBAL_SCOPE_CACHE
         import bytecodemanipulation.assembler.hook
 
@@ -129,8 +141,8 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
         if not scope_entry:
             if module not in GLOBAL_SCOPE_CACHE:
                 raise PropagatingCompilerException(
-                    f"could not find module '{module}'"
-                ).add_trace_level(scope.get_trace_info().with_token(self.name))
+                    f"could not find module '{module}' (tried to import it, but it did not expose any namespace data)"
+                ).add_trace_level(self.trace_info)
 
             scope_entry.update(GLOBAL_SCOPE_CACHE[module])
 
@@ -151,8 +163,8 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                         tasks.append((target[key], source[key]))
 
                     # todo: can we use something like this?
-                    # elif isinstance(target[key], MacroAssembly.MacroOverloadPage) and isinstance(source[key], MacroAssembly.MacroOverloadPage):
-                    #     target[key].integrate(source[key])
+                    elif isinstance(target[key], MacroAssembly.MacroOverloadPage) and isinstance(source[key], MacroAssembly.MacroOverloadPage):
+                        target[key].integrate(source[key])
 
                     else:
                         print(

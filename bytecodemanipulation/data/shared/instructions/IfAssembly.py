@@ -62,9 +62,7 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.body = body
         self.label_name = (
             (
-                label_name
-                if not isinstance(label_name, str)
-                else [StaticIdentifier(e) for e in label_name.split(":")]
+                [StaticIdentifier(e) for e in label_name.split(":")] if isinstance(label_name, str) else label_name
             )
             if label_name is not None
             else None
@@ -83,7 +81,7 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     def __repr__(self):
         c = '"'
-        return f"IF({self.source}{'' if self.label_name is None else ', label='+c+':'.join(map(repr, self.label_name))+c}) -> {{{self.body}}}"
+        return f"IF({self.source}{'' if self.label_name is None else f', label={c}' + ':'.join(map(repr, self.label_name)) + c}) -> {{{self.body}}}"
 
     def visit_parts(
         self,
@@ -117,9 +115,5 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         return (
             set()
             if self.label_name is None
-            else {
-                label_name,
-                label_name + ":END",
-                label_name + ":HEAD",
-            }
+            else {label_name, f"{label_name}:END", f"{label_name}:HEAD"}
         ) | self.body.get_labels(scope)

@@ -674,3 +674,19 @@ class Parser(AbstractParser):
             ).add_trace_level(scope.get_trace_info().with_token(self[0]))
 
         return tokens
+
+    def try_parse_target_expression(self, scope: ParsingScope, ctx: str = None, base_token=None) -> AbstractAccessExpression | None:
+        if arrow_0 := self.try_consume(SpecialToken("-")):
+            if not (arrow_1 := self.try_consume(SpecialToken(">"))):
+                raise PropagatingCompilerException(
+                    f"expected '>' after '-' to complete '->' <target>{f' in {ctx}' if ctx else ''}"
+                ).add_trace_level(scope.get_trace_info().with_token(base_token, arrow_0))
+
+            target = self.try_consume_access_to_value(scope=scope)
+
+            if target is None:
+                raise PropagatingCompilerException(
+                    f"expected <target> after '->'{f' in {ctx}' if ctx else ''}"
+                ).add_trace_level(scope.get_trace_info().with_token(base_token, arrow_0, arrow_1, self[0]))
+
+            return target

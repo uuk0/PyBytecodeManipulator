@@ -107,11 +107,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             is_dynamic: bool = False,
             token: AbstractToken = None,
         ):
-            self.key = key if not isinstance(key, str) else StaticIdentifier(key)
+            self.key = StaticIdentifier(key) if isinstance(key, str) else key
             super().__init__(source, is_dynamic=is_dynamic, token=token)
 
         def __repr__(self):
-            return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.key(None)} = {self.source})"
+            return f"{type(self).__name__}{'Dynamic' if self.is_dynamic else ''}({self.key(None)} = {self.source})"
 
         def __eq__(self, other):
             return (

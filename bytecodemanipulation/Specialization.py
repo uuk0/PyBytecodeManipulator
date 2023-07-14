@@ -60,7 +60,7 @@ class SpecializationContainer:
         self.result_arg: ArgDescriptor | None = None
         self.replaced_call_target: typing.Callable | None = None
         self.replace_raised_exception: Exception | None = None
-        self.constant_value = tuple()
+        self.constant_value = ()
         self.invoke_before: typing.Callable | None = None
         self.replacement_bytecode = None
 
@@ -244,11 +244,8 @@ class SpecializationContainer:
             self.method_call_descriptor.call_method_instr.change_opcode(Opcodes.NOP)
             return
 
-        if self.constant_value != tuple():
-            self._discard_args()
-            arg_count = sum(int(not arg.discarded) for arg in self.arg_descriptors)
-            self.method_call_descriptor.call_method_instr.change_arg(arg_count)
-
+        if self.constant_value:
+            arg_count = self.get_arg_count()
             if self.invoke_before:
                 self.method_call_descriptor.lookup_method_instr.change_opcode(
                     Opcodes.LOAD_CONST
@@ -279,10 +276,7 @@ class SpecializationContainer:
 
             return
 
-        self._discard_args()
-        arg_count = sum(int(not arg.discarded) for arg in self.arg_descriptors)
-        self.method_call_descriptor.call_method_instr.change_arg(arg_count)
-
+        arg_count = self.get_arg_count()
         if self.replace_raised_exception:
             self.method_call_descriptor.lookup_method_instr.change_opcode(
                 Opcodes.LOAD_CONST,
@@ -298,6 +292,13 @@ class SpecializationContainer:
                 Opcodes.LOAD_CONST,
                 self.replaced_call_target,
             )
+
+    def get_arg_count(self):
+        self._discard_args()
+        result = sum(int(not arg.discarded) for arg in self.arg_descriptors)
+        self.method_call_descriptor.call_method_instr.change_arg(result)
+
+        return result
 
     def _discard_args(self):
         for arg in self.arg_descriptors:
