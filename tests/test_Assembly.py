@@ -2045,7 +2045,7 @@ RETURN $func()
         def target():
             assembly(
                 """
-LOAD 0 -> $test            
+LOAD 0 -> $test
 
 DEF func<test>()
 {

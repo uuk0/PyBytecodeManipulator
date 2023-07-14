@@ -1,6 +1,5 @@
 import abc
 import typing
-from collections import namedtuple
 
 from .CommonUtil import AbstractCursorStateItem
 
@@ -90,6 +89,11 @@ class StringLiteralToken(AbstractToken):
 
 
 class EndOfFileToken(AbstractToken):
+    def __init__(self):
+        super().__init__("")
+
+
+class LineBreakToken(AbstractToken):
     def __init__(self):
         super().__init__("")
 
@@ -283,6 +287,8 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     self.old_column_number = len(partial.split("\n")[-1]) - len(
                         partial.split("\n")[-1].lstrip()
                     )
+
+                print(repr(partial))
 
                 for r in result if isinstance(result, list) else (result,):
                     newline_count = partial[:whitespace_count].count("\n")

@@ -65,6 +65,7 @@ from bytecodemanipulation.assembler.Lexer import (
     Lexer,
     SpecialToken,
     StringLiteralToken,
+    LineBreakToken,
 )
 
 try:
@@ -195,6 +196,9 @@ class Parser(AbstractParser):
             else:
                 scope.scope_path += namespace_part
 
+        while self.try_consume(LineBreakToken):
+            pass
+
         if not self.try_consume(SpecialToken("{")):
             raise PropagatingCompilerException("expected '{'").add_trace_level(
                 scope.get_trace_info().with_token(self.try_inspect())
@@ -227,7 +231,7 @@ class Parser(AbstractParser):
         root = CompoundExpression()
 
         while predicate():
-            if self.try_consume(CommentToken):
+            if self.try_consume((CommentToken, LineBreakToken)):
                 continue
 
             if not (instr_token := self.try_consume(IdentifierToken)):
@@ -238,13 +242,13 @@ class Parser(AbstractParser):
             if scope:
                 scope.last_base_token = instr_token
 
-            if instr_token.text not in self.INSTRUCTIONS:
-                if not (instr := self.try_parse_custom_assembly(instr_token, scope)):
-                    raise PropagatingCompilerException(
-                        "expected <assembly instruction name> or <assembly macro name>"
-                    ).add_trace_level(scope.get_trace_info().with_token(instr_token))
-            else:
+            if instr_token.text in self.INSTRUCTIONS:
                 instr = self.INSTRUCTIONS[instr_token.text].consume(self, scope)
+
+            elif not (instr := self.try_parse_custom_assembly(instr_token, scope)):
+                raise PropagatingCompilerException(
+                    "expected <assembly instruction name> or <assembly macro name>"
+                ).add_trace_level(scope.get_trace_info().with_token(instr_token))
 
             root.add_child(instr)
 
@@ -257,12 +261,13 @@ class Parser(AbstractParser):
                 break
 
             if self.try_consume(SpecialToken(";")):
+                self.try_consume(LineBreakToken)
                 continue
 
             if not (expr := self.try_inspect()):
                 continue
 
-            if self[-1].line != expr.line:
+            if self.try_consume(LineBreakToken):
                 continue
 
             if not predicate():

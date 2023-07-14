@@ -2,31 +2,18 @@ import string
 import typing
 import warnings
 
-try:
-    from code_parser.lexers.common import (
-        AbstractLexer,
-        IntegerToken,
-        FloatToken,
-        BinaryOperatorToken,
-        BracketToken,
-        IdentifierToken,
-        StringLiteralToken,
-        CommentToken,
-        AbstractToken,
-    )
-
-except ImportError:
-    from bytecodemanipulation.assembler.util.tokenizer import (
-        AbstractLexer,
-        IntegerToken,
-        FloatToken,
-        BinaryOperatorToken,
-        BracketToken,
-        IdentifierToken,
-        StringLiteralToken,
-        CommentToken,
-        AbstractToken,
-    )
+from bytecodemanipulation.assembler.util.tokenizer import (
+    AbstractLexer,
+    IntegerToken,
+    FloatToken,
+    BinaryOperatorToken,
+    BracketToken,
+    IdentifierToken,
+    StringLiteralToken,
+    CommentToken,
+    AbstractToken,
+    LineBreakToken,
+)
 
 
 SPECIAL_CHARS = "@$+-~/%?;[]{}()<>=!,.*':§&\\|"
@@ -60,10 +47,15 @@ class Lexer(AbstractLexer):
 
         self.had_newline = False
 
+        if char == "\n":
+            self.consume(char)
+            return LineBreakToken()
+
         if char == "#":
             return CommentToken(
                 self.consume_until("\n", include=False).removesuffix("\r")
             )
+
         if char in string.digits or (
             char == "-" and self.try_inspect_multi(2)[1] in string.digits
         ):
@@ -112,8 +104,9 @@ class Lexer(AbstractLexer):
 
         if char == '"':
             return self._parseStringLiteral(char)
-        if char in string.whitespace:
-            self.consume_while(string.whitespace)
+
+        if char in string.whitespace and char != "\n":
+            self.consume_while(string.whitespace.replace("\n", ""))
             return
 
         raise SyntaxError(f"Invalid char: '{char}' (at {self.cursor})")
