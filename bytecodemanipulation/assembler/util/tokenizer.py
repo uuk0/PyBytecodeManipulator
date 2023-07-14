@@ -288,8 +288,6 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                         partial.split("\n")[-1].lstrip()
                     )
 
-                print(repr(partial))
-
                 for r in result if isinstance(result, list) else (result,):
                     newline_count = partial[:whitespace_count].count("\n")
                     r.line = self.old_line_number + self._line_offset - 1

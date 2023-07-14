@@ -267,7 +267,7 @@ class Parser(AbstractParser):
             if not (expr := self.try_inspect()):
                 continue
 
-            if self.try_consume(LineBreakToken):
+            if self.try_consume(LineBreakToken) or self[-1] == LineBreakToken():
                 continue
 
             if not predicate():
@@ -695,3 +695,7 @@ class Parser(AbstractParser):
                 ).add_trace_level(scope.get_trace_info().with_token(base_token, arrow_0, arrow_1, self[0]))
 
             return target
+
+    def parse_newlines(self):
+        while self.try_consume(LineBreakToken):
+            pass
