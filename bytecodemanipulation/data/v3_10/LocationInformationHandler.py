@@ -39,8 +39,8 @@ class LocationInformationEncoder(AbstractOpcodeTransformerStage):
                 # todo: maybe insert NOP?
 
             if offset < 0:
-                print("WARN", instr, offset)
-                print(instr.source_location, prev_line)
+                # print("WARN", instr, offset)
+                # print(instr.source_location, prev_line)
                 offset = 0
 
             items.append(count_since_previous)

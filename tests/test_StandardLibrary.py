@@ -137,7 +137,7 @@ STORE $output
             )
             return output
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), -1)
 
@@ -237,7 +237,7 @@ std:stream:to_list($stream) -> $output
             )
             return output
 
-        dis.dis(target)
+        # dis.dis(target)
         # self.assertEqual(run_code(target), [1, 2, 3])
         self.assertEqual(target(), [[0, 1], [2, 3]])
 
@@ -257,7 +257,7 @@ std:stream:to_list($stream) -> $output
             )
             return output
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), [[0, 1], [2, 3]])
 

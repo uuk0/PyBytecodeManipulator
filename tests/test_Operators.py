@@ -380,7 +380,7 @@ class TestOperators(TestCase):
 
         self.assertEqual(target(), 10)
 
-        dis.dis(target)
+        # dis.dis(target)
 
         compare_optimized_results(self, target, lambda: 10)
 

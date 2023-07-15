@@ -946,7 +946,7 @@ CALL @print ("Hello World!") -> $x
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         target(self)
 
@@ -1018,7 +1018,7 @@ RETURN @!x.!attr
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         value = x.attr
         x.attr = None
@@ -1111,7 +1111,7 @@ RETURN $x
             )
             return -1
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), 2)
 
@@ -1573,7 +1573,7 @@ CALL MACRO test_macro_paste_parameterized_code_block_non_static([$local] { LOAD 
             )
             return -1
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), 0)
 
@@ -1594,7 +1594,7 @@ CALL MACRO test_macro_paste_parameterized_code_block_static([$local] { LOAD 0 ->
             )
             return 0
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), 10)
 
@@ -1780,7 +1780,7 @@ FOREACH $p IN $iterable
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), [1, 2, 3, 4])
 
@@ -2062,7 +2062,7 @@ RETURN $result
 """
             )
 
-        dis.dis(target)
+        # dis.dis(target)
 
         self.assertEqual(target(), 10)
 
@@ -2087,7 +2087,7 @@ RETURN $result
 """
             )
 
-        dis.dis(target)
+        # dis.dis(target)
 
         # todo: this is a limitation of the current implementation, we don't update the local variables
         #    captured

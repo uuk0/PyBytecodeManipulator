@@ -48,6 +48,35 @@ def _print_complex_token_location(
 
         error_location = error_location.replace("^^", "^~").replace("~^", "~~")
 
+        sections = error_location.rstrip().split(" ")
+        error_location = ""
+        error_location_2 = ""
+
+        i = 0
+        for section in sections:
+            error_location += " "
+            error_location_2 += " " if i == 0 else "─"
+
+            if section == "":
+                continue
+
+            if len(section) == 1:
+                error_location += "│"
+            else:
+                error_location += "╰" + ("─" * (len(section) - 2)) + "┤"
+
+            error_location_2 += (" " if i == 0 else "─") * (len(section) - 1) + ("┴" if i != 0 else "╰")
+            i += 1
+
+        error_location = error_location[1:]
+        error_location_2 = error_location_2[1:]
+
+        if error_location.count("╰") == 1:
+            error_location = f"{error_location[:-1]}┴─"
+            error_location_2 = ""
+        else:
+            error_location_2 += "─"
+
         if line != previous_line_no + 1:
             if already_seen_line:
                 print(file=file)
@@ -57,11 +86,16 @@ def _print_complex_token_location(
             print(f'File "{_file}", line {line + 1}', file=file)
         previous_line_no = line
 
-        if line >= len(content):
+        if previous_line_no >= len(content):
             continue
 
-        print(content[line].removesuffix("\n"), file=file)
-        print(error_location, file=file)
+        print(content[previous_line_no].removesuffix("\n"), file=file)
+
+        if error_location_2:
+            print(error_location, file=file)
+            print(f"{error_location_2} ", file=file, end="")
+        else:
+            print(f"{error_location} ", file=file, end="")
 
 
 class TraceInfo:
@@ -82,7 +116,7 @@ class TraceInfo:
         return instance
 
     def print_stack(self, file=sys.stdout):
-        print(self.tokens)
+        # print(self.tokens)
         _print_complex_token_location(file, self.tokens)
 
 
@@ -116,3 +150,5 @@ class PropagatingCompilerException(Exception):
 
             if message:
                 print(message, file=file)
+            else:
+                print(file=file)

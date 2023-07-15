@@ -85,7 +85,7 @@ class TestMethodInsert(TestCase):
 
         call = None
 
-        dis.dis(target)
+        # dis.dis(target)
 
         target()
         self.assertEqual(counter, 2)
