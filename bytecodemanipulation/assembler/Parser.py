@@ -479,7 +479,11 @@ class Parser(AbstractParser):
                     "expected '(' after OP when used in expressions"
                 ).add_trace_level(scope.get_trace_info().with_token(self[-1:1]))
 
+            self.parse_newlines()
+
             expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
+
+            self.parse_newlines()
 
             if not self.try_consume(SpecialToken(")")):
                 raise PropagatingCompilerException(
@@ -492,6 +496,9 @@ class Parser(AbstractParser):
             while True:
                 if opening_bracket := self.try_consume(SpecialToken("[")):
                     # Consume either an Integer or a expression
+
+                    self.parse_newlines()
+
                     if not (
                         index := self.try_consume_access_to_value(
                             allow_primitives=True,
@@ -503,11 +510,11 @@ class Parser(AbstractParser):
                         raise PropagatingCompilerException(
                             "expected <expression for index>"
                             + (
-                                ""
-                                if not isinstance(self.try_inspect(), IdentifierToken)
-                                else " (did you forget a prefix?)"
+                                " (did you forget a prefix?)" if isinstance(self.try_inspect(), IdentifierToken) else ""
                             )
                         ).add_trace_level(scope.get_trace_info().with_token(self[-1]))
+
+                    self.parse_newlines()
 
                     if not self.try_consume(SpecialToken("]")):
                         raise PropagatingCompilerException(
@@ -524,6 +531,8 @@ class Parser(AbstractParser):
 
                 elif self.try_consume(SpecialToken(".")):
                     if opening_bracket := self.try_consume(SpecialToken("(")):
+                        self.parse_newlines()
+
                         if not (
                             index := self.try_consume_access_to_value(
                                 allow_primitives=True,
@@ -536,15 +545,13 @@ class Parser(AbstractParser):
                             raise PropagatingCompilerException(
                                 "expected <expression for index>"
                                 + (
-                                    ""
-                                    if not isinstance(
-                                        self.try_inspect(), IdentifierToken
-                                    )
-                                    else " (did you forget a prefix?)"
+                                    " (did you forget a prefix?)" if isinstance(self.try_inspect(), IdentifierToken) else ""
                                 )
                             ).add_trace_level(
                                 scope.get_trace_info().with_token(self[-1])
                             )
+
+                        self.parse_newlines()
 
                         if not self.try_consume(SpecialToken(")")):
                             raise PropagatingCompilerException(
