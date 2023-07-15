@@ -74,7 +74,7 @@ def _print_complex_token_location(
         error_location_2 = error_location_2[1:]
 
         if error_location.count("╰") == 1:
-            error_location = f"{error_location[:-1]}┴─"
+            error_location = f"{error_location[:-1]}┴─" if error_location[-1] == "┤" else "╰"
             error_location_2 = ""
         else:
             error_location_2 += "─"
