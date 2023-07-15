@@ -30,14 +30,14 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
             parser.consume(SpecialToken("'"))
 
         if parser.try_consume(IdentifierToken("IF")):
-            condition = parser.try_parse_data_source(
-                allow_primitives=True, include_bracket=False, allow_op=True, scope=scope
+            condition = parser.try_consume_access_to_value(
+                allow_primitives=True, scope=scope
             )
 
         elif parser.try_consume(SpecialToken("(")):
             parser.save()
-            condition = parser.try_parse_data_source(
-                allow_primitives=True, include_bracket=False, allow_op=True, scope=scope
+            condition = parser.try_consume_access_to_value(
+                allow_primitives=True, scope=scope
             )
 
             if condition is None or not parser.try_consume(SpecialToken(")")):

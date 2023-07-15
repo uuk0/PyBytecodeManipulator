@@ -590,52 +590,32 @@ class Parser(AbstractParser):
 
         return expr
 
-    def try_parse_data_source(
+    def try_consume_access_to_value_with_brackets(
         self,
         allow_tos=True,
         allow_primitives=False,
-        include_bracket=True,
         allow_op=True,
         allow_calls=True,
-        scope=None,
+        scope: ParsingScope = None,
     ) -> AbstractSourceExpression | None:
-        self.save()
-
-        if include_bracket and not self.try_consume(SpecialToken("(")):
-            self.rollback()
+        if not (opening_bracket :=  self.try_consume(SpecialToken("("))):
             return
 
-        if access := self.try_consume_access_to_value(
+        if not (access := self.try_consume_access_to_value(
             allow_tos=allow_tos,
             allow_primitives=allow_primitives,
             allow_op=allow_op,
             allow_calls=allow_calls,
             scope=scope,
-        ):
-            self.discard_save()
-            if include_bracket:
-                self.consume(SpecialToken(")"))
-            return access
+        )):
+            return
 
-        if allow_primitives:
-            if string := self.try_consume(StringLiteralToken):
-                return ConstantAccessExpression(
-                    string.text, string, trace_info=scope.get_trace_info()
-                )
+        if not self.try_consume(SpecialToken(")")):
+            raise PropagatingCompilerException(
+                "expected '(' closing <expression with brackets>"
+            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, list(access.get_tokens())))
 
-            if integer := self.try_consume(IntegerToken):
-                return ConstantAccessExpression(
-                    int(integer.text), integer, trace_info=scope.get_trace_info()
-                )
-
-            if boolean := self.try_consume(
-                (IdentifierToken("True"), IdentifierToken("False"))
-            ):
-                return ConstantAccessExpression(
-                    boolean.text == "True", boolean, trace_info=scope.get_trace_info()
-                )
-
-        self.rollback()
+        return access
 
     def try_parse_identifier_like(self) -> IIdentifierAccessor | None:
         if expr := self.try_consume_multi([SpecialToken("&"), IdentifierToken]):

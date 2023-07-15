@@ -24,8 +24,8 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractIFAssembly":
-        source = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False, scope=scope
+        source = parser.try_consume_access_to_value(
+            allow_primitives=True, scope=scope
         )
 
         if source is None:

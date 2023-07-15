@@ -24,8 +24,8 @@ class AbstractWhileAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractWhileAssembly":
-        condition = parser.try_parse_data_source(
-            allow_primitives=True, include_bracket=False, scope=scope
+        condition = parser.try_consume_access_to_value(
+            allow_primitives=True, scope=scope
         )
 
         if condition is None:

@@ -16,7 +16,7 @@ class AbstractRaiseAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractRaiseAssembly":
-        return cls(parser.try_parse_data_source(include_bracket=False, scope=scope))
+        return cls(parser.try_consume_access_to_value(scope=scope))
 
     def __eq__(self, other):
         return type(self) == type(other) and self.source == other.source

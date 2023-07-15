@@ -239,8 +239,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
                 is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
 
-                expr = parser.try_parse_data_source(
-                    allow_primitives=True, include_bracket=False, scope=scope
+                expr = parser.try_consume_access_to_value(
+                    allow_primitives=True, scope=scope
                 )
 
                 args.append(AbstractCallAssembly.KwArg(key, expr, is_dynamic))
@@ -251,16 +251,16 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 if parser[1] == SpecialToken("*"):
                     parser.consume(SpecialToken("*"))
                     parser.consume(SpecialToken("*"))
-                    expr = parser.try_parse_data_source(
-                        allow_primitives=True, include_bracket=False
+                    expr = parser.try_consume_access_to_value(
+                        allow_primitives=True, scope=scope
                     )
                     args.append(AbstractCallAssembly.KwArgStar(expr))
                     has_seen_keyword_arg = True
 
                 elif not has_seen_keyword_arg:
                     parser.consume(SpecialToken("*"))
-                    expr = parser.try_parse_data_source(
-                        allow_primitives=True, include_bracket=False, scope=scope
+                    expr = parser.try_consume_access_to_value(
+                        allow_primitives=True, scope=scope
                     )
                     args.append(AbstractCallAssembly.StarArg(expr))
 
@@ -353,8 +353,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
     @classmethod
     def _parse_normal_call_target(cls, call_target, parser, scope):
-        call_target = parser.try_parse_data_source(
-            include_bracket=False, scope=scope, allow_calls=False
+        call_target = parser.try_consume_access_to_value(
+            scope=scope, allow_calls=False
         )
         if isinstance(call_target, AbstractCallAssembly):
             # should not be reachable
