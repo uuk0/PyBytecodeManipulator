@@ -4,6 +4,7 @@ import typing
 
 if typing.TYPE_CHECKING:
     from bytecodemanipulation.assembler.AbstractBase import ParsingScope
+
 from bytecodemanipulation.assembler.util.tokenizer import AbstractToken
 
 
@@ -41,10 +42,10 @@ def _print_complex_token_location(
             already_seen_line = True
 
             _file = tokens[0].module_file
-            print(f'File "{_file}", line {line + 1}', file=file)
+            print(f'File "{_file}", line {(line + 1) if line else "?"}', file=file)
         previous_line_no = line
 
-        if previous_line_no >= len(content):
+        if not previous_line_no or previous_line_no >= len(content):
             continue
 
         print(content[previous_line_no].removesuffix("\n"), file=file)
@@ -60,21 +61,23 @@ def _get_error_location_strings(tokens):
     error_location = ""
 
     for token in tokens:
+        if not token.column:
+            continue
+
         if token.column > len(error_location):
             error_location += " " * (token.column - len(error_location))
 
-        delta = len(error_location) - token.column
-
-        if delta >= token.span:
+        if token.column + token.span < len(error_location):
             continue
 
-        error_location += "^" + ("~" * (token.span - delta))
+        error_location = f"{error_location[:token.column]}^" + "~" * (token.span - 1)
+
+    error_location_2 = ""
 
     error_location = error_location.replace("^^", "^~").replace("~^", "~~")
     sections = error_location.rstrip().split(" ")
 
     error_location = ""
-    error_location_2 = ""
 
     i = 0
     for section in sections:
@@ -94,11 +97,14 @@ def _get_error_location_strings(tokens):
         )
         i += 1
 
-    error_location = error_location[1:]
-    error_location_2 = error_location_2[1:]
+    error_location = error_location[2:]
+    error_location_2 = error_location_2[2:]
 
-    if error_location.count("╰") == 1:
-        error_location = f"{error_location[:-1]}┴─" if error_location[-1] == "┤" else "╰"
+    if not error_location:
+        return "", ""
+
+    if error_location.count("╰") <= 1:
+        error_location = error_location[:-1] + ("┴─" if error_location[-1] == "┤" else "╰")
         error_location_2 = ""
     else:
         error_location_2 += "─"
@@ -124,7 +130,6 @@ class TraceInfo:
         return instance
 
     def print_stack(self, file=sys.stdout):
-        # print(self.tokens)
         _print_complex_token_location(file, self.tokens)
 
 

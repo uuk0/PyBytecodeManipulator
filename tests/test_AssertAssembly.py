@@ -58,7 +58,7 @@ class TestParser(TestCase):
 
     def test_no_target(self):
         try:
-            expr = Parser("ASSERT").parse()
+            Parser("ASSERT").parse()
         except PropagatingCompilerException as e:
             self.assertEqual(e.args, ("expected <expression> after ASSERT",))
         else:

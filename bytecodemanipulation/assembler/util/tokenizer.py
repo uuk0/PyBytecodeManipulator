@@ -295,10 +295,6 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
                     r.span = self.cursor - old_cursor
                     r.module_file = self.module_file
 
-                    # print(
-                    #     f"parsed string '{repr(partial)[1:-1]}' (line: {r.line}, column: {r.column}, span: {r.span})"
-                    # )
-
                     self.old_column_number += r.span
 
                 skipped = 0
@@ -308,7 +304,9 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
             else:
                 tokens.append(result)
 
-        tokens.append(EndOfFileToken())
+        eof = EndOfFileToken()
+        eof.module_file = self.module_file
+        tokens.append(eof)
 
         return tokens
 
