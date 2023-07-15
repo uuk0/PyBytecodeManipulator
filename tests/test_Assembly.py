@@ -1033,14 +1033,14 @@ class TestMacro(TestCase):
         def target():
             assembly(
                 """
-    LOAD 1 -> $x
-    MACRO test_basic {
-        LOAD 0 -> $:x
-    }
-    
-    CALL MACRO test_basic()
-    RETURN $x
-    """
+LOAD 1 -> $x
+MACRO test_basic {
+    LOAD 0 -> $:x
+}
+
+CALL MACRO test_basic()
+RETURN $x
+"""
             )
             return -1
 
@@ -2045,7 +2045,7 @@ RETURN $func()
         def target():
             assembly(
                 """
-LOAD 0 -> $test            
+LOAD 0 -> $test
 
 DEF func<test>()
 {

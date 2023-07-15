@@ -174,39 +174,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         The real consumer, configurable to parse special parts
         """
         if call_target is None:
-            if not is_macro:
-                call_target = parser.try_parse_data_source(
-                    include_bracket=False, scope=scope, allow_calls=False
-                )
-
-                if isinstance(call_target, AbstractCallAssembly):
-                    # should not be reachable
-
-                    raise PropagatingCompilerException(
-                        "Must not be <call assembly> (internal error)"
-                    ).add_trace_level(
-                        scope.get_trace_info().with_token(
-                            list(call_target.get_tokens())
-                        )
-                    )
+            if is_macro:
+                call_target = cls._parse_macro_call_target(call_target, parser, scope)
 
             else:
-                name = [parser.consume(IdentifierToken, err_arg=scope)]
-
-                while expr := parser.try_consume(SpecialToken(":")):
-                    # todo: allow identifier-like
-                    part = parser.try_consume(IdentifierToken)
-
-                    if part is None:
-                        raise PropagatingCompilerException(
-                            "<identifier> expected after '.'"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(expr, parser[0])
-                        )
-
-                    name.append(part)
-
-                call_target = MacroAccessExpression(name)
+                call_target = cls._parse_normal_call_target(call_target, parser, scope)
 
         if call_target is None:
             # should be unreachable
@@ -215,7 +187,24 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 "expected <expression> to be called (did you forget the prefix?)"
             ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
+        args = cls._parse_argument_list(call_target, is_macro, is_partial, parser, scope)
+        target = parser.try_parse_target_expression(scope)
+
+        return cls(
+            call_target,
+            args,
+            target,
+            is_partial,
+            is_macro,
+            trace_info=scope.get_trace_info().with_token(
+                list(call_target.get_tokens())
+            ),
+        )
+
+    @classmethod
+    def _parse_argument_list(cls, call_target, is_macro, is_partial, parser, scope):
         args: typing.List[AbstractCallAssembly.IArg] = []
+        parser.parse_newlines()
 
         if not (opening_bracket := parser.try_consume(SpecialToken("("))):
             raise PropagatingCompilerException(
@@ -227,8 +216,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             )
 
         has_seen_keyword_arg = False
-
         while not (bracket := parser.try_consume(SpecialToken(")"))):
+            parser.parse_newlines()
             parser.save()
 
             identifier = parser.try_parse_identifier_like()
@@ -282,13 +271,13 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
             elif not has_seen_keyword_arg:
                 if is_macro and (
-                    (inner_opening_bracket := parser[0]) == SpecialToken("[")
+                        (inner_opening_bracket := parser[0]) == SpecialToken("[")
                 ):
                     parser.consume(SpecialToken("["))
 
                     to_be_stored_at = []
 
-                    while not parser.try_inspect() == SpecialToken("]"):
+                    while parser.try_inspect() != SpecialToken("]"):
                         parser.try_consume(SpecialToken("$"))
                         base = parser.try_parse_identifier_like()
 
@@ -319,7 +308,6 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     expr.to_be_stored_at = to_be_stored_at
                     is_dynamic = False
 
-                # todo: maybe parse here also partial variable names
                 elif is_macro and parser[0] == SpecialToken("{"):
                     expr = parser.parse_body(scope=scope)
                     expr.to_be_stored_at = []
@@ -352,6 +340,8 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             if not parser.try_consume(SpecialToken(",")):
                 break
 
+        parser.parse_newlines()
+
         if bracket is None and not parser.try_consume(SpecialToken(")")):
             raise PropagatingCompilerException(
                 "Expected ')' matching '('"
@@ -359,31 +349,42 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 scope.get_trace_info().with_token(opening_bracket, parser[0])
             )
 
-        if allow_target and (arrow_0 := parser.try_consume(SpecialToken("-"))):
-            if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
-                raise PropagatingCompilerException(
-                    "Expected '>' after '-' to fill out <target> expression"
-                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, parser[0]))
+        return args
 
-            target = parser.try_consume_access_to_value(scope=scope)
-
-            if target is None:
-                raise PropagatingCompilerException(
-                    "expected <target> expression after '->'"
-                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1))
-        else:
-            target = None
-
-        return cls(
-            call_target,
-            args,
-            target,
-            is_partial,
-            is_macro,
-            trace_info=scope.get_trace_info().with_token(
-                list(call_target.get_tokens())
-            ),
+    @classmethod
+    def _parse_normal_call_target(cls, call_target, parser, scope):
+        call_target = parser.try_parse_data_source(
+            include_bracket=False, scope=scope, allow_calls=False
         )
+        if isinstance(call_target, AbstractCallAssembly):
+            # should not be reachable
+
+            raise PropagatingCompilerException(
+                "Must not be <call assembly> (internal error)"
+            ).add_trace_level(
+                scope.get_trace_info().with_token(
+                    list(call_target.get_tokens())
+                )
+            )
+        return call_target
+
+    @classmethod
+    def _parse_macro_call_target(cls, call_target, parser, scope):
+        name = [parser.consume(IdentifierToken, err_arg=scope)]
+        while expr := parser.try_consume(SpecialToken(":")):
+            # todo: allow identifier-like
+            part = parser.try_consume(IdentifierToken)
+
+            if part is None:
+                raise PropagatingCompilerException(
+                    "<identifier> expected after '.'"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(expr, parser[0])
+                )
+
+            name.append(part)
+        call_target = MacroAccessExpression(name)
+        return call_target
 
     def __init__(
         self,

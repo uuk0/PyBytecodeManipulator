@@ -1,6 +1,5 @@
 import abc
 import typing
-from collections import namedtuple
 
 from .CommonUtil import AbstractCursorStateItem
 
@@ -90,6 +89,11 @@ class StringLiteralToken(AbstractToken):
 
 
 class EndOfFileToken(AbstractToken):
+    def __init__(self):
+        super().__init__("")
+
+
+class LineBreakToken(AbstractToken):
     def __init__(self):
         super().__init__("")
 
