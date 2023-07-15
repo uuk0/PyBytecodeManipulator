@@ -601,6 +601,8 @@ class Parser(AbstractParser):
         if not (opening_bracket :=  self.try_consume(SpecialToken("("))):
             return
 
+        self.parse_newlines()
+
         if not (access := self.try_consume_access_to_value(
             allow_tos=allow_tos,
             allow_primitives=allow_primitives,
@@ -608,12 +610,16 @@ class Parser(AbstractParser):
             allow_calls=allow_calls,
             scope=scope,
         )):
-            return
+            raise PropagatingCompilerException(
+                "expected <expression> after '('"
+            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, self[0]))
+
+        self.parse_newlines()
 
         if not self.try_consume(SpecialToken(")")):
             raise PropagatingCompilerException(
                 "expected '(' closing <expression with brackets>"
-            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, list(access.get_tokens())))
+            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, list(access.get_tokens()), self[0]))
 
         return access
 
