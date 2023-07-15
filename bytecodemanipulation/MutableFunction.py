@@ -590,7 +590,7 @@ class MutableFunction:
 
     def assemble_fast_unchained(self, instructions: typing.List[Instruction]):
         for i, instr in enumerate(instructions[:-1]):
-            instr.next_instruction = instructions[i+1]
+            instr.next_instruction = instructions[i + 1]
 
         self.instruction_entry_point = instructions[0]
         self.create_filled_builder()

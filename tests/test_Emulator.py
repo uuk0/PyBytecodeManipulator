@@ -47,7 +47,7 @@ class TestEmulator(TestCase):
     def test_for_loop(self):
         def target():
             x = 0
-# sourcery skip: no-loop-in-tests
+            # sourcery skip: no-loop-in-tests
             for i in range(10):
                 x += i
             return x
@@ -110,4 +110,3 @@ class TestEmulator(TestCase):
             return a()
 
         self.assertRaises(ValueError, lambda: run_code(b))
-

@@ -58,9 +58,9 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
         condition: AbstractAccessExpression | None = None,
     ):
         self.label_name_token = (
-            label_name_token
-            if not isinstance(label_name_token, str)
-            else [StaticIdentifier(e) for e in label_name_token.split(":")]
+            [StaticIdentifier(e) for e in label_name_token.split(":")]
+            if isinstance(label_name_token, str)
+            else label_name_token
         )
         self.condition = condition
 
@@ -90,7 +90,7 @@ class AbstractJumpAssembly(AbstractAssemblyInstruction, abc.ABC):
         )
 
     def __repr__(self):
-        return f"JUMP({':'.join(map(repr, self.label_name_token))}{'' if self.condition is None else ', IF '+repr(self.condition)})"
+        return f"JUMP({':'.join(map(repr, self.label_name_token))}{'' if self.condition is None else f', IF {repr(self.condition)}'})"
 
     def copy(self) -> "AbstractJumpAssembly":
         return type(self)(

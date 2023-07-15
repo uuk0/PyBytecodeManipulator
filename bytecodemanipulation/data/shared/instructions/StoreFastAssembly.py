@@ -23,13 +23,13 @@ class AbstractStoreFastAssembly(AbstractAssemblyInstruction, abc.ABC):
         source: AbstractSourceExpression | None = None,
     ):
         self.name_token = (
-            name_token
-            if not isinstance(name_token, (str, int))
-            else (
+            (
                 IdentifierToken(name_token)
                 if isinstance(name_token, str)
                 else IntegerToken(str(name_token))
             )
+            if isinstance(name_token, (str, int))
+            else name_token
         )
         self.source = source
 

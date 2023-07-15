@@ -30,9 +30,7 @@ class AbstractYieldAssembly(AbstractAssemblyInstruction, abc.ABC):
     def consume(cls, parser: "Parser", scope) -> "AbstractYieldAssembly":
         is_star = bool(parser.try_consume(SpecialToken("*")))
 
-        expr = parser.try_consume_access_to_value(
-            allow_primitives=True, scope=scope
-        )
+        expr = parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
 
         if parser.try_consume(SpecialToken("-")) and parser.try_consume(
             SpecialToken(">")

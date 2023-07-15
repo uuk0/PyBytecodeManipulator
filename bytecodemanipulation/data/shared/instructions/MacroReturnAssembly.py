@@ -20,9 +20,7 @@ class MacroReturnAssembly(AbstractAssemblyInstruction):
     @classmethod
     def consume(cls, parser: "Parser", scope) -> "MacroReturnAssembly":
         return cls(
-            parser.try_consume_access_to_value(
-                allow_primitives=True, scope=scope
-            )
+            parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
         )
 
     def __init__(self, expr: AbstractSourceExpression | None = None):

@@ -65,7 +65,9 @@ def _print_complex_token_location(
             else:
                 error_location += "╰" + ("─" * (len(section) - 2)) + "┤"
 
-            error_location_2 += (" " if i == 0 else "─") * (len(section) - 1) + ("┴" if i != 0 else "╰")
+            error_location_2 += (" " if i == 0 else "─") * (len(section) - 1) + (
+                "┴" if i != 0 else "╰"
+            )
             i += 1
 
         error_location = error_location[1:]

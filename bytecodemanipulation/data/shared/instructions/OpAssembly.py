@@ -450,9 +450,7 @@ class AbstractOpAssembly(
     ) -> typing.Optional[IOperation]:
         parser.save()
 
-        lhs = parser.try_consume_access_to_value(
-            allow_primitives=True, scope=scope
-        )
+        lhs = parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
 
         if lhs is None:
             parser.rollback()
@@ -464,9 +462,7 @@ class AbstractOpAssembly(
             parser.rollback()
             return
 
-        rhs = parser.try_consume_access_to_value(
-            allow_primitives=True, scope=scope
-        )
+        rhs = parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
 
         if rhs is None:
             print("rhs is invalid")

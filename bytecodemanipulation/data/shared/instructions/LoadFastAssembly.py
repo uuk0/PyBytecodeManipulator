@@ -27,14 +27,20 @@ class AbstractLoadFastAssembly(AbstractAssemblyInstruction, abc.ABC):
             if not (arrow_1 := parser.try_consume(SpecialToken(">"))):
                 raise PropagatingCompilerException(
                     "expected '>' after '-' to complete LOAD_FAST target expression"
-                ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token, arrow_0))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(scope.last_base_token, arrow_0)
+                )
 
             target = parser.try_consume_access_to_value(scope=scope)
 
             if target is None:
                 raise PropagatingCompilerException(
                     "expected <expression> after '->' in LOAD_FAST instruction"
-                ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token, arrow_0, arrow_1))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(
+                        scope.last_base_token, arrow_0, arrow_1
+                    )
+                )
         else:
             target = None
 

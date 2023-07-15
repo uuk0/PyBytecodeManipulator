@@ -54,7 +54,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             self.token = token
 
         def __repr__(self):
-            return f"{type(self).__name__}{'' if not self.is_dynamic else 'Dynamic'}({self.source})"
+            return f"{type(self).__name__}{'Dynamic' if self.is_dynamic else ''}({self.source})"
 
         def __eq__(self, other):
             return (
@@ -187,7 +187,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                 "expected <expression> to be called (did you forget the prefix?)"
             ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
 
-        args = cls._parse_argument_list(call_target, is_macro, is_partial, parser, scope)
+        args = cls._parse_argument_list(
+            call_target, is_macro, is_partial, parser, scope
+        )
         target = parser.try_parse_target_expression(scope)
 
         return cls(
@@ -271,7 +273,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
             elif not has_seen_keyword_arg:
                 if is_macro and (
-                        (inner_opening_bracket := parser[0]) == SpecialToken("[")
+                    (inner_opening_bracket := parser[0]) == SpecialToken("[")
                 ):
                     parser.consume(SpecialToken("["))
 
@@ -353,18 +355,14 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
     @classmethod
     def _parse_normal_call_target(cls, call_target, parser, scope):
-        call_target = parser.try_consume_access_to_value(
-            scope=scope, allow_calls=False
-        )
+        call_target = parser.try_consume_access_to_value(scope=scope, allow_calls=False)
         if isinstance(call_target, AbstractCallAssembly):
             # should not be reachable
 
             raise PropagatingCompilerException(
                 "Must not be <call assembly> (internal error)"
             ).add_trace_level(
-                scope.get_trace_info().with_token(
-                    list(call_target.get_tokens())
-                )
+                scope.get_trace_info().with_token(list(call_target.get_tokens()))
             )
         return call_target
 
@@ -378,9 +376,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             if part is None:
                 raise PropagatingCompilerException(
                     "<identifier> expected after '.'"
-                ).add_trace_level(
-                    scope.get_trace_info().with_token(expr, parser[0])
-                )
+                ).add_trace_level(scope.get_trace_info().with_token(expr, parser[0]))
 
             name.append(part)
         call_target = MacroAccessExpression(name)
@@ -444,7 +440,7 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
         )
 
     def __repr__(self):
-        return f"CALL{('' if not self.is_macro else '-MACRO') if not self.is_partial else '-PARTIAL'}({self.call_target}, ({repr(self.args)[1:-1]}){', ' + repr(self.target) if self.target else ''})"
+        return f"CALL{'-PARTIAL' if self.is_partial else '-MACRO' if self.is_macro else ''}({self.call_target}, ({repr(self.args)[1:-1]}){f', {repr(self.target)}' if self.target else ''})"
 
     def __eq__(self, other):
         return (

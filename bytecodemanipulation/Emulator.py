@@ -554,7 +554,11 @@ def pop_jump_if_false(
 ) -> typing.Tuple[Instruction, MutableFunction]:
     case = stack.pop(-1)
 
-    return (instr.next_instruction, func) if case else (typing.cast(Instruction, instr.arg_value), func)
+    return (
+        (instr.next_instruction, func)
+        if case
+        else (typing.cast(Instruction, instr.arg_value), func)
+    )
 
 
 @execution(Opcodes.CONTAINS_OP)

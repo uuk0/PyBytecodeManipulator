@@ -817,7 +817,7 @@ class TestInlineAssembly(TestCase):
     def test_jump(self):
         def target(x):
             assembly("JUMP test")
-# sourcery skip: no-conditionals-in-tests
+            # sourcery skip: no-conditionals-in-tests
             if x:
                 return 4
             label("test")
@@ -869,7 +869,7 @@ class TestInlineAssembly(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-# sourcery skip: swap-if-expression
+        # sourcery skip: swap-if-expression
         compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
 
     def test_conditional_jump_external_target(self):
@@ -881,7 +881,7 @@ class TestInlineAssembly(TestCase):
         apply_inline_assemblies(mutable)
         mutable.reassign_to_function()
 
-# sourcery skip: swap-if-expression
+        # sourcery skip: swap-if-expression
         compare_optimized_results(self, target, lambda: 0 if not GLOBAL else None)
 
     def test_yield(self):
@@ -1873,8 +1873,10 @@ class TestAssert(TestCase):
 
     def test_assert_static_fail(self):
         def target():
-            assembly("""
-ASSERT_STATIC 0""")
+            assembly(
+                """
+ASSERT_STATIC 0"""
+            )
 
         try:
             apply_operations(target)
@@ -1883,8 +1885,10 @@ ASSERT_STATIC 0""")
 
     def test_assert_static_fail_message(self):
         def target():
-            assembly('''
-ASSERT_STATIC 0 "hello world"''')
+            assembly(
+                '''
+ASSERT_STATIC 0 "hello world"'''
+            )
 
         try:
             apply_operations(target)
@@ -1908,8 +1912,10 @@ ASSERT_STATIC 0 $x"""
 
     def test_assert_static_dynamic_expression(self):
         def target():
-            assembly("""
-ASSERT_STATIC $a""")
+            assembly(
+                """
+ASSERT_STATIC $a"""
+            )
 
         try:
             apply_operations(target)

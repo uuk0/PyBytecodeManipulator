@@ -214,11 +214,11 @@ class Parser(AbstractParser):
             if isinstance(namespace_part, str):
                 if self.scope.scope_path.pop(-1) != namespace_part:
                     raise RuntimeError
-            else:
-                if self.scope.scope_path[-len(namespace_part) :] != namespace_part:
-                    raise RuntimeError
-
+            elif self.scope.scope_path[-len(namespace_part) :] == namespace_part:
                 del self.scope.scope_path[-len(namespace_part) :]
+
+            else:
+                raise RuntimeError
 
         return body
 
@@ -344,123 +344,31 @@ class Parser(AbstractParser):
             return
 
         if allow_primitives:
-            if string := self.try_consume(StringLiteralToken):
-                return ConstantAccessExpression(
-                    string.text, string, trace_info=scope.get_trace_info()
-                )
-
-            if integer := self.try_consume(IntegerToken):
-                return ConstantAccessExpression(
-                    int(integer.text)
-                    if "." not in integer.text
-                    else float(integer.text),
-                    integer,
-                    trace_info=scope.get_trace_info(),
-                )
-
-            if isinstance(start_token, IdentifierToken):
-                if start_token.text == "None":
-                    self.consume(start_token)
-                    return ConstantAccessExpression(
-                        None, start_token, trace_info=scope.get_trace_info()
-                    )
-                elif start_token.text == "True":
-                    self.consume(start_token)
-                    return ConstantAccessExpression(
-                        True, start_token, trace_info=scope.get_trace_info()
-                    )
-                elif start_token.text == "False":
-                    self.consume(start_token)
-                    return ConstantAccessExpression(
-                        False, start_token, trace_info=scope.get_trace_info()
-                    )
+            if expr := self._try_consume_access_to_value_parse_primitive(
+                start_token, scope
+            ):
+                return expr
 
         if not isinstance(start_token, (SpecialToken, IdentifierToken)):
             return
 
         if start_token.text == "@":
-            self.consume(SpecialToken("@"), err_arg=scope)
-
-            if self.try_consume(SpecialToken("!")):
-                expr = GlobalStaticAccessExpression(
-                    self.parse_identifier_like(scope),
-                    start_token,
-                    trace_info=scope.get_trace_info(),
-                )
-            else:
-                expr = GlobalAccessExpression(
-                    self.parse_identifier_like(scope),
-                    start_token,
-                    trace_info=scope.get_trace_info(),
-                )
+            expr = self.parse_global_variable_expression(scope, start_token)
 
         elif start_token.text == "$":
-            self.consume(SpecialToken("$"), err_arg=scope)
-
-            prefix = ""
-
-            while self.try_consume(SpecialToken("|")):
-                prefix += "|"
-
-            if prefix == "":
-                while self.try_consume(SpecialToken(":")):
-                    prefix += ":"
-
-            elif error := self.try_consume(SpecialToken(":")):
-                raise PropagatingCompilerException(
-                    "Cannot parse '|' and ':' for <local variable name>"
-                ).add_trace_level(scope.get_trace_info().with_token(error))
-
-            expr = LocalAccessExpression(
-                self.parse_identifier_like(scope),
-                start_token,
-                prefix=prefix,
-                trace_info=scope.get_trace_info(),
-            )
+            expr = self.parse_local_variable_expression(scope, start_token)
 
         elif start_token.text == "§":
-            self.consume(SpecialToken("§"), err_arg=scope)
-
-            identifier = self.try_parse_identifier_like()
-
-            if identifier is None:
-                raise PropagatingCompilerException(
-                    "Expected <identifier-like> after '§' for cell-var reference"
-                ).add_trace_level(
-                    scope.get_trace_info().with_token(start_token, self[0])
-                )
-
-            expr = DerefAccessExpression(
-                identifier, start_token, trace_info=scope.get_trace_info()
-            )
+            expr = self.parse_deref_variable_expression(scope, start_token)
 
         elif start_token.text == "&":
-            self.consume(SpecialToken("&"), err_arg=scope)
-            expr = MacroParameterAccessExpression(
-                self.parse_identifier_like(scope),
-                start_token,
-                trace_info=scope.get_trace_info(),
-            )
-            expr.trace_info = scope.get_trace_info()
-            expr.info = scope.get_trace_info()
+            expr = self.parse_macro_parameter_expression(scope, start_token)
 
         elif start_token.text == "%" and allow_tos:
-            self.consume(SpecialToken("%"), err_arg=scope)
-
-            offset = self.try_consume(IntegerToken)
-
-            if offset is not None:
-                return TopOfStackAccessExpression(start_token, int(offset.text))
-
-            expr = TopOfStackAccessExpression(start_token)
+            expr = self.parse_top_of_stack_expression(scope, start_token)
 
         elif start_token.text == "~":
-            self.consume(SpecialToken("~"), err_arg=scope)
-            expr = ModuleAccessExpression(
-                self.parse_identifier_like(scope),
-                start_token,
-                trace_info=scope.get_trace_info(),
-            )
+            expr = self.parse_module_access_expression(scope, start_token)
 
         elif start_token.text == "\\":
             self.consume(SpecialToken("\\"), err_arg=scope)
@@ -469,125 +377,267 @@ class Parser(AbstractParser):
         elif (
             start_token.text == "OP"
             and allow_op
-            and "OP" in self.INSTRUCTIONS
             and AbstractOpAssembly.IMPLEMENTATION is not None
         ):
-            self.consume(start_token, err_arg=scope)
+            expr = self._try_consume_access_to_value_parse_op(start_token, scope)
+        else:
+            return
 
-            if not (opening := self.try_consume(SpecialToken("("))):
-                raise PropagatingCompilerException(
-                    "expected '(' after OP when used in expressions"
-                ).add_trace_level(scope.get_trace_info().with_token(self[-1:1]))
+        if allow_advanced_access:
+            expr = self._parse_advanced_access(
+                scope,
+                expr,
+                allow_calls=allow_calls,
+                allow_tos=allow_tos,
+                allow_op=allow_op,
+            )
 
+        return expr
+
+    def parse_module_access_expression(self, scope, start_token):
+        self.consume(SpecialToken("~"), err_arg=scope)
+        return ModuleAccessExpression(
+            self.parse_identifier_like(scope),
+            start_token,
+            trace_info=scope.get_trace_info(),
+        )
+
+    def parse_top_of_stack_expression(self, scope, start_token):
+        self.consume(SpecialToken("%"), err_arg=scope)
+
+        offset = self.try_consume(IntegerToken)
+
+        if offset is not None:
+            return TopOfStackAccessExpression(start_token, int(offset.text))
+
+        return TopOfStackAccessExpression(start_token)
+
+    def parse_macro_parameter_expression(self, scope, start_token):
+        self.consume(SpecialToken("&"), err_arg=scope)
+        expr = MacroParameterAccessExpression(
+            self.parse_identifier_like(scope),
+            start_token,
+            trace_info=scope.get_trace_info(),
+        )
+        expr.trace_info = scope.get_trace_info()
+        expr.info = scope.get_trace_info()
+        return expr
+
+    def parse_deref_variable_expression(self, scope, start_token):
+        self.consume(SpecialToken("§"), err_arg=scope)
+        identifier = self.try_parse_identifier_like()
+        if identifier is None:
+            raise PropagatingCompilerException(
+                "Expected <identifier-like> after '§' for cell-var reference"
+            ).add_trace_level(scope.get_trace_info().with_token(start_token, self[0]))
+
+        return DerefAccessExpression(
+            identifier, start_token, trace_info=scope.get_trace_info()
+        )
+
+    def parse_local_variable_expression(self, scope, start_token):
+        self.consume(SpecialToken("$"), err_arg=scope)
+        prefix = ""
+        while self.try_consume(SpecialToken("|")):
+            prefix += "|"
+        if prefix == "":
+            while self.try_consume(SpecialToken(":")):
+                prefix += ":"
+
+        elif error := self.try_consume(SpecialToken(":")):
+            raise PropagatingCompilerException(
+                "Cannot parse '|' and ':' for <local variable name>"
+            ).add_trace_level(scope.get_trace_info().with_token(error))
+
+        return LocalAccessExpression(
+            self.parse_identifier_like(scope),
+            start_token,
+            prefix=prefix,
+            trace_info=scope.get_trace_info(),
+        )
+
+    def parse_global_variable_expression(self, scope, start_token):
+        self.consume(SpecialToken("@"), err_arg=scope)
+        return (
+            GlobalStaticAccessExpression(
+                self.parse_identifier_like(scope),
+                start_token,
+                trace_info=scope.get_trace_info(),
+            )
+            if self.try_consume(SpecialToken("!"))
+            else GlobalAccessExpression(
+                self.parse_identifier_like(scope),
+                start_token,
+                trace_info=scope.get_trace_info(),
+            )
+        )
+
+    def _try_consume_access_to_value_parse_primitive(
+        self, start_token, scope: ParsingScope
+    ):
+        if string := self.try_consume(StringLiteralToken):
+            return ConstantAccessExpression(
+                string.text, string, trace_info=scope.get_trace_info()
+            )
+
+        if integer := self.try_consume(IntegerToken):
+            return ConstantAccessExpression(
+                int(integer.text) if "." not in integer.text else float(integer.text),
+                integer,
+                trace_info=scope.get_trace_info(),
+            )
+
+        if isinstance(start_token, IdentifierToken):
+            if start_token.text == "None":
+                self.consume(start_token)
+                return ConstantAccessExpression(
+                    None, start_token, trace_info=scope.get_trace_info()
+                )
+            elif start_token.text == "True":
+                self.consume(start_token)
+                return ConstantAccessExpression(
+                    True, start_token, trace_info=scope.get_trace_info()
+                )
+            elif start_token.text == "False":
+                self.consume(start_token)
+                return ConstantAccessExpression(
+                    False, start_token, trace_info=scope.get_trace_info()
+                )
+
+    def _try_consume_access_to_value_parse_op(self, start_token, scope: ParsingScope):
+        self.consume(start_token, err_arg=scope)
+
+        if not (opening := self.try_consume(SpecialToken("("))):
+            raise PropagatingCompilerException(
+                "expected '(' after OP when used in expressions"
+            ).add_trace_level(scope.get_trace_info().with_token(self[-1:1]))
+
+        self.parse_newlines()
+
+        result = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
+
+        self.parse_newlines()
+
+        if not self.try_consume(SpecialToken(")")):
+            raise PropagatingCompilerException(
+                "expected ')' after operation"
+            ).add_trace_level(scope.get_trace_info().with_token([opening, self[0]]))
+        return result
+
+    def _parse_advanced_access(
+        self,
+        scope,
+        expr,
+        allow_tos=True,
+        allow_op=True,
+        allow_calls=True,
+    ):
+        while True:
+            if opening_bracket := self.try_consume(SpecialToken("[")):
+                expr = self._parse_advanced_access_subscription(
+                    allow_op, allow_tos, expr, opening_bracket, scope
+                )
+
+            elif self.try_consume(SpecialToken(".")):
+                expr = self._parse_advanced_access_attribute(
+                    allow_calls, allow_op, allow_tos, expr, scope
+                )
+
+            elif self.try_inspect() == SpecialToken("(") and allow_calls:
+                expr = AbstractCallAssembly.IMPLEMENTATION.construct_from_partial(
+                    expr,
+                    self,
+                    scope,
+                )
+
+            else:
+                break
+
+        return expr
+
+    def _parse_advanced_access_attribute(
+        self, allow_calls, allow_op, allow_tos, expr, scope
+    ):
+        if opening_bracket := self.try_consume(SpecialToken("(")):
             self.parse_newlines()
 
-            expr = AbstractOpAssembly.IMPLEMENTATION.consume(self, scope)
+            if not (
+                index := self.try_consume_access_to_value(
+                    allow_primitives=True,
+                    allow_tos=allow_tos,
+                    allow_op=allow_op,
+                    scope=scope,
+                    allow_calls=allow_calls,
+                )
+            ):
+                raise PropagatingCompilerException(
+                    "expected <expression for index>"
+                    + (
+                        " (did you forget a prefix?)"
+                        if isinstance(self.try_inspect(), IdentifierToken)
+                        else ""
+                    )
+                ).add_trace_level(scope.get_trace_info().with_token(self[-1]))
 
             self.parse_newlines()
 
             if not self.try_consume(SpecialToken(")")):
                 raise PropagatingCompilerException(
-                    "expected ')' after operation"
-                ).add_trace_level(scope.get_trace_info().with_token([opening, self[0]]))
+                    "expected ')' after '<dynamic name expression>"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(self[-1], opening_bracket)
+                )
+
+            expr = DynamicAttributeAccessExpression(
+                expr, index, trace_info=scope.get_trace_info()
+            )
+
+        elif self.try_consume(SpecialToken("!")):
+            name = self.parse_identifier_like(scope)
+            expr = StaticAttributeAccessExpression(
+                expr, name, trace_info=scope.get_trace_info()
+            )
+
         else:
-            return
+            name = self.parse_identifier_like(scope)
+            expr = AttributeAccessExpression(
+                expr, name, trace_info=scope.get_trace_info()
+            )
+        return expr
 
-        if allow_advanced_access:
-            while True:
-                if opening_bracket := self.try_consume(SpecialToken("[")):
-                    # Consume either an Integer or a expression
-
-                    self.parse_newlines()
-
-                    if not (
-                        index := self.try_consume_access_to_value(
-                            allow_primitives=True,
-                            allow_tos=allow_tos,
-                            allow_op=allow_op,
-                            scope=scope,
-                        )
-                    ):
-                        raise PropagatingCompilerException(
-                            "expected <expression for index>"
-                            + (
-                                " (did you forget a prefix?)" if isinstance(self.try_inspect(), IdentifierToken) else ""
-                            )
-                        ).add_trace_level(scope.get_trace_info().with_token(self[-1]))
-
-                    self.parse_newlines()
-
-                    if not self.try_consume(SpecialToken("]")):
-                        raise PropagatingCompilerException(
-                            "expected ']' after <index>"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(self[-1], opening_bracket)
-                        )
-
-                    expr = SubscriptionAccessExpression(
-                        expr,
-                        index,
-                        trace_info=scope.get_trace_info(),
-                    )
-
-                elif self.try_consume(SpecialToken(".")):
-                    if opening_bracket := self.try_consume(SpecialToken("(")):
-                        self.parse_newlines()
-
-                        if not (
-                            index := self.try_consume_access_to_value(
-                                allow_primitives=True,
-                                allow_tos=allow_tos,
-                                allow_op=allow_op,
-                                scope=scope,
-                                allow_calls=allow_calls,
-                            )
-                        ):
-                            raise PropagatingCompilerException(
-                                "expected <expression for index>"
-                                + (
-                                    " (did you forget a prefix?)" if isinstance(self.try_inspect(), IdentifierToken) else ""
-                                )
-                            ).add_trace_level(
-                                scope.get_trace_info().with_token(self[-1])
-                            )
-
-                        self.parse_newlines()
-
-                        if not self.try_consume(SpecialToken(")")):
-                            raise PropagatingCompilerException(
-                                "expected ')' after '<dynamic name expression>"
-                            ).add_trace_level(
-                                scope.get_trace_info().with_token(
-                                    self[-1], opening_bracket
-                                )
-                            )
-
-                        expr = DynamicAttributeAccessExpression(
-                            expr, index, trace_info=scope.get_trace_info()
-                        )
-
-                    elif self.try_consume(SpecialToken("!")):
-                        name = self.parse_identifier_like(scope)
-                        expr = StaticAttributeAccessExpression(
-                            expr, name, trace_info=scope.get_trace_info()
-                        )
-
-                    else:
-                        name = self.parse_identifier_like(scope)
-                        expr = AttributeAccessExpression(
-                            expr, name, trace_info=scope.get_trace_info()
-                        )
-
-                elif self.try_inspect() == SpecialToken("(") and allow_calls:
-                    expr = AbstractCallAssembly.IMPLEMENTATION.construct_from_partial(
-                        expr,
-                        self,
-                        scope,
-                    )
-
-                else:
-                    break
-
+    def _parse_advanced_access_subscription(
+        self, allow_op, allow_tos, expr, opening_bracket, scope
+    ):
+        # Consume either an Integer or a expression
+        self.parse_newlines()
+        if not (
+            index := self.try_consume_access_to_value(
+                allow_primitives=True,
+                allow_tos=allow_tos,
+                allow_op=allow_op,
+                scope=scope,
+            )
+        ):
+            raise PropagatingCompilerException(
+                "expected <expression for index>"
+                + (
+                    " (did you forget a prefix?)"
+                    if isinstance(self.try_inspect(), IdentifierToken)
+                    else ""
+                )
+            ).add_trace_level(scope.get_trace_info().with_token(self[-1]))
+        self.parse_newlines()
+        if not self.try_consume(SpecialToken("]")):
+            raise PropagatingCompilerException(
+                "expected ']' after <index>"
+            ).add_trace_level(
+                scope.get_trace_info().with_token(self[-1], opening_bracket)
+            )
+        expr = SubscriptionAccessExpression(
+            expr,
+            index,
+            trace_info=scope.get_trace_info(),
+        )
         return expr
 
     def try_consume_access_to_value_with_brackets(
@@ -598,28 +648,36 @@ class Parser(AbstractParser):
         allow_calls=True,
         scope: ParsingScope = None,
     ) -> AbstractSourceExpression | None:
-        if not (opening_bracket :=  self.try_consume(SpecialToken("("))):
+        if not (opening_bracket := self.try_consume(SpecialToken("("))):
             return
 
         self.parse_newlines()
 
-        if not (access := self.try_consume_access_to_value(
-            allow_tos=allow_tos,
-            allow_primitives=allow_primitives,
-            allow_op=allow_op,
-            allow_calls=allow_calls,
-            scope=scope,
-        )):
+        if not (
+            access := self.try_consume_access_to_value(
+                allow_tos=allow_tos,
+                allow_primitives=allow_primitives,
+                allow_op=allow_op,
+                allow_calls=allow_calls,
+                scope=scope,
+            )
+        ):
             raise PropagatingCompilerException(
                 "expected <expression> after '('"
-            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, self[0]))
+            ).add_trace_level(
+                scope.get_trace_info().with_token(opening_bracket, self[0])
+            )
 
         self.parse_newlines()
 
         if not self.try_consume(SpecialToken(")")):
             raise PropagatingCompilerException(
                 "expected '(' closing <expression with brackets>"
-            ).add_trace_level(scope.get_trace_info().with_token(opening_bracket, list(access.get_tokens()), self[0]))
+            ).add_trace_level(
+                scope.get_trace_info().with_token(
+                    opening_bracket, list(access.get_tokens()), self[0]
+                )
+            )
 
         return access
 
@@ -642,13 +700,10 @@ class Parser(AbstractParser):
 
     def try_parse_jump_target(self) -> typing.List[IIdentifierAccessor] | None:
         self.save()
-        tokens = []
-
         if not (t := self.try_parse_identifier_like()):
             return
 
-        tokens.append(t)
-
+        tokens = [t]
         while self.try_consume(SpecialToken(":")):
             t = self.try_parse_identifier_like()
 
@@ -673,19 +728,27 @@ class Parser(AbstractParser):
 
         return tokens
 
-    def try_parse_target_expression(self, scope: ParsingScope, ctx: str = None, base_token=None) -> AbstractAccessExpression | None:
+    def try_parse_target_expression(
+        self, scope: ParsingScope, ctx: str = None, base_token=None
+    ) -> AbstractAccessExpression | None:
         if arrow_0 := self.try_consume(SpecialToken("-")):
             if not (arrow_1 := self.try_consume(SpecialToken(">"))):
                 raise PropagatingCompilerException(
                     f"expected '>' after '-' to complete '->' <target>{f' in {ctx}' if ctx else ''}"
-                ).add_trace_level(scope.get_trace_info().with_token(base_token, arrow_0))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(base_token, arrow_0)
+                )
 
             target = self.try_consume_access_to_value(scope=scope)
 
             if target is None:
                 raise PropagatingCompilerException(
                     f"expected <target> after '->'{f' in {ctx}' if ctx else ''}"
-                ).add_trace_level(scope.get_trace_info().with_token(base_token, arrow_0, arrow_1, self[0]))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(
+                        base_token, arrow_0, arrow_1, self[0]
+                    )
+                )
 
             return target
 

@@ -24,9 +24,7 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "AbstractIFAssembly":
-        source = parser.try_consume_access_to_value(
-            allow_primitives=True, scope=scope
-        )
+        source = parser.try_consume_access_to_value(allow_primitives=True, scope=scope)
 
         if source is None:
             raise PropagatingCompilerException(
@@ -62,7 +60,9 @@ class AbstractIFAssembly(AbstractAssemblyInstruction, abc.ABC):
         self.body = body
         self.label_name = (
             (
-                [StaticIdentifier(e) for e in label_name.split(":")] if isinstance(label_name, str) else label_name
+                [StaticIdentifier(e) for e in label_name.split(":")]
+                if isinstance(label_name, str)
+                else label_name
             )
             if label_name is not None
             else None

@@ -105,7 +105,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         return args
 
     @classmethod
-    def _pare_argument(cls, parser: Parser, scope: ParsingScope) -> AbstractCallAssembly.IArg | None:
+    def _pare_argument(
+        cls, parser: Parser, scope: ParsingScope
+    ) -> AbstractCallAssembly.IArg | None:
         arg = None
 
         star = parser.try_consume(SpecialToken("*"))
@@ -115,10 +117,10 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         if not identifier:
             if star:
                 raise PropagatingCompilerException(
-                    "Expected <identifier> after '**'" if star_star else "Expected <identifier> after '*'"
-                ).add_trace_level(
-                    scope.get_trace_info().with_token(star, star_star)
-                )
+                    "Expected <identifier> after '**'"
+                    if star_star
+                    else "Expected <identifier> after '*'"
+                ).add_trace_level(scope.get_trace_info().with_token(star, star_star))
             return
 
         if not star:
@@ -164,7 +166,7 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
                 bound_variables.append((expr, is_static))
 
                 while parser.try_consume(SpecialToken(",")) and (
-                        expr := parser.try_parse_identifier_like()
+                    expr := parser.try_parse_identifier_like()
                 ):
                     bound_variables.append((expr, is_static))
 
@@ -183,7 +185,9 @@ class AbstractFunctionDefinitionAssembly(AbstractAssemblyInstruction, abc.ABC):
         elif error := parser.try_consume(SpecialToken(":")):
             raise PropagatingCompilerException(
                 "Cannot parser '|' and ':' as inter-fix for <function name>",
-            ).add_trace_level(scope.get_trace_info().with_token(scope.last_base_token, error))
+            ).add_trace_level(
+                scope.get_trace_info().with_token(scope.last_base_token, error)
+            )
         return prefix
 
     def __init__(

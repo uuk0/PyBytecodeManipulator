@@ -51,14 +51,20 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
             if not (expr := parser.try_consume(IdentifierToken)):
                 raise PropagatingCompilerException(
                     f"expected <expression> {' or :' if is_relative_target else ''} after '->' in MACRO_IMPORT"
-                ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, parser[0], relative_target_token))
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(
+                        arrow_0, arrow_1, parser[0], relative_target_token
+                    )
+                )
 
             target = [expr]
             while sep := parser.try_consume(SpecialToken(":")):
                 if not (expr := parser.try_consume(IdentifierToken)):
                     raise PropagatingCompilerException(
                         "expected <expression> after ':' in <target> of MACRO_IMPORT"
-                    ).add_trace_level(scope.get_trace_info().with_token(arrow_0, arrow_1, target, sep))
+                    ).add_trace_level(
+                        scope.get_trace_info().with_token(arrow_0, arrow_1, target, sep)
+                    )
 
                 target.append(expr)
 
@@ -163,7 +169,9 @@ class MacroImportAssembly(AbstractAssemblyInstruction):
                         tasks.append((target[key], source[key]))
 
                     # todo: can we use something like this?
-                    elif isinstance(target[key], MacroAssembly.MacroOverloadPage) and isinstance(source[key], MacroAssembly.MacroOverloadPage):
+                    elif isinstance(
+                        target[key], MacroAssembly.MacroOverloadPage
+                    ) and isinstance(source[key], MacroAssembly.MacroOverloadPage):
                         target[key].integrate(source[key])
 
                     else:
