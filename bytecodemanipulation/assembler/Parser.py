@@ -275,8 +275,8 @@ class Parser(AbstractParser):
 
                 break
 
-            print(self[-1].line, self[-1], expr.line)
-            print(root)
+            # print(self[-1].line, self[-1], expr.line)
+            # print(root)
 
             raise PropagatingCompilerException(
                 f"Expected <newline> or ';' after assembly instruction, got '{self[0].text}' ({type(self[0]).__name__})"

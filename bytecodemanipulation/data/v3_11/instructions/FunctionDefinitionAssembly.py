@@ -46,7 +46,7 @@ class FunctionDefinitionAssembly(AbstractFunctionDefinitionAssembly):
 
         if self.bound_variables:
             for name, is_static in self.bound_variables:
-                print(name, name(scope), is_static)
+                # print(name, name(scope), is_static)
                 inner_bytecode += [
                     Instruction(Opcodes.LOAD_DEREF, name(scope) + "%inner"),
                     Instruction(Opcodes.STORE_DEREF, name(scope)),

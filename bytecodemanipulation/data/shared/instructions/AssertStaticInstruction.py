@@ -93,12 +93,12 @@ class AssertStaticInstruction(AbstractAssemblyInstruction):
                     else self.text.evaluate_static_value(scope)
                 )
             except NotImplementedError:
+                self.trace_info.with_token(list(self.source.get_tokens())).print_stack(
+                    sys.stderr
+                )
                 print(
                     f"SyntaxWarning: <message> could not be evaluated (got syntax element: {self.text})",
                     file=sys.stderr,
-                )
-                self.trace_info.with_token(list(self.source.get_tokens())).print_stack(
-                    sys.stderr
                 )
 
                 message = "expected <true-ish value> (message not arrival)"
