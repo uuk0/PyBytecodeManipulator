@@ -33,51 +33,7 @@ def _print_complex_token_location(
         tokens = lines[line]
         tokens.sort(key=lambda t: t.column)
 
-        error_location = ""
-
-        for token in tokens:
-            if token.column > len(error_location):
-                error_location += " " * (token.column - len(error_location))
-
-            delta = len(error_location) - token.column
-
-            if delta >= token.span:
-                continue
-
-            error_location += "^" + ("~" * (token.span - delta))
-
-        error_location = error_location.replace("^^", "^~").replace("~^", "~~")
-
-        sections = error_location.rstrip().split(" ")
-        error_location = ""
-        error_location_2 = ""
-
-        i = 0
-        for section in sections:
-            error_location += " "
-            error_location_2 += " " if i == 0 else "─"
-
-            if section == "":
-                continue
-
-            if len(section) == 1:
-                error_location += "│"
-            else:
-                error_location += "╰" + ("─" * (len(section) - 2)) + "┤"
-
-            error_location_2 += (" " if i == 0 else "─") * (len(section) - 1) + (
-                "┴" if i != 0 else "╰"
-            )
-            i += 1
-
-        error_location = error_location[1:]
-        error_location_2 = error_location_2[1:]
-
-        if error_location.count("╰") == 1:
-            error_location = f"{error_location[:-1]}┴─" if error_location[-1] == "┤" else "╰"
-            error_location_2 = ""
-        else:
-            error_location_2 += "─"
+        error_location, error_location_2 = _get_error_location_strings(tokens)
 
         if line != previous_line_no + 1:
             if already_seen_line:
@@ -98,6 +54,56 @@ def _print_complex_token_location(
             print(f"{error_location_2} ", file=file, end="")
         else:
             print(f"{error_location} ", file=file, end="")
+
+
+def _get_error_location_strings(tokens):
+    error_location = ""
+
+    for token in tokens:
+        if token.column > len(error_location):
+            error_location += " " * (token.column - len(error_location))
+
+        delta = len(error_location) - token.column
+
+        if delta >= token.span:
+            continue
+
+        error_location += "^" + ("~" * (token.span - delta))
+
+    error_location = error_location.replace("^^", "^~").replace("~^", "~~")
+    sections = error_location.rstrip().split(" ")
+
+    error_location = ""
+    error_location_2 = ""
+
+    i = 0
+    for section in sections:
+        error_location += " "
+        error_location_2 += " " if i == 0 else "─"
+
+        if section == "":
+            continue
+
+        if len(section) == 1:
+            error_location += "│"
+        else:
+            error_location += "╰" + ("─" * (len(section) - 2)) + "┤"
+
+        error_location_2 += (" " if i == 0 else "─") * (len(section) - 1) + (
+            "┴" if i != 0 else "╰"
+        )
+        i += 1
+
+    error_location = error_location[1:]
+    error_location_2 = error_location_2[1:]
+
+    if error_location.count("╰") == 1:
+        error_location = f"{error_location[:-1]}┴─" if error_location[-1] == "┤" else "╰"
+        error_location_2 = ""
+    else:
+        error_location_2 += "─"
+
+    return error_location, error_location_2
 
 
 class TraceInfo:
