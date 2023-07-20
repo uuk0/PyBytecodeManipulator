@@ -256,8 +256,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
 
             elif parser[0].text == "*" and not is_macro:
                 if parser[1] == SpecialToken("*"):
-                    parser.consume(SpecialToken("*"))
-                    parser.consume(SpecialToken("*"))
+                    star_0 = parser.consume(SpecialToken("*"))
+                    star_1 = parser.consume(SpecialToken("*"))
+
                     expr = parser.try_consume_access_to_value(
                         allow_primitives=True, scope=scope
                     )
@@ -265,7 +266,9 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     has_seen_keyword_arg = True
 
                 elif not has_seen_keyword_arg:
-                    parser.consume(SpecialToken("*"))
+                    star_0 = parser.consume(SpecialToken("*"))
+                    star_1 = None
+
                     expr = parser.try_consume_access_to_value(
                         allow_primitives=True, scope=scope
                     )
@@ -275,6 +278,11 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
                     raise PropagatingCompilerException(
                         "*<arg> only allowed before keyword arguments!"
                     ).add_trace_level(scope.get_trace_info().with_token(parser[0]))
+
+                if expr is None:
+                    raise PropagatingCompilerException(
+                        f"expected <expression> after *{'*' if star_1 else ''} in parameter list"
+                    ).add_trace_level(scope.get_trace_info().with_token(list(call_target.get_tokens()), star_0, star_1))
 
             elif not has_seen_keyword_arg:
                 if is_macro and (

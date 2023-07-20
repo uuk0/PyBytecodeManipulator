@@ -235,10 +235,33 @@ NAMESPACE std
             MACRO_RETURN $result_container
         }
 
+        MACRO ASSEMBLY create(target, arg VARIABLE_ARG) -> ANY
+        {
+            DEF inner_target(target, arg, result_container)
+            {
+                LOAD $target(*$arg) -> $result
+                CALL $result_container.append($result) -> \
+                RETURN None
+            }
+
+            LOAD ~list() -> $result_container
+
+            OP tuple(&target, &arg, $result_container) -> $args
+            LOAD ~threading.!Thread(target=$inner_target, args=$args) -> $thread
+            CALL $result_container.append($thread) -> \
+            CALL $thread.start() -> \
+            MACRO_RETURN $result_container
+        }
+
         MACRO ASSEMBLY get_result(thread) -> ANY
         {
             CALL &thread[0].join() -> \
             MACRO_RETURN &thread[1]
+        }
+
+        MACRO ASSEMBLY join(thread)
+        {
+            CALL &thread[0].join() -> \
         }
     }
 }

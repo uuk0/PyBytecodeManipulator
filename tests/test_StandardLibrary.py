@@ -286,6 +286,25 @@ RETURN $result
 
         self.assertEqual(target(), 10)
 
+    def test_thread_with_function_simple(self):
+        @apply_operations
+        def target():
+            assembly("""
+
+DEF target()
+{
+    RETURN 10
+}            
+
+std:threads:create($target) -> $thread
+std:threads:get_result($thread) -> $result
+RETURN $result
+""")
+
+        dis.dis(target)
+
+        self.assertEqual(target(), 10)
+
     def test_thread_simple_with_arg(self):
         @apply_operations
         def target():
@@ -296,5 +315,24 @@ std:threads:create([args] {
 std:threads:get_result($thread) -> $result
 RETURN $result
 """)
+
+        self.assertEqual(target(), 10)
+
+    def test_thread_with_function_arg_simple(self):
+        @apply_operations
+        def target():
+            assembly("""
+
+DEF target(v)
+{
+    RETURN $v
+}            
+
+std:threads:create($target, 10) -> $thread
+std:threads:get_result($thread) -> $result
+RETURN $result
+""")
+
+        dis.dis(target)
 
         self.assertEqual(target(), 10)
