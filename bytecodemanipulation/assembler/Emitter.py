@@ -411,7 +411,7 @@ def execute_module_in_instance(
     def visit(instr):
         if instr.opcode == Opcodes.STORE_FAST:
             load_module = Instruction.create_with_same_info(
-                instr, Opcodes.LOAD_FAST, "$module$"
+                instr, Opcodes.LOAD_CONST, module
             )
             store = Instruction.create_with_same_info(
                 instr, Opcodes.STORE_ATTR, instr.arg_value
@@ -422,7 +422,7 @@ def execute_module_in_instance(
 
         elif instr.opcode == Opcodes.LOAD_FAST:
             load_module = Instruction.create_with_same_info(
-                instr, Opcodes.LOAD_FAST, "$module$"
+                instr, Opcodes.LOAD_CONST, module
             )
             load = Instruction.create_with_same_info(
                 instr, Opcodes.LOAD_ATTR, instr.arg_value
@@ -433,7 +433,7 @@ def execute_module_in_instance(
 
         elif instr.opcode == Opcodes.DELETE_FAST:
             load_module = Instruction.create_with_same_info(
-                instr, Opcodes.LOAD_FAST, "$module$"
+                instr, Opcodes.LOAD_CONST, module
             )
             delete = Instruction.create_with_same_info(
                 instr, Opcodes.DELETE_ATTR, instr.arg_value
@@ -445,6 +445,7 @@ def execute_module_in_instance(
     target.walk_instructions_stable(visit)
 
     target.function_name = module.__name__
+    target.target.__globals__.update(module.__dict__)
     target.reassign_to_function()
 
     create_function(module)
