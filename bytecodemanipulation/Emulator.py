@@ -373,6 +373,48 @@ def store_deref(
     return instr.next_instruction, func
 
 
+@execution(Opcodes.LOAD_ATTR)
+def load_attr(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    stack.append(getattr(stack.pop(-1), instr.arg_value))
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.STORE_ATTR)
+def store_attr(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    setattr(stack.pop(-2), instr.arg_value, stack.pop(-1))
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.DELETE_ATTR)
+def del_attr(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    delattr(stack.pop(-1), instr.arg_value)
+    return instr.next_instruction, func
+
+
 @execution(Opcodes.CALL_METHOD)
 @execution(Opcodes.CALL_FUNCTION)
 def call_method(
@@ -434,6 +476,48 @@ def call_method(
     print("calling", mutable)
 
     return mutable.instruction_entry_point, mutable
+
+
+@execution(Opcodes.CALL_FUNCTION_KW)
+def call_function_kw(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    kw_names = stack.pop(-1)
+    kw_args = [stack.pop(-1) for _ in kw_names]
+    args = [stack.pop(-1) for _ in range(instr.arg - len(kw_args))]
+
+    target = stack.pop(-1)
+
+    # todo: allow calling methods in-place
+    stack.append(target(*args, **dict(zip(kw_names, kw_args))))
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.CALL_FUNCTION_EX)
+def call_function_kw(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    kw_names = stack.pop(-1)
+    kw_args = [stack.pop(-1) for _ in kw_names]
+    args = [stack.pop(-1) for _ in range(instr.arg - len(kw_args))]
+
+    target = stack.pop(-1)
+
+    # todo: allow calling methods in-place
+    stack.append(target(*args, **dict(zip(kw_names, kw_args))))
+    return instr.next_instruction, func
 
 
 @execution(Opcodes.RETURN_VALUE)
@@ -941,6 +1025,34 @@ def build_set(
     exception_handle_stack: list,
 ) -> typing.Tuple[Instruction, MutableFunction]:
     stack.append({stack.pop(-1) for _ in range(instr.arg)})
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.BUILD_MAP)
+def build_map(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    stack.append({stack.pop(-2): stack.pop(-1) for _ in range(instr.arg)})
+    return instr.next_instruction, func
+
+
+@execution(Opcodes.DICT_MERGE)
+def merge_dict(
+    func: MutableFunction,
+    instr: Instruction,
+    stack: list,
+    local: list,
+    free_vars: list,
+    call_stack: list,
+    exception_handle_stack: list,
+) -> typing.Tuple[Instruction, MutableFunction]:
+    dict.update(stack[-instr.arg], stack.pop(-1))
     return instr.next_instruction, func
 
 

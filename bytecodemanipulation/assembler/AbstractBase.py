@@ -336,7 +336,7 @@ class MacroExpandedIdentifier(IIdentifierAccessor):
         )
 
         if scope is None:
-            raise SyntaxError("no scope provided")
+            return f"<context dependent on macro name {self.token[1].text}>"
 
         try:
             value = scope.lookup_macro_parameter(self.token[1].text)

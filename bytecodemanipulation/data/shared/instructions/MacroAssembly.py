@@ -276,7 +276,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         ):
                             break
 
-                        if not e.is_match(args[i]):
+                        if not e.is_match(scope, args[i]):
                             error = True
                             break
 
@@ -558,17 +558,19 @@ class MacroAssembly(AbstractAssemblyInstruction):
         for arg_decl, arg_code in zip(self.args, args):
             if isinstance(
                 arg_decl.data_type_annotation, MacroAssembly.CodeBlockDataType
+            ) and isinstance(arg_code, CompoundExpression) and hasattr(
+                arg_code, "to_be_stored_at"
+            ) and (
+                len(arg_code.to_be_stored_at)
+                != arg_decl.data_type_annotation.count
             ):
-                if isinstance(arg_code, CompoundExpression) and hasattr(
-                    arg_code, "to_be_stored_at"
-                ):
-                    if (
-                        len(arg_code.to_be_stored_at)
-                        != arg_decl.data_type_annotation.count
-                    ):
-                        raise PropagatingCompilerException(
-                            f"Expected {arg_decl.data_type_annotation.count} dynamic name entries, got {len(arg_code.to_be_stored_at)}"
-                        ).add_trace_level(self.trace_info.with_token(arg_decl.name))
+
+                print(self.args, args)
+                print(arg_code.to_be_stored_at)
+
+                raise PropagatingCompilerException(
+                    f"Expected {arg_decl.data_type_annotation.count} dynamic name entries, got {len(arg_code.to_be_stored_at)}"
+                ).add_trace_level(self.trace_info.with_token(arg_decl.name))
 
             if arg_decl.is_static:
                 scope.set_macro_arg_value(arg_decl.name.text, arg_decl.name.text)

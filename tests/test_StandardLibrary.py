@@ -272,3 +272,19 @@ RETURN %"""
             )
 
         self.assertEqual(target(), [2, 3, 4, 5])
+
+    def test_thread_simple(self):
+        @apply_operations
+        def target():
+            assembly("""
+std:threads:create([_] {
+    LOAD 10
+}) -> $thread
+std:threads:get_result($thread) -> $result
+RETURN $result
+""")
+
+        dis.dis(target)
+
+        # self.assertEqual(run_code(target), 10)
+        self.assertEqual(target(), 10)

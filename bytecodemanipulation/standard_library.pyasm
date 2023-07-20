@@ -212,4 +212,33 @@ NAMESPACE std
             MACRO_RETURN ~set(&var)
         }
     }
+
+    NAMESPACE threads
+    {
+        MACRO ASSEMBLY create(code CODE_BLOCK[1], arg VARIABLE_ARG) -> ANY
+        {
+            DEF target(arg, result_container)
+            {
+                LOAD None
+                MACRO_PASTE code [$arg]
+                STORE $result
+                CALL $result_container.append($result) -> \
+                RETURN None
+            }
+
+            LOAD ~list() -> $result_container
+
+            OP tuple(&arg, $result_container) -> $args
+            LOAD ~threading.!Thread(target=$target, args=$args) -> $thread
+            CALL $result_container.append($thread) -> \
+            CALL $thread.start() -> \
+            MACRO_RETURN $result_container
+        }
+
+        MACRO ASSEMBLY get_result(thread) -> ANY
+        {
+            CALL &thread[0].join() -> \
+            MACRO_RETURN &thread[1]
+        }
+    }
 }

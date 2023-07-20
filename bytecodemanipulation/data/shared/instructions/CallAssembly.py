@@ -237,13 +237,18 @@ class AbstractCallAssembly(AbstractAssemblyInstruction, AbstractAccessExpression
             if is_keyword:
                 key = identifier
 
-                parser.consume(SpecialToken("="))
+                equal_sign = parser.consume(SpecialToken("="))
 
                 is_dynamic = is_partial and bool(parser.try_consume(SpecialToken("?")))
 
                 expr = parser.try_consume_access_to_value(
                     allow_primitives=True, scope=scope
                 )
+
+                if expr is None:
+                    raise PropagatingCompilerException(
+                        "expected <expression> after '='"
+                    ).add_trace_level(scope.get_trace_info().with_token(equal_sign))
 
                 args.append(AbstractCallAssembly.KwArg(key, expr, is_dynamic))
 

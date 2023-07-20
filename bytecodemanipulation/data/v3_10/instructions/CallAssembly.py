@@ -67,21 +67,25 @@ class CallAssembly(AbstractCallAssembly):
 
             kw_arg_keys = []
 
+            kw_args = []
+
             for arg in reversed(self.args):
+                if isinstance(arg, CallAssembly.KwArg):
+                    kw_args.append(arg)
+                    kw_arg_keys.append(arg.key(scope))
+                else:
+                    bytecode += arg.source.emit_bytecodes(function, scope)
+
+            for arg in kw_args:
                 bytecode += arg.source.emit_bytecodes(function, scope)
 
-                if isinstance(arg, CallAssembly.KwArg):
-                    kw_arg_keys.append(arg.key(scope))
-
-                kw_const = tuple(reversed(kw_arg_keys))
-
-                bytecode += [
-                    Instruction(Opcodes.LOAD_CONST, kw_const),
-                    Instruction(
-                        Opcodes.CALL_FUNCTION_KW,
-                        arg=len(self.args) + extra_args,
-                    ),
-                ]
+            bytecode += [
+                Instruction(Opcodes.LOAD_CONST, tuple(kw_arg_keys)),
+                Instruction(
+                    Opcodes.CALL_FUNCTION_KW,
+                    arg=len(self.args) + extra_args,
+                ),
+            ]
 
         else:
             bytecode = self.call_target.emit_bytecodes(function, scope)

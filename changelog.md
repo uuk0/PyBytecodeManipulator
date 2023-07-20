@@ -5,6 +5,9 @@
 - the bytecode emulator works now a little bit better
 - the parser allows line breaks in less places now, forbidding bad splittings on the way (before this,
   each token could be on its own line)
+- added std:threads:create and std:threads:get_result for creating simple threads of macro bytecode runs
+- Emulator supports now more instruction
+- fixed issues with keyword arguments in CallAssembly
 
 # Version 0.3.5
 - std:comprehension:list is now using internally a generator wrapped in a list() call
