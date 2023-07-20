@@ -103,7 +103,7 @@ def _get_error_location_strings(tokens):
     if not error_location:
         return "", ""
 
-    if error_location.count("╰") <= 1:
+    if error_location.count("╰") + error_location.count("│") <= 1:
         error_location = error_location[:-1] + ("┴─" if error_location[-1] == "┤" else "╰")
         error_location_2 = ""
     else:
