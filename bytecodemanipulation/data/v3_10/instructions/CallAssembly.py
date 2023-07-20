@@ -151,7 +151,7 @@ class CallAssembly(AbstractCallAssembly):
 
         if macro_declaration is None:
             raise PropagatingCompilerException(
-                "Macro '{':'.join(map(lambda e: e.text, name))}' not found"
+                f"Macro '{':'.join(map(lambda e: e.text, name))}' not found"
             ).add_trace_level(
                 self.trace_info.with_token(list(self.call_target.get_tokens()))
             ).set_underlying_exception(
@@ -171,7 +171,7 @@ class CallAssembly(AbstractCallAssembly):
 
         if self.target is not None and macro.return_type is None:
             raise RuntimeError(
-                f"Expected <return type> declaration at macro if using '->' in call"
+                "Expected <return type> declaration at macro if using '->' in call"
             )
 
         bytecode = macro.emit_call_bytecode(function, scope, args)

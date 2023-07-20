@@ -284,7 +284,17 @@ std:threads:get_result($thread) -> $result
 RETURN $result
 """)
 
-        dis.dis(target)
+        self.assertEqual(target(), 10)
 
-        # self.assertEqual(run_code(target), 10)
+    def test_thread_simple_with_arg(self):
+        @apply_operations
+        def target():
+            assembly("""
+std:threads:create([args] {
+    LOAD $args[0]
+}, 10) -> $thread
+std:threads:get_result($thread) -> $result
+RETURN $result
+""")
+
         self.assertEqual(target(), 10)

@@ -8,6 +8,7 @@
 - added std:threads:create and std:threads:get_result for creating simple threads of macro bytecode runs
 - Emulator supports now more instruction
 - fixed issues with keyword arguments in CallAssembly
+- fixed issue with VARIABLE_ARG in some cases
 
 # Version 0.3.5
 - std:comprehension:list is now using internally a generator wrapped in a list() call

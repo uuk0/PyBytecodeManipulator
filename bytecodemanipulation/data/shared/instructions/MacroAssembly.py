@@ -288,19 +288,19 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         continue
 
                     # Get all args after the VARIABLE_ARG
-                    i = 0
-                    for i in range(-len(macro.args), 0):
+                    j = 0
+                    for j in range(-len(macro.args), 0):
                         if isinstance(
                             e.data_type_annotation,
                             MacroAssembly.VariableArgCountDataType,
                         ):
                             break
 
-                        if not e.is_match(args[i]):
+                        if not e.is_match(args[j]):
                             error = True
                             break
 
-                        postfix.insert(0, args[i])
+                        postfix.insert(0, args[j])
 
                     # todo: assert that the current i is equal to the star_index
 
@@ -309,7 +309,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
 
                     # And now collect the args in between
                     for arg in (
-                        args[star_index : i + 1] if i != -1 else args[star_index:]
+                        args[i:-j] if j != 0 else args[i:]
                     ):
                         if not macro.args[star_index].is_match(scope, arg):
                             error = True
@@ -344,87 +344,81 @@ class MacroAssembly(AbstractAssemblyInstruction):
     def _try_parse_arg_data_type(
         cls, parser: "Parser", scope: ParsingScope
     ) -> AbstractDataType | None:
-        if identifier := parser.try_inspect(IdentifierToken):
-            if identifier.text == "CODE_BLOCK":
-                parser.consume(identifier)
+        if not (identifier := parser.try_inspect(IdentifierToken)):
+            return
 
-                if opening_bracket := parser.try_consume(SpecialToken("[")):
-                    if (
-                        not (expr := parser.try_consume(IntegerToken))
-                        or not expr.text.isdigit()
-                        or (count := int(expr.text)) < 0
-                    ):
-                        raise PropagatingCompilerException(
-                            "expected <positive integer> after '[' to declare count"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(
-                                opening_bracket, parser[0]
-                            )
-                        )
+        if identifier.text == "CODE_BLOCK":
+            parser.consume(identifier)
 
-                    if not parser.try_consume(SpecialToken("]")):
-                        raise PropagatingCompilerException(
-                            "expected ']' closing '[' after <count> in CODE_BLOCK"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(
-                                opening_bracket, parser[0]
-                            )
-                        )
-
-                    inst = cls.CodeBlockDataType(int(expr.text))
-                    return inst
-
-                inst = cls.CodeBlockDataType()
-                return inst
-
-            elif identifier.text == "VARIABLE_ARG":
-                parser.consume(identifier)
-                # todo: add check that it is the only * arg
-                if parser.try_consume(SpecialToken("[")):
-                    inner_type = cls._try_parse_arg_data_type(parser, scope)
-                    if inner_type is None:
-                        raise PropagatingCompilerException(
-                            "expected <inner type>"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(identifier, parser[0])
-                        )
-
-                    if not parser.try_consume(SpecialToken("]")):
-                        raise PropagatingCompilerException(
-                            "expected ']' closing '[' after <inner type>"
-                        ).add_trace_level(
-                            scope.get_trace_info().with_token(identifier, parser[0])
-                        )
-
-                    inst = cls.VariableArgCountDataType(inner_type)
-                else:
-                    inst = cls.VariableArgCountDataType(None)
-
-                return inst
-
-            elif identifier.text == "VARIABLE":
-                parser.consume(identifier)
-
-                if parser[0] == SpecialToken("["):
+            if opening_bracket := parser.try_consume(SpecialToken("[")):
+                if (
+                    not (expr := parser.try_consume(IntegerToken))
+                    or not expr.text.isdigit()
+                    or (count := int(expr.text)) < 0
+                ):
                     raise PropagatingCompilerException(
-                        "did not expect '[' after 'VARIABLE' in macro type declaration"
+                        "expected <positive integer> after '[' to declare count"
                     ).add_trace_level(
-                        scope.get_trace_info().with_token(identifier, parser[0])
+                        scope.get_trace_info().with_token(
+                            opening_bracket, parser[0]
+                        )
                     )
 
-                return cls.VariableDataType()
-
-            elif identifier.text == "ANY":
-                parser.consume(identifier)
-
-                if parser[0] == SpecialToken("["):
+                if not parser.try_consume(SpecialToken("]")):
                     raise PropagatingCompilerException(
-                        "did not expect '[' after 'ANY' in macro type declaration"
+                        "expected ']' closing '[' after <count> in CODE_BLOCK"
                     ).add_trace_level(
-                        scope.get_trace_info().with_token(identifier, parser[0])
+                        scope.get_trace_info().with_token(
+                            opening_bracket, parser[0]
+                        )
                     )
 
-                return cls.AnyDataType()
+                return cls.CodeBlockDataType(int(expr.text))
+            return cls.CodeBlockDataType()
+        elif identifier.text == "VARIABLE_ARG":
+            parser.consume(identifier)
+            if not parser.try_consume(SpecialToken("[")):
+                return cls.VariableArgCountDataType(None)
+
+            inner_type = cls._try_parse_arg_data_type(parser, scope)
+            if inner_type is None:
+                raise PropagatingCompilerException(
+                    "expected <inner type>"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(identifier, parser[0])
+                )
+
+            if not parser.try_consume(SpecialToken("]")):
+                raise PropagatingCompilerException(
+                    "expected ']' closing '[' after <inner type>"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(identifier, parser[0])
+                )
+
+            return cls.VariableArgCountDataType(inner_type)
+        elif identifier.text == "VARIABLE":
+            parser.consume(identifier)
+
+            if parser[0] == SpecialToken("["):
+                raise PropagatingCompilerException(
+                    "did not expect '[' after 'VARIABLE' in macro type declaration"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(identifier, parser[0])
+                )
+
+            return cls.VariableDataType()
+
+        elif identifier.text == "ANY":
+            parser.consume(identifier)
+
+            if parser[0] == SpecialToken("["):
+                raise PropagatingCompilerException(
+                    "did not expect '[' after 'ANY' in macro type declaration"
+                ).add_trace_level(
+                    scope.get_trace_info().with_token(identifier, parser[0])
+                )
+
+            return cls.AnyDataType()
 
     @classmethod
     def consume(cls, parser: "Parser", scope: ParsingScope) -> "MacroAssembly":
@@ -588,8 +582,8 @@ class MacroAssembly(AbstractAssemblyInstruction):
         for i, (arg_decl, arg_code) in enumerate(zip(self.args, args)):
             arg_decl_lookup[arg_decl.name.text] = arg_decl
             if arg_decl.is_static:
+                arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
                 if arg_decl.data_type_annotation is not None:
-                    arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
                     try:
                         bytecode += arg_decl.data_type_annotation.emit_for_arg(
                             arg_code, function, scope
@@ -597,19 +591,11 @@ class MacroAssembly(AbstractAssemblyInstruction):
                     except PropagatingCompilerException as e:
                         e.add_trace_level(
                             self.trace_info.with_token(arg_decl.name),
-                            f"during emitting arg lookup for static argument with type annotationwith index {arg_decl.index} and name '{arg_decl.name.text}'",
+                            f"during emitting arg lookup for static argument with type annotation with index {arg_decl.index} and name '{arg_decl.name.text}'",
                         )
                         raise e
 
-                    bytecode.append(
-                        Instruction(
-                            Opcodes.STORE_FAST,
-                            var_name,
-                        )
-                    )
-
                 else:
-                    arg_names.append(var_name := scope.scope_name_generator(f"arg_{i}"))
                     try:
                         bytecode += arg_code.emit_bytecodes(function, scope)
                     except PropagatingCompilerException as e:
@@ -619,12 +605,12 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         )
                         raise e
 
-                    bytecode.append(
-                        Instruction(
-                            Opcodes.STORE_FAST,
-                            var_name,
-                        )
+                bytecode.append(
+                    Instruction(
+                        Opcodes.STORE_FAST,
+                        var_name,
                     )
+                )
 
             else:
                 arg_names.append(None)
@@ -742,7 +728,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                 instr.change_arg_value(instr.arg_value.removeprefix(":"))
 
             elif instr.has_local():
-                instr.change_arg_value(local_prefix + ":" + instr.arg_value)
+                instr.change_arg_value(f"{local_prefix}:{instr.arg_value}")
 
             elif instr.opcode == Opcodes.MACRO_RETURN_VALUE:
                 if self.return_type is None:
@@ -844,7 +830,7 @@ class MacroAssembly(AbstractAssemblyInstruction):
                         call.change_opcode(Opcodes.RETURN_VALUE)
 
                 elif instr.has_local() and instr.arg_value in captured_locals:
-                    instr.change_arg_value(":" + instr.arg_value)
+                    instr.change_arg_value(f":{instr.arg_value}")
 
             return instructions + [
                 Instruction(Opcodes.BYTECODE_LABEL, macro_exit_label)
