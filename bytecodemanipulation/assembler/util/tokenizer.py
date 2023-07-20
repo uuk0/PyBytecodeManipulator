@@ -122,6 +122,10 @@ class AbstractLexer(AbstractCursorStateItem, abc.ABC):
         self._line_offset += offset
         return self
 
+    def add_column_offset(self, offset: int):
+        self.old_column_number = offset
+        return self
+
     def is_empty(self) -> bool:
         """
         Checks if no text is left to visit

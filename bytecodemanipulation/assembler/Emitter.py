@@ -61,7 +61,7 @@ def apply_inline_assemblies(
 
     labels: typing.Set[IIdentifierAccessor] = set()
     label_targets: typing.Dict[str, Instruction] = {}
-    insertion_points: typing.List[typing.Tuple[str, Instruction]] = []
+    insertion_points: typing.List[typing.Tuple[str, Instruction, int, int]] = []
 
     def visit(instr: Instruction):
         if instr.opcode != Opcodes.LOAD_GLOBAL:
@@ -80,10 +80,20 @@ def apply_inline_assemblies(
 
             if invoke.next_instruction.opcode == Opcodes.POP_TOP:
                 insertion_points.append(
-                    (typing.cast(str, arg.arg_value), invoke.next_instruction)
+                    (
+                        typing.cast(str, arg.arg_value),
+                        invoke.next_instruction,
+                        invoke.source_location[0] - 1,
+                        arg.source_location[1],
+                    )
                 )
             else:
-                insertion_points.append((typing.cast(str, arg.arg_value), invoke))
+                insertion_points.append((
+                    typing.cast(str, arg.arg_value),
+                    invoke,
+                    invoke.source_location[0] - 1,
+                    arg.source_location[1],
+                ))
 
             instr.change_opcode(Opcodes.NOP)
             arg.change_opcode(Opcodes.NOP)
@@ -119,7 +129,12 @@ def apply_inline_assemblies(
 
             if invoke.next_instruction.opcode == Opcodes.POP_TOP:
                 insertion_points.append(
-                    (f"JUMP {label_name.arg_value}", invoke.next_instruction)
+                    (
+                        f"JUMP {label_name.arg_value}",
+                        invoke.next_instruction,
+                        invoke.next_instruction.source_location[0] - 1,
+                        invoke.next_instruction.source_location[1],
+                    )
                 )
             else:
                 raise SyntaxError(invoke.next_instruction)
@@ -167,13 +182,15 @@ def apply_inline_assemblies(
 
     assemblies = []
 
-    for code, instr in insertion_points:
+    for code, instr, line, column in insertion_points:
         try:
+            print(code, line, column)
             scope.may_get_trace_info = True
             assemblies.append(
                 AssemblyParser(
                     Lexer(code, module_file=target.target.__globals__["__file__"])
-                    .add_line_offset(instr.source_location[0] - 1)
+                    .add_line_offset(line)
+                    .add_column_offset(column or 0)  # sadly, python <= 3.10 will not support column offsets
                     .lex(),
                     scope.scope_path.clear() or scope,
                     module_file=target.target.__globals__["__file__"],
@@ -201,7 +218,7 @@ def apply_inline_assemblies(
     scope.scope_path.clear()
     scope.may_get_trace_info = False
 
-    for (_, instr), asm in zip(insertion_points, assemblies):
+    for (_, instr, *__), asm in zip(insertion_points, assemblies):
         _create_fragment_bytecode(
             asm,
             instr,
