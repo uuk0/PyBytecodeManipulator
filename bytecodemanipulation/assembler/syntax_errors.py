@@ -165,3 +165,6 @@ class PropagatingCompilerException(Exception):
                 print(message, file=file)
             else:
                 print(file=file)
+
+        # for arg in self.args:
+        #     print(arg)

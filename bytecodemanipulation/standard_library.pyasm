@@ -253,15 +253,103 @@ NAMESPACE std
             MACRO_RETURN $result_container
         }
 
-        MACRO ASSEMBLY get_result(thread) -> ANY
+        MACRO ASSEMBLY get_result(!thread) -> ANY
         {
+            ASSERT OP(&thread instanceof ~list)
+            ASSERT OP(&thread[0] instanceof ~threading.!Thread)
+
             CALL &thread[0].join() -> \
             MACRO_RETURN &thread[1]
         }
 
-        MACRO ASSEMBLY join(thread)
+        MACRO ASSEMBLY join(!thread)
         {
+            ASSERT OP(&thread instanceof ~list)
+            ASSERT OP(&thread[0] instanceof ~threading.!Thread)
+
             CALL &thread[0].join() -> \
+        }
+
+        NAMESPACE pool
+        {
+            MACRO ASSEMBLY create_multi(code CODE_BLOCK[1], !args VARIABLE_ARG) -> ANY
+            {
+                ASSERT OP(~len(&args) > 0)
+
+                LOAD ~list() -> $container
+                FOREACH $arg IN &args
+                {
+                    std:threads:create(&code, $arg) -> $r
+                    CALL $result.append($r) -> \
+                }
+
+                RETURN $result
+            }
+
+            MACRO ASSEMBLY create_multi(!target, !args VARIABLE_ARG) -> ANY
+            {
+                ASSERT OP(~len(&args) > 0)
+
+                LOAD ~list() -> $container
+                FOREACH $arg IN &args
+                {
+                    std:threads:create(&target, $arg) -> $r
+                    CALL $result.append($r) -> \
+                }
+
+                RETURN $result
+            }
+
+            MACRO ASSEMBLY get_single_result(!pool) -> ANY
+            {
+                ASSERT OP(&pool instanceof ~list)
+                ASSERT OP(~len(&pool) > 0)
+                ASSERT OP(&pool[0] instanceof ~list)
+                ASSERT OP(~len(&pool[0]) > 0)
+                ASSERT OP(&pool[0][0] instanceof ~threading.!List)
+
+                FOREACH $thread IN &pool
+                {
+                    IF OP (~len($thread) > 1)
+                    {
+                        CALL &pool.remove($thread) -> \
+                        MACRO_RETURN $thread[1]
+                    }
+                }
+
+                MACRO_RETURN None
+            }
+
+            MACRO ASSEMBLY get_results(!pool)
+            {
+                ASSERT OP(&pool instanceof ~list)
+                ASSERT OP(~len(&pool) > 0)
+                ASSERT OP(&pool[0] instanceof ~list)
+                ASSERT OP(~len(&pool[0]) > 0)
+                ASSERT OP(&pool[0][0] instanceof ~threading.!List)
+
+                FOREACH $thread IN &pool
+                {
+                    std:threads:get_result($thread) -> $r
+                    YIELD $r
+                }
+
+                CALL &pool.clear() -> \
+            }
+
+            MACRO ASSEMBLY join_remaining(!pool)
+            {
+                ASSERT OP(&pool instanceof ~list)
+                ASSERT OP(~len(&pool) > 0)
+                ASSERT OP(&pool[0] instanceof ~list)
+                ASSERT OP(~len(&pool[0]) > 0)
+                ASSERT OP(&pool[0][0] instanceof ~threading.!List)
+
+                FOREACH $thread IN &pool
+                {
+                    std:threads:join($thread)
+                }
+            }
         }
     }
 }

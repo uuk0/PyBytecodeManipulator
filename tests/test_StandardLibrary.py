@@ -122,7 +122,7 @@ STORE $output
     def test_stream_simple_reduce_empty(self):
         @apply_operations
         def target():
-            data = tuple()
+            data = ()
             stream = None
             output = None
             assembly(
@@ -164,7 +164,7 @@ STORE $output
     def test_stream_simple_reduce_with_start_empty(self):
         @apply_operations
         def target():
-            data = tuple()
+            data = ()
             stream = None
             output = None
             assembly(

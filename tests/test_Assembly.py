@@ -1918,8 +1918,12 @@ ASSERT_STATIC $a"""
             )
 
         try:
-            apply_operations(target)
-        except SyntaxError as e:
+            apply_operations(target, unwrap_exceptions=False)
+        except PropagatingCompilerException as e:
+            e.print_exception()
+
+            self.assertEqual(e.underlying_exception, SyntaxError)
+
             self.assertEqual(
                 e.args,
                 (

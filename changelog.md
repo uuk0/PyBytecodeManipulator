@@ -9,6 +9,7 @@
 - Emulator supports now more instruction
 - fixed issues with keyword arguments in CallAssembly
 - fixed issue with VARIABLE_ARG in some cases
+- added std:threads:pool:create_multi, :get_single_result, :get_results, :join_remaining
 
 # Version 0.3.5
 - std:comprehension:list is now using internally a generator wrapped in a list() call
